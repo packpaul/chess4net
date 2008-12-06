@@ -93,7 +93,11 @@ type
     _flipped: boolean; // Доска перевёрнута или нет
     hilighted: boolean; // Подсветка делаемого хода
     lastMove: TMoveAbs; // Последний сделанный ход
-    bmBuf: TBitmap;
+
+    m_bmChessBoard: TBitmap;
+    m_bmFigure: array[TFigure] of TBitmap;
+    m_bmBuf: TBitmap;
+
     Handler: TChessBoardHandler;
     anim_dx, anim_dy: real; // переменные для анимации перемещения фигуры
     anim_step, anim_step_num: integer; // количество шагов в анимации
@@ -144,6 +148,7 @@ type
     procedure WMSizing(var Msg: TMessage); message WM_SIZING;
 
   protected
+    iSquareSize: integer; // Size of a chess board field
     lstPosition: TList;
     bmHiddenBoard: TBitmap;
     procedure DrawBoard;
@@ -212,9 +217,6 @@ const
                             (longRange: FALSE; // Пешка
                             dx: (0,0,-1,1, 0,0,0,0); dy: (2,1,1,1, 0,0,0,0)));
 
-var
-  bmFigure: array[TFigure] of TBitmap;
-
 implementation
 
 {$J+}
@@ -225,9 +227,6 @@ uses
   StrUtils, Math, DateUtils,
   // Chess4Net
   PromotionUnit;
-
-var
-  bmChessBoard: TBitMap;
 
 const
   HILIGHT_WIDTH = 1;
@@ -245,8 +244,6 @@ const
   ZEITNOT_COLOR = clMaroon;
   ZEITNOT_FORMAT = 's"."zzz';
 //  CHEAT_TIME_CONST = 1.5; // > 1
-
-  CHESS_BOARD_INSTANCES: integer = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Globals
@@ -339,7 +336,6 @@ var
   f: TFigureName;
   fig: TFigure;
   pos: TChessPosition;
-  PromotionForm: TPromotionForm;
 begin
   Result:= FALSE;
   if not ((i0 in [1..8]) and (j0 in [1..8]) and
@@ -492,9 +488,12 @@ here:
               begin
                 if Showing then
                   begin
-                    PromotionForm := TPromotionForm.Create(self);
-                    prom_fig := PromotionForm.ShowPromotion(pos.color);
-                    PromotionForm.Free;
+                    with TPromotionForm.Create(self, m_BitmapRes) do
+                    try
+                      prom_fig := ShowPromotion(pos.color);
+                    finally
+                      Free;
+                    end;
                   end
                 else
                   prom_fig := Q;
@@ -779,12 +778,10 @@ begin
 
   m_BitmapRes := TBitmapRes.Create(Size(PBoxBoard.Width, PBoxBoard.Height));
 
-  if CHESS_BOARD_INSTANCES = 0 then
-    begin
-      BlackFlagButton.Glyph := WhiteFlagButton.Glyph; // чтоб не тащить лишнего
-      coord_show:= TRUE; last_hilight:= FALSE; animation:= aQuick;
-    end;
-  inc(CHESS_BOARD_INSTANCES);
+  BlackFlagButton.Glyph := WhiteFlagButton.Glyph; // чтоб не тащить лишнего
+  coord_show:= TRUE;
+  last_hilight:= FALSE;
+  animation:= aQuick;
 
   // Clock initialization
   SetUnlimited(White, TRUE); SetUnlimited(Black, TRUE);
@@ -807,36 +804,36 @@ begin
   // Copy empty board to the hidden one
   with bmHiddenBoard do
     begin
-      Canvas.CopyRect(Bounds(0,0, Width,Height), bmChessBoard.Canvas, Bounds(0,0, Width,Height));
-      Canvas.Brush.Color := self.Color;
-      Canvas.FloodFill(0,0, Canvas.Pixels[0,0], fsSurface);
+      Canvas.CopyRect(Bounds(0,0, Width,Height), m_bmChessBoard.Canvas, Bounds(0,0, Width,Height));
+//      Canvas.Brush.Color := self.Color;
+//      Canvas.FloodFill(0,0, Canvas.Pixels[0,0], fsSurface);
     end;
 
   // Draw coordinates
   if coord_show then
   with bmHiddenBoard, bmHiddenBoard.Canvas do
     begin
-      x:= CHB_X + SQUARE_SIZE div 2;
-      y:= (bmHiddenBoard.Height + CHB_Y + 8 * SQUARE_SIZE + CHB_WIDTH) div 2;
+      x:= CHB_X + iSquareSize div 2;
+      y:= (bmHiddenBoard.Height + CHB_Y + 8 * iSquareSize + CHB_WIDTH) div 2;
       if _flipped then j := ord('h')
         else j:= ord('a');
       for i:= 1 to 8 do // буквы
         begin
           TextOut(x - TextWidth(chr(j)) div 2,
                   y + 1 - TextHeight(chr(j)) div 2 , chr(j));
-          x := x + SQUARE_SIZE;
+          x := x + iSquareSize;
           if _flipped then dec(j)
             else inc(j);
         end;
       x:= (CHB_X - CHB_WIDTH) div 2;
-      y:= CHB_Y + SQUARE_SIZE div 2;
+      y:= CHB_Y + iSquareSize div 2;
       if _flipped then j:= ord('1')
         else j := ord('8');
       for i := 1 to 8 do // цифры
         begin
           TextOut(x - TextWidth(chr(j)) div 2,
                   y - TextHeight(chr(j)) div 2, chr(j));
-          y:= y + SQUARE_SIZE;
+          y:= y + iSquareSize;
           if _flipped then inc(j)
             else dec(j);
         end;
@@ -849,13 +846,13 @@ begin
         if ((Position.board[i,j] = ES)) then
           continue; // There's nothing to draw
         if not _flipped then // Загрузить нужную фигуру из ресурса и нарисовать
-          bmHiddenBoard.Canvas.Draw(CHB_X + SQUARE_SIZE * (i-1),
-                                    CHB_Y + SQUARE_SIZE * (8-j),
-                                    bmFigure[Position.board[i,j]])
+          bmHiddenBoard.Canvas.Draw(CHB_X + iSquareSize * (i-1),
+                                    CHB_Y + iSquareSize * (8-j),
+                                    m_bmFigure[Position.board[i,j]])
         else // Black is below
-          bmHiddenBoard.Canvas.Draw(CHB_X + SQUARE_SIZE * (8-i),
-                                    CHB_Y + SQUARE_SIZE * (j-1),
-                                    bmFigure[Position.board[i,j]]);
+          bmHiddenBoard.Canvas.Draw(CHB_X + iSquareSize * (8-i),
+                                    CHB_Y + iSquareSize * (j-1),
+                                    m_bmFigure[Position.board[i,j]]);
       end;
 end;
 
@@ -890,16 +887,13 @@ begin
     dispose(lstPosition[i]);
   lstPosition.Free;
   bmHiddenBoard.Free;
-  bmBuf.Free;
+  m_bmBuf.Free;
 
-  dec(CHESS_BOARD_INSTANCES);
-  if CHESS_BOARD_INSTANCES = 0 then
-    begin
-      for fig:= low(fig) to high(fig) do bmFigure[fig].Free;
-      bmChessBoard.Free;
-    end;
+  for fig:= low(fig) to high(fig) do
+    m_bmFigure[fig].Free;
+  m_bmChessBoard.Free;
 
-  m_BitmapRes.Free;  
+  m_BitmapRes.Free;
 end;
 
 
@@ -936,15 +930,15 @@ begin
     dsDragMove:
       begin
         // Восстановить фрагмент на bmHiddenBoard
-        bmHiddenBoard.Canvas.Draw(x0-dx, y0-dy, bmBuf);
+        bmHiddenBoard.Canvas.Draw(x0-dx, y0-dy, m_bmBuf);
         // Копировать новый фрагмент в буфер
-        bmBuf.Canvas.CopyRect(Bounds(0, 0, SQUARE_SIZE, SQUARE_SIZE),
-          bmHiddenBoard.Canvas, Bounds(X-dx, Y-dy, SQUARE_SIZE, SQUARE_SIZE));
+        m_bmBuf.Canvas.CopyRect(Bounds(0, 0, iSquareSize, iSquareSize),
+          bmHiddenBoard.Canvas, Bounds(X-dx, Y-dy, iSquareSize, iSquareSize));
         // Нарисовать перетаскиваемую фигуру в новой позиции
-        bmHiddenBoard.Canvas.Draw(X-dx, Y-dy, bmFigure[fig]);
+        bmHiddenBoard.Canvas.Draw(X-dx, Y-dy, m_bmFigure[fig]);
         // Перенести новый фрагмент на экран
         rect:= Bounds(Min(x0,X) - dx, Min(y0,Y) - dy,
-          abs(X-x0) + SQUARE_SIZE, abs(Y-y0) + SQUARE_SIZE);
+          abs(X-x0) + iSquareSize, abs(Y-y0) + iSquareSize);
         PBoxBoard.Canvas.CopyRect(rect, bmHiddenBoard.Canvas, rect);
 
         x0:= X; y0:= Y;
@@ -967,9 +961,9 @@ begin
         x0:= x0 - dx;
         y0:= y0 - dy;
         MoveTo(x0,y0);
-        LineTo(x0 + SQUARE_SIZE - 1, y0);
-        LineTo(x0 + SQUARE_SIZE - 1, y0 + SQUARE_SIZE - 1);
-        LineTo(x0, y0 + SQUARE_SIZE - 1);
+        LineTo(x0 + iSquareSize - 1, y0);
+        LineTo(x0 + iSquareSize - 1, y0 + iSquareSize - 1);
+        LineTo(x0, y0 + iSquareSize - 1);
         LineTo(x0,y0);
 
         PBoxBoardPaint(nil);
@@ -992,8 +986,8 @@ procedure TChessBoard.WhatSquare(const P: TPoint;
   begin
     with P do
       begin
-        i:= (X - CHB_X + SQUARE_SIZE) div SQUARE_SIZE;
-        j:= 8 - (Y - CHB_Y) div SQUARE_SIZE;
+        i:= (X - CHB_X + iSquareSize) div iSquareSize;
+        j:= 8 - (Y - CHB_Y) div iSquareSize;
         if _flipped then
           begin
             i:= 9-i; j:= 9-j;
@@ -1031,8 +1025,8 @@ begin
   fig:= f;
   i0:= i; j0:= j;
 
-  dx:= (X - CHB_X) mod SQUARE_SIZE;
-  dy:= (Y - CHB_Y) mod SQUARE_SIZE;
+  dx:= (X - CHB_X) mod iSquareSize;
+  dy:= (Y - CHB_Y) mod iSquareSize;
   x0:= X; y0:= Y;
 
   dragged_moved:= TRUE;
@@ -1273,14 +1267,14 @@ end;
 procedure TChessBoard.PBoxBoardStartDrag(Sender: TObject;
   var DragObject: TDragObject);
 begin
-  // Копировать изображение пустого поля в bmBuf
-  bmBuf.Width:= SQUARE_SIZE; bmBuf.Height:= SQUARE_SIZE;
+  // Копировать изображение пустого поля в m_bmBuf
+  m_bmBuf.Width:= iSquareSize; m_bmBuf.Height:= iSquareSize;
   if (((i0 + j0) and 1) <> 0) then
-      bmBuf.Canvas.CopyRect(Bounds(0,0, SQUARE_SIZE, SQUARE_SIZE),
-        bmFigure[ES].Canvas, Bounds(0,0, SQUARE_SIZE, SQUARE_SIZE))
+      m_bmBuf.Canvas.CopyRect(Bounds(0,0, iSquareSize, iSquareSize),
+        m_bmFigure[ES].Canvas, Bounds(0,0, iSquareSize, iSquareSize))
   else
-    bmBuf.Canvas.CopyRect(Bounds(0,0, SQUARE_SIZE, SQUARE_SIZE),
-      bmFigure[ES].Canvas, Bounds(SQUARE_SIZE,0, SQUARE_SIZE, SQUARE_SIZE));
+    m_bmBuf.Canvas.CopyRect(Bounds(0,0, iSquareSize, iSquareSize),
+      m_bmFigure[ES].Canvas, Bounds(iSquareSize,0, iSquareSize, iSquareSize));
 
   dragged_moved:= FALSE;
 end;
@@ -1300,17 +1294,17 @@ begin
 
   if _flipped then
     begin
-      x0:= (8 - i0) * SQUARE_SIZE + CHB_X;
-      y0:= (j0 - 1) * SQUARE_SIZE + CHB_Y;
-      x:= (8 - i) * SQUARE_SIZE + CHB_X;
-      y:= (j - 1) * SQUARE_SIZE + CHB_Y;
+      x0:= (8 - i0) * iSquareSize + CHB_X;
+      y0:= (j0 - 1) * iSquareSize + CHB_Y;
+      x:= (8 - i) * iSquareSize + CHB_X;
+      y:= (j - 1) * iSquareSize + CHB_Y;
     end
   else
     begin
-      x0:= (i0 - 1) * SQUARE_SIZE + CHB_X;
-      y0:= (8 - j0) * SQUARE_SIZE + CHB_Y;
-      x:= (i - 1) * SQUARE_SIZE + CHB_X;
-      y:= (8 - j) * SQUARE_SIZE + CHB_Y;
+      x0:= (i0 - 1) * iSquareSize + CHB_X;
+      y0:= (8 - j0) * iSquareSize + CHB_Y;
+      x:= (i - 1) * iSquareSize + CHB_X;
+      y:= (8 - j) * iSquareSize + CHB_Y;
     end;
 
   anim_dx:= (x-x0) / anim_step_num;
@@ -1318,15 +1312,15 @@ begin
 
   anim_step:= 0;
 
-  // Копировать изображение пустого поля в bmBuf
-  bmBuf.Width := SQUARE_SIZE;
-  bmBuf.Height := SQUARE_SIZE;
+  // Копировать изображение пустого поля в m_bmBuf
+  m_bmBuf.Width := iSquareSize;
+  m_bmBuf.Height := iSquareSize;
   if (((i0 + j0) and 1) <> 0) then
-    bmBuf.Canvas.CopyRect(Bounds(0,0, SQUARE_SIZE, SQUARE_SIZE),
-      bmFigure[ES].Canvas, Bounds(0,0, SQUARE_SIZE, SQUARE_SIZE))
+    m_bmBuf.Canvas.CopyRect(Bounds(0,0, iSquareSize, iSquareSize),
+      m_bmFigure[ES].Canvas, Bounds(0,0, iSquareSize, iSquareSize))
   else
-    bmBuf.Canvas.CopyRect(Bounds(0,0, SQUARE_SIZE, SQUARE_SIZE),
-      bmFigure[ES].Canvas, Bounds(SQUARE_SIZE,0, SQUARE_SIZE, SQUARE_SIZE));
+    m_bmBuf.Canvas.CopyRect(Bounds(0,0, iSquareSize, iSquareSize),
+      m_bmFigure[ES].Canvas, Bounds(iSquareSize,0, iSquareSize, iSquareSize));
 
   AnimateTimer.Enabled:= TRUE;
 end;
@@ -1346,15 +1340,15 @@ begin
       dy:= Y - y0 - round(anim_dy * (anim_step - 1));
 
       // Восстановить фрагмент на bmHiddenBoard
-      bmHiddenBoard.Canvas.Draw(X-dx, Y-dy, bmBuf);
+      bmHiddenBoard.Canvas.Draw(X-dx, Y-dy, m_bmBuf);
       // Копировать новый фрагмент в буфер
-      bmBuf.Canvas.CopyRect(Bounds(0, 0, SQUARE_SIZE, SQUARE_SIZE),
-        bmHiddenBoard.Canvas, Bounds(X, Y, SQUARE_SIZE, SQUARE_SIZE));
+      m_bmBuf.Canvas.CopyRect(Bounds(0, 0, iSquareSize, iSquareSize),
+        bmHiddenBoard.Canvas, Bounds(X, Y, iSquareSize, iSquareSize));
       // Нарисовать перетаскиваемую фигуру в новой позиции
-      bmHiddenBoard.Canvas.Draw(X, Y, bmFigure[fig]);
+      bmHiddenBoard.Canvas.Draw(X, Y, m_bmFigure[fig]);
       // Перенести новый фрагмент на экран
       rect:= Bounds(Min(X-dx, X), Min(Y-dy, Y),
-        abs(dx) + SQUARE_SIZE, abs(dy) + SQUARE_SIZE);
+        abs(dx) + iSquareSize, abs(dy) + iSquareSize);
       PBoxBoard.Canvas.CopyRect(rect, bmHiddenBoard.Canvas, rect);
     end
   else
@@ -1502,8 +1496,8 @@ begin
           i:= lastMove.i; j:= 9 - lastMove.j;
         end;
 
-       x:= SQUARE_SIZE * (i0 - 1) + CHB_X;
-       y:= SQUARE_SIZE * (j0 - 1) + CHB_Y;
+       x:= iSquareSize * (i0 - 1) + CHB_X;
+       y:= iSquareSize * (j0 - 1) + CHB_Y;
        bmHiddenBoard.Canvas.Pen.Color := HILIGHT_LAST_MOVE_COLOR;
        bmHiddenBoard.Canvas.Pen.Width := HILIGHT_LAST_MOVE_WIDTH;
 
@@ -1511,13 +1505,13 @@ begin
          with bmHiddenBoard.Canvas do
            begin
              MoveTo(x,y);
-             LineTo(x + SQUARE_SIZE - 1, y);
-             LineTo(x + SQUARE_SIZE - 1, y + SQUARE_SIZE - 1);
-             LineTo(x,y + SQUARE_SIZE - 1);
+             LineTo(x + iSquareSize - 1, y);
+             LineTo(x + iSquareSize - 1, y + iSquareSize - 1);
+             LineTo(x,y + iSquareSize - 1);
              LineTo(x,y);
 
-             x:= SQUARE_SIZE * (i - 1) + CHB_X;
-             y:= SQUARE_SIZE * (j - 1) + CHB_Y;
+             x:= iSquareSize * (i - 1) + CHB_X;
+             y:= iSquareSize * (j - 1) + CHB_Y;
            end;
       PBoxBoardPaint(nil);
     end;
@@ -1953,31 +1947,32 @@ procedure TChessBoard.FormResize(Sender: TObject);
 var
   fig: TFigure;
 begin
-  FreeAndNil(bmChessBoard);
+  FreeAndNil(m_bmChessBoard);
   m_BitmapRes.CreateBoardBitmap(Size(PBoxBoard.Width, PBoxBoard.Height), self.Color,
-    bmChessBoard, SQUARE_SIZE);
+    m_bmChessBoard);
+  iSquareSize := m_BitmapRes.SquareSize;
 
   for fig := low(fig) to high(fig) do
   begin
-    FreeAndNil(bmFigure[fig]);
-    m_BitmapRes.CreateFigureBitmap(fig, bmFigure[fig]);
+    FreeAndNil(m_bmFigure[fig]);
+    m_BitmapRes.CreateFigureBitmap(fig, m_bmFigure[fig]);
   end;
 
   // Graphics initialization
   if (not Assigned(bmHiddenBoard)) then
   begin
     bmHiddenBoard := TBitmap.Create;
-    bmHiddenBoard.Palette := bmChessBoard.Palette;
+    bmHiddenBoard.Palette := m_bmChessBoard.Palette;
     bmHiddenBoard.Canvas.Font := PBoxBoard.Font; // Характеристики шрифта координат задаются в инспекторе
     bmHiddenBoard.Canvas.Brush.Style := bsClear;
   end;
-  bmHiddenBoard.Width := bmChessBoard.Width;
-  bmHiddenBoard.Height := bmChessBoard.Height;
+  bmHiddenBoard.Width := m_bmChessBoard.Width;
+  bmHiddenBoard.Height := m_bmChessBoard.Height;
 
-  if (not Assigned(bmBuf)) then
+  if (not Assigned(m_bmBuf)) then
   begin
-    bmBuf := TBitmap.Create;
-    bmBuf.Palette:= bmChessBoard.Palette;
+    m_bmBuf := TBitmap.Create;
+    m_bmBuf.Palette:= m_bmChessBoard.Palette;
   end;   
 
   DrawBoard;

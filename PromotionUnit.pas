@@ -6,7 +6,7 @@ uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, ExtCtrls,
   // Chess4net
-  ChessBoardHeaderUnit, ChessBoardUnit;
+  ChessBoardHeaderUnit, BitmapResUnit;
 
 type
   TPromotionForm = class(TForm)
@@ -16,26 +16,40 @@ type
       Shift: TShiftState; X, Y: Integer);
     procedure FormKeyPress(Sender: TObject; var Key: Char);
   private
-    fig_color: TFigureColor;
-    fig: TFigureName;
+    m_iSquareSize: integer;
+    m_BitmapRes: TBitmapRes;
+    m_bmFigure: array[TFigure] of TBitmap;
+    m_fig_color: TFigureColor;
+    m_fig: TFigureName;
+    procedure FLoadFigures;
   public
     function ShowPromotion(color: TFigureColor): TFigureName;
-    constructor Create(AOwner: TComponent); reintroduce;
+    constructor Create(AOwner: TComponent; BitmapRes: TBitmapRes); reintroduce;
+    destructor Destroy; override;
   end;
 
 implementation
 
 {$R *.dfm}
 
+const
+  INDENT_SIZE = 2;
+
+////////////////////////////////////////////////////////////////////////////////
+// TPromotionForm 
+
 procedure TPromotionForm.FormShow(Sender: TObject);
 var
   k: byte;
 begin
+  if (m_iSquareSize <> m_BitmapRes.SquareSize) then
+    FLoadFigures;
+
   // Установить окно в пределах курсора
-  Left:= Mouse.CursorPos.X - SQUARE_SIZE div 2;
-  Top:= Mouse.CursorPos.Y - SQUARE_SIZE div 2;
-  if Left + Width > Screen.Width then
-    Left :=  Screen.Width - Width;
+  Left := Mouse.CursorPos.X - m_iSquareSize div 2;
+  Top := Mouse.CursorPos.Y - m_iSquareSize div 2;
+  if (Left + Width > Screen.Width) then
+    Left := Screen.Width - Width;
 
   with PromFigImage.Canvas do
     begin
@@ -44,45 +58,46 @@ begin
 
       Brush.Color:= clWhite;
       for k := 0 to 3 do
-        FillRect(Rect((SQUARE_SIZE + 2) * k, 0,
-                      (SQUARE_SIZE + 2) * k + SQUARE_SIZE - 1 , SQUARE_SIZE - 1));
+        FillRect(Rect((m_iSquareSize + INDENT_SIZE) * k, 0,
+          (m_iSquareSize + INDENT_SIZE) * k + m_iSquareSize - 1, m_iSquareSize - 1));
 
-      case fig_color of
+      case m_fig_color of
         White:
           begin
-            Draw(0,0, bmFigure[WQ]);
-            Draw(SQUARE_SIZE + 2, 0, bmFigure[WR]);
-            Draw(2 * (SQUARE_SIZE + 2), 0, bmFigure[WB]);
-            Draw(3 * (SQUARE_SIZE + 2), 0, bmFigure[WN]);
+            Draw(0, 0, m_bmFigure[WQ]);
+            Draw(m_iSquareSize + 2, 0, m_bmFigure[WR]);
+            Draw(2 * (m_iSquareSize + INDENT_SIZE), 0, m_bmFigure[WB]);
+            Draw(3 * (m_iSquareSize + INDENT_SIZE), 0, m_bmFigure[WN]);
           end;
         Black:
           begin
-            Draw(0, 0, bmFigure[BQ]);
-            Draw(SQUARE_SIZE + 2, 0, bmFigure[BR]);
-            Draw(2 * (SQUARE_SIZE + 2), 0, bmFigure[BB]);
-            Draw(3 * (SQUARE_SIZE + 2), 0, bmFigure[BN]);
+            Draw(0, 0, m_bmFigure[BQ]);
+            Draw(m_iSquareSize + INDENT_SIZE, 0, m_bmFigure[BR]);
+            Draw(2 * (m_iSquareSize + INDENT_SIZE), 0, m_bmFigure[BB]);
+            Draw(3 * (m_iSquareSize + INDENT_SIZE), 0, m_bmFigure[BN]);
           end;
       end;
     end;
 end;
 
+
 function TPromotionForm.ShowPromotion(color: TFigureColor): TFigureName;
 begin
-  fig_color:= color;
+  m_fig_color := color;
   ShowModal;
-  Result:= fig;
+  Result := m_fig;
 end;
 
 
 procedure TPromotionForm.PromFigImageMouseUp(Sender: TObject;
   Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 begin
-  case X div (SQUARE_SIZE + 1) of
-    1: fig:= R;
-    2: fig:= B;
-    3: fig:= N;
+  case X div (m_BitmapRes.SquareSize + 1) of
+    1: m_fig:= R;
+    2: m_fig:= B;
+    3: m_fig:= N;
     else
-      fig:= Q;
+      m_fig:= Q;
   end;
   Close;
 end;
@@ -91,20 +106,54 @@ procedure TPromotionForm.FormKeyPress(Sender: TObject; var Key: Char);
 begin
   Key:= UpCase(Key);
   case Key of
-    'Q', '1', ' ', #13: fig:= Q;
-    'R', '2': fig:= R;
-    'B', '3': fig:= B;
-    'N', '4': fig:= N;
-    else exit;
+    'Q', '1', ' ', #13:
+      m_fig:= Q;
+    'R', '2':
+      m_fig:= R;
+    'B', '3':
+      m_fig:= B;
+    'N', '4':
+      m_fig:= N;
+    else
+      exit;
   end;
   Close;
 end;
 
 
-constructor TPromotionForm.Create(AOwner: TComponent);
+constructor TPromotionForm.Create(AOwner: TComponent; BitmapRes: TBitmapRes);
 begin
   self.FormStyle := (AOwner as TForm).FormStyle;
+  inherited Create(AOwner);
+  m_BitmapRes := BitmapRes;
+  FLoadFigures;
+end;
+
+
+destructor TPromotionForm.Destroy;
+var
+  fig: TFigure;
+begin
+  for fig := Low(m_bmFigure) to High(m_bmFigure) do
+    m_bmFigure[fig].Free;
   inherited;
+end;
+
+
+procedure TPromotionForm.FLoadFigures;
+var
+  fig: TFigure;
+begin
+  for fig := Low(m_bmFigure) to High(m_bmFigure) do
+  begin
+    FreeAndNil(m_bmFigure[fig]);
+    m_BitmapRes.CreateFigureBitmap(fig, m_bmFigure[fig]);
+  end;
+  m_iSquareSize := m_BitmapRes.SquareSize;
+
+  // Adjust size of the form
+  PromFigImage.Width := 4 * m_iSquareSize + 3 * INDENT_SIZE;
+  PromFigImage.Height := m_iSquareSize;
 end;
 
 end.

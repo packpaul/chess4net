@@ -212,17 +212,17 @@ begin
        move := PMovePrior(_lstMovePrior[i]).move;
       if not flipped then
         begin
-          x0 := CHB_X + SQUARE_SIZE * (move.i0 - 1) + (SQUARE_SIZE div 2);
-          y0 := CHB_Y + SQUARE_SIZE * (8 - move.j0) + (SQUARE_SIZE div 2);
-          x := CHB_X + SQUARE_SIZE * (move.i - 1) + (SQUARE_SIZE div 2);
-          y := CHB_Y + SQUARE_SIZE * (8 - move.j) + (SQUARE_SIZE div 2);
+          x0 := CHB_X + iSquareSize * (move.i0 - 1) + (iSquareSize div 2);
+          y0 := CHB_Y + iSquareSize * (8 - move.j0) + (iSquareSize div 2);
+          x := CHB_X + iSquareSize * (move.i - 1) + (iSquareSize div 2);
+          y := CHB_Y + iSquareSize * (8 - move.j) + (iSquareSize div 2);
         end
       else
         begin
-          x0 := CHB_X + SQUARE_SIZE * (8 - move.i0) + (SQUARE_SIZE div 2);
-          y0 := CHB_Y + SQUARE_SIZE * (move.j0 - 1) + (SQUARE_SIZE div 2);
-          x := CHB_X + SQUARE_SIZE * (8 - move.i) + (SQUARE_SIZE div 2);
-          y := CHB_Y + SQUARE_SIZE * (move.j - 1) + (SQUARE_SIZE div 2);
+          x0 := CHB_X + iSquareSize * (8 - move.i0) + (iSquareSize div 2);
+          y0 := CHB_Y + iSquareSize * (move.j0 - 1) + (iSquareSize div 2);
+          x := CHB_X + iSquareSize * (8 - move.i) + (iSquareSize div 2);
+          y := CHB_Y + iSquareSize * (move.j - 1) + (iSquareSize div 2);
         end;
 
       // Рисование стрелки

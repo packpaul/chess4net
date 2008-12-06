@@ -13,14 +13,16 @@ type
   private
     m_ResSet: TBitmap;
     m_iSetNumber: integer;
+    m_iSquareSize: integer;
     procedure FCalculateClientBoardSizes(InitialSize: TSize);
   public
     constructor Create(const ClientBoardSize: TSize);
     destructor Destroy; override;
     procedure CreateBoardBitmap(ClientBoardSize: TSize; const BackgroundColor: TColor;
-      out Bitmap: TBitmap; out iSquareSize: integer);
+      out Bitmap: TBitmap);
     procedure CreateFigureBitmap(const Figure: TFigure; out Bitmap: TBitmap);
     function GetOptimalBoardSize(ClientSize: TSize): TSize;
+    property SquareSize: integer read m_iSquareSize;
   end;
 
 implementation
@@ -60,13 +62,14 @@ end;
 
 
 procedure TBitmapRes.CreateBoardBitmap(ClientBoardSize: TSize; const BackgroundColor: TColor;
-  out Bitmap: TBitmap; out iSquareSize: integer);
+  out Bitmap: TBitmap);
 var
   Png: TPngObject;
   ResBoard: TBitmap;
 begin
   Png := nil;
   ResBoard := nil;
+  m_iSquareSize := 0;
 
   GetOptimalBoardSize(ClientBoardSize); // To refresh m_iSetNumber
   if (m_iSetNumber = 0) then
@@ -92,7 +95,7 @@ begin
     m_ResSet := TBitmap.Create;
     m_ResSet.Assign(Png);
 
-    iSquareSize := m_ResSet.Height;
+    m_iSquareSize := m_ResSet.Height;
   finally;
     ResBoard.Free;
     Png.Free;

@@ -14,9 +14,6 @@ type
 const
   CHB_X = 20; CHB_Y = 6;   // starting coordinates of A8 field
 
-var
-  SQUARE_SIZE: integer = 40;        // size of a chess board field
-
 function Size(const iX, iY: integer): TSize;
 
 implementation
