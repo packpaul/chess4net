@@ -6,13 +6,11 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, StdCtrls, ExtCtrls, Buttons;
+  Dialogs, StdCtrls, ExtCtrls, Buttons,
+  // Chess4net
+  ChessBoardHeaderUnit, BitmapResUnit;
 
 type
-  TFigureName = (K, Q, R, B, N, P);
-  TFigure = (WK, WQ, WR, WB, WN, WP, ES,
-              BK, BQ, BR, BB, BN, BP); // ES - Empty Square
-  TFigureColor = (White, Black);
   TChessPosition = record // шахматная позиция
     board: array[1..8, 1..8] of TFigure;
     color: TFigureColor; // Чей ход
@@ -80,9 +78,11 @@ type
     procedure FormKeyDown(Sender: TObject; var Key: Word;
       Shift: TShiftState);
     procedure FormActivate(Sender: TObject);
-    procedure FormMoving(var Msg: TWMMoving); message WM_MOVING;
     procedure FlagButtonClick(Sender: TObject);
-    
+    procedure FormCanResize(Sender: TObject; var NewWidth, NewHeight: Integer;
+      var Resize: Boolean);
+    procedure FormResize(Sender: TObject);
+
   private
     Position: TChessPosition;
     mode_var: TMode;
@@ -107,6 +107,11 @@ type
     clock_color: TFigureColor; // цвет анимируемой фигуры
     shuted: boolean; // индикатор внешнего закрытия окна
     auto_flag: boolean; // индикатор автофлага
+
+    m_ResizingType: (rtNo, rtHoriz, rtVert);
+    m_iDeltaWidthHeight: integer;
+    m_BitmapRes: TBitmapRes; // Manager for bitmaps
+
 {$IFDEF THREADED_CHESSCLOCK}
     TimeLabelThread: TTimeLabelThread; // нить используется для борьбы с лагом в Миранде
 {$ENDIF}
@@ -134,6 +139,9 @@ type
     procedure SetStayOnTop(onTop: boolean);
     procedure CancelAnimationDragging; // отмена анимации и перетаскивания для удаления грязи при прорисовки
     procedure SetAutoFlag(auto_flag: boolean);
+
+    procedure WMMoving(var Msg: TWMMoving); message WM_MOVING;
+    procedure WMSizing(var Msg: TMessage); message WM_SIZING;
 
   protected
     lstPosition: TList;
@@ -189,8 +197,6 @@ type
   end;
 
 const
-  SQUARE_SIZE = 40; // Величина шахматной клетки в пикселях поля
-  CHB_X= 20; CHB_Y= 6;     // Координаты начала поля A8
   INITIAL_CHESS_POSITION = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -';
   EMPTY_CHESS_POSITION = '8/8/8/8/8/8/8/8 w - -';
   DELTA_MOVE: TDeltaMove = ((longRange: FALSE; // Король
@@ -214,7 +220,6 @@ implementation
 {$J+}
 
 {$R *.dfm}
-{$R ChessSet}
 
 uses
   StrUtils, Math, DateUtils,
@@ -225,9 +230,6 @@ var
   bmChessBoard: TBitMap;
 
 const
-  RES_NAME: array[TFigure] of string[2] = ('WK', 'WQ', 'WR', 'WB', 'WN', 'WP',
-                                      'ES', 'BK', 'BQ', 'BR', 'BB', 'BN', 'BP');
-
   HILIGHT_WIDTH = 1;
   HILIGHT_COLOR: TColor = clRed;
   HILIGHT_LAST_MOVE_WIDTH = 1;
@@ -246,6 +248,8 @@ const
 
   CHESS_BOARD_INSTANCES: integer = 0;
 
+////////////////////////////////////////////////////////////////////////////////
+// Globals
 
 function FieldUnderAttack(const pos: TChessPosition; i0,j0: integer): boolean;
 var
@@ -770,38 +774,19 @@ end;
 
 
 procedure TChessBoard.FormCreate(Sender: TObject);
-var
-  fig: TFigure;
 begin
+  m_iDeltaWidthHeight := Width - Height;
+
+  m_BitmapRes := TBitmapRes.Create(Size(PBoxBoard.Width, PBoxBoard.Height));
+
   if CHESS_BOARD_INSTANCES = 0 then
     begin
-      bmChessBoard := TBitMap.Create;
-      bmChessBoard.LoadFromResourceName(HInstance, 'BOARD');
-      for fig:= low(fig) to high(fig) do
-        begin
-          bmFigure[fig] := TBitMap.Create;
-          bmFigure[fig].LoadFromResourceName(HInstance, RES_NAME[fig]);
-          bmFigure[fig].Transparent:= TRUE;
-        end;
-      BlackFlagButton.Glyph := WhiteFlagButton.Glyph; // чтоб не тащить лишнего 
+      BlackFlagButton.Glyph := WhiteFlagButton.Glyph; // чтоб не тащить лишнего
       coord_show:= TRUE; last_hilight:= FALSE; animation:= aQuick;
     end;
   inc(CHESS_BOARD_INSTANCES);
 
-  // Инициализация графики
-  bmHiddenBoard:= TBitMap.Create;
-  with bmHiddenBoard do
-    begin
-      Palette:= bmChessBoard.Palette;
-      Canvas.Font:= PBoxBoard.Font; // Характеристики шрифта координат задаются в инспекторе
-      Canvas.Brush.Style:= bsClear;
-      Width:= bmChessBoard.Width;
-      Height:= bmChessBoard.Height;
-    end;
-
-  bmBuf:= TBitMap.Create; bmBuf.Palette:= bmChessBoard.Palette;
-
-  // Инициализация полей
+  // Clock initialization
   SetUnlimited(White, TRUE); SetUnlimited(Black, TRUE);
 
   // Инициализация списка позиций
@@ -813,57 +798,64 @@ end;
 
 procedure TChessBoard.DrawHiddenBoard;
 var
-  i,j,x,y: integer;
+  i, j: integer;
+  x, y: integer;
 begin
-  with bmHiddenBoard do // Копировать пустую доску на скрытую
+  if (not Assigned(bmHiddenBoard)) then
+    exit;
+
+  // Copy empty board to the hidden one
+  with bmHiddenBoard do
     begin
       Canvas.CopyRect(Bounds(0,0, Width,Height), bmChessBoard.Canvas, Bounds(0,0, Width,Height));
       Canvas.Brush.Color := self.Color;
       Canvas.FloodFill(0,0, Canvas.Pixels[0,0], fsSurface);
     end;
 
+  // Draw coordinates
   if coord_show then
-    with bmHiddenBoard, bmHiddenBoard.Canvas do
-      begin
-        x:= CHB_X + SQUARE_SIZE div 2;
-        y:= (bmHiddenBoard.Height + CHB_Y + 8 * SQUARE_SIZE + CHB_WIDTH) div 2;
-        if _flipped then j := ord('h')
-          else j:= ord('a');
-        for i:= 1 to 8 do // буквы
-          begin
-            TextOut(x - TextWidth(chr(j)) div 2,
-                    y + 1 - TextHeight(chr(j)) div 2 , chr(j));
-            x := x + SQUARE_SIZE;
-            if _flipped then dec(j)
-              else inc(j);
-          end;
-        x:= (CHB_X - CHB_WIDTH) div 2;
-        y:= CHB_Y + SQUARE_SIZE div 2;
-        if _flipped then j:= ord('1')
-          else j := ord('8');
-        for i := 1 to 8 do // цифры
-          begin
-            TextOut(x - TextWidth(chr(j)) div 2,
-                    y - TextHeight(chr(j)) div 2, chr(j));
-            y:= y + SQUARE_SIZE;
-            if _flipped then inc(j)
-              else dec(j);
-          end;
-    end;
+  with bmHiddenBoard, bmHiddenBoard.Canvas do
+    begin
+      x:= CHB_X + SQUARE_SIZE div 2;
+      y:= (bmHiddenBoard.Height + CHB_Y + 8 * SQUARE_SIZE + CHB_WIDTH) div 2;
+      if _flipped then j := ord('h')
+        else j:= ord('a');
+      for i:= 1 to 8 do // буквы
+        begin
+          TextOut(x - TextWidth(chr(j)) div 2,
+                  y + 1 - TextHeight(chr(j)) div 2 , chr(j));
+          x := x + SQUARE_SIZE;
+          if _flipped then dec(j)
+            else inc(j);
+        end;
+      x:= (CHB_X - CHB_WIDTH) div 2;
+      y:= CHB_Y + SQUARE_SIZE div 2;
+      if _flipped then j:= ord('1')
+        else j := ord('8');
+      for i := 1 to 8 do // цифры
+        begin
+          TextOut(x - TextWidth(chr(j)) div 2,
+                  y - TextHeight(chr(j)) div 2, chr(j));
+          y:= y + SQUARE_SIZE;
+          if _flipped then inc(j)
+            else dec(j);
+        end;
+  end;
 
-  for i:= 1 to 8 do
-    for j:= 1 to 8 do
+  // Draw pieces
+  for i := 1 to 8 do
+    for j := 1 to 8 do
       begin
-        if Position.board[i,j] = ES then continue; // Ничего не рисовать
+        if ((Position.board[i,j] = ES)) then
+          continue; // There's nothing to draw
         if not _flipped then // Загрузить нужную фигуру из ресурса и нарисовать
           bmHiddenBoard.Canvas.Draw(CHB_X + SQUARE_SIZE * (i-1),
                                     CHB_Y + SQUARE_SIZE * (8-j),
                                     bmFigure[Position.board[i,j]])
-
-          else // Чёрные внизу
-            bmHiddenBoard.Canvas.Draw(CHB_X + SQUARE_SIZE * (8-i),
-                                      CHB_Y + SQUARE_SIZE * (j-1),
-                                      bmFigure[Position.board[i,j]]);
+        else // Black is below
+          bmHiddenBoard.Canvas.Draw(CHB_X + SQUARE_SIZE * (8-i),
+                                    CHB_Y + SQUARE_SIZE * (j-1),
+                                    bmFigure[Position.board[i,j]]);
       end;
 end;
 
@@ -878,6 +870,7 @@ end;
 procedure TChessBoard.PBoxBoardPaint(Sender: TObject);
 begin
   PBoxBoard.Canvas.Draw(0,0, bmHiddenBoard); // Вывод скрытой доски на форму
+//  PBoxBoard.Canvas.StretchDraw(Bounds(0, 0, PBoxBoard.Width, PBoxBoard.Height), bmHiddenBoard);
 end;
 
 
@@ -905,7 +898,10 @@ begin
       for fig:= low(fig) to high(fig) do bmFigure[fig].Free;
       bmChessBoard.Free;
     end;
+
+  m_BitmapRes.Free;  
 end;
+
 
 procedure TChessBoard.PBoxBoardDragDrop(Sender, Source: TObject; X,
   Y: Integer);
@@ -1279,8 +1275,7 @@ procedure TChessBoard.PBoxBoardStartDrag(Sender: TObject;
 begin
   // Копировать изображение пустого поля в bmBuf
   bmBuf.Width:= SQUARE_SIZE; bmBuf.Height:= SQUARE_SIZE;
-  if ((i0 + j0) and 1) = 0
-    then
+  if (((i0 + j0) and 1) <> 0) then
       bmBuf.Canvas.CopyRect(Bounds(0,0, SQUARE_SIZE, SQUARE_SIZE),
         bmFigure[ES].Canvas, Bounds(0,0, SQUARE_SIZE, SQUARE_SIZE))
   else
@@ -1326,10 +1321,9 @@ begin
   // Копировать изображение пустого поля в bmBuf
   bmBuf.Width := SQUARE_SIZE;
   bmBuf.Height := SQUARE_SIZE;
-  if ((i0 + j0) and 1) = 0
-    then
-      bmBuf.Canvas.CopyRect(Bounds(0,0, SQUARE_SIZE, SQUARE_SIZE),
-        bmFigure[ES].Canvas, Bounds(0,0, SQUARE_SIZE, SQUARE_SIZE))
+  if (((i0 + j0) and 1) <> 0) then
+    bmBuf.Canvas.CopyRect(Bounds(0,0, SQUARE_SIZE, SQUARE_SIZE),
+      bmFigure[ES].Canvas, Bounds(0,0, SQUARE_SIZE, SQUARE_SIZE))
   else
     bmBuf.Canvas.CopyRect(Bounds(0,0, SQUARE_SIZE, SQUARE_SIZE),
       bmFigure[ES].Canvas, Bounds(SQUARE_SIZE,0, SQUARE_SIZE, SQUARE_SIZE));
@@ -1687,6 +1681,34 @@ begin
 end;
 
 
+procedure TChessBoard.FormCanResize(Sender: TObject; var NewWidth,
+  NewHeight: Integer; var Resize: Boolean);
+var
+
+  NewBoardSize: TSize;
+begin
+  Resize := (m_ResizingType <> rtNo);
+  if (not Resize) then
+    exit;
+
+  if (m_ResizingType = rtVert) then
+    NewWidth := NewHeight + m_iDeltaWidthHeight
+  else // rtHoriz
+    NewHeight := NewWidth - m_iDeltaWidthHeight;
+
+  NewBoardSize := m_BitmapRes.GetOptimalBoardSize(
+    Size(PBoxBoard.Width + (NewWidth - Width), PBoxBoard.Height + (NewHeight - Height)));
+
+  Resize := (NewBoardSize.cx > 0) and (NewBoardSize.cy > 0) and
+    ((NewBoardSize.cx <> PBoxBoard.Width) or (NewBoardSize.cy <> PBoxBoard.Height));
+  if (Resize) then
+  begin
+    NewWidth := Width + (NewBoardSize.cx - PBoxBoard.Width);
+    NewHeight := Height + (NewBoardSize.cy - PBoxBoard.Height);
+  end;
+end;
+
+
 procedure TChessBoard.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
   if not shuted and Assigned(Handler) then
@@ -1869,12 +1891,25 @@ begin
 end;
 
 
-procedure TChessBoard.FormMoving(var Msg: TWMMoving);
+procedure TChessBoard.WMMoving(var Msg: TWMMoving);
 begin
   // TODO: возможна обработка выхода формы за пределы экрана.
   if Assigned(Handler) then
     Handler(cbeFormMoving, Pointer(Msg.DragRect.Left - Left), Pointer(Msg.DragRect.Top - Top));
   inherited;
+end;
+
+
+procedure TChessBoard.WMSizing(var Msg: TMessage);
+begin
+  case Msg.WParam of
+    WMSZ_RIGHT, WMSZ_BOTTOMRIGHT:
+      m_ResizingType := rtHoriz;
+    WMSZ_BOTTOM:
+      m_ResizingType := rtVert;
+  else
+    m_ResizingType := rtNo;
+  end;
 end;
 
 
@@ -1911,6 +1946,41 @@ begin
       WhiteFlagButton.Visible := FALSE;
       BlackFlagButton.Visible := FALSE;
     end;
+end;
+
+
+procedure TChessBoard.FormResize(Sender: TObject);
+var
+  fig: TFigure;
+begin
+  FreeAndNil(bmChessBoard);
+  m_BitmapRes.CreateBoardBitmap(Size(PBoxBoard.Width, PBoxBoard.Height), self.Color,
+    bmChessBoard, SQUARE_SIZE);
+
+  for fig := low(fig) to high(fig) do
+  begin
+    FreeAndNil(bmFigure[fig]);
+    m_BitmapRes.CreateFigureBitmap(fig, bmFigure[fig]);
+  end;
+
+  // Graphics initialization
+  if (not Assigned(bmHiddenBoard)) then
+  begin
+    bmHiddenBoard := TBitmap.Create;
+    bmHiddenBoard.Palette := bmChessBoard.Palette;
+    bmHiddenBoard.Canvas.Font := PBoxBoard.Font; // Характеристики шрифта координат задаются в инспекторе
+    bmHiddenBoard.Canvas.Brush.Style := bsClear;
+  end;
+  bmHiddenBoard.Width := bmChessBoard.Width;
+  bmHiddenBoard.Height := bmChessBoard.Height;
+
+  if (not Assigned(bmBuf)) then
+  begin
+    bmBuf := TBitmap.Create;
+    bmBuf.Palette:= bmChessBoard.Palette;
+  end;   
+
+  DrawBoard;
 end;
 
 initialization

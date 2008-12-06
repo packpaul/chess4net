@@ -91,10 +91,10 @@ ImageBase=4194304
 ExeDescription=
 [Directories]
 OutputDir=..\bin
-UnitOutputDir=..\dcu
+UnitOutputDir=.\dcu
 PackageDLLOutputDir=
 PackageDCPOutputDir=
-SearchPath=
+SearchPath=..\lib\PNGImage
 Packages=vcl;rtl;dbrtl;vcldb;vclx;bdertl;delphiclxide;proide;delphivclide;direct;vclie;stride;VclSmp;vclactnband
 Conditionals=AND_RQ
 DebugSourceDirs=
@@ -130,8 +130,6 @@ OriginalFilename=
 ProductName=
 ProductVersion=1.0.0.0
 Comments=
-[Excluded Packages]
-D:\Program Files\Delphi7\Projects\Bpl\CrossKylix.bpl=CrossKylix IDE Plugin
 [HistoryLists\hlConditionals]
 Count=5
 Item0=QIP
@@ -142,9 +140,13 @@ Item4=SOCKET
 [HistoryLists\hlUnitAliases]
 Count=1
 Item0=WinTypes=Windows;WinProcs=Windows;DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE;
-[HistoryLists\hlUnitOutputDirectory]
+[HistoryLists\hlSearchPath]
 Count=1
-Item0=..\dcu
+Item0=..\lib\PNGImage
+[HistoryLists\hlUnitOutputDirectory]
+Count=2
+Item0=.\dcu
+Item1=..\dcu
 [HistoryLists\hlOutputDirectorry]
 Count=1
 Item0=..\bin

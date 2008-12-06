@@ -3,7 +3,7 @@ unit PosBaseUnit;
 interface
 
 uses
-  ChessBoardUnit, Classes;
+  ChessBoardHeaderUnit, ChessBoardUnit, Classes;
 
 type
   PMoveEst = ^TMoveEst;

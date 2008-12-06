@@ -8,7 +8,8 @@ uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, Menus, ActnList, ExtCtrls,
   // Chess4Net Units
-  ChessBoardUnit, PosBaseChessBoardUnit, ConnectorUnit, ConnectingUnit, ContinueUnit;
+  ChessBoardHeaderUnit, ChessBoardUnit, PosBaseChessBoardUnit,
+  ConnectorUnit, ConnectingUnit, ContinueUnit;
 
 type
   TManager = class(TForm)

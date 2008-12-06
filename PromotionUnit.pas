@@ -6,7 +6,7 @@ uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, ExtCtrls,
   // Chess4net
-  ChessBoardUnit;
+  ChessBoardHeaderUnit, ChessBoardUnit;
 
 type
   TPromotionForm = class(TForm)

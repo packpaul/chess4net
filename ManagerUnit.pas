@@ -11,7 +11,8 @@ uses
   plugin,
 {$ENDIF}
   // Chess4Net Units
-  PosBaseChessBoardUnit, ChessBoardUnit, ConnectorUnit, ConnectingUnit, GameOptionsUnit,
+  ChessBoardHeaderUnit, ChessBoardUnit, PosBaseChessBoardUnit,
+  ConnectorUnit, ConnectingUnit, GameOptionsUnit,
   ModalForm, DialogUnit, ContinueUnit;
 
 type

@@ -3,7 +3,7 @@ unit PosBaseChessBoardUnit;
 interface
 
 uses
-  Classes, PosBaseUnit, ChessBoardUnit;
+  Classes, PosBaseUnit, ChessBoardHeaderUnit, ChessBoardUnit;
 
 type
   TGameResult = (grWin, grWinTime, grDraw, grLost, grLostTime);
@@ -179,6 +179,9 @@ var
   xa, ya, ca, sa: double;
   move: TMoveAbs;
 begin
+  if (not Assigned(bmHiddenBoard)) then
+    exit;
+
   inherited;
 
   if not _bTrainingMode or (Mode <> mGame) or (PlayerColor <> PositionColor)  then

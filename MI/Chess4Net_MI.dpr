@@ -9,6 +9,7 @@ uses
   Windows,
   ConnectingUnit in '..\ConnectingUnit.pas' {ConnectingForm},
   GameOptionsUnit in '..\GameOptionsUnit.pas' {GameOptionsForm},
+  ChessBoardHeaderUnit in '..\ChessBoardHeaderUnit.pas',
   ChessBoardUnit in '..\ChessBoardUnit.pas' {ChessBoard},
   PosBaseChessBoardUnit in '..\PosBaseChessBoardUnit.pas',
   PromotionUnit in '..\PromotionUnit.pas' {PromotionForm},
@@ -24,7 +25,8 @@ uses
   GlobalsUnit in '..\GlobalsUnit.pas',
   ContinueUnit in '..\ContinueUnit.pas' {ContinueForm},
   InfoUnit in '..\InfoUnit.pas' {InfoForm},
-  PosBaseUnit in '..\PosBaseUnit.pas';
+  PosBaseUnit in '..\PosBaseUnit.pas',
+  BitmapResUnit in '..\BitmapResUnit.pas';
 
 {$R ..\Chess4Net.res}
 

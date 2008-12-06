@@ -11,6 +11,7 @@ uses
   ConnectorUnit in 'ConnectorUnit.pas' {Connector: TDataModule},
   ConnectingUnit in '..\ConnectingUnit.pas' {ConnectingForm},
   GameOptionsUnit in '..\GameOptionsUnit.pas' {GameOptionsForm},
+  ChessBoardHeaderUnit in '..\ChessBoardHeaderUnit.pas',
   ChessBoardUnit in '..\ChessBoardUnit.pas' {ChessBoard},
   PosBaseChessBoardUnit in '..\PosBaseChessBoardUnit.pas',
   PromotionUnit in '..\PromotionUnit.pas' {PromotionForm},
@@ -20,7 +21,8 @@ uses
   MessageDialogUnit in '..\MessageDialogUnit.pas',
   GlobalsUnit in '..\GlobalsUnit.pas',
   PosBaseUnit in '..\PosBaseUnit.pas',
-  ContinueUnit in '..\ContinueUnit.pas' {ContinueForm};
+  ContinueUnit in '..\ContinueUnit.pas' {ContinueForm},
+  BitmapResUnit in '..\BitmapResUnit.pas';
 
 {$R ..\Chess4Net.res}
 
