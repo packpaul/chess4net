@@ -57,6 +57,8 @@ type
     AnimateTimer: TTimer;
     WhiteFlagButton: TSpeedButton;
     BlackFlagButton: TSpeedButton;
+    WhitePanel: TPanel;
+    BlackPanel: TPanel;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure PBoxBoardPaint(Sender: TObject);
@@ -82,6 +84,7 @@ type
     procedure FormCanResize(Sender: TObject; var NewWidth, NewHeight: Integer;
       var Resize: Boolean);
     procedure FormResize(Sender: TObject);
+    procedure TimePanelResize(Sender: TObject);
 
   private
     Position: TChessPosition;
@@ -105,16 +108,23 @@ type
     dragged_moved: boolean; // индикатор включения перетаскивания
     last_hilight: boolean; // флаг подсветки последнего хода
     coord_show: boolean; // флаг координат
+
+    auto_flag: boolean; // индикатор автофлага
     player_time: array[TFigureColor] of TDateTime; // время белых и чёрных
     past_time: TDateTime; // время начала обдумывания хода
     unlimited_var: array[TFigureColor] of boolean; // партия без временного контроля
     clock_color: TFigureColor; // цвет анимируемой фигуры
-    shuted: boolean; // индикатор внешнего закрытия окна
-    auto_flag: boolean; // индикатор автофлага
 
+    shuted: boolean; // индикатор внешнего закрытия окна
+
+    // Resizing
     m_ResizingType: (rtNo, rtHoriz, rtVert);
     m_iDeltaWidthHeight: integer;
     m_BitmapRes: TBitmapRes; // Manager for bitmaps
+    m_iTimePanelInitialWidth: integer;
+    m_iWhitePanelInitialLeft, m_iBlackPanelInitialLeft: integer;
+    m_iWhitePanelInitialWidth, m_iBlackPanelInitialWidth: integer;
+    m_TimeFont: TFont;
 
 {$IFDEF THREADED_CHESSCLOCK}
     TimeLabelThread: TTimeLabelThread; // нить используется для борьбы с лагом в Миранде
@@ -244,6 +254,12 @@ const
   ZEITNOT_COLOR = clMaroon;
   ZEITNOT_FORMAT = 's"."zzz';
 //  CHEAT_TIME_CONST = 1.5; // > 1
+  WHITE_LONG_LABEL =   'White   ';
+  BLACK_LONG_LABEL =   'Black   ';
+  WHITE_MEDIUM_LABEL = 'White ';
+  BLACK_MEDIUM_LABEL = 'Black ';
+  WHITE_SHORT_LABEL =  'W ';
+  BLACK_SHORT_LABEL =  'B ';
 
 ////////////////////////////////////////////////////////////////////////////////
 // Globals
@@ -776,6 +792,15 @@ procedure TChessBoard.FormCreate(Sender: TObject);
 begin
   m_iDeltaWidthHeight := Width - Height;
 
+  m_iTimePanelInitialWidth := TimePanel.Width;
+  m_iWhitePanelInitialLeft := WhitePanel.Left;
+  m_iWhitePanelInitialWidth := WhitePanel.Width;
+  m_iBlackPanelInitialLeft := BlackPanel.Left;
+  m_iBlackPanelInitialWidth := BlackPanel.Width;
+
+  m_TimeFont := TFont.Create;
+  m_TimeFont.Assign(WhiteTimeLabel.Font);
+
   m_BitmapRes := TBitmapRes.Create(Size(PBoxBoard.Width, PBoxBoard.Height));
 
   BlackFlagButton.Glyph := WhiteFlagButton.Glyph; // чтоб не тащить лишнего
@@ -894,6 +919,7 @@ begin
   m_bmChessBoard.Free;
 
   m_BitmapRes.Free;
+  m_TimeFont.Free;
 end;
 
 
@@ -1976,6 +2002,48 @@ begin
   end;   
 
   DrawBoard;
+end;
+
+
+procedure TChessBoard.TimePanelResize(Sender: TObject);
+var
+  rRatio: real;
+begin
+  // Adjust panels on TimePanel
+  rRatio := TimePanel.Width / m_iTimePanelInitialWidth;
+  WhitePanel.Left := Round(rRatio * m_iWhitePanelInitialLeft);
+  WhitePanel.Width := m_iWhitePanelInitialWidth;
+  BlackPanel.Left := Round(rRatio * m_iBlackPanelInitialLeft);
+  BlackPanel.Width := m_iBlackPanelInitialWidth;
+
+
+  WhiteTimeLabel.Font.Assign(m_TimeFont);
+  BlackTimeLabel.Font.Assign(m_TimeFont);
+  if (WhitePanel.Left + WhitePanel.Width < BlackPanel.Left) then
+  begin
+    WhiteLabel.Caption := WHITE_LONG_LABEL;
+    BlackLabel.Caption := BLACK_LONG_LABEL;
+  end
+  else
+  begin
+    WhitePanel.Left := 4;
+    WhitePanel.Width := TimePanel.Width div 2;
+    BlackPanel.Left := TimePanel.Width div 2;
+    BlackPanel.Width := TimePanel.Width div 2 - 4;
+
+    WhiteLabel.Caption := WHITE_MEDIUM_LABEL;
+    BlackLabel.Caption := BLACK_MEDIUM_LABEL;
+  end;
+
+  // Adjust color labels
+  if ((WhiteTimeLabel.Left + WhiteTimeLabel.Width > WhitePanel.Width) or
+      (BlackTimeLabel.Left + BlackTimeLabel.Width > BlackPanel.Width)) then
+  begin
+    WhiteTimeLabel.Font.Size := WhiteTimeLabel.Font.Size - 4;
+    BlackTimeLabel.Font.Size := BlackTimeLabel.Font.Size - 4;
+    WhiteLabel.Caption := WHITE_SHORT_LABEL;
+    BlackLabel.Caption := BLACK_SHORT_LABEL;
+  end;
 end;
 
 initialization

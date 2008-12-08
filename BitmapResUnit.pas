@@ -35,8 +35,6 @@ uses
 {$J+}
 
 const
-  RES_NAME: array[TFigure] of string[2] = ('WK', 'WQ', 'WR', 'WB', 'WN', 'WP',
-                                      'ES', 'BK', 'BQ', 'BR', 'BB', 'BN', 'BP');
   CHB_RES_X = 4; CHB_RES_Y = 4; // starting coordinates of A8 field in resources
 
 var
