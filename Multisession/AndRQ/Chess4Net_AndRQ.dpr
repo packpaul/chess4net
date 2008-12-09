@@ -4,6 +4,9 @@ library Chess4Net_AndRQ;
 ********************************}
 
 uses
+{$IFDEF FASTMM4}
+  FastMM4,
+{$ENDIF}
   ConnectingUnit in '..\ConnectingUnit.pas' {ConnectingForm},
   GameOptionsUnit in '..\GameOptionsUnit.pas' {GameOptionsForm},
   ChessBoardHeaderUnit in '..\ChessBoardHeaderUnit.pas',

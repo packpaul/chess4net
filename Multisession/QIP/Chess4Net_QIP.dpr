@@ -1,6 +1,9 @@
 library Chess4Net_QIP;
 
 uses
+{$IFDEF FASTMM4}
+  FastMM4,
+{$ENDIF}
   u_common in 'QIP_SDK\u_common.pas',
   u_plugin_info in 'QIP_SDK\u_plugin_info.pas',
   u_plugin_msg in 'QIP_SDK\u_plugin_msg.pas',

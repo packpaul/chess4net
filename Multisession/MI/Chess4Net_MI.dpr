@@ -4,6 +4,9 @@ library Chess4Net_MI;
 ********************************}
 
 uses
+{$IFDEF FASTMM4}
+  FastMM4,
+{$ENDIF}
   Forms,
   SysUtils,
   Windows,
