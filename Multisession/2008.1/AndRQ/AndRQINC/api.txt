@@ -1,0 +1,369 @@
+revision: 3
+
+--- Types
+
+little-endian were not specified
+
+DATA           generic data
+
+POINTER        32bit pointer
+
+INT            4 byte signed int
+
+BOOL           BYTE    0 false
+                    else true
+
+DOUBLE         8 byte float
+
+CHAR           1 byte character
+
+STRING         char succession, without null termination
+
+INTLIST        INT        # of elements
+               INT        1st int
+               INT        2nd int
+               INT        3rd int
+               ...
+
+ISTRING        INT        length of text
+               STRING     text
+
+TIME           1 DOUBLE where 1.00 is one day, 1.00/24 is one hour
+
+STATUS         BYTE    PS_ONLINE
+                       PS_OCCUPIED
+                       PS_DND
+                       PS_NA
+                       PS_AWAY
+                       PS_F4C
+                       PS_OFFLINE
+                       PS_UNKNOWN
+
+VISIBILITY     BYTE    PV_ALL
+                       PV_NORMAL
+                       PV_PRIVACY
+                       PV_INVISIBLE
+
+CONTACTINFO    INT        uin
+               STATUS
+               BOOL       invisible
+               ISTRING    displayed name
+               ISTRING    nick
+               ISTRING    first
+               ISTRING    last
+               
+ICONTACTINFO   INT          length of contactinfo data
+               CONTACTINFO  data
+
+WHATLIST       BYTE   PLI_ROASTER
+                      PLI_VISIBLELIST
+                      PLI_INVISIBLELIST
+                      PLI_TEMPVISIBLELIST
+                      PLI_IGNORELIST
+                      PLI_DB
+
+WHATWINDOW     BYTE   PW_ROASTER
+                      PW_CHAT
+                      PW_PREFERENCES
+                      
+--- Plugin communication
+
+&RQ uses DLLs for plugins, use your preferred language to create them.
+When a user/uin is started, &RQ loads from plugins folder all *.dll files
+that contain this function
+
+      name: pluginFun
+parameters: pointer
+   returns: pointer
+
+&RQ calls this function passing as parameter a buffer with a "communication"
+in it. The function also returns a communication.
+
+A communication is a byte sequence that you should parse from the beginning
+to the end. The pointer can be null and then you should simply do nothing.
+When not null, the pointer points to this structure
+
+     INT     length of communication (in bytes)
+     DATA    communication     
+
+You need the first INT to know how long the communication (byte sequence) is.
+The INT could be zero, when zero you should simply do nothing.
+When not zero, you should parse the communication.
+
+--- Communication parsing
+
+ BYTE     topic
+ if topic = PM_GET         // asking data
+   BYTE     what
+   if what = PG_TIME               // current time
+     empty
+     possible replies:
+     PM_DATA TIME(current time)
+   if what = PG_LIST               // get specified list  
+     WHATLIST     list
+     possible replies:
+     PM_DATA INTLIST(uins)
+     PM_ERROR PERR_UNEXISTENT
+   if what = PG_CONTACTINFO        // :contactinfo
+     INT  uin
+     possible replies:
+     ICONTACTINFO  info
+   if what = PG_DISPLAYED_NAME     // name displayed by &RQ for specified uin
+     INT  uin
+     possible replies:
+     PM_DATA ISTRING(name)
+   if what = PG_NOF_UINLISTS       // number of uinlists
+     empty
+     possible replies:
+     PM_DATA INT(number)   
+   if what = PG_UINLIST            // get specified uinlist, name and uins  :string,intlist
+     INT  idx
+     possible replies:
+     PM_DATA INTLIST(uins)   
+   if what = PG_AWAYTIME           // user inactivity time
+     empty
+     possible replies:
+     PM_DATA TIME(away time)
+     PM_ERROR PERR_NOUSER
+   if what = PG_ANDRQ_PATH         // &RQ path, including trailing '\'
+     empty
+     possible replies:     
+     PM_DATA ISTRING(path)
+   if what = PG_USER_PATH          // user path, including trailing '\'
+     empty
+     possible replies:     
+     PM_DATA ISTRING(path)
+     PM_ERROR PERR_NOUSER
+   if what = PG_ANDRQ_VER          // &RQ version, each byte is a version number, A.B.C.D
+     empty
+     possible replies:     
+     PM_DATA INT(version)
+   if what = PG_ANDRQ_VER_STR      // &RQ version in string form
+     empty
+     possible replies:     
+     PM_DATA ISTRING(version)
+   if what = PG_USER               // current user
+     empty
+     possible replies:     
+     PM_DATA INT(uin)
+     PM_ERROR PERR_NOUSER
+   if what = PG_USERTIME           // running time for this user
+     empty
+     possible replies:     
+     PM_DATA TIME(user time)
+     PM_ERROR PERR_NOUSER
+   if what = PG_CONNECTIONSTATE    // 0 disconnected, 1 connected, 2 connecting
+     empty
+     possible replies:     
+     PM_DATA INT(connection state)
+   if what = PG_WINDOW
+     WHATWINDOW  window
+     possible replies:
+     PM_DATA INT(handle) INT(x) INT(y) INT(width) INT(height)
+     PM_ERROR PERR_UNEXISTENT
+   if what = PG_AUTOMSG
+     empty
+     possible replies:
+     PM_DATA ISTRING(automsg)
+ 
+ if topic = PM_DATA        // posting data (reply)
+   succession of data in reply to a request   
+   
+ if topic = PM_ERROR       // error (reply) 
+   BYTE err
+   if err = PERR_ERROR         // generic error
+     empty
+   if err = PERR_NOUSER        // no user running
+     empty
+   if err = PERR_UNEXISTENT    // the one you said does not exist
+     empty
+   if err = PERR_UNK_REQ       // submitted request is not supported
+     empty
+   if err = PERR_BAD_REQ       // submitted request is malformed
+     empty
+   if err = PERR_FAILED_FOR    // the operation failed for these uins
+     INTLIST   uins
+     
+ if topic = PM_EVENT       // event notification
+   BYTE     event
+   if event = PE_INITIALIZE           // plugin initialization, issued only by &RQ
+     POINTER    callback function
+     INT        &RQ api version
+     ISTRING    &RQ path
+     ISTRING    user path
+     INT        current user uin
+     possible replies:
+     PM_DATA ISTRING(plugin name) INT(apiversion)
+   if event = PE_FINALIZE
+     empty
+   if event = PE_PREFERENCES
+     empty
+   if event = PE_CONNECTED
+     empty
+   if event = PE_DISCONNECTED
+     empty
+   if event = PE_MSG_GOT
+     INT        sender uin
+     INT        flags
+     TIME       when
+     ISTRING    text
+     possible replies:
+     PM_ABORT
+   if event = PE_MSG_SENT
+     INT        dest uin
+     INT        flags
+     ISTRING    text
+   if event = PE_URL_GOT
+     INT        sender uin
+     INT        flags
+     TIME       when
+     ISTRING    url
+     ISTRING    text     
+     possible replies:
+     PM_ABORT
+   if event = PE_ADDEDYOU_SENT
+     INT        dest uin
+   if event = PE_ADDEDYOU_GOT
+     INT        sender uin
+     INT        flags
+     TIME       when
+     possible replies:
+     PM_ABORT
+   if event = PE_CONTACTS_SENT
+     INT        dest uin
+     INT        flags
+     INTLIST    contacts
+   if event = PE_CONTACTS_GOT
+     INT        sender uin
+     INT        flags
+     TIME       when
+     INTLIST    contacts     
+     possible replies:
+     PM_ABORT
+   if event = PE_AUTH_SENT
+     INT        dest uin
+   if event = PE_AUTHREQ_GOT
+     INT        sender uin
+     INT        flags
+     INT        when
+     ISTRING    text
+     possible replies:
+     PM_ABORT
+   if event = PE_AUTHDENIED_SENT
+     INT        dest uin
+     ISTRING    text
+   if event = PE_AUTOMSG_SENT
+     INT        dest uin
+     ISTRING    text
+   if event = PE_AUTOMSG_GOT
+     INT        dest uin
+     ISTRING    text
+   if event = PE_AUTOMSG_REQ_SENT
+     INT        dest uin
+   if event = PE_AUTOMSG_REQ_GOT
+     INT        sender uin
+     possible replies:
+     PM_ABORT
+   if event = PE_GCARD_GOT
+     INT        sender uin
+     INT        flags
+     TIME       when
+     ISTRING    url
+     possible replies:
+     PM_ABORT
+   if event = PE_EMAILEXP_GOT
+     TIME       when
+     ISTRING    name
+     ISTRING    address
+     ISTRING    text
+     possible replies:
+     PM_ABORT
+   if event = PE_WEBPAGER_GOT
+     TIME       when
+     ISTRING    name
+     ISTRING    address
+     ISTRING    text
+     possible replies:
+     PM_ABORT
+   if event = PE_FROM_MIRABILIS_GOT
+     TIME       when
+     ISTRING    name
+     ISTRING    address
+     ISTRING    text
+     possible replies:
+     PM_ABORT
+   if event = PE_VISIBILITY_CHANGED
+     INT        changed contact (if zero, all contacts)
+   if event = PE_USERINFO_CHANGED
+     INT        changed contact
+   if event = PE_STATUS_CHANGED        // or invisibility changed
+     INT        uin
+     STATUS     new status
+     STATUS     old status
+     BOOL       new invisible-state
+     BOOL       old invisible-state
+   if event = PE_CONNECTED
+     empty
+   if event = PE_DISCONNECTED
+     empty
+   if event = PE_LIST_ADD
+     WHATLIST   list
+     INTLIST    uins
+   if event = PE_LIST_REMOVE
+     WHATLIST   list
+     INTLIST    uins
+   if event = PE_UPDATE_INFO
+     ISTRING    raw updateinfo.txt
+     ISTRING    version
+     ISTRING    url
+     BOOL       is a preview
+     INT        version
+     possible replies:
+     PM_ABORT
+   
+ if topic = PM_ABORT       // abort current event  (reply)
+   empty
+
+ if topic = PM_CMD         // execute command
+   BYTE     cmd
+   if cmd = PC_SEND_MSG
+     INT        dest
+     INT        flags
+     ISTRING    text
+   if cmd = PC_SEND_CONTACTS
+     INT        uin
+     INT        flags
+     INTLIST    contacts
+   if cmd = PC_SEND_ADDEDYOU
+     INT        uin
+   if cmd = PC_LIST_ADD
+     WHATLIST   list
+     INTLIST    uins
+     possible replies:
+     PM_ERROR PERR_UNEXISTENT
+     PM_ERROR PERR_FAILED_FOR INTLIST(uins)
+   if cmd = PC_LIST_REMOVE
+     WHATLIST   list
+     INTLIST    uins
+   if cmd = PC_SET_STATUS
+     STATUS     status
+   if cmd = PC_SET_VISIBILITY
+     VISIBILITY status
+   if cmd = PC_QUIT
+     empty
+   if cmd = PC_CONNECT
+     empty
+   if cmd = PC_DISCONNECT
+     empty
+   if cmd = PC_SET_AUTOMSG
+     ISTRING    text
+   if cmd = PC_SEND_AUTOMSG_REQ
+     INT        uin
+
+ if topic = PM_ACK         // acknowledge (reply)
+   BYTE     ack
+   if ack = PA_OK             // generic confirmation, you get this if all went well
+     empty
+
+////////////////////////////////////// to do //////////////////////////////////////////
+  
