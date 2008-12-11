@@ -174,13 +174,16 @@ var
     mn := EMPTY_MOVE_NODE;
     mn.wMove := EncodeMove(posMove.move);
     if Assigned(Reestimate) then
-      begin
-        estList := TList.Create;
+    begin
+      estList := TList.Create;
+      try
         estList.Add(Pointer(mn.estimate));
         Reestimate(estList, 0);
         mn.estimate := LongWord(estList[0]);
+      finally
         estList.Free;
-      end;
+      end;  
+    end;
     Seek(fMov, FileSize(fMov));
     write(fMov, mn);
   end;
@@ -224,61 +227,63 @@ begin
   moveCount := 0;
   moveSet := -1;
   estList := TList.Create;
-  rm := r;
-  enc_mv := EncodeMove(posMove.move);
-  repeat
-    pr := r;
-    Seek(fMov, r);
-    read(fMov, mn);
-
-    mv := mn.wMove;
-    if mv = enc_mv then
-      moveSet := moveCount;
-
-    if Assigned(Reestimate) then
-      estList.Add(Pointer(mn.estimate));
-
-    inc(moveCount);
-    r := (mn.wNextValue shl 8) or mn.bNextValue;
-  until r = 0;
-
-  if moveSet < 0 then // хода нет в списке, добавляем
-    begin
-      // связывание нового узла с текущим узлом
-      r := FileSize(fMov);
-      mn.bNextValue := r and $FF;
-      mn.wNextValue := r shr 8;
-      Seek(fMov, pr);
-      write(fMov, mn);
-      // Добавление нового узла ходов
-      mn := EMPTY_MOVE_NODE;
-      mn.wMove := enc_mv;
+  try
+    rm := r;
+    enc_mv := EncodeMove(posMove.move);
+    repeat
+      pr := r;
       Seek(fMov, r);
-      write(fMov, mn);
+      read(fMov, mn);
+
+      mv := mn.wMove;
+      if mv = enc_mv then
+        moveSet := moveCount;
 
       if Assigned(Reestimate) then
         estList.Add(Pointer(mn.estimate));
-      moveSet := moveCount;
-    end;
 
-    if Assigned(Reestimate) then
+      inc(moveCount);
+      r := (mn.wNextValue shl 8) or mn.bNextValue;
+    until r = 0;
+
+    if moveSet < 0 then // хода нет в списке, добавляем
       begin
-        Reestimate(estList, moveSet);
-        for k := 0 to estList.Count - 1 do
-          begin
-            Seek(fMov, rm);
-            read(fMov, mn);
-            if mn.estimate <> LongWord(estList[k]) then
-              begin
-                mn.estimate := LongWord(estList[k]);
-                Seek(fMov, rm);
-                write(fMov, mn);
-              end;
-            rm := (mn.wNextValue shl 8) or mn.bNextValue;
-          end;
+        // связывание нового узла с текущим узлом
+        r := FileSize(fMov);
+        mn.bNextValue := r and $FF;
+        mn.wNextValue := r shr 8;
+        Seek(fMov, pr);
+        write(fMov, mn);
+        // Добавление нового узла ходов
+        mn := EMPTY_MOVE_NODE;
+        mn.wMove := enc_mv;
+        Seek(fMov, r);
+        write(fMov, mn);
+
+        if Assigned(Reestimate) then
+          estList.Add(Pointer(mn.estimate));
+        moveSet := moveCount;
       end;
 
-  estList.Free;
+      if Assigned(Reestimate) then
+        begin
+          Reestimate(estList, moveSet);
+          for k := 0 to estList.Count - 1 do
+            begin
+              Seek(fMov, rm);
+              read(fMov, mn);
+              if mn.estimate <> LongWord(estList[k]) then
+                begin
+                  mn.estimate := LongWord(estList[k]);
+                  Seek(fMov, rm);
+                  write(fMov, mn);
+                end;
+              rm := (mn.wNextValue shl 8) or mn.bNextValue;
+            end;
+        end;
+  finally
+    estList.Free;
+  end;  
 end;
 
 

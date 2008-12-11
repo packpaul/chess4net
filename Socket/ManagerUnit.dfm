@@ -1,6 +1,6 @@
 object Manager: TManager
-  Left = 190
-  Top = 105
+  Left = 428
+  Top = 220
   BorderIcons = []
   BorderStyle = bsToolWindow
   Caption = 'Manager'

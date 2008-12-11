@@ -7,6 +7,9 @@ interface
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Menus, ActnList, ExtCtrls,
+{$IFDEF MIRANDA}
+  ControlUnit,
+{$ENDIF}
 {$IFDEF TRILLIAN}
   plugin,
 {$ENDIF}
@@ -16,7 +19,11 @@ uses
   ModalForm, DialogUnit, ContinueUnit;
 
 type
+{$IFDEF MIRANDA}
+  TManager = class(TForm, IMirandaPlugin)
+{$ELSE} // TRILLIAN, AND_RQ, QIP
   TManager = class(TForm)
+{$ENDIF}
     ActionList: TActionList;
     OptionsAction: TAction;
     ConnectedPopupMenu: TPopupMenu;
@@ -71,9 +78,6 @@ type
     ContinueForm: TContinueForm;
     ExtBaseList: TStringList;
     ExtBaseName: string;
-{$IFDEF MIRANDA}
-    hContact: cardinal;
-{$ENDIF}
 {$IFDEF QIP}
     iProtoDllHandle: integer;
     wAccName: WideString;
@@ -109,7 +113,7 @@ type
                                 d1: pointer = nil; d2: pointer = nil);
     procedure ConnectorHandler(e: TConnectorEvent;
                                 d1: pointer = nil; d2: pointer = nil);
-    procedure SendData(cmd: string = '');
+    procedure SendData(const cmd: string = '');
     procedure SetClock; overload;
     procedure SetClock(var sr: string); overload;
     procedure CB2View;
@@ -130,10 +134,11 @@ type
     procedure FStartAdjournedGame;
 
     property AdjournedStr: string read _adjournedStr write FSetAdjournedStr;
-    
+
   public
 {$IFDEF MIRANDA}
-    constructor Create(hContact: cardinal); reintroduce;
+    constructor Create(Connector: TConnector); reintroduce;
+    procedure Start;
 {$ENDIF}
 {$IFDEF AND_RQ}
     constructor Create; reintroduce;
@@ -152,6 +157,8 @@ implementation
 {$J+}
 
 uses
+  Types,
+  // Chess4Net
   DateUtils, Math, StrUtils, IniFiles, Dialogs,
   LookFeelOptionsUnit, GlobalsLocalUnit, InfoUnit
 {$IFDEF MIRANDA}
@@ -218,7 +225,9 @@ const
   CMD_ADJOURN_GAME_NO = 'adjno';
   CMD_START_ADJOURNED_GAME = 'strtadj';
 
+// {$IFNDEF MIRANDA}
   CMD_DELIMITER = '&&'; // CMD_DELIMITER не должен присутствовать в аргументах
+// {$ENDIF}  
   // CMD_DELIMITER = 'ext' - зарезервировано
 
   // INI-file
@@ -240,7 +249,24 @@ const
   CLOCK_KEY_NAME = 'Clock';
   ADJOURNED_KEY_NAME = 'Adjourned';
 
+{$IFDEF MIRANDA}
+procedure TManager.FormCreate(Sender: TObject);
+begin
+  // List of external bases
+  ExtBaseList := TStringList.Create;
+  PopulateExtBaseList;
+  ExtBaseName := '';
 
+  // Nicks initialization
+  player_nick := Connector.OwnerNick;
+  opponent_nick := Connector.ContactNick;
+  opponent_id := IntToStr(Connector.ContactID);
+  opponent_nick_id := opponent_nick + opponent_id;
+  connectionOccured := FALSE;
+end;
+{$ENDIF} // {$IFDEF MIRANDA}
+
+{$IFNDEF MIRANDA}
 procedure TManager.FormCreate(Sender: TObject);
 begin
   try
@@ -253,10 +279,7 @@ begin
         Top:= (Screen.Height - Height) div 2;
         Show;
         SetPrivateSettings;
-      end;    
-{$IFDEF MIRANDA}  
-    Connector:= TConnector.Create(hContact, ConnectorHandler);
-{$ENDIF}
+      end;
 {$IFDEF AND_RQ}
     Connector:= TConnector.Create(RQ_GetChatUIN, ConnectorHandler);
 {$ENDIF}
@@ -272,11 +295,6 @@ begin
     PopulateExtBaseList;
     ExtBaseName := '';
   // инициализация ников
-{$IFDEF MIRANDA} 
-    player_nick := PChar(CallService(MS_CLIST_GETCONTACTDISPLAYNAME, 0, 0));
-    opponent_nick := PChar(CallService(MS_CLIST_GETCONTACTDISPLAYNAME, hContact, 0));
-    opponent_id := IntToStr(hContact);
-{$ENDIF}
 {$IFDEF AND_RQ}
     player_nick := RQ_GetDisplayedName(RQ_GetCurrentUser);
     opponent_nick := RQ_GetDisplayedName(RQ_GetChatUIN);
@@ -308,6 +326,7 @@ begin
     raise;
   end;
 end;
+{$ENDIF} // {$IFNDEF MIRANDA}
 
 
 procedure TManager.ChessBoardHandler(e: TChessBoardEvent;
@@ -468,6 +487,9 @@ end;
 procedure TManager.ConnectorHandler(e: TConnectorEvent; d1: pointer = nil; d2: pointer = nil);
 var
   cmd_str, sl, sr, ms: string;
+{$IFDEF MIRANDA}
+  iData: integer;
+{$ENDIF}
 label
   l;
 begin
@@ -483,12 +505,14 @@ begin
       case ChessBoard.Mode of
       mView:
         begin
-          if not Connector.connected then exit;
-            dialogs.MessageDlg('Your opponent leaves.', mtCustom, [mbOK], mfMsgLeave);
+          if (not Connector.connected) then
+            exit;
+          dialogs.MessageDlg('Your opponent leaves.', mtCustom, [mbOK], mfMsgLeave);
         end;
       mGame:
         begin
-          if not Connector.connected then exit;
+          if (not Connector.connected) then
+            exit;
           ChessBoard.StopClock;
 {$IFDEF GAME_LOG}
           WriteToGameLog('*');
@@ -501,6 +525,9 @@ begin
   end; { ceDisconnected }
   ceError:
     begin
+{$IFDEF MIRANDA}
+     Connector.Close;
+{$ENDIF}
 {$IFDEF GAME_LOG}
       if ChessBoard.Mode = mGame then
         begin
@@ -526,19 +553,34 @@ begin
 {$ENDIF}
   ceData:
     begin
+{$IFDEF MIRANDA}
+      Assert(High(TStringDynArray(d1)) >= 0);
+      iData := 0;
+{$ELSE} // TRILLIAN, AND_RQ, QIP
       cmd_str:= PString(d1)^;
+{$ENDIF}
 l:
-      sl:= LeftStr(cmd_str, pos(CMD_DELIMITER, cmd_str) - 1);
+{$IFDEF MIRANDA}
+      sl := TStringDynArray(d1)[iData];
+      inc(iData);
+      cmd_str := IfThen((iData <= High(TStringDynArray(d1))), '*');
+{$ELSE} // TRILLIAN, AND_RQ, QIP
+      sl := LeftStr(cmd_str, pos(CMD_DELIMITER, cmd_str) - 1);
       cmd_str:= RightStr(cmd_str, length(cmd_str) - length(sl) - length(CMD_DELIMITER));
+{$ENDIF}
       SplitStr(sl, sl, sr);
 
       case ChessBoard.Mode of
       mView:
         if sl = CMD_VERSION then
           begin
-            SendData(CMD_WELCOME);
             SplitStr(sr, sl, sr);
             opponentClientVersion := StrToInt(sl);
+{$IFDEF MIRANDA}
+            if (opponentClientVersion >= 200901) then
+              Connector.MultiSession := TRUE;
+{$ENDIF}
+            SendData(CMD_WELCOME);
             if opponentClientVersion < CHESS4NET_VERSION then
               dialogs.MessageDlg('Your opponent is using an older version of Chess4Net.' + #13#10 +
                                  'Most of functionality will be not available.'  + #13#10 +
@@ -877,7 +919,9 @@ l:
                 end;
             end; {  with ChessBoard}
       end; { case ChessBoard.Mode }
-      if cmd_str <> '' then goto l;
+
+      if (cmd_str <> '') then
+        goto l;
     end; {  ceData }
   end; { case ChessBoard.Mode }
 end;
@@ -888,9 +932,15 @@ begin
   if connectionOccured then
     WriteSettings;
   ExtBaseList.Free;
+{$IFNDEF MIRANDA}
+  if (Connector.Connected) then
+    Connector.Close;
+{$ELSE} // TRILLIAN, AND_RQ, QIP
   if Assigned(Connector) then
     Connector.Free;
+{$ENDIF MIRANDA}
   ChessBoard.Release;
+  ChessBoard := nil;
   dialogs.Free;
 end;
 
@@ -992,15 +1042,25 @@ begin
 {$ENDIF}
 end;
 
+{$IFDEF MIRANDA}
+procedure TManager.SendData(const cmd: string);
+begin
+  Connector.SendData(cmd);
+end;
 
-procedure TManager.SendData(cmd: string);
+{$ELSE} // TRILLIAN, AND_RQ, QIP
+
+procedure TManager.SendData(const cmd: string);
 const
   last_cmd: string = '';
 begin
-  if cmd = '' then exit;
-  last_cmd:= cmd + CMD_DELIMITER;
+  if (cmd = '') then
+    exit;
+  last_cmd := cmd + CMD_DELIMITER;
   Connector.SendData(last_cmd);
 end;
+{$ENDIF} // {$IFDEF MIRANDA}
+
 
 procedure TManager.SetClock;
 begin
@@ -1094,10 +1154,10 @@ begin
 end;
 
 {$IFDEF MIRANDA}
-constructor TManager.Create(hContact: cardinal);
+constructor TManager.Create(Connector: TConnector);
 begin
+  self.Connector := Connector;
   inherited Create(Application);
-  self.hContact := hContact;
 end;
 {$ENDIF}
 
@@ -1787,10 +1847,46 @@ begin
     end;  
 end;
 
+
 procedure TManager.GamePopupMenuPopup(Sender: TObject);
 begin
-  N6.Visible := (AdjournGame.Visible or GamePause.Visible or TakebackGame.Visible); 
+  N6.Visible := (AdjournGame.Visible or GamePause.Visible or TakebackGame.Visible);
 end;
+
+{$IFDEF MIRANDA}
+procedure TManager.Start;
+begin
+  if (Assigned(ChessBoard)) then
+  begin
+    Show;
+    exit;
+  end;
+
+  ChessBoard := TPosBaseChessBoard.Create(self, ChessBoardHandler, Chess4NetPath + USR_BASE_NAME);
+  dialogs := TDialogs.Create(ChessBoard, DialogFormHandler);
+    
+  try
+    with ChessBoard do
+    begin
+      CB2View;
+      Left:= (Screen.Width - Width) div 2;
+      Top:= (Screen.Height - Height) div 2;
+      Show;
+      SetPrivateSettings;
+    end;
+
+    ConnectingForm := (dialogs.CreateDialog(TConnectingForm) as TConnectingForm);
+    ConnectingForm.Show;
+
+    if (not Connector.Open(FALSE)) then
+      raise Exception.Create('ERROR: Cannot open connector!');
+  except
+    ChessBoard.Release;
+    ChessBoard := nil;
+    raise;
+  end;
+end;
+{$ENDIF}
 
 end.
 

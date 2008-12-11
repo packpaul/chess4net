@@ -93,7 +93,7 @@ var
 begin
   for i := 0 to _lstMovePrior.Count - 1 do
     dispose(_lstMovePrior[i]);
-  _lstMovePrior.Clear;
+  _lstMovePrior.Free;
 
   pTrainingMode := FALSE;
 
@@ -428,22 +428,27 @@ begin
   for i := 0 to _lstMovePrior.Count - 1 do
     dispose(_lstMovePrior[i]);
   _lstMovePrior.Clear;
+
+  lstExtMove := nil;
   lstUsrMove := TList.Create;
-  lstExtMove := TList.Create;
+  try
+    lstExtMove := TList.Create;
 
-  if _bUseUserBase or (not Assigned(_oExtPosBase)) then
-    _oPosBase.Find(GetPositionRec, lstUsrMove);
-  if Assigned(_oExtPosBase) then
-    _oExtPosBase.Find(GetPositionRec, lstExtMove);
+    if _bUseUserBase or (not Assigned(_oExtPosBase)) then
+      _oPosBase.Find(GetPositionRec, lstUsrMove);
+    if Assigned(_oExtPosBase) then
+      _oExtPosBase.Find(GetPositionRec, lstExtMove);
 
-  // TODO: обработка неправильной базы
+    // TODO: обработка неправильной базы
 
-  ClasterMoves(lstUsrMove);
-  ClasterMoves(lstExtMove);
-  MergeMoves;
+    ClasterMoves(lstUsrMove);
+    ClasterMoves(lstExtMove);
+    MergeMoves;
 
-  lstExtMove.Free;
-  lstUsrMove.Free;
+  finally
+    lstExtMove.Free;
+    lstUsrMove.Free;
+  end;
 end;
 
 
