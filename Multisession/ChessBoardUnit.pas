@@ -909,7 +909,7 @@ var
   i: integer;
 begin
   for i := 0 to lstPosition.Count - 1 do
-    dispose(lstPosition[i]);
+    Dispose(lstPosition[i]);
   lstPosition.Free;
   bmHiddenBoard.Free;
   m_bmBuf.Free;
@@ -1731,12 +1731,13 @@ end;
 
 procedure TChessBoard.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
-  if not shuted and Assigned(Handler) then
+  if ((not shuted) and Assigned(Handler)) then
     begin
       Handler(cbeExit, self);
       Action:= caNone;
     end
-  else shuted:= FALSE;
+  else
+    shuted := FALSE;
 end;
 
 
@@ -1811,7 +1812,7 @@ begin
   i := lstPosition.Count - 1;
   if i >= 0 then
     begin
-      dispose(lstPosition[i]);
+      Dispose(lstPosition[i]);
       lstPosition.Delete(i);
     end;
 end;
@@ -1822,7 +1823,7 @@ var
   i: integer;
 begin
   for i := 0 to lstPosition.Count - 1 do
-    dispose(lstPosition[i]);
+    Dispose(lstPosition[i]);
   lstPosition.Clear;
 end;
 

@@ -3,8 +3,8 @@ unit ConnectorUnit;
 interface
 
 uses
-  Classes,
-  m_globaldefs, m_api, ExtCtrls;
+  Classes, ExtCtrls,
+  m_globaldefs;
 
 type
   TConnectorEvent = (ceConnected, ceDisconnected, ceData, ceError);
@@ -12,12 +12,26 @@ type
   TConnectorHandler = procedure(ce: TConnectorEvent; d1: pointer = nil;
                                 d2: pointer = nil) of object;
 
-  TConnector = class(TDataModule)
-    sendTimer: TTimer;
-    procedure sendTimerTimer(Sender: TObject);
+  IConnectorable = interface
+    procedure ConnectorHandler(ce: TConnectorEvent; d1: pointer = nil; d2: pointer = nil);
+  end;
+
+  TConnector = class
   private
-    _connected : boolean;
-    _handler: TConnectorHandler; // ***
+    _sendTimer, _sendSystemTimer: TTimer;
+
+    _connected, _opened: boolean;
+    _plugin: IConnectorable;
+    _hContact, _hFilterMsg, _hNotifySender: THandle;
+    _lstId, _contactLstId: integer;
+    // отсылаемое сообщение
+    _msg_sending, _unformated_msg_sending: string;
+    _cntrMsgIn: integer;  // счётчик входящих сообщений
+    _cntrMsgOut: integer; // счётчик исходящих сообщений
+    _msg_buf: string; // буфер сообщений
+    // системное сообщение
+    _systemDataList: TStringList;
+
 {$IFDEF DEBUG_LOG}
     _logFile: Text;
 
@@ -26,259 +40,667 @@ type
     procedure CloseLog;
 {$ENDIF}
 
+    procedure FsendTimerTimer(Sender: TObject);
+    procedure FsendSystemTimerTimer(Sender: TObject);
+
+    function FGetOwnerNick: string;
+    function FGetContactNick: string;
+    function FFilterMsg(msg: string): boolean;
+    function FSendMessage(const vMessage: string): boolean;
+//    function FNotifySender(const vMessage: string): boolean;
+    procedure FNotifySender;
+    procedure FSendSystemData(sd: string);
+    function FDeformatMsg(var msg: string; out lstId, msgCntr: integer): boolean;
+    function FFormatMsg(const msg: string): string;
+    function FGetOwnerID: integer;
+    function FGetMultiSession: boolean;
+    procedure FSetMultiSession(bValue: boolean);
+
   public
-    property connected: boolean read _connected;
+    constructor Create(hContact: THandle); reintroduce;
+    destructor Destroy; override;
+
     procedure Close;
-    procedure SendData(const d: string);
-    procedure Free;
-    class function Create(hContact: THandle; h: TConnectorHandler): TConnector; reintroduce;
+    function Open(bMultiSession: boolean = TRUE): boolean;
+    function SendData(const d: string): boolean;
+    procedure SetPlugin(plugin: IConnectorable);
+
+    property Connected: boolean read _connected;
+    property Opened: boolean read _opened;
+    property OwnerID: integer read FGetOwnerID;
+    property OwnerNick: string read FGetOwnerNick;
+    property ContactID: integer read _hContact;
+    property ContactNick: string read FGetContactNick;
+    property MultiSession: boolean read FGetMultiSession write FSetMultiSession;
   end;
 
-implementation
+procedure InitConnectorGlobals(const invitationStr, promtHeadStr, dataSeparator: string; maxMsgSize: integer = 256);
 
-{$R *.dfm}
+implementation
 
 {$J+} {$I-}
 
 uses
-  SysUtils, StrUtils,  
-  GlobalsLocalUnit;
+  SysUtils, DateUtils, StrUtils, Types,
+  m_api,
+  ControlUnit;
+
+type
+  TConnectorList = class(TList)
+  private
+    _iterator: integer;
+    _hContact: THandle;
+    _LastAddedConnector: TConnector;
+
+  public
+    procedure AddConnector(Connector: TConnector);
+    procedure RemoveConnector(Connector: TConnector);
+    function GetFirstConnector(hContact: THandle): TConnector;
+    function GetNextConnector: TConnector;
+    property LastAddedConnector: TConnector read _LastAddedConnector;
+  end;
 
 var
-  connector: TConnector; // singleton
-  hCurrContact: THandle; // ***
-  msg_sending, unformated_msg_sending: string; // отсылаемое сообщение
-  hFilterMsg: THandle;
-  hNotifySender: THandle;
-  hMsg: THandle;
+  connectorList: TConnectorList = nil;
+  msgBufferSize: integer;
+  g_bMultiSession: boolean;
+
   // cntrMsgIn и cntrMsgOut были введены для преодоления бага с зависающими сообщениями
-  cntrMsgIn: integer;  // счётчик входящих сообщений
-  cntrMsgOut: integer; // счётчик исходящих сообщений
-  msg_buf: string; // буфер сообщений
 
 const
-  CONNECTOR_INSTANCES: integer = 0;
-  M_CHESS4NET = 'Chess4Net';
-  // <сообщение> ::= PROMPT_HEAD <номер сообщения> PROMPT_TAIL <сообщение>
-  PROMPT_HEAD = 'Ch4N:';
+  MSG_INVITATION: string = '!&This is a plugin invitation message&!';
+  // MSG_RESPOND: string = '!&This is a plugin respond message&!';
+  // <сообщение> ::= PROMPT_HEAD [PROMPT_SEPARATOR <ид клиента>] PROMPT_SEPARATOR <номер сообщения> PROMPT_TAIL <сообщение>
+  PROMPT_HEAD: string = 'Plgn';
+  PROMPT_SEPARATOR = ':';
   PROMPT_TAIL = '>';
-  MSG_CLOSE = 'ext';
-  MAX_MSG_TRYS = 3; // максимальное количество попыток отсыла сообщения
-  MAX_RESEND_TRYS = 9; // максимальное количество попыток пересыла
+
+  DATA_SEPARATOR: string = '&&';
+
+  CMD_CLOSE = 'ext';
+  CMD_CONTACT_LIST_ID = 'lstid';
+
+  MAX_MSG_TRYS = 3; // максимальное количество попыток пересыла после ошибки
+  MAX_RESEND_TRYS = 9; // максимальное количество попыток пересыла в таймере
+  MIN_TIME_BETWEEN_MSG = 30; // время между отправкой сообщений системе IM в мс
+
+  OWNER_ID = 0;
+
+function TConnector.FSendMessage(const vMessage: string): boolean;
+const
+  LAST_SEND_TIME: TDateTime = 0.0;
+var
+  _now: TDateTime;
+begin
+  _now := Now;
+  if MilliSecondsBetween(_now, LAST_SEND_TIME) < MIN_TIME_BETWEEN_MSG then
+    Result := FALSE
+  else
+    begin
+      LAST_SEND_TIME := _now;
+      CallContactService(_hContact, PSS_MESSAGE, 0, LPARAM(PChar(vMessage)));
+      Result := TRUE;
+    end;
+end;
+
 
 // деформатирование входящих сообщений. TRUE - если декодирование удалось
-function DeformatMsg(var msg: string; var n: integer): boolean;
+function TConnector.FDeformatMsg(var msg: string; out lstId, msgCntr: integer): boolean;
 var
   l: integer;
 begin
-  result := FALSE;
-  if LeftStr(msg, length(PROMPT_HEAD)) = PROMPT_HEAD then
+  Result := FALSE;
+  if LeftStr(msg, length(PROMPT_HEAD + PROMPT_SEPARATOR)) = (PROMPT_HEAD + PROMPT_SEPARATOR) then
     begin
 {$IFDEF DEBUG_LOG}
-      connector.WriteToLog('>> ' + msg);
+      WriteToLog('>> ' + msg);
 {$ENDIF}
-      msg := RightStr(msg, length(msg) - length(PROMPT_HEAD));
+      msg := RightStr(msg, length(msg) - length(PROMPT_HEAD + PROMPT_SEPARATOR));
+
+      // contactListId
+      if _contactLstId >= 0 then
+      begin
+        l := pos(PROMPT_SEPARATOR, msg);
+        if (l > 0) then
+        begin
+          if (not TryStrToInt(LeftStr(msg, l - 1), lstId)) then
+            exit;
+          msg := RightStr(msg, length(msg) - l);
+        end
+        else
+          lstId := connectorList.LastAddedConnector._lstId;
+      end
+      else
+        lstId := -1; // no contactListId specified in message
+
+      // Message counter
       l := pos(PROMPT_TAIL, msg);
-      if l = 0 then exit;
-      try
-        n := StrToInt(LeftStr(msg, l-1));
-      except
-        on Exception do exit;
-      end;
+      if ((l = 0) or (not TryStrToInt(LeftStr(msg, l - 1), msgCntr))) then
+        exit;
+
       msg := RightStr(msg, length(msg) - l);
-      result := TRUE;
+      // msg := AnsiReplaceStr(msg, '&amp;', '&');
+
+      Result := TRUE;
     end;
 end;
 
-// форматирование исходящих сообщений
-function FormatMsg(const msg: string): string;
-begin
-  Result := PROMPT_HEAD + IntToStr(cntrMsgOut) + PROMPT_TAIL + msg;
-end;
 
-function FilterMsg(wParam: WPARAM; lParam_: LPARAM): int; cdecl;
-var
-  msg: string;
-  hContact: THandle;
-  cntrMsg: integer;
-begin
-  msg := string(PPROTORECVEVENT(PCCSDATA(lParam_).lParam).szMessage);
-  hContact := PCCSDATA(lParam_).hContact;
-  // TODO: Handle msg;
-  if not connector.connected then
+function TConnector.FFilterMsg(msg: string): boolean;
+
+  procedure NProceedData(msg: string);
+
+    function NProceedSystemCommand(msg: string): boolean;
     begin
-      if msg = MSG_INVITATION then
+      Result := TRUE;
+      if (LeftStr(msg, length(CMD_CONTACT_LIST_ID)) = CMD_CONTACT_LIST_ID) then
+      begin
+        msg := RightStr(msg, length(msg) - length(CMD_CONTACT_LIST_ID) - 1);
+        TryStrToInt(msg, _contactLstId);
+      end
+      else if (msg = CMD_CLOSE) then
+      begin
+        _plugin.ConnectorHandler(ceDisconnected);
+        _connected := FALSE;
+        _opened := FALSE;
+      end
+      else
+        Result := FALSE;
+    end;
+
+  var
+    n, l, i: integer;
+    arrDatas: TStringDynArray;
+    strCommand: string;
+    bSystemCommand: boolean;
+  begin { \NProceedData }
+    if (RightStr(msg, length(DATA_SEPARATOR)) <> DATA_SEPARATOR) then
+      msg := msg + DATA_SEPARATOR;
+
+    n := -1;
+    l := 1;
+    repeat
+      inc(n);
+      l := PosEx(DATA_SEPARATOR, msg, l);
+      inc(l, length(DATA_SEPARATOR));
+    until (l = length(DATA_SEPARATOR));
+
+    SetLength(arrDatas, n);
+
+    bSystemCommand := TRUE;
+    i := 0;
+    while (i < n) do
+    begin
+      l := pos(DATA_SEPARATOR, msg);
+      strCommand := LeftStr(msg, l - 1);
+
+      if (bSystemCommand) then // System commands can go only in the beginning by definition
+      begin
+        bSystemCommand := NProceedSystemCommand(strCommand);
+        if (bSystemCommand) then
         begin
-          connector._connected := TRUE;
-          hMsg := CallContactService(hContact, PSS_MESSAGE, 0, LPARAM(PChar(MSG_INVITATION)));
-          connector._handler(ceConnected);
-          Result := 0;
+          dec(n);
+          SetLength(arrDatas, n);
+          continue;
+        end;
+      end;
+
+      arrDatas[i] := strCommand;
+      msg := RightStr(msg, length(msg) - length(DATA_SEPARATOR) - l + 1);
+
+      inc(i);
+    end; { while }
+
+    if (n > 0) then
+      _plugin.ConnectorHandler(ceData, arrDatas);
+
+    Finalize(arrDatas);
+  end;
+
+var
+  lstId, cntrMsg: integer;
+begin { TConnector.FFilterMsg }
+  if not Connected then
+    begin
+   // if (msg = MSG_INVITATION) or (msg = MSG_RESPOND) then
+      if (msg = MSG_INVITATION) then
+        begin
+       // if msg = MSG_INVITATION then
+       //   FSendMessage(MSG_RESPOND);
+          FSendSystemData(MSG_INVITATION);
+          if (g_bMultiSession) then
+            FSendSystemData(FFormatMsg(CMD_CONTACT_LIST_ID + ' ' + IntToStr(_lstId)));
+          _connected := TRUE;
+          _plugin.ConnectorHandler(ceConnected);
+          Result := TRUE;
         end
       else
-        Result := CallService(MS_PROTO_CHAINRECV, wParam, lParam_);
+        Result := FALSE;
     end
-  else // connector.connected
+  else // Connected
     begin
-      if msg_sending <> '' then
+      if _msg_sending <> '' then
         begin
-          msg_sending := '';
-          unformated_msg_sending := '';
-          inc(cntrMsgOut);
+          _msg_sending := '';
+          _unformated_msg_sending := '';
+          inc(_cntrMsgOut);
         end;
-      if DeformatMsg(msg, cntrMsg) then
+      if FDeformatMsg(msg, lstId, cntrMsg) and ((_contactLstId < 0) or (lstId = _lstId)) then
         begin
-          Result := 0;
-          if cntrMsg > cntrMsgIn then
+          Result := TRUE;
+
+          if cntrMsg > _cntrMsgIn then
             begin
-              inc(cntrMsgIn);
-              if cntrMsg > cntrMsgIn then
+              inc(_cntrMsgIn);
+              if (cntrMsg > _cntrMsgIn) then
                 begin
-                  connector._handler(ceError); // пакет исчез
+                  _plugin.ConnectorHandler(ceError); // пакет исчез
                   exit;
-                end
+                end;
             end
           else
             exit; // пропуск пакетов с более низкими номерами
-          if msg = MSG_CLOSE then
-            begin
-              connector._handler(ceDisconnected);
-              connector._connected := FALSE;
-            end
-          else
-            connector._handler(ceData, @msg);
+
+          NProceedData(msg);
         end
       else
-        Result := CallService(MS_PROTO_CHAINRECV, wParam, lParam_);
+        Result := FALSE;
     end;
 end;
 
-function NotifySender(wParam: WPARAM; lParam_: LPARAM): int; cdecl;
-const
-  MSG_TRYS: integer = 1;
-begin
-  Result := 0;
+(*
+function TConnector.FFilterMsg(msg: string): boolean;
 
-  if (PACKDATA(lParam_).type_ <> ACKTYPE_MESSAGE) or (msg_sending = '') then exit;
-  case PACKDATA(lParam_)^.result_ of
-    ACKRESULT_SUCCESS:
+  procedure NReturnData(msg: string);
+  var
+    n, l, i: integer;
+    arrDatas: TStringDynArray;
+  begin
+    n := -1;
+    l := 1;
+    repeat
+      inc(n);
+      l := PosEx(DATA_SEPARATOR, msg, l);
+      inc(l, length(DATA_SEPARATOR));
+    until (l = length(DATA_SEPARATOR));
+
+    SetLength(arrDatas, n);
+
+    for i := 0 to n - 1 do
       begin
-{$IFDEF DEBUG_LOG}
-        connector.WriteToLog('<< ' + msg_sending);
-{$ENDIF}
-        MSG_TRYS := 1;
-        msg_sending := '';
-        unformated_msg_sending := '';
-        inc(cntrMsgOut);
+        l := pos(DATA_SEPARATOR, msg);
+        arrDatas[i] := LeftStr(msg, l - 1);
+        msg := RightStr(msg, length(msg) - length(DATA_SEPARATOR) - l + 1);
       end;
-    ACKRESULT_FAILED:
-      begin
-{$IFDEF DEBUG_LOG}
-        connector.WriteToLog('XX ' + msg_sending);
-{$ENDIF}
-        inc(MSG_TRYS);
-        if MSG_TRYS <= MAX_MSG_TRYS then
-          begin
-            msg_buf := unformated_msg_sending + msg_buf;
-            connector.sendTimer.Enabled := TRUE;
-          end
-        else
-          connector._handler(ceError); // все попытки отправить сообщение провалились - выход из пр.
-      end;
+
+    _plugin.ConnectorHandler(ceData, arrDatas);
+
+    for i := Low(arrDatas) to High(arrDatas) do
+      arrDatas[i] := '';
+    SetLength(arrDatas, 0);
   end;
+
+var
+  lstId, cntrMsg: integer;
+begin { TConnector.FFilterMsg }
+  if not Connected then
+    begin
+   // if (msg = MSG_INVITATION) or (msg = MSG_RESPOND) then
+      if (msg = MSG_INVITATION) then
+        begin
+       // if msg = MSG_INVITATION then
+       //   FSendMessage(MSG_RESPOND);
+          FSendSystemData(MSG_INVITATION);
+          if (_bMultiSession) then
+            FSendSystemData(FFormatMsg(CMD_CONTACT_LIST_ID + ' ' + IntToStr(_lstId)));
+          _connected := TRUE;
+          _plugin.ConnectorHandler(ceConnected);
+          Result := TRUE;
+        end
+      else
+        Result := FALSE;
+    end
+  else // Connected
+    begin
+      if _msg_sending <> '' then
+        begin
+          _msg_sending := '';
+          _unformated_msg_sending := '';
+          inc(_cntrMsgOut);
+        end;
+      if FDeformatMsg(msg, lstId, cntrMsg) and ((_contactLstId < 0) or (lstId = _lstId)) then
+        begin
+          Result := TRUE;
+
+          if cntrMsg > _cntrMsgIn then
+            begin
+              inc(_cntrMsgIn);
+              if (cntrMsg > _cntrMsgIn) then
+                begin
+                  _plugin.ConnectorHandler(ceError); // пакет исчез
+                  exit;
+                end;
+            end
+          else
+            exit; // пропуск пакетов с более низкими номерами
+
+          if LeftStr(msg, length(CMD_CONTACT_LIST_ID)) = CMD_CONTACT_LIST_ID then
+            begin
+              msg := RightStr(msg, length(msg) - length(CMD_CONTACT_LIST_ID) - 1);
+              TryStrToInt(msg, _contactLstId);
+            end
+          else
+          if msg = CMD_CLOSE then
+            begin
+              _plugin.ConnectorHandler(ceDisconnected);
+              _connected := FALSE;
+              _opened := FALSE;
+            end
+          else
+            NReturnData(msg);
+        end
+      else
+        Result := FALSE;
+    end;
 end;
+*)
+
+(*
+function TConnector.FNotifySender(const vMessage: string): boolean;
+begin
+  Result := (_msg_sending = vMessage);
+
+  if Result then
+    begin
+      if Connected and (_msg_sending <> MSG_INVITATION) then
+        begin
+{$IFDEF DEBUG_LOG}
+          WriteToLog('<< ' + msg_sending);
+{$ENDIF}
+          _unformated_msg_sending := '';
+          inc(_cntrMsgOut);
+        end;
+      _msg_sending := '';
+    end;
+end;
+*)
+
+procedure TConnector.FNotifySender;
+begin
+  if Connected and (_msg_sending <> MSG_INVITATION) then
+    begin
+{$IFDEF DEBUG_LOG}
+      WriteToLog('<< ' + _msg_sending);
+{$ENDIF}
+      _unformated_msg_sending := '';
+      inc(_cntrMsgOut);
+    end;
+  _msg_sending := '';
+end;
+
+
+// форматирование исходящих сообщений
+function TConnector.FFormatMsg(const msg: string): string;
+var
+  contactLstIdStr: string;
+begin
+  if _contactLstId >= 0 then
+    contactLstIdStr := PROMPT_SEPARATOR + IntToStr(_contactLstId)
+  else // -1
+    contactLstIdStr := '';
+  Result := PROMPT_HEAD + contactLstIdStr + PROMPT_SEPARATOR + IntToStr(_cntrMsgOut) + PROMPT_TAIL + msg;
+{$IFDEF DEBUG_LOG}
+  WriteToLog('TConnector.FFormatMsg: Result = ' + Result);
+{$ENDIF}
+end;
+
 
 procedure TConnector.Close;
 begin
-  if _connected then
+  if Connected then
     begin
-      msg_sending := FormatMsg(MSG_CLOSE);
-      hMsg := CallContactService(hCurrContact, PSS_MESSAGE, 0, LPARAM(PChar(msg_sending)));
-      sendTimer.Enabled := FALSE;
+      FSendSystemData(FFormatMsg(CMD_CLOSE));
+
       _connected := FALSE;
-      _handler(ceDisconnected);
+      _plugin.ConnectorHandler(ceDisconnected);
     end;
+
+  _sendTimer.Enabled := FALSE;
+  _opened := FALSE;
+
 {$IFDEF DEBUG_LOG}
   CloseLog;
 {$ENDIF}
 end;
 
 
-procedure TConnector.SendData(const d: string);
+function TConnector.Open(bMultiSession: boolean = TRUE): boolean;
+var
+  i: integer;
 begin
-  if d = MSG_CLOSE then
-    connector._handler(ceError)
-  else
+  Result := FALSE;
+
+  if (not g_bMultiSession) then
+    g_bMultiSession := bMultisession;
+
+  for i := 0 to connectorList.Count - 1 do
     begin
-      msg_buf := msg_buf + d;
-      sendTimer.Enabled := TRUE; // Отослать сообщение с некоторой оттяжкой -> всё одним пакетом
-    end; { if d = MSG_CLOSE }
+      if Assigned(connectorList[i]) and TConnector(connectorList[i]).Opened and
+        (TConnector(connectorList[i])._contactLstId < 0) then
+        exit;
+    end;
+
+  _cntrMsgIn := 0;
+  _cntrMsgOut := 1;
+  _msg_sending := '';
+  _unformated_msg_sending := '';
+  _msg_buf := '';
+  _contactLstId := -1;
+  _opened := TRUE;
+
+  FSendSystemData(MSG_INVITATION);
+
+  Result := TRUE;
 end;
 
 
-class function TConnector.Create(hContact: THandle; h: TConnectorHandler): TConnector;
+function TConnector.SendData(const d: string): boolean;
 begin
-  if CONNECTOR_INSTANCES > 0 then
-    raise Exception.Create('No more than 1 instance of TConnector is possible!'); // ***
-  if connector = nil then
+  Result := FALSE;
+  if (d = '') or
+     (length(_msg_buf) + length(d) + length(DATA_SEPARATOR) > msgBufferSize) or
+     (LeftStr(d, length(CMD_CLOSE)) = CMD_CLOSE) or
+     (LeftStr(d, length(CMD_CONTACT_LIST_ID)) = CMD_CONTACT_LIST_ID) or
+     (pos(DATA_SEPARATOR, d) > 0) then
+    exit
+  else
     begin
-      connector := inherited Create(nil); // Owner - ?
-      connector._handler := h; // ***
-      // TODO: добавить connector в список
-      hFilterMsg := CreateProtoServiceFunction(M_CHESS4NET, PSR_MESSAGE, FilterMsg);
-      if CallService(MS_PROTO_ISPROTOONCONTACT, hContact,
-                                       LPARAM(PChar(M_CHESS4NET))) = 0 then
-        CallService(MS_PROTO_ADDTOCONTACT, hContact, LPARAM(PChar(M_CHESS4NET)));
-      hNotifySender := HookEvent(ME_PROTO_ACK, NotifySender);
-	  CallContactService(hContact, PSS_MESSAGE, 0, LPARAM(PChar(MSG_INVITATION)));
+      _msg_buf := _msg_buf + d + DATA_SEPARATOR;
+      _sendTimer.Enabled := TRUE; // Отослать сообщение с некоторой оттяжкой -> всё одним пакетом
     end;
-    
-  hCurrContact := hContact; // ***
-  cntrMsgIn := 0;
-  cntrMsgOut := 1;
-  msg_sending := '';
-  unformated_msg_sending := '';
-  msg_buf := '';
-  inc(CONNECTOR_INSTANCES);
-  result := connector;
+  Result := TRUE;  
+end;
+
+
+function FilterMsg(wParam: WPARAM; lParam_: LPARAM): int; cdecl;
+var
+  msg: string;
+  hContact: THandle;
+  connector: TConnector;
+  proceeded: boolean;
+begin
+  msg := string(PPROTORECVEVENT(PCCSDATA(lParam_).lParam).szMessage);
+  hContact := PCCSDATA(lParam_).hContact;
+
+  proceeded := FALSE;
+
+  if Assigned(connectorList) then
+    begin
+      connector := connectorList.GetFirstConnector(hContact);
+      while Assigned(connector) do
+        begin
+          if connector.Opened then
+            proceeded := (connector.FFilterMsg(msg) or proceeded);
+          connector := connectorList.GetNextConnector;
+        end;
+    end;
+
+  if proceeded then
+    Result := 0
+  else
+    Result := CallService(MS_PROTO_CHAINRECV, wParam, lParam_);
+end;
+
+
+function NotifySender(wParam: WPARAM; lParam_: LPARAM): int; cdecl;
+const
+  MSG_TRYS: integer = 1;
+var
+  connector: TConnector;
+  hContact: THandle;
+begin
+  Result := 0;
+  hContact := PACKDATA(lParam_).hContact;
+
+  if (PACKDATA(lParam_).type_ <> ACKTYPE_MESSAGE) then
+    exit;
+
+  case PACKDATA(lParam_)^.result_ of
+    ACKRESULT_SUCCESS:
+      begin
+        MSG_TRYS := 1;
+
+        connector := connectorList.GetFirstConnector(hContact);
+        while Assigned(connector) do
+          begin
+            if connector._msg_sending <> '' then
+              connector.FNotifySender;
+            connector := connectorList.GetNextConnector;
+         end;
+      end;
+
+    ACKRESULT_FAILED:
+      begin
+        inc(MSG_TRYS);
+        if MSG_TRYS <= MAX_MSG_TRYS then
+          begin
+            connector := connectorList.GetFirstConnector(hContact);
+            while Assigned(connector) do
+              begin
+                if connector._msg_sending <> '' then
+                  with connector do
+                    begin
+                      _msg_buf := _unformated_msg_sending + _msg_buf;
+                      _sendTimer.Enabled := TRUE;
+                    end;
+                connector := connectorList.GetNextConnector;
+              end;
+          end
+        else
+          begin
+            connector := connectorList.GetFirstConnector(hContact);
+            while Assigned(connector) do
+              begin
+                if connector._msg_sending <> '' then
+                  connector._plugin.ConnectorHandler(ceError);
+                connector := connectorList.GetNextConnector;
+              end;
+          end; { if MSG_TRYS <= MAX_MSG_TRYS }
+      end; { ACKRESULT_FAILED }
+  end; { case PACKDATA }
+end;
+
+
+constructor TConnector.Create(hContact: THandle);
+var
+  connector: TConnector;
+begin
+//  inherited Create;
+  _sendTimer := TTimer.Create(nil);
+  with _sendTimer do
+  begin
+    Enabled := FALSE;
+    Interval := 100;
+    OnTimer := FsendTimerTimer;
+  end;
+
+  _sendSystemTimer := TTimer.Create(nil);
+  with _sendSystemTimer do
+  begin
+    Enabled := FALSE;
+    Interval := 50;
+    OnTimer := FsendSystemTimerTimer;
+  end;
+
+  _hContact := hContact;
+  _systemDataList := TStringList.Create;
+
+  if not Assigned(connectorList) then
+    connectorList := TConnectorList.Create;
+
+  connector := connectorList.GetFirstConnector(_hContact);
+  if Assigned(connector) then
+    begin
+      _hFilterMsg := connector._hFilterMsg;
+      _hNotifySender := connector._hNotifySender;
+    end
+  else
+    begin
+      _hFilterMsg := CreateProtoServiceFunction(PChar(PLUGIN_NAME), PSR_MESSAGE, FilterMsg);
+      if CallService(MS_PROTO_ISPROTOONCONTACT, _hContact, LPARAM(PChar(PLUGIN_NAME))) = 0 then
+        CallService(MS_PROTO_ADDTOCONTACT, _hContact, LPARAM(PChar(PLUGIN_NAME)));
+      _hNotifySender := HookEvent(ME_PROTO_ACK, NotifySender);
+    end;
+
+  connectorList.AddConnector(self);
 
 {$IFDEF DEBUG_LOG}
-  connector.InitLog;
+  InitLog;
 {$ENDIF}
 end;
 
 
-procedure TConnector.Free;
+destructor TConnector.Destroy;
 begin
-  try
-    Close;
-    dec(CONNECTOR_INSTANCES);
-    // TODO: убрать connector из хэша
-    if CONNECTOR_INSTANCES = 0 then
-      begin
-        if hNotifySender <> 0 then UnhookEvent(hNotifySender);
-        if CallService(MS_PROTO_ISPROTOONCONTACT, hCurrContact,
-                                       LPARAM(PChar(M_CHESS4NET))) <> 0 then
-          CallService(MS_PROTO_REMOVEFROMCONTACT, hCurrContact, LPARAM(PChar(M_CHESS4NET))); // ***
-        PluginLink.DestroyServiceFunction(hFilterMsg);
-        inherited;
-        connector := nil;
-      end;
-  except
-    on Exception do ; // ловля для выхода из осн. прошраммы при открытом плагине
-  end;
+  if Connected then
+    while (not FSendMessage(FFormatMsg(CMD_CLOSE))) do
+      Sleep(1);
+
+  _systemDataList.Free;
+
+  connectorList.RemoveConnector(self);
+  if (connectorList.Count = 0) then
+    g_bMultiSession := FALSE;
+
+  if not Assigned(connectorList.GetFirstConnector(_hContact)) then
+    begin
+      if _hNotifySender <> 0 then
+        UnhookEvent(_hNotifySender);
+      if CallService(MS_PROTO_ISPROTOONCONTACT, _hContact, LPARAM(PChar(PLUGIN_NAME))) <> 0 then
+        CallService(MS_PROTO_REMOVEFROMCONTACT, _hContact, LPARAM(PChar(PLUGIN_NAME)));
+      PluginLink.DestroyServiceFunction(_hFilterMsg);
+    end;
+
+  if connectorList.Count = 0 then
+    FreeAndNil(connectorList);
+
+  _sendSystemTimer.Free;
+  _sendTimer.Free;
+
+  inherited;
 end;
 
 {$IFDEF DEBUG_LOG}
 procedure TConnector.InitLog;
 begin
-  AssignFile(_logFile, Chess4NetPath + 'Chess4Net_CONNECTORLOG.txt');
+  AssignFile(_logFile, MirandaPluginPath + 'Chess4Net_CONNECTORLOG.txt');
   Append(_logFile);
   if IOResult <> 0 then
     begin
       Rewrite(_logFile);
       if IOResult <> 0 then
         begin
-          AssignFile(_logFile, Chess4NetPath + 'Chess4Net_CONNECTORLOG~.txt');
+          AssignFile(_logFile, MirandaPluginPath + 'Chess4Net_CONNECTORLOG~.txt');
           Append(_logFile);
           if IOResult <> 0 then Rewrite(_logFile);
         end;
@@ -301,33 +723,165 @@ begin
 end;
 {$ENDIF}
 
-procedure TConnector.sendTimerTimer(Sender: TObject);
+procedure TConnector.FsendTimerTimer(Sender: TObject);
 const
   RESEND_COUNT : integer = 0;
 begin
-  if msg_sending = '' then
+  if (_systemDataList.Count > 0) then
+    exit; // System data goes first
+
+  if _msg_sending = '' then
     begin
-      sendTimer.Enabled := FALSE;
-      if msg_buf <> '' then
+      _sendTimer.Enabled := FALSE;
+      if _msg_buf <> '' then
         begin
-          unformated_msg_sending := msg_buf;
-          msg_sending := FormatMsg(msg_buf);
-          msg_buf := '';
-          hMsg := CallContactService(hCurrContact, PSS_MESSAGE, 0, LPARAM(PChar(msg_sending)));
+          _unformated_msg_sending := _msg_buf;
+          _msg_sending := FFormatMsg(_msg_buf);
+          _msg_buf := '';
+
+          _sendTimer.Enabled := (not FSendMessage(_msg_sending));
         end;
     end
   else
     begin
 {$IFDEF DEBUG_LOG}
-      WriteToLog('resend: ' + msg_sending);
+      WriteToLog('resend: ' + _msg_sending);
 {$ENDIF}
       inc(RESEND_COUNT);
       if RESEND_COUNT = MAX_RESEND_TRYS then
         begin
           RESEND_COUNT := 0;
-          hMsg := CallContactService(hCurrContact, PSS_MESSAGE, 0, LPARAM(PChar(msg_sending)));
+          FSendMessage(_msg_sending);
         end;
     end;
+end;
+
+
+procedure TConnector.SetPlugin(plugin: IConnectorable);
+begin
+  _plugin := plugin;
+end;
+
+
+function TConnector.FGetOwnerNick: string;
+begin
+  Result := PChar(CallService(MS_CLIST_GETCONTACTDISPLAYNAME, 0, 0));
+end;
+
+
+function TConnector.FGetContactNick: string;
+begin
+  Result := PChar(CallService(MS_CLIST_GETCONTACTDISPLAYNAME, _hContact, 0));
+end;
+
+
+procedure InitConnectorGlobals(const invitationStr, promtHeadStr, dataSeparator: string; maxMsgSize: integer = 256);
+begin
+  MSG_INVITATION := invitationStr;
+  PROMPT_HEAD := promtHeadStr;
+  DATA_SEPARATOR := dataSeparator;
+  msgBufferSize := maxMsgSize;
+end;
+
+{---------------------------- TConnectorList ---------------------------------}
+
+procedure TConnectorList.AddConnector(Connector: TConnector);
+var
+  i: integer;
+begin
+  _LastAddedConnector := Connector;
+  
+  for i := 0 to Count - 1 do
+    begin
+      if not Assigned(Items[i]) then
+        begin
+          Connector._lstId := i;
+          Items[i] := Connector;
+          exit;
+        end;
+    end; {  for }
+  Add(Connector);
+  Connector._lstId := Count - 1;
+end;
+
+
+procedure TConnectorList.RemoveConnector(Connector: TConnector);
+begin
+  Items[Connector._lstId] := nil;
+  while ((Count > 0) and (not Assigned(Items[Count - 1]))) do
+    Delete(Count - 1);
+end;
+
+
+function TConnectorList.GetFirstConnector(hContact: THandle): TConnector;
+begin
+  _hContact := hContact;
+
+  _iterator := -1;
+  Result := GetNextConnector;
+end;
+
+
+function TConnectorList.GetNextConnector: TConnector;
+begin
+  Result := nil;
+
+  while (_iterator < (Count - 1)) do
+    begin
+      inc(_iterator);
+      if (Assigned(Items[_iterator])) and
+         (_hContact = TConnector(Items[_iterator])._hContact) then
+        begin
+          Result := TConnector(Items[_iterator]);
+          exit;
+        end;
+    end;
+end;
+
+
+procedure TConnector.FsendSystemTimerTimer(Sender: TObject);
+begin
+  if _systemDataList.Count = 0 then
+    begin
+      _sendSystemTimer.Enabled := FALSE;
+      exit;
+    end;
+
+  _msg_sending := _systemDataList[0];
+  if FSendMessage(_msg_sending) then
+    _systemDataList.Delete(0);
+  // else: try to resend
+end;
+
+
+procedure TConnector.FSendSystemData(sd: string);
+begin
+  if (sd <> MSG_INVITATION) and (sd <> CMD_CLOSE) then
+    sd := sd + DATA_SEPARATOR;
+  _systemDataList.Add(sd);
+  _sendSystemTimer.Enabled := TRUE;
+end;
+
+
+function TConnector.FGetOwnerID: integer;
+begin
+  Result := OWNER_ID;
+end;
+
+
+procedure TConnector.FSetMultiSession(bValue: boolean);
+begin
+  if ((not g_bMultiSession) and bValue) then
+  begin
+    FSendSystemData(FFormatMsg(CMD_CONTACT_LIST_ID + ' ' + IntToStr(_lstId)));
+    g_bMultiSession := TRUE;
+  end;
+end;
+
+
+function TConnector.FGetMultiSession: boolean;
+begin
+  Result := g_bMultiSession;
 end;
 
 end.

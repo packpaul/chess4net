@@ -791,13 +791,15 @@ begin
   WritePrivateSettings;
   ExtBaseList.Free;
   Connector.Free;
-  ChessBoard.Release;
+//  ChessBoard.Release;
 end;
+
 
 procedure TManager.ExitActionExecute(Sender: TObject);
 begin
   Close;
 end;
+
 
 procedure TManager.OptionsActionExecute(Sender: TObject);
 var
@@ -1097,18 +1099,19 @@ procedure TManager.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
   if MessageDlg('Do you want to exit?',
                 mtConfirmation, [mbYes, mbNo]) = mrYes then
-    begin
+  begin
 {$IFDEF GAME_LOG}
-      if ChessBoard.Mode = mGame then
-		    begin
-          WriteToGameLog('*');
-          FlushGameLog;
-		    end;
+    if ChessBoard.Mode = mGame then
+      begin
+        WriteToGameLog('*');
+        FlushGameLog;
+      end;
 {$ENDIF}
-      CloseConnector;
-      Release;
-    end
-  else Action:= caNone;
+    CloseConnector;
+    Release;
+  end
+  else
+    Action:= caNone;
 end;
 
 
@@ -1545,6 +1548,7 @@ procedure TManager.ContinueGame;
 begin
   ChessBoard.SwitchClock(ChessBoard.PositionColor);
 end;
+
 
 initialization
   Chess4NetPath := ExtractFileDir(Application.ExeName) + '\';
