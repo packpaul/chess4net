@@ -15,6 +15,7 @@ type
     AnimateLabel: TLabel;
     BoxPanel: TPanel;
     HilightLastMoveBox: TCheckBox;
+    FlashIncomingMoveBox: TCheckBox;
     CoordinatesBox: TCheckBox;
     StayOnTopBox: TCheckBox;
     ExtraExitBox: TCheckBox;

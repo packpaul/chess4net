@@ -4,7 +4,7 @@ object LookFeelOptionsForm: TLookFeelOptionsForm
   BorderIcons = [biSystemMenu]
   BorderStyle = bsDialog
   Caption = 'Look & Feel Options'
-  ClientHeight = 164
+  ClientHeight = 185
   ClientWidth = 280
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -61,41 +61,49 @@ object LookFeelOptionsForm: TLookFeelOptionsForm
     Left = 8
     Top = 40
     Width = 161
-    Height = 105
+    Height = 129
     BevelInner = bvRaised
     BevelOuter = bvLowered
     TabOrder = 1
     object HilightLastMoveBox: TCheckBox
       Left = 8
       Top = 8
-      Width = 113
+      Width = 145
       Height = 17
       Caption = 'Highlight Last Move'
       TabOrder = 0
     end
     object CoordinatesBox: TCheckBox
       Left = 8
-      Top = 32
-      Width = 113
+      Top = 56
+      Width = 145
       Height = 17
       Caption = 'Show Coordinates'
       TabOrder = 1
     end
     object StayOnTopBox: TCheckBox
       Left = 8
-      Top = 56
-      Width = 129
+      Top = 80
+      Width = 145
       Height = 17
       Caption = 'Stay Always on Top'
       TabOrder = 2
     end
     object ExtraExitBox: TCheckBox
       Left = 8
-      Top = 80
-      Width = 129
+      Top = 104
+      Width = 145
       Height = 17
       Caption = 'Extra Exit on ESC'
       TabOrder = 3
+    end
+    object FlashIncomingMoveBox: TCheckBox
+      Left = 8
+      Top = 32
+      Width = 145
+      Height = 17
+      Caption = 'Flash on incoming move'
+      TabOrder = 4
     end
   end
 end

@@ -107,6 +107,7 @@ type
     player_color: TFigureColor; // цвет игрока клиента
     dragged_moved: boolean; // индикатор включения перетаскивания
     last_hilight: boolean; // флаг подсветки последнего хода
+    m_bFlash_move: boolean; // flag for flashing on icoming move
     coord_show: boolean; // флаг координат
 
     auto_flag: boolean; // индикатор автофлага
@@ -153,6 +154,7 @@ type
     procedure SetStayOnTop(onTop: boolean);
     procedure CancelAnimationDragging; // отмена анимации и перетаскивания для удаления грязи при прорисовки
     procedure SetAutoFlag(auto_flag: boolean);
+    procedure FFlashWindow;
 
     procedure WMMoving(var Msg: TWMMoving); message WM_MOVING;
     procedure WMSizing(var Msg: TMessage); message WM_SIZING;
@@ -186,6 +188,7 @@ type
     procedure StopClock;
     property flipped: boolean read _flipped write SetFlipped;
     property LastMoveHilighted: boolean read last_hilight write SetHilightLastMove;
+    property FlashOnMove: boolean read m_bFlash_move write m_bFlash_move;
     property StayOnTop: boolean read GetStayOnTop write SetStayOnTop;
     property AutoFlag: boolean read auto_flag write SetAutoFlag;
 
@@ -1254,6 +1257,8 @@ l2:
     begin
       Animate(i,j);
       SwitchClock(PositionColor);
+      if (m_bFlash_move and (mode_var = mGame)) then
+        FFlashWindow;
     end;
 end;
 
@@ -2045,6 +2050,27 @@ begin
     WhiteLabel.Caption := WHITE_SHORT_LABEL;
     BlackLabel.Caption := BLACK_SHORT_LABEL;
   end;
+end;
+
+
+procedure TChessBoard.FFlashWindow;
+var
+  flushWindowInfo: TFlashWInfo;
+begin
+ // Flash with taskbar
+ flushWindowInfo.cbSize := SizeOf(flushWindowInfo);
+ flushWindowInfo.hwnd := Application.Handle;
+ flushWindowInfo.dwflags := FLASHW_TRAY; // FLASHW_ALL; //FLASHW_TRAY;
+ flushWindowInfo.ucount := 3; // Flash times
+ flushWindowInfo.dwtimeout := 0; // speed in msec, 0 - frequency of cursor flashing
+ FlashWindowEx(flushWindowInfo);
+
+ if self.Focused then
+   exit;
+ // Flash window
+ flushWindowInfo.hwnd := self.Handle; // handle of the flashing window
+ flushWindowInfo.dwflags := FLASHW_CAPTION; // FLASHW_TRAY; // FLASHW_ALL; //FLASHW_TRAY;
+ FlashWindowEx(flushWindowInfo);
 end;
 
 initialization

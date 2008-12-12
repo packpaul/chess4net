@@ -235,6 +235,7 @@ const
   COMMON_SECTION_PREFIX = 'Common';
   ANIMATION_KEY_NAME = 'Animation';
   HILIGHT_LAST_MOVE_KEY_NAME = 'HilightLastMove';
+  FLASH_ON_MOVE_NAME = 'FlashOnMove';
   SHOW_COORDINATES_KEY_NAME = 'ShowCoordinates';
   STAY_ON_TOP_KEY_NAME = 'StayOnTop';
   EXTRA_EXIT_KEY_NAME = 'ExtraExit';
@@ -953,8 +954,9 @@ begin
     begin
       AnimationComboBox.ItemIndex := ord(animation);
       HilightLastMoveBox.Checked := LastMoveHilighted;
+      FlashIncomingMoveBox.Checked := FlashOnMove;
       CoordinatesBox.Checked := CoordinatesShown;
-      StayOnTopBox.Checked := ChessBoard.StayOnTop;
+      StayOnTopBox.Checked := StayOnTop;
       ExtraExitBox.Checked := extra_exit;
     end;
   lookFeelOptionsForm.Show;
@@ -1369,6 +1371,7 @@ begin
         begin
           animation := TAnimation(AnimationComboBox.ItemIndex);
           LastMoveHilighted := HilightLastMoveBox.Checked;
+          FlashOnMove := FlashIncomingMoveBox.Checked;
           CoordinatesShown := CoordinatesBox.Checked;
           StayOnTop := StayOnTopBox.Checked;
           extra_exit := ExtraExitBox.Checked;
@@ -1532,6 +1535,7 @@ begin
   try
     ChessBoard.animation := TAnimation(iniFile.ReadInteger(PRIVATE_SECTION_NAME, ANIMATION_KEY_NAME, Ord(aQuick)));
     ChessBoard.LastMoveHilighted := iniFile.ReadBool(PRIVATE_SECTION_NAME, HILIGHT_LAST_MOVE_KEY_NAME, FALSE);
+    ChessBoard.FlashOnMove := iniFile.ReadBool(PRIVATE_SECTION_NAME, FLASH_ON_MOVE_NAME, FALSE);
     ChessBoard.CoordinatesShown := iniFile.ReadBool(PRIVATE_SECTION_NAME, SHOW_COORDINATES_KEY_NAME, TRUE);
     ChessBoard.StayOnTop := iniFile.ReadBool(PRIVATE_SECTION_NAME, STAY_ON_TOP_KEY_NAME, FALSE);
     extra_exit := iniFile.ReadBool(PRIVATE_SECTION_NAME, EXTRA_EXIT_KEY_NAME, FALSE);
@@ -1650,6 +1654,7 @@ begin
     // Запись личных настроек
     iniFile.WriteInteger(PRIVATE_SECTION_NAME, ANIMATION_KEY_NAME, Ord(ChessBoard.animation));
     iniFile.WriteBool(PRIVATE_SECTION_NAME, HILIGHT_LAST_MOVE_KEY_NAME, ChessBoard.LastMoveHilighted);
+    iniFile.WriteBool(PRIVATE_SECTION_NAME, FLASH_ON_MOVE_NAME, ChessBoard.FlashOnMove);
     iniFile.WriteBool(PRIVATE_SECTION_NAME, SHOW_COORDINATES_KEY_NAME, ChessBoard.CoordinatesShown);
     iniFile.WriteBool(PRIVATE_SECTION_NAME, STAY_ON_TOP_KEY_NAME, ChessBoard.StayOnTop);
     iniFile.WriteBool(PRIVATE_SECTION_NAME, EXTRA_EXIT_KEY_NAME, extra_exit);
