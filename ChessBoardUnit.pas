@@ -1929,13 +1929,17 @@ end;
 procedure TChessBoard.WMSizing(var Msg: TMessage);
 begin
   case Msg.WParam of
-    WMSZ_RIGHT, WMSZ_BOTTOMRIGHT:
+    WMSZ_RIGHT, WMSZ_LEFT, WMSZ_BOTTOMRIGHT, WMSZ_TOPLEFT:
       m_ResizingType := rtHoriz;
-    WMSZ_BOTTOM:
+    WMSZ_BOTTOM, WMSZ_TOP:
       m_ResizingType := rtVert;
   else
-    m_ResizingType := rtNo;
-  end;
+    begin
+      m_ResizingType := rtNo;
+      PRect(Msg.LParam).Left := Left;
+      PRect(Msg.LParam).Top := Top;
+    end;
+  end; { case }
 end;
 
 
