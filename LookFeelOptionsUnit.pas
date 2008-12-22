@@ -19,6 +19,7 @@ type
     CoordinatesBox: TCheckBox;
     StayOnTopBox: TCheckBox;
     ExtraExitBox: TCheckBox;
+    GameLogBox: TCheckBox;
   public
     class function GetModalID : TModalFormID; override;
   end;

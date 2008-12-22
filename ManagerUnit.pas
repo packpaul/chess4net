@@ -1109,7 +1109,8 @@ begin
       Action:= caNone;
     end
   else
-    Release;
+//    Release;    
+    Action := caFree;
 end;
 
 
