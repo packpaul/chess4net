@@ -152,13 +152,11 @@ begin
   Result := FALSE;
   if LeftStr(msg, length(PROMPT_HEAD + PROMPT_SEPARATOR)) = (PROMPT_HEAD + PROMPT_SEPARATOR) then
     begin
-{$IFDEF DEBUG_LOG}
-      WriteToLog('>> ' + msg);
-{$ENDIF}
       msg := RightStr(msg, length(msg) - length(PROMPT_HEAD + PROMPT_SEPARATOR));
 
       // contactListId
-      if _contactLstId >= 0 then
+//      if (_contactLstId >= 0) then
+      if (g_bMultiSession) then
       begin
         l := pos(PROMPT_SEPARATOR, msg);
         if (l > 0) then
@@ -260,7 +258,10 @@ function TConnector.FFilterMsg(msg: string): boolean;
 var
   lstId, cntrMsg: integer;
 begin { TConnector.FFilterMsg }
-  if not Connected then
+{$IFDEF DEBUG_LOG}
+  WriteToLog('>> ' + msg);
+{$ENDIF}
+  if (not Connected) then
     begin
    // if (msg = MSG_INVITATION) or (msg = MSG_RESPOND) then
       if (msg = MSG_INVITATION) then
@@ -279,13 +280,16 @@ begin { TConnector.FFilterMsg }
     end
   else // Connected
     begin
-      if _msg_sending <> '' then
-        begin
-          _msg_sending := '';
-          _unformated_msg_sending := '';
-          inc(_cntrMsgOut);
-        end;
-      if FDeformatMsg(msg, lstId, cntrMsg) and ((_contactLstId < 0) or (lstId = _lstId)) then
+{
+      if (_msg_sending <> '') then
+      begin
+        _msg_sending := '';
+        _unformated_msg_sending := '';
+        inc(_cntrMsgOut);
+      end;
+}
+
+      if FDeformatMsg(msg, lstId, cntrMsg) and ((not g_bMultisession) or (lstId = _lstId)) then
         begin
           Result := TRUE;
 
@@ -308,133 +312,17 @@ begin { TConnector.FFilterMsg }
     end;
 end;
 
-(*
-function TConnector.FFilterMsg(msg: string): boolean;
-
-  procedure NReturnData(msg: string);
-  var
-    n, l, i: integer;
-    arrDatas: TStringDynArray;
-  begin
-    n := -1;
-    l := 1;
-    repeat
-      inc(n);
-      l := PosEx(DATA_SEPARATOR, msg, l);
-      inc(l, length(DATA_SEPARATOR));
-    until (l = length(DATA_SEPARATOR));
-
-    SetLength(arrDatas, n);
-
-    for i := 0 to n - 1 do
-      begin
-        l := pos(DATA_SEPARATOR, msg);
-        arrDatas[i] := LeftStr(msg, l - 1);
-        msg := RightStr(msg, length(msg) - length(DATA_SEPARATOR) - l + 1);
-      end;
-
-    _plugin.ConnectorHandler(ceData, arrDatas);
-
-    for i := Low(arrDatas) to High(arrDatas) do
-      arrDatas[i] := '';
-    SetLength(arrDatas, 0);
-  end;
-
-var
-  lstId, cntrMsg: integer;
-begin { TConnector.FFilterMsg }
-  if not Connected then
-    begin
-   // if (msg = MSG_INVITATION) or (msg = MSG_RESPOND) then
-      if (msg = MSG_INVITATION) then
-        begin
-       // if msg = MSG_INVITATION then
-       //   FSendMessage(MSG_RESPOND);
-          FSendSystemData(MSG_INVITATION);
-          if (_bMultiSession) then
-            FSendSystemData(FFormatMsg(CMD_CONTACT_LIST_ID + ' ' + IntToStr(_lstId)));
-          _connected := TRUE;
-          _plugin.ConnectorHandler(ceConnected);
-          Result := TRUE;
-        end
-      else
-        Result := FALSE;
-    end
-  else // Connected
-    begin
-      if _msg_sending <> '' then
-        begin
-          _msg_sending := '';
-          _unformated_msg_sending := '';
-          inc(_cntrMsgOut);
-        end;
-      if FDeformatMsg(msg, lstId, cntrMsg) and ((_contactLstId < 0) or (lstId = _lstId)) then
-        begin
-          Result := TRUE;
-
-          if cntrMsg > _cntrMsgIn then
-            begin
-              inc(_cntrMsgIn);
-              if (cntrMsg > _cntrMsgIn) then
-                begin
-                  _plugin.ConnectorHandler(ceError); // пакет исчез
-                  exit;
-                end;
-            end
-          else
-            exit; // пропуск пакетов с более низкими номерами
-
-          if LeftStr(msg, length(CMD_CONTACT_LIST_ID)) = CMD_CONTACT_LIST_ID then
-            begin
-              msg := RightStr(msg, length(msg) - length(CMD_CONTACT_LIST_ID) - 1);
-              TryStrToInt(msg, _contactLstId);
-            end
-          else
-          if msg = CMD_CLOSE then
-            begin
-              _plugin.ConnectorHandler(ceDisconnected);
-              _connected := FALSE;
-              _opened := FALSE;
-            end
-          else
-            NReturnData(msg);
-        end
-      else
-        Result := FALSE;
-    end;
-end;
-*)
-
-(*
-function TConnector.FNotifySender(const vMessage: string): boolean;
-begin
-  Result := (_msg_sending = vMessage);
-
-  if Result then
-    begin
-      if Connected and (_msg_sending <> MSG_INVITATION) then
-        begin
-{$IFDEF DEBUG_LOG}
-          WriteToLog('<< ' + msg_sending);
-{$ENDIF}
-          _unformated_msg_sending := '';
-          inc(_cntrMsgOut);
-        end;
-      _msg_sending := '';
-    end;
-end;
-*)
 
 procedure TConnector.FNotifySender;
 begin
-  if Connected and (_msg_sending <> MSG_INVITATION) then
-    begin
 {$IFDEF DEBUG_LOG}
-      WriteToLog('<< ' + _msg_sending);
+  WriteToLog('<< ' + _msg_sending);
 {$ENDIF}
-      _unformated_msg_sending := '';
-      inc(_cntrMsgOut);
-    end;
+  if (Connected and (_msg_sending <> MSG_INVITATION)) then
+  begin
+    _unformated_msg_sending := '';
+    inc(_cntrMsgOut);
+  end;
   _msg_sending := '';
 end;
 
@@ -444,14 +332,11 @@ function TConnector.FFormatMsg(const msg: string): string;
 var
   contactLstIdStr: string;
 begin
-  if _contactLstId >= 0 then
+  if (_contactLstId >= 0) then
     contactLstIdStr := PROMPT_SEPARATOR + IntToStr(_contactLstId)
   else // -1
     contactLstIdStr := '';
   Result := PROMPT_HEAD + contactLstIdStr + PROMPT_SEPARATOR + IntToStr(_cntrMsgOut) + PROMPT_TAIL + msg;
-{$IFDEF DEBUG_LOG}
-  WriteToLog('TConnector.FFormatMsg: Result = ' + Result);
-{$ENDIF}
 end;
 
 
@@ -687,6 +572,10 @@ begin
   _sendSystemTimer.Free;
   _sendTimer.Free;
 
+{$IFDEF DEBUG_LOG}
+  CloseLog;
+{$ENDIF}
+
   inherited;
 end;
 
@@ -856,7 +745,7 @@ end;
 
 procedure TConnector.FSendSystemData(sd: string);
 begin
-  if (sd <> MSG_INVITATION) and (sd <> CMD_CLOSE) then
+  if ((sd <> MSG_INVITATION) and (sd <> CMD_CLOSE)) then
     sd := sd + DATA_SEPARATOR;
   _systemDataList.Add(sd);
   _sendSystemTimer.Enabled := TRUE;
