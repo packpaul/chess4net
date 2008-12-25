@@ -213,7 +213,9 @@ begin
       Left:= (Screen.Width - Width) div 2;
       Top:= (Screen.Height - Height) div 2;
       Show;
+
       SetPrivateSettings;
+
       MainPopupMenu.Popup(Left + Width div 2, Top + Height div 2);
     end;
 end;
@@ -261,7 +263,8 @@ begin
         if (ChessBoard.PositionColor = Black) or not move_done then
           begin
             WriteToGameLog(' ' + IntToStr(ChessBoard.NMoveDone) + '.');
-            if ChessBoard.PositionColor = White then WriteToGameLog(' ...');
+            if ChessBoard.PositionColor = White then
+              WriteToGameLog(' ...');
           end;
         WriteToGameLog(' ' + PString(d1)^);
 {$ENDIF}
@@ -279,19 +282,21 @@ begin
             else WriteToGameLog(#13#10 + '1 - 0');
           FlushGameLog;
 {$ENDIF}
-          if PositionColor = White then s := 'White'
-            else s := 'Black';
+          if PositionColor = White then
+            s := 'White'
+          else
+            s := 'Black';
           if ((PlayerColor <> White) and (PositionColor = White)) or
              ((PlayerColor <> Black) and (PositionColor = Black)) then
-            begin
-              MessageDlg(s + ' is checkmated. You win.', mtCustom, [mbOK]);
-              ChessBoard.WriteGameToBase(grWin);
-            end
+          begin
+            MessageDlg(s + ' is checkmated. You win.', mtCustom, [mbOK]);
+            ChessBoard.WriteGameToBase(grWin);
+          end
           else
-            begin
-              MessageDlg(s + ' is checkmated. You loose.', mtCustom, [mbOK]);
-              ChessBoard.WriteGameToBase(grLost);
-            end;
+          begin
+            MessageDlg(s + ' is checkmated. You loose.', mtCustom, [mbOK]);
+            ChessBoard.WriteGameToBase(grLost);
+          end;
         end;
     cbeStaleMate:
       begin
@@ -772,7 +777,8 @@ l:
                     if (PositionColor = Black) or not move_done then
                       begin
                         WriteToGameLog(' ' + IntToStr(NMoveDone) + '.');
-                        if PositionColor = White then WriteToGameLog(' ...');
+                        if PositionColor = White then
+                          WriteToGameLog(' ...');
                       end;
                     WriteToGameLog(' ' + sl);
 {$ENDIF}
@@ -821,7 +827,7 @@ begin
 
       animation := TAnimation(AnimationComboBox.ItemIndex);
       LastMoveHilighted := HilightLastMoveBox.Checked;
-      FlashOnMove := FlashIncomingMoveBox.Checked;      
+      FlashOnMove := FlashIncomingMoveBox.Checked;
       CoordinatesShown:= CoordinatesBox.Checked;
       StayOnTop := StayOnTopBox.Checked;
       extra_exit := ExtraExitBox.Checked;
@@ -1340,7 +1346,8 @@ begin
     ipDomainPortServer := iniFile.ReadString(PRIVATE_SECTION_NAME, IP_DOMAIN_PORT_SERVER_KEY_NAME, DEFAULT_IPDOMAIN_PORT_SERVER);
     ChessBoard.animation := TAnimation(iniFile.ReadInteger(PRIVATE_SECTION_NAME, ANIMATION_KEY_NAME, Ord(aQuick)));
     ChessBoard.LastMoveHilighted := iniFile.ReadBool(PRIVATE_SECTION_NAME, HILIGHT_LAST_MOVE_KEY_NAME, FALSE);
-    ChessBoard.FlashOnMove := iniFile.ReadBool(PRIVATE_SECTION_NAME, FLASH_ON_MOVE_NAME, FALSE);
+    ChessBoard.FlashOnMove := iniFile.ReadBool(PRIVATE_SECTION_NAME, FLASH_ON_MOVE_NAME
+    , FALSE);
     ChessBoard.CoordinatesShown := iniFile.ReadBool(PRIVATE_SECTION_NAME, SHOW_COORDINATES_KEY_NAME, TRUE);
     ChessBoard.StayOnTop := iniFile.ReadBool(PRIVATE_SECTION_NAME, STAY_ON_TOP_KEY_NAME, FALSE);
     extra_exit := iniFile.ReadBool(PRIVATE_SECTION_NAME, EXTRA_EXIT_KEY_NAME, FALSE);

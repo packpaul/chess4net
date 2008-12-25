@@ -273,6 +273,7 @@ begin
   try
     ChessBoard := TPosBaseChessBoard.Create(self, ChessBoardHandler, Chess4NetPath + USR_BASE_NAME);
     dialogs := TDialogs.Create(ChessBoard, DialogFormHandler);
+
     with ChessBoard do
       begin
         CB2View;

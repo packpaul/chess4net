@@ -1,9 +1,15 @@
 program Chess4Net;
 
+(*
+{$IFDEF FASTMM4}
+  FastMM4,
+{$ENDIF}
+*)
+
 uses
 {$IFDEF FASTMM4}
   FastMM4,
-{$ENDIF}  
+{$ENDIF}
   Forms,
   ConnectionUnit in '..\ConnectionUnit.pas' {ConnectionForm},
   ConnectingUnit in '..\ConnectingUnit.pas' {ConnectingForm},

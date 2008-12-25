@@ -21,7 +21,8 @@ type
   TMode = (mView, mGame, mEdit); // состояние доски
   TChessBoardEvent =
     (cbeMoved, cbeMate, cbeStaleMate, cbeInsuffMaterial, cbeKeyPressed,
-     cbeClockSwitched, cbeTimeOut, cbeExit, cbeMenu, cbeActivate, cbeFormMoving, cbeRefreshAll); // возможно добавление новых событий
+     cbeClockSwitched, cbeTimeOut, cbeExit, cbeMenu, cbeActivate, cbeFormMoving,
+     cbeRefreshAll); // возможно добавление новых событий
                                                                      // cbeRefreshAll сигнализирует, что были изменены глобальные опции.
   TChessBoardHandler = procedure(e: TChessBoardEvent;
                                  d1: pointer = nil; d2: pointer = nil) of object;
