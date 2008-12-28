@@ -4,15 +4,15 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  {Dialogs, }ExtCtrls, StdCtrls,
+  {Dialogs, }ExtCtrls, StdCtrls, TntStdCtrls,
   DialogUnit, ModalForm;
 
 type
   TContinueHandler = procedure of object;
 
   TContinueForm = class(TModalForm)
-    ContinueButton: TButton;
-    ContinueLabel: TLabel;
+    ContinueButton: TTntButton;
+    ContinueLabel: TTntLabel;
     procedure ContinueButtonClick(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure FormShow(Sender: TObject);
@@ -21,6 +21,7 @@ type
 //  dlgOwner: TDialogs;
     ContinueHandler: TContinueHandler;
     shuted: boolean;
+    procedure FLocalize;
   public
     procedure Shut;
     class function GetModalID : TModalFormID; override;
@@ -30,10 +31,13 @@ type
 
 implementation
 
-uses
-  GlobalsUnit;
-
 {$R *.dfm}
+
+uses
+  GlobalsUnit, LocalizerUnit;
+
+////////////////////////////////////////////////////////////////////////////////
+// TContinueForm
 
 procedure TContinueForm.ContinueButtonClick(Sender: TObject);
 begin
@@ -49,6 +53,7 @@ begin
   Left:= frmOwner.Left + (frmOwner.Width - Width) div 2;
   Top:= frmOwner.Top + (frmOwner.Height - Height) div 2;
 end;
+
 
 constructor TContinueForm.Create(Owner: TForm; h: TContinueHandler = nil);
 begin
@@ -79,14 +84,27 @@ begin
   Close;
 end;
 
+
 class function TContinueForm.GetModalID: TModalFormID;
 begin
   Result := mfContinue;
 end;
 
+
 procedure TContinueForm.FormCreate(Sender: TObject);
 begin
   Caption := DIALOG_CAPTION;
+  FLocalize;
+end;
+
+
+procedure TContinueForm.FLocalize;
+begin
+  with TLocalizer.Instance do
+  begin
+    ContinueLabel.Caption := GetLabel(22);
+    ContinueButton.Caption := GetLabel(23);
+  end;
 end;
 
 end.

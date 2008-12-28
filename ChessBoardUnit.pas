@@ -5,10 +5,10 @@ unit ChessBoardUnit;
 interface
 
 uses
-  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, StdCtrls, ExtCtrls, Buttons,
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms, TntForms,
+  Dialogs, StdCtrls, TntStdCtrls, ExtCtrls, Buttons,
   // Chess4net
-  ChessBoardHeaderUnit, BitmapResUnit;
+  ChessBoardHeaderUnit, BitmapResUnit, LocalizerUnit;
 
 type
   TChessPosition = record // шахматная позиция
@@ -47,12 +47,12 @@ type
   end;
 {$ENDIF}
 
-  TChessBoard = class(TForm)
+  TChessBoard = class(TTntForm, ILocalizable)
     PBoxBoard: TPaintBox;
     TimePanel: TPanel;
-    WhiteLabel: TLabel;
+    WhiteLabel: TTntLabel;
     WhiteTimeLabel: TLabel;
-    BlackLabel: TLabel;
+    BlackLabel: TTntLabel;
     BlackTimeLabel: TLabel;
     GameTimer: TTimer;
     AnimateTimer: TTimer;
@@ -156,6 +156,9 @@ type
     procedure CancelAnimationDragging; // отмена анимации и перетаскивания для удаления грязи при прорисовки
     procedure SetAutoFlag(auto_flag: boolean);
     procedure FFlashWindow;
+    // Localization
+    procedure ILocalizable.Localize = FLocalize;
+    procedure FLocalize;
 
     procedure WMMoving(var Msg: TWMMoving); message WM_MOVING;
     procedure WMSizing(var Msg: TMessage); message WM_SIZING;
@@ -258,12 +261,12 @@ const
   ZEITNOT_COLOR = clMaroon;
   ZEITNOT_FORMAT = 's"."zzz';
 //  CHEAT_TIME_CONST = 1.5; // > 1
-  WHITE_LONG_LABEL =   'White   ';
-  BLACK_LONG_LABEL =   'Black   ';
-  WHITE_MEDIUM_LABEL = 'White ';
-  BLACK_MEDIUM_LABEL = 'Black ';
-  WHITE_SHORT_LABEL =  'W ';
-  BLACK_SHORT_LABEL =  'B ';
+  WHITE_LONG_LABEL: WideString   =   'White   ';
+  WHITE_MEDIUM_LABEL: WideString = 'White ';
+  WHITE_SHORT_LABEL: WideString  =  'W ';
+  BLACK_LONG_LABEL: WideString   =   'Black   ';
+  BLACK_MEDIUM_LABEL: WideString = 'Black ';
+  BLACK_SHORT_LABEL: WideString  =  'B ';
 
 ////////////////////////////////////////////////////////////////////////////////
 // Globals
@@ -812,6 +815,9 @@ begin
   last_hilight:= FALSE;
   animation:= aQuick;
 
+  TLocalizer.Instance.AddSubscriber(self); 
+  FLocalize;
+
   // Clock initialization
   SetUnlimited(White, TRUE); SetUnlimited(Black, TRUE);
 
@@ -924,6 +930,8 @@ begin
 
   m_BitmapRes.Free;
   m_TimeFont.Free;
+
+  TLocalizer.Instance.DeleteSubscriber(self); 
 end;
 
 
@@ -2076,6 +2084,22 @@ begin
  flushWindowInfo.hwnd := self.Handle; // handle of the flashing window
  flushWindowInfo.dwflags := FLASHW_CAPTION; // FLASHW_TRAY; // FLASHW_ALL; //FLASHW_TRAY;
  FlashWindowEx(flushWindowInfo);
+end;
+
+
+procedure TChessBoard.FLocalize;
+begin
+  with TLocalizer.Instance do
+  begin
+    WHITE_LONG_LABEL := GetLabel(13);
+    WHITE_MEDIUM_LABEL := GetLabel(14);
+    WHITE_SHORT_LABEL := GetLabel(15);
+    BLACK_LONG_LABEL := GetLabel(16);
+    BLACK_MEDIUM_LABEL := GetLabel(17);
+    BLACK_SHORT_LABEL := GetLabel(18);
+  end;
+
+  TimePanelResize(nil);  
 end;
 
 initialization

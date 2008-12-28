@@ -28,10 +28,10 @@ type
     procedure Show; override;
     function ShowModal: integer; reintroduce;
     procedure SetFocus; override;
-    constructor Create(frmOwner: TForm; const Msg: string;
+    constructor Create(frmOwner: TForm; const wstrMsg: WideString;
            DlgType: TMsgDlgType; Buttons: TMsgDlgButtons; modID: TModalFormID = mfNone;
            msgDlgHandler: TModalFormHandler = nil); overload;
-    constructor Create(dlgOwner: TDialogs; const Msg: string;
+    constructor Create(dlgOwner: TDialogs; const wstrMsg: WideString;
            DlgType: TMsgDlgType; Buttons: TMsgDlgButtons; modID: TModalFormID;
             msgDlgHandler: TModalFormHandler); overload;
     destructor Destroy; reintroduce;
@@ -43,7 +43,7 @@ implementation
 uses
   StdCtrls, SysUtils, MessageDialogUnit;
 
-constructor TDialogForm.Create(frmOwner: TForm; const Msg: string;
+constructor TDialogForm.Create(frmOwner: TForm; const wstrMsg: WideString;
                    DlgType: TMsgDlgType; Buttons: TMsgDlgButtons;
                    modID: TModalFormID; msgDlgHandler: TModalFormHandler);
 var
@@ -54,7 +54,7 @@ begin
   self.modID := modID;
   Handler := msgDlgHandler;
 
-  msgDlg := MessageDialogUnit.CreateMessageDialog(frmOwner, Msg, DlgType, Buttons);
+  msgDlg := MessageDialogUnit.CreateMessageDialog(frmOwner, wstrMsg, DlgType, Buttons);
   // msgDlg.FormStyle := frmOwner.FormStyle;
   msgDlg.OnShow := FormShow;
   msgDlg.OnClose := FormClose;
@@ -66,11 +66,11 @@ begin
     end;
 end;
 
-constructor TDialogForm.Create(dlgOwner: TDialogs; const Msg: string;
+constructor TDialogForm.Create(dlgOwner: TDialogs; const wstrMsg: WideString;
                 DlgType: TMsgDlgType; Buttons: TMsgDlgButtons; modID: TModalFormID;
                 msgDlgHandler: TModalFormHandler);
 begin
-  Create((dlgOwner.Owner as TForm), Msg, DlgType, Buttons, modID, msgDlgHandler);
+  Create((dlgOwner.Owner as TForm), wstrMsg, DlgType, Buttons, modID, msgDlgHandler);
   self.dlgOwner := dlgOwner;
 end;
 

@@ -6,7 +6,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, Menus, ActnList, ExtCtrls,
+  TntForms, Dialogs, TntDialogs, Menus, ActnList, ExtCtrls,
   // Chess4Net Units
   ChessBoardHeaderUnit, ChessBoardUnit, PosBaseChessBoardUnit,
   ConnectorUnit, ConnectingUnit, ContinueUnit;
@@ -116,7 +116,7 @@ implementation
 {$J+}
 
 uses
-  DateUtils, Math, StrUtils, IniFiles,
+  DateUtils, Math, StrUtils, TntIniFiles,
   GameOptionsUnit, ConnectionUnit, LookFeelOptionsUnit, GlobalsLocalUnit,
   GlobalsUnit;
 
@@ -1128,9 +1128,9 @@ end;
 function TManager.MessageDlg(const Msg: string; DlgType: TMsgDlgType;
                              Buttons: TMsgDlgButtons): Word;
 var
-  DialogForm: TForm;
+  DialogForm: TTntForm;
 begin
-  DialogForm := CreateMessageDialog(Msg, DlgType, Buttons);
+  DialogForm := WideCreateMessageDialog(Msg, DlgType, Buttons);
   DialogForm.Caption := DIALOG_CAPTION;
   DialogForm.FormStyle := ChessBoard.FormStyle;
   with DialogForm do
@@ -1332,7 +1332,7 @@ end;
 
 procedure TManager.SetPrivateSettings;
 var
-  iniFile: TIniFile;
+  iniFile: TTntIniFile;
 begin
   // Общие настройки по умолчанию
   ChessBoard.AutoFlag := TRUE;
@@ -1340,7 +1340,7 @@ begin
   opponent_takebacks := FALSE;
 
   // Считывание личных настроек из INI-файла
-  iniFile := TIniFile.Create(Chess4NetPath + INI_FILE_NAME);
+  iniFile := TTntIniFile.Create(Chess4NetPath + INI_FILE_NAME);
   try
     player_nick := iniFile.ReadString(PRIVATE_SECTION_NAME, PLAYER_NICK_KEY_NAME, DEFAULT_PLAYER_NICK);
     ipDomainPortServer := iniFile.ReadString(PRIVATE_SECTION_NAME, IP_DOMAIN_PORT_SERVER_KEY_NAME, DEFAULT_IPDOMAIN_PORT_SERVER);
@@ -1359,7 +1359,7 @@ end;
 
 function TManager.SetCommonSettings(setToOpponent: boolean): boolean;
 var
-  iniFile: TIniFile;
+  iniFile: TTntIniFile;
   commonSectionName: string;
   playerColor: TFigureColor;
   clockStr: string;
@@ -1374,7 +1374,7 @@ begin
     end;
 
   Result := FALSE;
-  iniFile := TIniFile.Create(Chess4NetPath + INI_FILE_NAME);
+  iniFile := TTntIniFile.Create(Chess4NetPath + INI_FILE_NAME);
   try
     commonSectionName := COMMON_SECTION_PREFIX + ' ' + opponent_nick;
     if not iniFile.SectionExists(commonSectionName) then
@@ -1448,9 +1448,9 @@ end;
 
 procedure TManager.WritePrivateSettings;
 var
-  iniFile: TIniFile;
+  iniFile: TTntIniFile;
 begin
-  iniFile := TIniFile.Create(Chess4NetPath + INI_FILE_NAME);
+  iniFile := TTntIniFile.Create(Chess4NetPath + INI_FILE_NAME);
   try
     // Запись личных настроек
     iniFile.WriteString(PRIVATE_SECTION_NAME, PLAYER_NICK_KEY_NAME, player_nick);
@@ -1469,10 +1469,10 @@ end;
 
 procedure TManager.WriteCommonSettings;
 var
-  iniFile: TIniFile;
+  iniFile: TTntIniFile;
   commonSectionName: string;
 begin
-  iniFile := TIniFile.Create(Chess4NetPath + INI_FILE_NAME);
+  iniFile := TTntIniFile.Create(Chess4NetPath + INI_FILE_NAME);
   try
     // Запись общих настроек
     commonSectionName := COMMON_SECTION_PREFIX + ' ' + opponent_nick;

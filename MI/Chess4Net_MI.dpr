@@ -28,6 +28,7 @@ uses
   GlobalsLocalUnit in 'GlobalsLocalUnit.pas',
   GlobalsUnit in '..\GlobalsUnit.pas',
   InfoUnit in '..\InfoUnit.pas' {InfoForm},
+  LocalizerUnit in '..\LocalizerUnit.pas',
   LookFeelOptionsUnit in '..\LookFeelOptionsUnit.pas' {OptionsForm},
   ManagerUnit in '..\ManagerUnit.pas' {Manager},
   MessageDialogUnit in '..\MessageDialogUnit.pas',
@@ -55,7 +56,7 @@ begin
     end;
 
   guidPlugin := StringToGUID('{BF17C6E3-C52C-4CB8-88ED-E0FC5F5D566A}');
-  miidPlugin := StringToGUID('{09A68681-841C-4728-9F33-07A9F1E976A6}'); // interface
+  miidPlugin := StringToGUID('{EBB410F6-E9AA-4F1B-8912-8C41E4EC0F90}'); // interface
 
   MirandaPluginMenuPosition := $7FFFFFFF; // or < $7FFFFFFF
 

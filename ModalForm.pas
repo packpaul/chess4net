@@ -3,7 +3,7 @@ unit ModalForm;
 interface
 
 uses
-  Forms, Dialogs, Classes, Windows;
+  Forms, TntForms, Dialogs, Classes, Windows;
 
 type
   TModalForm = class;
@@ -24,7 +24,8 @@ type
     Handler: TModalFormHandler;
   public
     Owner: TForm;
-    procedure MessageDlg(const Msg: string; DlgType: TMsgDlgType; Buttons: TMsgDlgButtons; msgDlgID: TModalFormID);
+    procedure MessageDlg(const wstrMsg: WideString; DlgType: TMsgDlgType;
+      Buttons: TMsgDlgButtons; msgDlgID: TModalFormID);
     function CreateDialog(modalFormClass: TModalFormClass): TModalForm;
     procedure SetShowing(msgDlgID: TModalFormID);
     procedure UnsetShowing(msgDlgID: TModalFormID; msgDlg: TModalForm = nil);
@@ -36,7 +37,7 @@ type
     property Showing: boolean read GetShowing;
   end;
 
-  TModalForm = class(TForm)
+  TModalForm = class(TTntForm)
     procedure FormShow(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure ButtonClick(Sender: TObject);
@@ -248,13 +249,13 @@ begin
 end;
 
 
-procedure TDialogs.MessageDlg(const Msg: string; DlgType: TMsgDlgType; Buttons: TMsgDlgButtons; msgDlgID: TModalFormID);
+procedure TDialogs.MessageDlg(const wstrMsg: WideString; DlgType: TMsgDlgType; Buttons: TMsgDlgButtons; msgDlgID: TModalFormID);
 var
   DialogForm: TDialogForm;
 begin
   if (msgDlgID <> mfNone) and (IDCount[msgDlgID] > 0) then
     exit;
-  DialogForm := TDialogForm.Create(self, Msg, DlgType, Buttons, msgDlgID, Handler);
+  DialogForm := TDialogForm.Create(self, wstrMsg, DlgType, Buttons, msgDlgID, Handler);
   DialogForm.Caption := DIALOG_CAPTION;
   SetShowing(msgDlgID);
   DialogForm.Show;

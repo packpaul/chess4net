@@ -51,7 +51,7 @@ object InfoForm: TInfoForm
     Height = 13
     Alignment = taCenter
     AutoSize = False
-    Caption = '(c) 2007-2008 no rights reserved'
+    Caption = '(c) 2007-2009 no rights reserved'
   end
   object Label4: TLabel
     Left = 38
@@ -105,7 +105,7 @@ object InfoForm: TInfoForm
     Width = 75
     Height = 25
     Cancel = True
-    Caption = 'OK'
+    Caption = '&OK'
     Default = True
     ModalResult = 1
     TabOrder = 0

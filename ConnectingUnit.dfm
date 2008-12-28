@@ -1,6 +1,6 @@
 object ConnectingForm: TConnectingForm
-  Left = 595
-  Top = 123
+  Left = 583
+  Top = 234
   BorderStyle = bsDialog
   Caption = 'Connecting...'
   ClientHeight = 92
@@ -13,14 +13,16 @@ object ConnectingForm: TConnectingForm
   Font.Style = []
   OldCreateOrder = False
   OnClose = FormClose
+  OnCreate = FormCreate
   OnShow = FormShow
   PixelsPerInch = 96
   TextHeight = 13
-  object ConnectingLabel: TLabel
+  object ConnectingLabel: TTntLabel
     Left = 64
     Top = 16
-    Width = 183
+    Width = 233
     Height = 13
+    AutoSize = False
     Caption = 'Wait until the connection is completed.'
   end
   object ConnectingImage: TImage
@@ -55,7 +57,7 @@ object ConnectingForm: TConnectingForm
       8000000080000000C0000000C0000000E0000000F0000400F8000C00FE003C00
       FF80FC00}
   end
-  object AbortButton: TButton
+  object AbortButton: TTntButton
     Left = 112
     Top = 56
     Width = 75

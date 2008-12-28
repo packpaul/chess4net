@@ -1,11 +1,11 @@
 object GameOptionsForm: TGameOptionsForm
-  Left = 486
-  Top = 202
+  Left = 632
+  Top = 221
   BorderIcons = [biSystemMenu]
   BorderStyle = bsDialog
   Caption = 'Game Options'
   ClientHeight = 503
-  ClientWidth = 365
+  ClientWidth = 387
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -13,11 +13,12 @@ object GameOptionsForm: TGameOptionsForm
   Font.Name = 'MS Sans Serif'
   Font.Style = []
   OldCreateOrder = False
+  OnCreate = FormCreate
   OnShow = FormShow
   PixelsPerInch = 96
   TextHeight = 13
-  object OkButton: TButton
-    Left = 280
+  object OkButton: TTntButton
+    Left = 304
     Top = 16
     Width = 75
     Height = 25
@@ -26,8 +27,8 @@ object GameOptionsForm: TGameOptionsForm
     ModalResult = 1
     TabOrder = 3
   end
-  object CancelButton: TButton
-    Left = 280
+  object CancelButton: TTntButton
+    Left = 304
     Top = 48
     Width = 75
     Height = 25
@@ -36,17 +37,17 @@ object GameOptionsForm: TGameOptionsForm
     ModalResult = 2
     TabOrder = 4
   end
-  object GroupBox1: TGroupBox
+  object TimeControlGroupBox: TTntGroupBox
     Left = 8
     Top = 8
-    Width = 257
+    Width = 281
     Height = 265
     Caption = 'Time Control'
     TabOrder = 0
-    object EqualTimeCheckBox: TCheckBox
+    object EqualTimeCheckBox: TTntCheckBox
       Left = 16
       Top = 24
-      Width = 153
+      Width = 233
       Height = 17
       Caption = 'Equal time for both players'
       Checked = True
@@ -54,29 +55,34 @@ object GameOptionsForm: TGameOptionsForm
       TabOrder = 0
       OnClick = EqualTimeCheckBoxClick
     end
-    object YouGroupBox: TGroupBox
+    object YouGroupBox: TTntGroupBox
       Left = 32
       Top = 48
-      Width = 193
+      Width = 225
       Height = 97
       Caption = 'Your time'
       TabOrder = 1
-      object YouMinLabel: TLabel
+      DesignSize = (
+        225
+        97)
+      object YouMinLabel: TTntLabel
         Left = 16
-        Top = 40
-        Width = 87
-        Height = 13
+        Top = 42
+        Width = 129
+        Height = 14
+        AutoSize = False
         Caption = 'Minutes per game:'
       end
-      object YouIncLabel: TLabel
+      object YouIncLabel: TTntLabel
         Left = 16
-        Top = 64
-        Width = 104
-        Height = 13
+        Top = 66
+        Width = 129
+        Height = 14
+        AutoSize = False
         Caption = 'Increment in seconds:'
       end
       object YouMinEdit: TEdit
-        Left = 128
+        Left = 168
         Top = 40
         Width = 41
         Height = 21
@@ -88,7 +94,7 @@ object GameOptionsForm: TGameOptionsForm
         OnChange = YouEditChange
       end
       object YouIncEdit: TEdit
-        Left = 128
+        Left = 168
         Top = 64
         Width = 41
         Height = 21
@@ -96,17 +102,18 @@ object GameOptionsForm: TGameOptionsForm
         Text = '0'
         OnChange = YouEditChange
       end
-      object YouUnlimitedCheckBox: TCheckBox
+      object YouUnlimitedCheckBox: TTntCheckBox
         Left = 16
         Top = 16
-        Width = 65
+        Width = 193
         Height = 17
+        Anchors = [akLeft, akTop, akRight]
         Caption = 'Unlimited'
         TabOrder = 0
         OnClick = UnlimitedCheckBoxClick
       end
       object YouMinUpDown: TUpDown
-        Left = 169
+        Left = 209
         Top = 40
         Width = 15
         Height = 21
@@ -117,7 +124,7 @@ object GameOptionsForm: TGameOptionsForm
         TabOrder = 3
       end
       object YouIncUpDown: TUpDown
-        Left = 169
+        Left = 209
         Top = 64
         Width = 15
         Height = 21
@@ -126,29 +133,34 @@ object GameOptionsForm: TGameOptionsForm
         TabOrder = 4
       end
     end
-    object OpponentGroupBox: TGroupBox
+    object OpponentGroupBox: TTntGroupBox
       Left = 32
       Top = 152
-      Width = 193
+      Width = 225
       Height = 97
       Caption = 'Opponent'#39's time'
       TabOrder = 2
-      object OpponentMinLabel: TLabel
+      DesignSize = (
+        225
+        97)
+      object OpponentMinLabel: TTntLabel
         Left = 16
-        Top = 40
-        Width = 87
+        Top = 42
+        Width = 129
         Height = 13
+        AutoSize = False
         Caption = 'Minutes per game:'
       end
-      object OpponentIncLabel: TLabel
+      object OpponentIncLabel: TTntLabel
         Left = 16
-        Top = 64
-        Width = 104
+        Top = 66
+        Width = 129
         Height = 13
+        AutoSize = False
         Caption = 'Increment in seconds:'
       end
       object OpponentIncEdit: TEdit
-        Left = 128
+        Left = 168
         Top = 64
         Width = 41
         Height = 21
@@ -157,7 +169,7 @@ object GameOptionsForm: TGameOptionsForm
         OnChange = OpponentEditChange
       end
       object OpponentMinEdit: TEdit
-        Left = 128
+        Left = 168
         Top = 40
         Width = 41
         Height = 21
@@ -168,17 +180,18 @@ object GameOptionsForm: TGameOptionsForm
         Text = '5'
         OnChange = OpponentEditChange
       end
-      object OpponentUnlimitedCheckBox: TCheckBox
+      object OpponentUnlimitedCheckBox: TTntCheckBox
         Left = 16
         Top = 16
-        Width = 65
+        Width = 193
         Height = 17
+        Anchors = [akLeft, akTop, akRight]
         Caption = 'Unlimited'
         TabOrder = 0
         OnClick = UnlimitedCheckBoxClick
       end
       object OpponentMinUpDown: TUpDown
-        Left = 169
+        Left = 209
         Top = 40
         Width = 15
         Height = 21
@@ -189,7 +202,7 @@ object GameOptionsForm: TGameOptionsForm
         TabOrder = 3
       end
       object OpponentIncUpDown: TUpDown
-        Left = 169
+        Left = 209
         Top = 64
         Width = 15
         Height = 21
@@ -202,73 +215,84 @@ object GameOptionsForm: TGameOptionsForm
   object Panel1: TPanel
     Left = 8
     Top = 390
-    Width = 257
+    Width = 281
     Height = 105
     BevelInner = bvRaised
     BevelOuter = bvLowered
     TabOrder = 2
-    object AutoFlagCheckBox: TCheckBox
+    DesignSize = (
+      281
+      105)
+    object AutoFlagCheckBox: TTntCheckBox
       Left = 8
       Top = 80
-      Width = 73
+      Width = 265
       Height = 17
+      Anchors = [akLeft, akTop, akRight]
       Caption = 'Auto Flag'
       Checked = True
       State = cbChecked
       TabOrder = 3
     end
-    object TakeBackCheckBox: TCheckBox
+    object TakeBackCheckBox: TTntCheckBox
       Left = 8
       Top = 56
-      Width = 177
+      Width = 265
       Height = 17
+      Anchors = [akLeft, akTop, akRight]
       Caption = 'Allow takebacks to your partner'
       TabOrder = 2
     end
-    object GamePauseCheckBox: TCheckBox
+    object GamePauseCheckBox: TTntCheckBox
       Left = 8
       Top = 8
-      Width = 129
+      Width = 265
       Height = 17
+      Anchors = [akLeft, akTop, akRight]
       Caption = 'Game can be paused'
       TabOrder = 0
     end
-    object GameAdjournCheckBox: TCheckBox
+    object GameAdjournCheckBox: TTntCheckBox
       Left = 8
       Top = 32
-      Width = 145
+      Width = 265
       Height = 17
+      Anchors = [akLeft, akTop, akRight]
       Caption = 'Game can be adjourned'
       TabOrder = 1
     end
   end
-  object GroupBox2: TGroupBox
+  object TrainingModeGroupBox: TTntGroupBox
     Left = 8
     Top = 280
-    Width = 257
+    Width = 281
     Height = 97
     Caption = 'Training Mode'
     TabOrder = 1
-    object ExtBaseLabel: TLabel
+    DesignSize = (
+      281
+      97)
+    object ExtBaseLabel: TTntLabel
       Left = 16
-      Top = 40
-      Width = 67
+      Top = 38
+      Width = 81
       Height = 13
+      AutoSize = False
       Caption = 'External base:'
     end
-    object TrainingEnabledCheckBox: TCheckBox
+    object TrainingEnabledCheckBox: TTntCheckBox
       Left = 16
       Top = 16
-      Width = 97
+      Width = 257
       Height = 17
       Caption = 'Enabled'
       TabOrder = 0
       OnClick = TrainingEnabledCheckBoxClick
     end
-    object ExtBaseComboBox: TComboBox
+    object ExtBaseComboBox: TTntComboBox
       Left = 104
       Top = 36
-      Width = 137
+      Width = 145
       Height = 21
       Enabled = False
       ItemHeight = 13
@@ -279,11 +303,12 @@ object GameOptionsForm: TGameOptionsForm
       Items.Strings = (
         '<No>')
     end
-    object UsrBaseCheckBox: TCheckBox
-      Left = 104
+    object UsrBaseCheckBox: TTntCheckBox
+      Left = 40
       Top = 64
-      Width = 97
+      Width = 233
       Height = 17
+      Anchors = [akLeft, akTop, akRight]
       Caption = 'Use user base'
       Enabled = False
       TabOrder = 2

@@ -1,6 +1,6 @@
 object Manager: TManager
-  Left = 448
-  Top = 100
+  Left = 555
+  Top = 124
   BorderIcons = []
   BorderStyle = bsToolWindow
   Caption = 'Manager'
@@ -19,106 +19,104 @@ object Manager: TManager
   OnDestroy = FormDestroy
   PixelsPerInch = 96
   TextHeight = 13
-  object ActionList: TActionList
+  object ActionList: TTntActionList
     Left = 176
     Top = 8
-    object OptionsAction: TAction
-      Caption = 'Options...'
-      OnExecute = OptionsActionExecute
+    object LookFeelOptionsAction: TTntAction
+      Caption = 'Look && Feel Options...'
+      OnExecute = LookFeelOptionsActionExecute
     end
-    object AboutAction: TAction
+    object AboutAction: TTntAction
       Caption = 'About...'
       OnExecute = AboutActionExecute
     end
   end
-  object ConnectedPopupMenu: TPopupMenu
+  object ConnectedPopupMenu: TTntPopupMenu
     AutoPopup = False
     Left = 8
     Top = 8
-    object StartAdjournedGameConnected: TMenuItem
+    object StartAdjournedGameConnected: TTntMenuItem
       Caption = 'Start Adjourned Game'
       Visible = False
       OnClick = StartAdjournedGameConnectedClick
     end
-    object StartStandartGameConnected: TMenuItem
+    object StartStandartGameConnected: TTntMenuItem
       Caption = 'Start Standart Game'
       OnClick = StartStandartGameConnectedClick
     end
-    object StartPPRandomGameConnected: TMenuItem
+    object StartPPRandomGameConnected: TTntMenuItem
       Caption = 'Start PP Random Game'
       OnClick = StartPPRandomGameConnectedClick
     end
     object N5: TMenuItem
       Caption = '-'
     end
-    object ChangeColorConnected: TMenuItem
+    object ChangeColorConnected: TTntMenuItem
       Caption = 'Change Color'
       OnClick = ChangeColorConnectedClick
     end
-    object N3: TMenuItem
+    object TTntMenuItem
       Caption = '-'
     end
-    object GameOptionsConnected: TMenuItem
+    object GameOptionsConnected: TTntMenuItem
       Caption = 'Game Options...'
       OnClick = GameOptionsConnectedClick
     end
-    object LookFeelOptionsConnected: TMenuItem
-      Action = OptionsAction
-      Caption = 'Look && Feel Options...'
+    object LookFeelOptionsConnected: TTntMenuItem
+      Action = LookFeelOptionsAction
     end
-    object N1: TMenuItem
+    object N1: TTntMenuItem
       Caption = '-'
     end
-    object AboutConnected: TMenuItem
+    object AboutConnected: TTntMenuItem
       Action = AboutAction
     end
   end
-  object GamePopupMenu: TPopupMenu
+  object GamePopupMenu: TTntPopupMenu
     AutoPopup = False
     OnPopup = GamePopupMenuPopup
     Left = 40
     Top = 8
-    object AbortGame: TMenuItem
+    object AbortGame: TTntMenuItem
       Caption = 'Abort'
       OnClick = AbortGameClick
     end
-    object DrawGame: TMenuItem
+    object DrawGame: TTntMenuItem
       Caption = 'Draw'
       OnClick = DrawGameClick
     end
-    object ResignGame: TMenuItem
+    object ResignGame: TTntMenuItem
       Caption = 'Resign'
       OnClick = ResignGameClick
     end
-    object N6: TMenuItem
+    object N6: TTntMenuItem
       Caption = '-'
     end
-    object AdjournGame: TMenuItem
+    object AdjournGame: TTntMenuItem
       Caption = 'Adjourn'
       Visible = False
       OnClick = AdjournGameClick
     end
-    object GamePause: TMenuItem
+    object GamePause: TTntMenuItem
       Caption = 'Pause'
       Visible = False
       OnClick = GamePauseClick
     end
-    object TakebackGame: TMenuItem
+    object TakebackGame: TTntMenuItem
       Caption = 'Takeback'
       Visible = False
       OnClick = TakebackGameClick
     end
-    object N4: TMenuItem
+    object N4: TTntMenuItem
       Caption = '-'
     end
-    object LookFeelOptionsGame: TMenuItem
-      Action = OptionsAction
-      Caption = 'Look && Feel Options...'
+    object LookFeelOptionsGame: TTntMenuItem
+      Action = LookFeelOptionsAction
     end
     object N2: TMenuItem
       Caption = '-'
     end
-    object AboutGame: TMenuItem
+    object AboutGame: TTntMenuItem
       Action = AboutAction
     end
   end

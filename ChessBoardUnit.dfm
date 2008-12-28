@@ -103,7 +103,7 @@ object ChessBoard: TChessBoard
         Visible = False
         OnClick = FlagButtonClick
       end
-      object WhiteLabel: TLabel
+      object WhiteLabel: TTntLabel
         Left = 0
         Top = 0
         Width = 72
@@ -144,7 +144,7 @@ object ChessBoard: TChessBoard
         ParentFont = False
         Layout = tlCenter
       end
-      object BlackLabel: TLabel
+      object BlackLabel: TTntLabel
         Left = 0
         Top = 0
         Width = 69

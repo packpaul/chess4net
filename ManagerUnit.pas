@@ -6,7 +6,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Menus, ActnList, ExtCtrls,
+  Menus, TntMenus, ActnList, TntActnList, ExtCtrls,
 {$IFDEF MIRANDA}
   ControlUnit,
 {$ENDIF}
@@ -16,45 +16,47 @@ uses
   // Chess4Net Units
   ChessBoardHeaderUnit, ChessBoardUnit, PosBaseChessBoardUnit,
   ConnectorUnit, ConnectingUnit, GameOptionsUnit,
-  ModalForm, DialogUnit, ContinueUnit;
+  ModalForm, DialogUnit, ContinueUnit, LocalizerUnit;
 
 type
 {$IFDEF MIRANDA}
-  TManager = class(TForm, IMirandaPlugin)
+  TManager = class(TForm, IMirandaPlugin, ILocalizable)
 {$ELSE} // TRILLIAN, AND_RQ, QIP
-  TManager = class(TForm)
+  TManager = class(TForm, ILocalizable)
 {$ENDIF}
-    ActionList: TActionList;
-    OptionsAction: TAction;
-    ConnectedPopupMenu: TPopupMenu;
-    LookFeelOptionsConnected: TMenuItem;
-    StartStandartGameConnected: TMenuItem;
-    StartPPRandomGameConnected: TMenuItem;
-    N3: TMenuItem;
-    GameOptionsConnected: TMenuItem;
-    ChangeColorConnected: TMenuItem;
-    GamePopupMenu: TPopupMenu;
-    AbortGame: TMenuItem;
-    DrawGame: TMenuItem;
-    ResignGame: TMenuItem;
-    N4: TMenuItem;
-    LookFeelOptionsGame: TMenuItem;
+    ActionList: TTntActionList;
+    LookFeelOptionsAction: TTntAction;
+    AboutAction: TTntAction;
+
+    ConnectedPopupMenu: TTntPopupMenu;
+    LookFeelOptionsConnected: TTntMenuItem;
+    StartStandartGameConnected: TTntMenuItem;
+    StartPPRandomGameConnected: TTntMenuItem;
+    N3: TTntMenuItem;
+    GameOptionsConnected: TTntMenuItem;
+    ChangeColorConnected: TTntMenuItem;
+    GamePopupMenu: TTntPopupMenu;
+    AbortGame: TTntMenuItem;
+    DrawGame: TTntMenuItem;
+    ResignGame: TTntMenuItem;
+    N4: TTntMenuItem;
+    LookFeelOptionsGame: TTntMenuItem;
+    TakebackGame: TTntMenuItem;
+    GamePause: TTntMenuItem;
+    N1: TTntMenuItem;
+    AboutConnected: TTntMenuItem;
+    N2: TTntMenuItem;
+    AboutGame: TTntMenuItem;
+    StartAdjournedGameConnected: TTntMenuItem;
+    AdjournGame: TTntMenuItem;
+    N5: TTntMenuItem;
+    N6: TTntMenuItem;
+
     ConnectorTimer: TTimer;
-    TakebackGame: TMenuItem;
-    GamePause: TMenuItem;
-    N1: TMenuItem;
-    AboutConnected: TMenuItem;
-    N2: TMenuItem;
-    AboutGame: TMenuItem;
-    AboutAction: TAction;
-    StartAdjournedGameConnected: TMenuItem;
-    AdjournGame: TMenuItem;
-    N5: TMenuItem;
-    N6: TMenuItem;
 
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
-    procedure OptionsActionExecute(Sender: TObject);
+    procedure LookFeelOptionsActionExecute(Sender: TObject);
     procedure AbortGameClick(Sender: TObject);
     procedure DrawGameClick(Sender: TObject);
     procedure ResignGameClick(Sender: TObject);
@@ -132,6 +134,8 @@ type
     procedure FSetAdjournedStr(const str: string);
     procedure FBuildAdjournedStr;
     procedure FStartAdjournedGame;
+    procedure ILocalizable.Localize = FLocalize;
+    procedure FLocalize;
 
     property AdjournedStr: string read _adjournedStr write FSetAdjournedStr;
 
@@ -159,7 +163,7 @@ implementation
 uses
   Types,
   // Chess4Net
-  DateUtils, Math, StrUtils, IniFiles, Dialogs,
+  DateUtils, Math, StrUtils, TntIniFiles, Dialogs,
   LookFeelOptionsUnit, GlobalsLocalUnit, InfoUnit
 {$IFDEF MIRANDA}
   , m_globaldefs, m_api
@@ -249,6 +253,7 @@ const
   PLAYER_COLOR_KEY_NAME = 'PlayerColor';
   CLOCK_KEY_NAME = 'Clock';
   ADJOURNED_KEY_NAME = 'Adjourned';
+  LANGUAGE_KEY_NAME = 'Language';
 
 {$IFDEF MIRANDA}
 procedure TManager.FormCreate(Sender: TObject);
@@ -264,6 +269,9 @@ begin
   opponent_id := IntToStr(Connector.ContactID);
   opponent_nick_id := opponent_nick + opponent_id;
   connectionOccured := FALSE;
+
+  TLocalizer.Instance.AddSubscriber(self);
+  FLocalize;
 end;
 {$ENDIF} // {$IFDEF MIRANDA}
 
@@ -273,6 +281,9 @@ begin
   try
     ChessBoard := TPosBaseChessBoard.Create(self, ChessBoardHandler, Chess4NetPath + USR_BASE_NAME);
     dialogs := TDialogs.Create(ChessBoard, DialogFormHandler);
+
+    TLocalizer.Instance.AddSubscriber(self);
+    FLocalize;
 
     with ChessBoard do
       begin
@@ -335,6 +346,7 @@ procedure TManager.ChessBoardHandler(e: TChessBoardEvent;
                             d1: pointer = nil; d2: pointer = nil);
 var
   s: string;
+  wstrMsg1, wstrMsg2: WideString;
 begin
   case e of
     cbeKeyPressed:
@@ -387,17 +399,26 @@ begin
             else WriteToGameLog(#13#10 + '1 - 0');
           FlushGameLog;
 {$ENDIF}
-          if PositionColor = White then s := 'White'
-            else s := 'Black';
+          with TLocalizer.Instance do
+            if (PositionColor = White) then
+            begin
+              wstrMsg1 := GetMessage(0); // White is checkmated. You win.
+              wstrMsg2 := GetMessage(1); // White is checkmated. You loose.
+            end
+            else
+            begin
+              wstrMsg1 := GetMessage(2); // Black is checkmated. You win.
+              wstrMsg2 := GetMessage(3); // Black is checkmated. You loose.
+            end;
           if ((PlayerColor <> White) and (PositionColor = White)) or
              ((PlayerColor <> Black) and (PositionColor = Black)) then
             begin
-              dialogs.MessageDlg(s + ' is checkmated. You win.', mtCustom, [mbOK], mfNone);
+              dialogs.MessageDlg(wstrMsg1, mtCustom, [mbOK], mfNone);
               ChessBoard.WriteGameToBase(grWin);
             end
           else
             begin
-              dialogs.MessageDlg(s + ' is checkmated. You loose.', mtCustom, [mbOK], mfNone);
+              dialogs.MessageDlg(wstrMsg2, mtCustom, [mbOK], mfNone);
               ChessBoard.WriteGameToBase(grLost);
             end;
         end;
@@ -408,7 +429,7 @@ begin
         WriteToGameLog('=' + #13#10 + '1/2 - 1/2');
         FlushGameLog;
 {$ENDIF}
-        dialogs.MessageDlg('It''s stalemate. No one wins.', mtCustom, [mbOK], mfNone);
+        dialogs.MessageDlg(TLocalizer.Instance.GetMessage(4), mtCustom, [mbOK], mfNone); // It's stalemate. No one wins.
         ChessBoard.WriteGameToBase(grDraw);
       end;
     cbeClockSwitched:
@@ -509,7 +530,8 @@ begin
         begin
           if (not Connector.connected) then
             exit;
-          dialogs.MessageDlg('Your opponent leaves.', mtCustom, [mbOK], mfMsgLeave);
+          dialogs.MessageDlg(TLocalizer.Instance.GetMessage(5), mtCustom, [mbOK],
+            mfMsgLeave); // 'Your opponent leaves.'
         end;
       mGame:
         begin
@@ -520,8 +542,8 @@ begin
           WriteToGameLog('*');
           FlushGameLog;
 {$ENDIF}
-          dialogs.MessageDlg('Your opponent leaves. The game is aborted.', mtWarning,
-                             [mbOK], mfMsgLeave);
+          dialogs.MessageDlg(TLocalizer.Instance.GetMessage(6), mtWarning,
+                             [mbOK], mfMsgLeave); // Your opponent leaves. The game is aborted.
         end;
     end;
   end; { ceDisconnected }
@@ -537,13 +559,14 @@ begin
           FlushGameLog;
         end;
 {$ENDIF}
-        dialogs.MessageDlg('An error during connection occured.', mtWarning,
-                           [mbOk], mfMsgLeave);
+        dialogs.MessageDlg(TLocalizer.Instance.GetMessage(7), mtWarning,
+                           [mbOk], mfMsgLeave); // An error during connection occured.
     end;
 {$IFDEF QIP}
   ceQIPError:
     begin
       QIPConnectionError := TRUE;
+      // TODO: Localize 
       dialogs.MessageDlg('Special message channel is not responding.' + #13#10 +
                          'This can happen by one of the following reasons:' + #13#10 +
                          '  1) Your partner is using an IM other than QIP Infium. OR' + #13#10 +
@@ -583,12 +606,12 @@ l:
               Connector.MultiSession := TRUE;
 {$ENDIF}
             SendData(CMD_WELCOME);
-            if opponentClientVersion < CHESS4NET_VERSION then
-              dialogs.MessageDlg('Your opponent is using an older version of Chess4Net.' + #13#10 +
-                                 'Most of functionality will be not available.'  + #13#10 +
-                                 'Please, ask him/her to update the client.', mtWarning, [mbOK], mfNone);
-              // 2007.4 первый клиент с обратной совместимостью
-              // Для несовместимых версий:
+            if (opponentClientVersion < CHESS4NET_VERSION) then
+              dialogs.MessageDlg(TLocalizer.Instance.GetMessage(8), mtWarning,
+                [mbOK], mfNone); // Your opponent is using an older version of Chess4Net. ...
+
+              // 2007.4 is the first client with a backward compatibility
+              // For incompatible versions:
               // else SendData(CMD_GOODBYE);
           end
         else
@@ -602,8 +625,7 @@ l:
         else
         if sl = CMD_GOODBYE then // для будущих версий
           begin
-            dialogs.MessageDlg('The current version of Chess4Net is incompatible with the one of you partner.' + #13#10+
-                               'Please check the versions.' , mtWarning, [mbOK], mfIncompatible);
+            dialogs.MessageDlg(TLocalizer.Instance.GetMessage(9) , mtWarning, [mbOK], mfIncompatible); // The current version of Chess4Net is incompatible ...
           end
         else
 	      if sl = CMD_START_GAME then
@@ -724,12 +746,14 @@ l:
 	    mGame:
         if sl = CMD_DRAW then
           begin
-            dialogs.MessageDlg('Draw?', mtConfirmation, [mbYes, mbNo], mfMsgDraw)
+            dialogs.MessageDlg(TLocalizer.Instance.GetMessage(10), mtConfirmation,
+              [mbYes, mbNo], mfMsgDraw) // Draw?
           end
         else
         if sl = CMD_ABORT then
           begin
-            dialogs.MessageDlg('Can we abort the game?', mtConfirmation, [mbYes, mbNo], mfMsgAbort);
+            dialogs.MessageDlg(TLocalizer.Instance.GetMessage(11), mtConfirmation,
+              [mbYes, mbNo], mfMsgAbort); // Can we abort the game?
           end
         else
         if sl = CMD_RESIGN then
@@ -742,8 +766,8 @@ l:
               WriteToGameLog(#13#10 + 'White resigns' + #13#10 + '0 - 1');
             FlushGameLog;
 {$ENDIF}
-            dialogs.MessageDlg('I resign. You win this game. Congratulations!',
-                               mtCustom, [mbOK], mfNone);
+            dialogs.MessageDlg(TLocalizer.Instance.GetMessage(12),
+                               mtCustom, [mbOK], mfNone); // I resign. You win this game. Congratulations!
             ChessBoard.WriteGameToBase(grWin);
           end
         else
@@ -754,12 +778,13 @@ l:
             WriteToGameLog('*');
             FlushGameLog;
 {$ENDIF}
-            dialogs.MessageDlg('The game is aborted.', mtCustom, [mbOK], mfNone);
+            dialogs.MessageDlg(TLocalizer.Instance.GetMessage(13), mtCustom,
+              [mbOK], mfNone); // The game is aborted.
           end
         else
         if sl = CMD_ABORT_DECLINED then
-          dialogs.MessageDlg('Sorry, but we have to finish this game.',
-                             mtCustom, [mbOK], mfNone)
+          dialogs.MessageDlg(TLocalizer.Instance.GetMessage(14),
+                             mtCustom, [mbOK], mfNone) // Sorry, but we have to finish this game.
         else
         if sl = CMD_DRAW_ACCEPTED then
           begin
@@ -768,12 +793,12 @@ l:
             WriteToGameLog('=' + #13#10 + '1/2 - 1/2');
             FlushGameLog;
 {$ENDIF}
-            dialogs.MessageDlg('The game is drawn.', mtCustom, [mbOK], mfNone);
+            dialogs.MessageDlg(TLocalizer.Instance.GetMessage(15), mtCustom, [mbOK], mfNone); // The game is drawn.
             ChessBoard.WriteGameToBase(grDraw);
           end
         else
         if sl = CMD_DRAW_DECLINED then
-          dialogs.MessageDlg('No draw, sorry.', mtCustom, [mbOK], mfNone)
+          dialogs.MessageDlg(TLocalizer.Instance.GetMessage(16), mtCustom, [mbOK], mfNone) // No draw, sorry.
         else
         if sl = CMD_SWITCH_CLOCK then
           with ChessBoard do
@@ -801,7 +826,7 @@ l:
                     WriteToGameLog(#13#10 + 'Black forfeits on time');
                   FlushGameLog;
 {$ENDIF}
-                  dialogs.MessageDlg('You forfeit on time.', mtCustom, [mbOK], mfNone);
+                  dialogs.MessageDlg(TLocalizer.Instance.GetMessage(17), mtCustom, [mbOK], mfNone); // You forfeited on time.
                   ChessBoard.WriteGameToBase(grLostTime);
                 end
               else
@@ -818,7 +843,8 @@ l:
               WriteToGameLog(#13#10 + 'White forfeits on time');
             FlushGameLog;
 {$ENDIF}
-            dialogs.MessageDlg('Your opponent forfeits on time.', mtCustom, [mbOK], mfNone);
+            dialogs.MessageDlg(TLocalizer.Instance.GetMessage(18), mtCustom,
+              [mbOK], mfNone); // Your opponent forfeited on time.
             ChessBoard.WriteGameToBase(grWinTime);
           end
         else
@@ -833,7 +859,8 @@ l:
         else
         if sl = CMD_PAUSE_GAME then
           begin
-            dialogs.MessageDlg('Can we pause the game?', mtConfirmation, [mbYes, mbNo], mfCanPause);
+            dialogs.MessageDlg(TLocalizer.Instance.GetMessage(19), mtConfirmation,
+              [mbYes, mbNo], mfCanPause); // Can we pause the game?
           end
         else
         if sl = CMD_PAUSE_GAME_YES then
@@ -843,7 +870,8 @@ l:
         else
         if sl = CMD_PAUSE_GAME_NO then
           begin
-            dialogs.MessageDlg('No pause, sorry.', mtCustom, [mbOk], mfNone);
+            dialogs.MessageDlg(TLocalizer.Instance.GetMessage(20), mtCustom,
+              [mbOk], mfNone); // No pause, sorry.
           end
         else
         if sl = CMD_CONTINUE_GAME then
@@ -857,8 +885,8 @@ l:
           begin
             if you_takebacks or ChessBoard.pTrainingMode then
               begin
-                dialogs.MessageDlg('May I take back last move?',
-                                   mtConfirmation, [mbYes, mbNo], mfMsgTakeBack);
+                dialogs.MessageDlg(TLocalizer.Instance.GetMessage(21),
+                                   mtConfirmation, [mbYes, mbNo], mfMsgTakeBack); // 'May I take back last move?'
               end
             else
               SendData(CMD_TAKEBACK_NO)
@@ -866,8 +894,8 @@ l:
         else
         if sl = CMD_ADJOURN_GAME then
           begin
-            dialogs.MessageDlg('Can we adjourn this game?',
-                                   mtConfirmation, [mbYes, mbNo], mfMsgAdjourn);
+            dialogs.MessageDlg(TLocalizer.Instance.GetMessage(22),
+                                   mtConfirmation, [mbYes, mbNo], mfMsgAdjourn); // Can we adjourn this game?
           end
         else
         if sl = CMD_ADJOURN_GAME_YES then
@@ -877,7 +905,8 @@ l:
         else
         if sl = CMD_ADJOURN_GAME_NO then
           begin
-            dialogs.MessageDlg('No adjourns, sorry.', mtCustom, [mbOk], mfNone);
+            dialogs.MessageDlg(TLocalizer.Instance.GetMessage(23), mtCustom, [mbOk],
+              mfNone); // No adjourns, sorry.
           end
         else
         if sl = CMD_TAKEBACK_YES then
@@ -893,7 +922,7 @@ l:
         else
         if sl = CMD_TAKEBACK_NO then
           begin
-            dialogs.MessageDlg('Sorry, no takebacks!', mtCustom, [mbOK], mfNone);
+            dialogs.MessageDlg(TLocalizer.Instance.GetMessage(24), mtCustom, [mbOK], mfNone); // Sorry, no takebacks!
           end
         else
         if (sl = CMD_POSITION) and (CompareStr(player_nick_id, opponent_nick_id) > 0) then
@@ -931,6 +960,8 @@ end;
 
 procedure TManager.FormDestroy(Sender: TObject);
 begin
+  TLocalizer.Instance.DeleteSubscriber(self);
+
   if connectionOccured then
     WriteSettings;
   ExtBaseList.Free;
@@ -946,7 +977,7 @@ begin
   dialogs.Free;
 end;
 
-procedure TManager.OptionsActionExecute(Sender: TObject);
+procedure TManager.LookFeelOptionsActionExecute(Sender: TObject);
 var
   lookFeelOptionsForm: TLookFeelOptionsForm;
 begin
@@ -976,8 +1007,8 @@ end;
 
 procedure TManager.ResignGameClick(Sender: TObject);
 begin
-  dialogs.MessageDlg('Do you really want to resign?',
-                mtConfirmation, [mbYes, mbNo], mfMsgResign);
+  dialogs.MessageDlg(TLocalizer.Instance.GetMessage(25),
+                mtConfirmation, [mbYes, mbNo], mfMsgResign); // Do you really want to resign?
 end;
 
 
@@ -1106,7 +1137,7 @@ procedure TManager.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
   if Connector.connected then
     begin
-      dialogs.MessageDlg('Do you want to exit?', mtConfirmation, [mbYes, mbNo], mfMsgClose);
+      dialogs.MessageDlg(TLocalizer.Instance.GetMessage(26), mtConfirmation, [mbYes, mbNo], mfMsgClose); // Do you want to exit?
       Action:= caNone;
     end
   else
@@ -1233,7 +1264,8 @@ begin
               WriteToGameLog('*');
               FlushGameLog;
 {$ENDIF}
-              dialogs.MessageDlg('The game is aborted.', mtCustom, [mbOK], mfNone);
+              dialogs.MessageDlg(TLocalizer.Instance.GetMessage(13), mtCustom,
+                [mbOK], mfNone); // The game is aborted.
             end;
       end;
     mfMsgResign:
@@ -1266,8 +1298,8 @@ begin
                 WriteToGameLog('=' + #13#10 + '1/2 - 1/2');
                 FlushGameLog;
 {$ENDIF}
-              dialogs.MessageDlg('The game is drawn.', mtCustom, [mbOK], mfNone);
-              ChessBoard.WriteGameToBase(grDraw);
+              dialogs.MessageDlg(TLocalizer.Instance.GetMessage(15), mtCustom, [mbOK], mfNone);
+              ChessBoard.WriteGameToBase(grDraw); // The game is drawn.
             end;
         end;
     mfMsgTakeBack:
@@ -1522,7 +1554,7 @@ end;
 
 procedure TManager.SetPrivateSettings;
 var
-  iniFile: TIniFile;
+  iniFile: TTntIniFile;
   initialClockTime: string;
 begin
   // Общие настройки по умолчанию
@@ -1533,7 +1565,7 @@ begin
   opponent_takebacks := FALSE;
 
   // Считывание личных настроек из INI-файла
-  iniFile := TIniFile.Create(Chess4NetPath + INI_FILE_NAME);
+  iniFile := TTntIniFile.Create(Chess4NetPath + INI_FILE_NAME);
   try
     ChessBoard.animation := TAnimation(iniFile.ReadInteger(PRIVATE_SECTION_NAME, ANIMATION_KEY_NAME, Ord(aQuick)));
     ChessBoard.LastMoveHilighted := iniFile.ReadBool(PRIVATE_SECTION_NAME, HILIGHT_LAST_MOVE_KEY_NAME, FALSE);
@@ -1541,6 +1573,7 @@ begin
     ChessBoard.CoordinatesShown := iniFile.ReadBool(PRIVATE_SECTION_NAME, SHOW_COORDINATES_KEY_NAME, TRUE);
     ChessBoard.StayOnTop := iniFile.ReadBool(PRIVATE_SECTION_NAME, STAY_ON_TOP_KEY_NAME, FALSE);
     extra_exit := iniFile.ReadBool(PRIVATE_SECTION_NAME, EXTRA_EXIT_KEY_NAME, FALSE);
+    TLocalizer.Instance.ActiveLanguage := iniFile.ReadInteger(PRIVATE_SECTION_NAME, LANGUAGE_KEY_NAME, 1) - 1;    
   finally
     iniFile.Free;
   end;
@@ -1549,7 +1582,7 @@ end;
 
 function TManager.SetCommonSettings(setToOpponent: boolean): boolean;
 var
-  iniFile: TIniFile;
+  iniFile: TTntIniFile;
   commonSectionName: string;
   playerColor: TFigureColor;
   clockStr: string;
@@ -1562,7 +1595,7 @@ begin
     end;
 
   Result := FALSE;
-  iniFile := TIniFile.Create(Chess4NetPath + INI_FILE_NAME);
+  iniFile := TTntIniFile.Create(Chess4NetPath + INI_FILE_NAME);
   try
     commonSectionName := COMMON_SECTION_PREFIX + ' ' + opponent_id;
     if not iniFile.SectionExists(commonSectionName) then
@@ -1648,10 +1681,10 @@ end;
 
 procedure TManager.WriteSettings;
 var
-  iniFile: TIniFile;
+  iniFile: TTntIniFile;
   commonSectionName: string;
 begin
-  iniFile := TIniFile.Create(Chess4NetPath + INI_FILE_NAME);
+  iniFile := TTntIniFile.Create(Chess4NetPath + INI_FILE_NAME);
   try
     // Запись личных настроек
     iniFile.WriteInteger(PRIVATE_SECTION_NAME, ANIMATION_KEY_NAME, Ord(ChessBoard.animation));
@@ -1660,6 +1693,7 @@ begin
     iniFile.WriteBool(PRIVATE_SECTION_NAME, SHOW_COORDINATES_KEY_NAME, ChessBoard.CoordinatesShown);
     iniFile.WriteBool(PRIVATE_SECTION_NAME, STAY_ON_TOP_KEY_NAME, ChessBoard.StayOnTop);
     iniFile.WriteBool(PRIVATE_SECTION_NAME, EXTRA_EXIT_KEY_NAME, extra_exit);
+    iniFile.WriteInteger(PRIVATE_SECTION_NAME, LANGUAGE_KEY_NAME, TLocalizer.Instance.ActiveLanguage + 1);
     // Запись общих настроек
     commonSectionName := COMMON_SECTION_PREFIX + ' ' + opponent_id;
     iniFile.WriteInteger(commonSectionName, PLAYER_COLOR_KEY_NAME, Ord(ChessBoard.PlayerColor));
@@ -1768,7 +1802,7 @@ begin
   WriteToGameLog('*');
   FlushGameLog;
 {$ENDIF}
-  dialogs.MessageDlg('The game is adjourned.', mtCustom, [mbOK], mfNone);
+  dialogs.MessageDlg(TLocalizer.Instance.GetMessage(27), mtCustom, [mbOK], mfNone); // The game is adjourned.
 end;
 
 procedure TManager.FExitGameMode;
@@ -1871,7 +1905,7 @@ begin
 
   ChessBoard := TPosBaseChessBoard.Create(self, ChessBoardHandler, Chess4NetPath + USR_BASE_NAME);
   dialogs := TDialogs.Create(ChessBoard, DialogFormHandler);
-    
+
   try
     with ChessBoard do
     begin
@@ -1894,6 +1928,28 @@ begin
   end;
 end;
 {$ENDIF}
+
+
+procedure TManager.FLocalize;
+begin
+  with TLocalizer.Instance do
+  begin
+    StartAdjournedGameConnected.Caption := GetLabel(51);
+    StartStandartGameConnected.Caption := GetLabel(52);
+    StartPPRandomGameConnected.Caption := GetLabel(53);
+    ChangeColorConnected.Caption := GetLabel(54);
+    GameOptionsConnected.Caption := GetLabel(55);
+    LookFeelOptionsAction.Caption := GetLabel(56);
+    AboutAction.Caption := GetLabel(57);
+
+    AbortGame.Caption := GetLabel(58);
+    DrawGame.Caption := GetLabel(59);
+    ResignGame.Caption := GetLabel(60);
+    AdjournGame.Caption := GetLabel(61);
+    GamePause.Caption := GetLabel(62);
+    TakebackGame.Caption := GetLabel(63);
+  end;
+end;
 
 end.
 
