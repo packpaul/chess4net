@@ -8,7 +8,7 @@ object InfoForm: TInfoForm
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
   Font.Height = -11
-  Font.Name = 'MS Sans Serif'
+  Font.Name = 'Microsoft Sans Serif'
   Font.Style = []
   OldCreateOrder = False
   Position = poScreenCenter
@@ -51,7 +51,7 @@ object InfoForm: TInfoForm
     Height = 13
     Alignment = taCenter
     AutoSize = False
-    Caption = '(c) 2007-2009 no rights reserved'
+    Caption = #169' 2007-2009 no rights reserved'
   end
   object Label4: TLabel
     Left = 38

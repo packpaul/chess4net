@@ -66,7 +66,7 @@ object ChessBoard: TChessBoard
         145
         25)
       object WhiteTimeLabel: TLabel
-        Left = 72
+        Left = 71
         Top = 0
         Width = 68
         Height = 25
@@ -106,14 +106,14 @@ object ChessBoard: TChessBoard
       object WhiteLabel: TTntLabel
         Left = 0
         Top = 0
-        Width = 72
+        Width = 71
         Height = 25
         Align = alLeft
         Caption = 'White   '
         Font.Charset = DEFAULT_CHARSET
         Font.Color = clWindowText
         Font.Height = -19
-        Font.Name = 'MS Sans Serif'
+        Font.Name = 'Microsoft Sans Serif'
         Font.Style = [fsBold]
         ParentFont = False
       end
@@ -129,7 +129,7 @@ object ChessBoard: TChessBoard
         145
         25)
       object BlackTimeLabel: TLabel
-        Left = 69
+        Left = 68
         Top = 0
         Width = 68
         Height = 25
@@ -147,14 +147,14 @@ object ChessBoard: TChessBoard
       object BlackLabel: TTntLabel
         Left = 0
         Top = 0
-        Width = 69
+        Width = 68
         Height = 25
         Align = alLeft
         Caption = 'Black   '
         Font.Charset = DEFAULT_CHARSET
         Font.Color = clWindowText
         Font.Height = -19
-        Font.Name = 'MS Sans Serif'
+        Font.Name = 'Microsoft Sans Serif'
         Font.Style = [fsBold]
         ParentFont = False
       end

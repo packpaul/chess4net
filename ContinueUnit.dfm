@@ -1,6 +1,6 @@
 object ContinueForm: TContinueForm
-  Left = 935
-  Top = 255
+  Left = 649
+  Top = 305
   BorderStyle = bsDialog
   ClientHeight = 75
   ClientWidth = 210
@@ -8,7 +8,7 @@ object ContinueForm: TContinueForm
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
   Font.Height = -11
-  Font.Name = 'MS Sans Serif'
+  Font.Name = 'Microsoft Sans Serif'
   Font.Style = []
   OldCreateOrder = False
   OnClose = FormClose
