@@ -56,6 +56,7 @@ type
 
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
+    procedure ActionListUpdate;
     procedure LookFeelOptionsActionExecute(Sender: TObject);
     procedure AbortGameClick(Sender: TObject);
     procedure DrawGameClick(Sender: TObject);
@@ -74,6 +75,7 @@ type
     procedure GamePopupMenuPopup(Sender: TObject);
 
   private
+    m_strAdjourned: string;
     ChessBoard: TPosBaseChessBoard;
     Connector: TConnector;
     ConnectingForm: TConnectingForm;
@@ -100,8 +102,6 @@ type
     player_nick_id, opponent_nick_id: string;
     // Extra Exit
     extra_exit: boolean;
-    // откладывание
-    _adjournedStr: string;
     connectionOccured: boolean;
     dialogs: TDialogs;
 {$IFDEF GAME_LOG}
@@ -131,13 +131,12 @@ type
     procedure ContinueGame;
     procedure FAdjournGame;
     procedure FExitGameMode;
-    procedure FSetAdjournedStr(const str: string);
     procedure FBuildAdjournedStr;
     procedure FStartAdjournedGame;
     procedure ILocalizable.Localize = FLocalize;
     procedure FLocalize;
 
-    property AdjournedStr: string read _adjournedStr write FSetAdjournedStr;
+    property AdjournedStr: string read m_strAdjourned write m_strAdjourned;
 
   public
 {$IFDEF MIRANDA}
@@ -254,6 +253,9 @@ const
   CLOCK_KEY_NAME = 'Clock';
   ADJOURNED_KEY_NAME = 'Adjourned';
   LANGUAGE_KEY_NAME = 'Language';
+
+////////////////////////////////////////////////////////////////////////////////
+// TManager
 
 {$IFDEF MIRANDA}
 procedure TManager.FormCreate(Sender: TObject);
@@ -639,7 +641,6 @@ l:
               Mode := mGame;
               move_done:= FALSE;
               TakebackGame.Enabled := FALSE;
-              AdjournGame.Enabled := FALSE;
               SwitchClock(PositionColor);
 {$IFDEF GAME_LOG}
               InitGameLog;
@@ -670,7 +671,6 @@ l:
           begin
             SplitStr(sr, sl, sr);
             can_adjourn_game := (sl = '1');
-            AdjournGame.Visible := can_adjourn_game;
           end
         else
         if sl = CMD_SET_CLOCK then
@@ -1067,7 +1067,6 @@ begin
 
       move_done:= FALSE;
       TakebackGame.Enabled := FALSE;
-      AdjournGame.Enabled := FALSE;      
       Mode := mGame;
       SwitchClock(ChessBoard.PositionColor);
     end;
@@ -1174,7 +1173,6 @@ begin
       Mode := mGame;
       move_done := FALSE;
       TakebackGame.Enabled := FALSE;
-      AdjournGame.Enabled := FALSE;      
       SwitchClock(ChessBoard.PositionColor);
     end;
 {$IFDEF GAME_LOG}
@@ -1388,7 +1386,6 @@ begin
             ChessBoard.UnsetExternalBase;
           ChessBoard.pUseUserBase := UsrBaseCheckBox.Checked;
           GamePause.Visible := can_pause_game;
-          AdjournGame.Visible := can_adjourn_game;
           TakebackGame.Visible := (ChessBoard.pTrainingMode or opponent_takebacks);
 
           if (opponentClientVersion < 200705) then // 2007.4
@@ -1660,12 +1657,11 @@ begin
 
     TakebackGame.Visible := (opponent_takebacks or ChessBoard.pTrainingMode);
     GamePause.Visible := can_pause_game;
-    AdjournGame.Visible := can_adjourn_game;
 
     if opponentClientVersion >= 200801 then
       begin
         AdjournedStr := iniFile.ReadString(commonSectionName, ADJOURNED_KEY_NAME, '');
-        if AdjournedStr <> '' then
+        if (AdjournedStr <> '') then
         begin
           SendData(CMD_SET_ADJOURNED + ' ' + AdjournedStr);
           iniFile.WriteString(commonSectionName, ADJOURNED_KEY_NAME, '');
@@ -1785,11 +1781,12 @@ end;
 procedure TManager.StartAdjournedGameConnectedClick(Sender: TObject);
 begin
   if AdjournedStr <> '' then
-    begin
-      SendData(CMD_START_ADJOURNED_GAME);
-      FStartAdjournedGame;
-    end;
+  begin
+    SendData(CMD_START_ADJOURNED_GAME);
+    FStartAdjournedGame;
+  end;
 end;
+
 
 procedure TManager.FAdjournGame;
 begin
@@ -1813,12 +1810,6 @@ begin
     AdjournedStr := '';
 end;
 
-procedure TManager.FSetAdjournedStr(const str: string);
-begin
-  _adjournedStr := str;
-  AdjournGame.Enabled := (_adjournedStr <> '') and move_done;
-  StartAdjournedGameConnected.Visible := (_adjournedStr <> '');
-end;
 
 procedure TManager.FBuildAdjournedStr;
 var
@@ -1882,7 +1873,6 @@ begin
 
       move_done:= FALSE;
       TakebackGame.Enabled := FALSE;
-      AdjournGame.Enabled := FALSE;
       Mode := mGame;
       SwitchClock(PositionColor);
     end;  
@@ -1950,6 +1940,14 @@ begin
     TakebackGame.Caption := GetLabel(63);
   end;
 end;
+
+
+procedure TManager.ActionListUpdate;
+begin
+  AdjournGame.Visible := can_adjourn_game;
+  AdjournGame.Enabled := ((adjournedStr <> '') and move_done);
+  StartAdjournedGameConnected.Visible := (adjournedStr <> '');
+end;  
 
 end.
 

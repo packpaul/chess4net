@@ -20,6 +20,7 @@ object Manager: TManager
   PixelsPerInch = 96
   TextHeight = 13
   object ActionList: TTntActionList
+    OnUpdate = ActionListUpdate
     Left = 176
     Top = 8
     object LookFeelOptionsAction: TTntAction

@@ -1,5 +1,5 @@
 Chess4Net
-(c) 2007-2008 No rights reserved
+(c) 2007-2009 No rights reserved
 E-Mail: packpaul@mail.ru
 URL:    http://chess4net.ru
 ==============================
@@ -7,7 +7,7 @@ URL:    http://chess4net.ru
 Opening
 --------
 
-Chess4Net is a program for playing chess via Internet. It can be used as standalone application (Socket version for Microsoft Windows or Linux) or as plug-in for such instant messengers as Miranda, QIP Infium, Trillian Pro and &RQ. Two modes of chess game are supported: standart chess and its random counterpart - PP Random Chess. Chess4Net supports sudden death and incremental time controls as well as possibility to give your opponent a time-handicap. Starting from version 2007.4 there is also a support for training mode.
+Chess4Net is a program for playing chess via Internet. It can be used as standalone application (Socket version for Microsoft Windows or Linux) or as plug-in for such instant messengers as Miranda, QIP Infium, Trillian Pro and &RQ. Two modes of chess game are supported: standart chess and its random counterpart - PP Random Chess. Chess4Net supports sudden death and incremental time controls as well as possibility to give your opponent a time-handicap. If you want to improve your chess skills there is also a support for a training mode.
 
 Middle game
 ------------
@@ -70,7 +70,7 @@ User DB can learn from your games in order to give you best choices. You can als
 Endgame
 --------
 
-Chess4Net is constantly improving and it is up to you what features will be included in the next release. Please send all your wishes and/or complaints to packpaul@mail.ru
+Chess4Net is constantly improving and it is up to you what features will be included in the next release. Please send all your wishes and/or complaints to E-mail: packpaul@mail.ru or ICQ: 98750806
 Chess4Net is a software and, like it is peculiar to software, it will never be bug free. Please report all bugs you may find to packpaul@mail.ru but see change log before reporting.
 
 Congratulations you won!
@@ -93,6 +93,10 @@ PP
 
 Change log
 -----------
+
+
+Chess4net 2009.1 (MI)
+[2009-01-01] Localization for English and Russian and possibility to add new languages. Chess board resizing. Possibility to play more than one game simultaneously (multi-sessionality). Flashing window on incomming move.
 
 
 Chess4net 2008.1 (&RQ)

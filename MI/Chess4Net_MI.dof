@@ -132,8 +132,8 @@ ProductVersion=1.0.0.0
 Comments=
 [HistoryLists\hlConditionals]
 Count=14
-Item0=SOCKET;xFASTMM4
-Item1=MIRANDA;xFASTMM4;xDEBUG_LOG
+Item0=MIRANDA;xFASTMM4;xDEBUG_LOG
+Item1=SOCKET;xFASTMM4
 Item2=QIP;xFASTMM4;
 Item3=AND_RQ;xFASTMM4
 Item4=TRILLIAN;xFASTMM4
@@ -151,8 +151,8 @@ Count=1
 Item0=WinTypes=Windows;WinProcs=Windows;DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE;
 [HistoryLists\hlSearchPath]
 Count=10
-Item0=..\lib\FastMM4;..\lib\PNGImage;..\lib\TntUnicodeControls\Source
-Item1=.\MirandaINC;..\lib\FastMM4;..\lib\PNGImage;..\lib\TntUnicodeControls\Source
+Item0=.\MirandaINC;..\lib\FastMM4;..\lib\PNGImage;..\lib\TntUnicodeControls\Source
+Item1=..\lib\FastMM4;..\lib\PNGImage;..\lib\TntUnicodeControls\Source
 Item2=$(DELPHI)\Lib\Debug;..\lib\FastMM4;..\lib\PNGImage;..\lib\TntUnicodeControls\Source
 Item3=.\MirandaINC;..\lib\FastMM4;..\lib\PNGImage;..\lib\TntUnicodeControls
 Item4=$(DELPHI)\Lib\Debug;..\lib\FastMM4;..\lib\PNGImage;.\MirandaINC
