@@ -1,3 +1,6 @@
+- Добавить в Readme упоминание о How you can help.
+- Message dialogs при Stay on top пропадают.
+- Ch4N падает, если отсутствует Lang.ini
 - Сделать скрипт срезки релиза.
 
 

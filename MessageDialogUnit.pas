@@ -136,7 +136,7 @@ var
   ThisButtonWidth: integer;
   LButton: TTntButton;
 begin { CreateMessageDialog }
-  Result := TMessageForm.CreateNew(Application);
+  Result := TMessageForm.CreateNew(AOwner);
   with Result do
   begin
     BorderStyle := bsDialog; // By doing this first, it will work on WINE.

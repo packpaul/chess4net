@@ -211,6 +211,7 @@ var
 begin
   if (not FileExists(m_IniFileName)) then
     exit;
+
   IniFile := TTntIniFile.Create(m_IniFileName);
   try
     // Count available languages
@@ -283,8 +284,6 @@ var
   wstrValue: WideString;
 begin
   Result := FALSE;
-  if (not FileExists(m_IniFileName)) then
-    exit;
 
   // Copy default values
   m_wstrlLabels.Clear;
@@ -294,6 +293,9 @@ begin
   m_wstrlMessages.Clear;
   for i := Low(DEFAULT_MESSAGES) to High(DEFAULT_MESSAGES) do
     m_wstrlMessages.Add(DEFAULT_MESSAGES[i]);
+
+  if (not FileExists(m_IniFileName)) then
+    exit;    
 
   wstrlValues := nil;
   IniFile := TTntIniFile.Create(m_IniFileName);
