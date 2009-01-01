@@ -73,6 +73,10 @@ Endgame
 Chess4Net is constantly improving and it is up to you what features will be included in the next release. Please send all your wishes and/or complaints to E-mail: packpaul@mail.ru or ICQ: 98750806
 Chess4Net is a software and, like it is peculiar to software, it will never be bug free. Please report all bugs you may find to packpaul@mail.ru but see change log before reporting.
 
+How you can help?
+-----------------
+If you liked Chess4Net you could make some reasonable donations to Yandex-Money: 41001124111397 or Web Money: 774788633995. Also you could provide localization into new languages (see Lang.ini), and, of course, your fresh ideas won't be unnoticed!
+
 Congratulations you won!
 ------------------------
 
