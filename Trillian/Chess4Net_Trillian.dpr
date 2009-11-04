@@ -3,6 +3,12 @@ library Chess4Net_Trillian;
   plugin library for Trillian Pro
 ********************************}
 
+(*
+{$IFDEF FASTMM4}
+  FastMM4,
+{$ENDIF}
+*)
+
 uses
 {$IFDEF FASTMM4}
   FastMM4,
@@ -26,7 +32,9 @@ uses
   PosBaseUnit in '..\PosBaseUnit.pas',
   ContinueUnit in '..\ContinueUnit.pas' {ContinueForm},
   InfoUnit in '..\InfoUnit.pas' {InfoForm},
-  BitmapResUnit in '..\BitmapResUnit.pas';
+  BitmapResUnit in '..\BitmapResUnit.pas',
+  LocalizerUnit in '..\LocalizerUnit.pas',
+  ChessRulesEngine in '..\ChessRulesEngine.pas';
 
 {$R ..\Chess4Net.res}
 

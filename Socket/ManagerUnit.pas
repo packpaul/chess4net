@@ -118,7 +118,7 @@ implementation
 uses
   DateUtils, Math, StrUtils, TntIniFiles,
   GameOptionsUnit, ConnectionUnit, LookFeelOptionsUnit, GlobalsLocalUnit,
-  GlobalsUnit;
+  GlobalsUnit, ChessRulesEngine;
 
 const
   USR_BASE_NAME = 'Chess4Net';
@@ -192,10 +192,6 @@ const
 
   MANAGER_UNIT_INSTANCES: integer = 0; // количество инстанций TManager
 
-var
-  Chess4NetPath: string;
-
-
 procedure TManager.FormCreate(Sender: TObject);
 begin
   ChessBoard := TPosBaseChessBoard.Create(self, ChessBoardHandler, USR_BASE_NAME);
@@ -260,10 +256,10 @@ begin
       begin
         SendData(PString(d1)^);
 {$IFDEF GAME_LOG}
-        if (ChessBoard.PositionColor = Black) or not move_done then
+        if (ChessBoard.PositionColor = fcBlack) or not move_done then
           begin
             WriteToGameLog(' ' + IntToStr(ChessBoard.NMoveDone) + '.');
-            if ChessBoard.PositionColor = White then
+            if ChessBoard.PositionColor = fcWhite then
               WriteToGameLog(' ...');
           end;
         WriteToGameLog(' ' + PString(d1)^);
@@ -278,16 +274,16 @@ begin
           Mode:= mView;
 {$IFDEF GAME_LOG}
           WriteToGameLog('#');
-          if PositionColor = White then WriteToGameLog(#13#10 + '0 - 1')
+          if PositionColor = fcWhite then WriteToGameLog(#13#10 + '0 - 1')
             else WriteToGameLog(#13#10 + '1 - 0');
           FlushGameLog;
 {$ENDIF}
-          if PositionColor = White then
+          if PositionColor = fcWhite then
             s := 'White'
           else
             s := 'Black';
-          if ((PlayerColor <> White) and (PositionColor = White)) or
-             ((PlayerColor <> Black) and (PositionColor = Black)) then
+          if ((PlayerColor <> fcWhite) and (PositionColor = fcWhite)) or
+             ((PlayerColor <> fcBlack) and (PositionColor = fcBlack)) then
           begin
             MessageDlg(s + ' is checkmated. You win.', mtCustom, [mbOK]);
             ChessBoard.WriteGameToBase(grWin);
@@ -324,10 +320,10 @@ begin
                 end
               else
                 begin
-                  if PlayerColor = White then
-                    Time[Black] := IncSecond(Time[Black], opponent_inc)
+                  if PlayerColor = fcWhite then
+                    Time[fcBlack] := IncSecond(Time[fcBlack], opponent_inc)
                   else
-                    Time[White] := IncSecond(Time[White], opponent_inc);
+                    Time[fcWhite] := IncSecond(Time[fcWhite], opponent_inc);
                 end;
             end;
         end; { with }
@@ -441,9 +437,9 @@ l:
                 SendData(CMD_NICK + ' ' + player_nick);
                 ChessBoard.InitPosition;
                 if csServer in Connector.State then
-                  ChessBoard.PlayerColor:= White
+                  ChessBoard.PlayerColor:= fcWhite
                 else
-                  ChessBoard.PlayerColor:= Black; // csClient in Connector.State
+                  ChessBoard.PlayerColor:= fcBlack; // csClient in Connector.State
                 SetClock;
                 bConnected := TRUE;
               end
@@ -517,7 +513,7 @@ l:
                   begin
                     StartStandartGameConnected.Enabled := TRUE;
                     StartPPRandomGameConnected.Enabled := TRUE;
-                    ChessBoard.PlayerColor := White;
+                    ChessBoard.PlayerColor := fcWhite;
                     ChessBoard.Caption := player_nick + ' - ' + opponent_nick;
                     if not SetCommonSettings(TRUE) then
                       SendData(CMD_NO_SETTINGS);
@@ -526,7 +522,7 @@ l:
                   begin
                     StartStandartGameConnected.Enabled := FALSE;
                     StartPPRandomGameConnected.Enabled := FALSE;
-                    ChessBoard.PlayerColor := Black;
+                    ChessBoard.PlayerColor := fcBlack;
                     ChessBoard.Caption := opponent_nick + ' - ' + player_nick;
                     SetCommonSettings(FALSE);
                   end;
@@ -590,7 +586,7 @@ l:
                 ChessBoard.StopClock;
                 ChessBoard.Mode:= mView;
 {$IFDEF GAME_LOG}
-                if ChessBoard.PlayerColor = White then
+                if ChessBoard.PlayerColor = fcWhite then
                   WriteToGameLog(#13#10 + 'Black resigns' + #13#10 + '1 - 0')
                 else
                   WriteToGameLog(#13#10 + 'White resigns' + #13#10 + '0 - 1');
@@ -638,10 +634,10 @@ l:
                   ms:= RightStr(sl, length(sl) - LastDelimiter(':.', sl));
                   sl:= LeftStr(sl, length(sl) - length(ms) - 1);
 
-                  if PlayerColor = White then
-                    Time[Black]:= StrToTime(sl) + EncodeTime(0,0,0, StrToInt(ms))
+                  if PlayerColor = fcWhite then
+                    Time[fcBlack]:= StrToTime(sl) + EncodeTime(0,0,0, StrToInt(ms))
                   else
-                    Time[White]:= StrToTime(sl) + EncodeTime(0,0,0, StrToInt(ms));
+                    Time[fcWhite]:= StrToTime(sl) + EncodeTime(0,0,0, StrToInt(ms));
                 except
                   on Exception do ;
                 end
@@ -655,7 +651,7 @@ l:
                       ChessBoard.StopClock;
                       ChessBoard.Mode:= mView;
 {$IFDEF GAME_LOG}
-                      if ChessBoard.PlayerColor = White then
+                      if ChessBoard.PlayerColor = fcWhite then
                         WriteToGameLog(#13#10 + 'White forfeits on time')
                       else
                         WriteToGameLog(#13#10 + 'Black forfeits on time');
@@ -673,7 +669,7 @@ l:
                 ChessBoard.StopClock;
                 ChessBoard.Mode:= mView;
 {$IFDEF GAME_LOG}
-              if ChessBoard.PlayerColor = White then
+              if ChessBoard.PlayerColor = fcWhite then
                 WriteToGameLog(#13#10 + 'Black forfeits on time')
               else
                 WriteToGameLog(#13#10 + 'White forfeits on time');
@@ -686,10 +682,10 @@ l:
             if sl = CMD_FLAG_NO then
               with ChessBoard do
                 case PlayerColor of
-                  White:
-                    if Time[Black] = 0.0 then SendData(CMD_FLAG);
-                  Black:
-                    if Time[White] = 0.0 then SendData(CMD_FLAG);
+                  fcWhite:
+                    if Time[fcBlack] = 0.0 then SendData(CMD_FLAG);
+                  fcBlack:
+                    if Time[fcWhite] = 0.0 then SendData(CMD_FLAG);
                 end
             else
             if sl = CMD_PAUSE_GAME then
@@ -774,10 +770,10 @@ l:
                 if (PlayerColor <> PositionColor) and DoMove(sl) then
                   begin
 {$IFDEF GAME_LOG}
-                    if (PositionColor = Black) or not move_done then
+                    if (PositionColor = fcBlack) or not move_done then
                       begin
                         WriteToGameLog(' ' + IntToStr(NMoveDone) + '.');
-                        if PositionColor = White then
+                        if PositionColor = fcWhite then
                           WriteToGameLog(' ...');
                       end;
                     WriteToGameLog(' ' + sl);
@@ -900,7 +896,7 @@ begin
 
   ChessBoard.StopClock;
 {$IFDEF GAME_LOG}
-  if ChessBoard.PlayerColor = White then
+  if ChessBoard.PlayerColor = fcWhite then
     WriteToGameLog(#13#10 + 'White resigns' + #13#10 + '0 - 1')
   else
     WriteToGameLog(#13#10 + 'Black resigns' + #13#10 + '1 - 0');
@@ -1075,16 +1071,16 @@ begin
     begin
       Unlimited[PlayerColor]:= you_unlimited;
       Time[PlayerColor]:= EncodeTime(you_time div 60, you_time mod 60, 0,0);
-      if PlayerColor = White then
+      if PlayerColor = fcWhite then
         begin
-          Unlimited[Black]:= opponent_unlimited;
-          Time[Black]:= EncodeTime(opponent_time div 60,
+          Unlimited[fcBlack]:= opponent_unlimited;
+          Time[fcBlack]:= EncodeTime(opponent_time div 60,
                                    opponent_time mod 60, 0,0);
         end
       else
         begin
-          Unlimited[White]:= opponent_unlimited;
-          Time[White]:= EncodeTime(opponent_time div 60,
+          Unlimited[fcWhite]:= opponent_unlimited;
+          Time[fcWhite]:= EncodeTime(opponent_time div 60,
                                    opponent_time mod 60, 0,0);
         end;
     end;
@@ -1193,7 +1189,7 @@ begin
   LongTimeFormat:= HOUR_TIME_FORMAT;
   WriteToGameLog('[' + DateTimeToStr(Now) + ']' + #13#10);
 
-  if ChessBoard.PlayerColor = White then
+  if ChessBoard.PlayerColor = fcWhite then
     WriteToGameLog(player_nick + ' - ' + opponent_nick)
   else
     WriteToGameLog(opponent_nick + ' - ' + player_nick);
@@ -1202,7 +1198,7 @@ begin
   begin
     WriteToGameLog(' (');
     case ChessBoard.PlayerColor of
-      White:
+      fcWhite:
         begin
           if not you_unlimited then
             begin
@@ -1224,7 +1220,7 @@ begin
           else
             WriteToGameLog('inf');
         end;
-      Black:
+      fcBlack:
         begin
           if not opponent_unlimited then
             begin
@@ -1382,7 +1378,7 @@ begin
 
     if setToOpponent then
       begin
-        playerColor := TFigureColor(iniFile.ReadInteger(commonSectionName, PLAYER_COLOR_KEY_NAME, Ord(Black)));
+        playerColor := TFigureColor(iniFile.ReadInteger(commonSectionName, PLAYER_COLOR_KEY_NAME, Ord(fcBlack)));
         if (ChessBoard.PlayerColor = playerColor) then // каждый раз менять сохранённый цвет на противоположный
           begin
             ChangeColor;
@@ -1511,11 +1507,11 @@ procedure TManager.ChangeColor;
 begin
    with ChessBoard do
      begin
-       if PlayerColor = White then
+       if PlayerColor = fcWhite then
          begin
            StartStandartGameConnected.Enabled := FALSE;
            StartPPRandomGameConnected.Enabled := FALSE;
-           PlayerColor := Black;
+           PlayerColor := fcBlack;
            ChessBoard.Caption := opponent_nick + ' - ' + player_nick;
            SetClock;
          end
@@ -1523,7 +1519,7 @@ begin
          begin
            StartStandartGameConnected.Enabled := TRUE;
            StartPPRandomGameConnected.Enabled := TRUE;
-           PlayerColor := White;
+           PlayerColor := fcWhite;
            ChessBoard.Caption := player_nick + ' - ' + opponent_nick;
            SetClock;
          end;

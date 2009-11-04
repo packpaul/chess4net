@@ -3,6 +3,12 @@ library Chess4Net_AndRQ;
   plugin library for &RQ
 ********************************}
 
+(*
+{$IFDEF FASTMM4}
+  FastMM4,
+{$ENDIF}
+*)
+
 uses
 {$IFDEF FASTMM4}
   FastMM4,
@@ -28,7 +34,9 @@ uses
   GlobalsUnit in '..\GlobalsUnit.pas',
   PosBaseUnit in '..\PosBaseUnit.pas',
   ContinueUnit in '..\ContinueUnit.pas' {ContinueForm},
-  BitmapResUnit in '..\BitmapResUnit.pas';
+  BitmapResUnit in '..\BitmapResUnit.pas',
+  LocalizerUnit in '..\LocalizerUnit.pas',
+  ChessRulesEngine in '..\ChessRulesEngine.pas';
 
 {$R ..\Chess4Net.res}
 

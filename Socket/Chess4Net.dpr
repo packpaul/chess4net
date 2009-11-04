@@ -28,7 +28,9 @@ uses
   ContinueUnit in '..\ContinueUnit.pas' {ContinueForm},
   DialogUnit in '..\DialogUnit.pas',
   MessageDialogUnit in '..\MessageDialogUnit.pas',
-  BitmapResUnit in '..\BitmapResUnit.pas';
+  BitmapResUnit in '..\BitmapResUnit.pas',
+  ChessRulesEngine in '..\ChessRulesEngine.pas',
+  LocalizerUnit in '..\LocalizerUnit.pas';
 
 {$R ..\Chess4Net.res}
 

@@ -44,7 +44,7 @@ type
 implementation
 
 uses
-  SysUtils;
+  SysUtils, ChessRulesEngine;
 
 type
   TCoord = record

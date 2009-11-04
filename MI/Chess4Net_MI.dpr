@@ -36,7 +36,8 @@ uses
   PluginCommonUnit in 'PluginCommonUnit.pas',
   PosBaseChessBoardUnit in '..\PosBaseChessBoardUnit.pas',
   PosBaseUnit in '..\PosBaseUnit.pas',
-  PromotionUnit in '..\PromotionUnit.pas' {PromotionForm};
+  PromotionUnit in '..\PromotionUnit.pas' {PromotionForm},
+  ChessRulesEngine in '..\ChessRulesEngine.pas';
 
 {$R ..\Chess4Net.res}
 

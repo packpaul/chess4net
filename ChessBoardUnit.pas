@@ -8,7 +8,7 @@ uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms, TntForms,
   Dialogs, StdCtrls, TntStdCtrls, ExtCtrls, Buttons,
   // Chess4net
-  ChessBoardHeaderUnit, BitmapResUnit, LocalizerUnit;
+  ChessBoardHeaderUnit, ChessRulesEngine, BitmapResUnit, LocalizerUnit;
 
 type
   TChessPosition = record // шахматная позиция
@@ -290,7 +290,7 @@ begin
             ti:= ti + dx[l]; tj:= tj + dy[l];
             if not(ti in [1..8]) or not(tj in [1..8]) then break;
             ef:= board[ti,tj];
-            if ((color = White) and (ef < ES)) or ((color = Black) and (ef > ES))
+            if ((color = fcWhite) and (ef < ES)) or ((color = fcBlack) and (ef > ES))
               then break;
             case ef of
               WK,BK:
@@ -305,8 +305,8 @@ begin
                 if f <> N then break;
               WP,BP:
                 if locLongRange or (f <> B) or
-                   ((color = White) and not(tj > j0)) or
-                   ((color = Black) and not(tj < j0))
+                   ((color = fcWhite) and not(tj > j0)) or
+                   ((color = fcBlack) and not(tj < j0))
                           then break;
               ES:
                 begin
@@ -332,13 +332,13 @@ var
 begin
   with pos do
     begin
-      if ((color = White) and (board[i0,j0] = WK)) or
-         ((color = Black) and (board[i0,j0] = BK)) then goto l;
+      if ((color = fcWhite) and (board[i0,j0] = WK)) or
+         ((color = fcBlack) and (board[i0,j0] = BK)) then goto l;
       // поиск короля на доске
       for i:= 1 to 8 do
         for j:= 1 to 8 do
-          if ((color = White) and (board[i,j] = WK)) or
-             ((color = Black) and (board[i,j] = BK)) then
+          if ((color = fcWhite) and (board[i,j] = WK)) or
+             ((color = fcBlack) and (board[i,j] = BK)) then
             begin
               i0:= i; j0:= j;
               goto l;
@@ -365,8 +365,8 @@ begin
           (i in [1..8]) and (j in [1..8])) then exit;
 
   fig:= chp.board[i0,j0];
-  if ((chp.color = White) and (fig > ES)) or
-     ((chp.color = Black) and (fig < ES)) then exit;
+  if ((chp.color = fcWhite) and (fig > ES)) or
+     ((chp.color = fcBlack) and (fig < ES)) then exit;
 
   f:= TFigureName(ord(fig) - ord(chp.color) * ord(BK));
 
@@ -379,15 +379,15 @@ begin
           P:
             begin
               if (l = 1) and
-                 not(((color = White) and (j0 = 2) and (board[i0,3] = ES)) or
-                     ((color = Black) and (j0 = 7) and (board[i0,6] = ES)))
+                 not(((color = fcWhite) and (j0 = 2) and (board[i0,3] = ES)) or
+                     ((color = fcBlack) and (j0 = 7) and (board[i0,6] = ES)))
                 then continue; // Пешка - не на 2/7 гор. - не делаем длинный ход.
               case color of
-                White:
+                fcWhite:
                   begin
                     ti:= ti + dx[l]; tj:= tj + dy[l];
                   end;
-                Black:
+                fcBlack:
                   begin
                     ti:= ti - dx[l]; tj:= tj - dy[l];
                   end;
@@ -395,9 +395,9 @@ begin
               if not(ti in [1..8]) or not(tj in [1..8]) then continue;
               if (l <= 2) and (board[ti,tj] <> ES)
                 then continue; // Перед пешкой фигура - выход
-              if (l >= 3) and not(((color = White) and ((board[ti,tj] > ES) or
+              if (l >= 3) and not(((color = fcWhite) and ((board[ti,tj] > ES) or
                                    ((j0 = 5) and (en_passant = ti)))) or
-                                  ((color = Black) and ((board[ti,tj] < ES) or
+                                  ((color = fcBlack) and ((board[ti,tj] < ES) or
                                    ((j0 = 4) and (en_passant = ti)))))
                 then continue;
               if (ti = i) and (tj = j) then goto here;
@@ -406,9 +406,9 @@ begin
             repeat
               ti:= ti + dx[l]; tj:= tj + dy[l];
               if not(ti in [1..8]) or not(tj in [1..8]) or
-                 ((color = White) and ((board[ti,tj] < ES) or
+                 ((color = fcWhite) and ((board[ti,tj] < ES) or
                   ((board[ti,tj] > ES) and ((ti <> i) or (tj <> j))))) or
-                 ((color = Black) and ((board[ti,tj] > ES) or
+                 ((color = fcBlack) and ((board[ti,tj] > ES) or
                   ((board[ti,tj] < ES) and ((ti <> i) or (tj <> j)))))
                 then break;
               if (ti = i) and (tj = j) then goto here;
@@ -420,8 +420,8 @@ begin
         with chp do
           begin
             if (i-i0 = 2) and (j = j0) and
-               (((color = White) and (WhiteKingSide in castling)) or
-                ((color = Black) and (BlackKingSide in castling)))
+               (((color = fcWhite) and (WhiteKingSide in castling)) or
+                ((color = fcBlack) and (BlackKingSide in castling)))
               then
                 begin
                   if (board[6,j0] <> ES) or (board[7,j0] <> ES) or // 0-0
@@ -431,8 +431,8 @@ begin
                 end
               else
             if (i-i0 = -2) and (j = j0) and
-               (((color = White) and (WhiteQueenSide in castling)) or
-                ((color = Black) and (BlackQueenSide in castling)))
+               (((color = fcWhite) and (WhiteQueenSide in castling)) or
+                ((color = fcBlack) and (BlackQueenSide in castling)))
               then
                 begin
                   if (board[4,j0] <> ES) or (board[3,j0] <> ES) or // 0-0-0
@@ -453,8 +453,8 @@ here:
       case f of
         P:
           begin
-            if (((color = White) and (j0 = 5)) or
-                ((color = Black) and (j0 = 4))) and (i = en_passant)
+            if (((color = fcWhite) and (j0 = 5)) or
+                ((color = fcBlack) and (j0 = 4))) and (i = en_passant)
               then board[i,j0]:= ES; // убрать при e.p. враж. пешку
           end;
         K:
@@ -471,9 +471,9 @@ here:
                 board[1,j0]:= ES;
               end;
             case color of
-              White:
+              fcWhite:
                 castling:= castling - [WhiteKingSide, WhiteQueenSide];
-              Black:
+              fcBlack:
                 castling:= castling - [BlackKingSide, BlackQueenSide];
             end;
           end;
@@ -493,10 +493,10 @@ here:
           end;
       end;
       if (f = P) and (abs(j-j0) = 2) and
-         (((i > 1) and (((color = White) and (board[i-1,j] = BP)) or
-                        ((color = Black) and (board[i-1,j] = WP)))) or
-          ((i < 8) and (((color = White) and (board[i+1,j] = BP)) or
-                        ((color = Black) and (board[i+1,j] = WP))))) then
+         (((i > 1) and (((color = fcWhite) and (board[i-1,j] = BP)) or
+                        ((color = fcBlack) and (board[i-1,j] = WP)))) or
+          ((i < 8) and (((color = fcWhite) and (board[i+1,j] = BP)) or
+                        ((color = fcBlack) and (board[i+1,j] = WP))))) then
         en_passant := i0 // вкл. e.p.
       else
         en_passant := 0; // выкл. e.p.
@@ -524,8 +524,8 @@ here:
           end;
           board[i,j]:= TFigure(ord(color) * ord(BK) + ord(prom_fig));
         end;
-      if color = White then color:= Black
-        else color:= White;
+      if color = fcWhite then color:= fcBlack
+        else color:= fcWhite;
     end;
 
   chp_res:= pos;
@@ -545,8 +545,8 @@ begin
     for i:= 1 to 8 do
       for j:= 1 to 8 do
         begin
-          if ((color = White) and (board[i,j] >= ES)) or
-             ((color = Black) and (board[i,j] <= ES)) then continue;
+          if ((color = fcWhite) and (board[i,j] >= ES)) or
+             ((color = fcBlack) and (board[i,j] <= ES)) then continue;
 
           f:= TFigureName(ord(board[i,j]) - ord(color) * ord(BK));
           for l:= 1 to 8 do
@@ -556,11 +556,11 @@ begin
                 ti:= i; tj:= j;
                 repeat
                   case color of
-                    White:
+                    fcWhite:
                       begin
                         ti:= ti + dx[l]; tj:= tj + dy[l];
                       end;
-                    Black:
+                    fcBlack:
                       begin
                         ti:= ti - dx[l]; tj:= tj - dy[l];
                       end;
@@ -583,7 +583,7 @@ procedure TChessBoard.ShowTime(const c: TFigureColor);
 var
   time_label: TLabel;
 begin
-  if c = White then time_label:= WhiteTimeLabel
+  if c = fcWhite then time_label:= WhiteTimeLabel
     else time_label:= BlackTimeLabel;
 
   if unlimited_var[c] then
@@ -665,8 +665,8 @@ begin
     end;
 
   case posstr[l] of
-    'w': pos.color:= White;
-    'b': pos.color:= Black;
+    'w': pos.color:= fcWhite;
+    'b': pos.color:= fcBlack;
     else exit;
   end;
 
@@ -761,8 +761,8 @@ begin
             else Result:= Result + '/'; // i <= 7
         end;
 
-        if color = White then Result:= Result + 'w '
-          else Result:= Result + 'b '; // color = Black
+        if color = fcWhite then Result:= Result + 'w '
+          else Result:= Result + 'b '; // color = fcBlack
         // Рокировка
         if castling = [] then Result:= Result + '-'
           else
@@ -819,7 +819,7 @@ begin
   FLocalize;
 
   // Clock initialization
-  SetUnlimited(White, TRUE); SetUnlimited(Black, TRUE);
+  SetUnlimited(fcWhite, TRUE); SetUnlimited(fcBlack, TRUE);
 
   // Инициализация списка позиций
   lstPosition := TList.Create;
@@ -1046,8 +1046,8 @@ begin
   case Mode of
     mGame:
       if (Button <> mbLeft) or (Position.color <> player_color) or
-         (((Position.color <> White) or (f >= ES)) and
-          ((Position.color <> Black) or (f <= ES))) then exit;
+         (((Position.color <> fcWhite) or (f >= ES)) and
+          ((Position.color <> fcBlack) or (f <= ES))) then exit;
     else exit;
   end;
 
@@ -1088,8 +1088,8 @@ begin
   case Mode of
     mGame:
       if (player_color = Position.color) and
-         (((Position.color = White) and (f < ES)) or
-          ((Position.color = Black) and (f > ES))) then
+         (((Position.color = fcWhite) and (f < ES)) or
+          ((Position.color = fcBlack) and (f > ES))) then
         PBoxBoard.Cursor:= crHandPoint
       else
         PBoxBoard.Cursor:= crDefault;
@@ -1139,11 +1139,11 @@ begin
     end;
   // Проверка на рокировку
   if move_str = '0-0' then
-    if Position.color = White then move_str:= 'Ke1g1'
+    if Position.color = fcWhite then move_str:= 'Ke1g1'
       else move_str:= 'Ke8g8'
   else
     if move_str = '0-0-0' then
-      if Position.color = White then move_str:= 'Ke1c1'
+      if Position.color = fcWhite then move_str:= 'Ke1c1'
         else move_str:= 'Ke8c8';
 
   i0 := 0; j0 := 0; i := 0; j := 0;
@@ -1222,7 +1222,7 @@ l1:
               begin
                 for l:= 2 to 7 do
                   if (board[i0,l] = fig) and ((j0 = 0) or (j0 = l)) then
-                    if color = White then
+                    if color = fcWhite then
                       begin
                         if ((board[i,l+1] > ES) or
                             ((l = 5) and (en_passant = i))) and
@@ -1232,7 +1232,7 @@ l1:
                             goto l2;
                           end;
                       end
-                    else // color = Black
+                    else // color = fcBlack
                       if ((board[i,l-1] < ES) or
                           ((l = 4) and (en_passant = i))) and
                          ((j = 0) or (j = l-1)) and (abs(i-i0) = 1) then
@@ -1244,14 +1244,14 @@ l1:
             else  // Ход прямо
               begin
                 i0:= i;
-                if color = White then
+                if color = fcWhite then
                   begin
                     if board[i,j-1] = fig then j0:= j-1
                       else
                         if (j = 4) and (board[i,3] = ES) and
                            (board[i,2] = fig) then j0:= 2;
                   end
-                else // color = Black
+                else // color = fcBlack
                   if board[i,j+1] = fig then j0:= j+1
                     else
                       if (j = 5) and (board[i,6] = ES) and
@@ -1435,10 +1435,10 @@ begin
     begin
       if not auto_flag then
         case color of
-          White:
-            WhiteFlagButton.Visible := ((player_color = Black) and (tm = 0.0));
-          Black:
-            BlackFlagButton.Visible := ((player_color = White) and (tm = 0.0));
+          fcWhite:
+            WhiteFlagButton.Visible := ((player_color = fcBlack) and (tm = 0.0));
+          fcBlack:
+            BlackFlagButton.Visible := ((player_color = fcWhite) and (tm = 0.0));
         end;
       player_time[color]:= tm;
       ShowTime(color);
@@ -1467,9 +1467,9 @@ begin
       ShowTime(clock_color);
       if (not auto_flag) and (player_color <> clock_color) then
         case clock_color of
-          White:
+          fcWhite:
             WhiteFlagButton.Visible := TRUE;
-          Black:
+          fcBlack:
             BlackFlagButton.Visible := TRUE;
         end;
       if (player_color <> clock_color) and Assigned(Handler) and (Mode = mGame) and (auto_flag) then
@@ -1589,9 +1589,9 @@ begin
 
             for l := 2 to 7 do // Проверка на двусмысленность взятия
               if (((board[lastMove.i0, l] = WP)  and ((Position.board[lastMove.i, l+1] > ES) or
-                  ((Position.en_passant = lastMove.i) and (l = 5)))) and (color = Black)) or
+                  ((Position.en_passant = lastMove.i) and (l = 5)))) and (color = fcBlack)) or
                  (((board[lastMove.i0, l] = BP)  and ((Position.board[lastMove.i, l-1] < ES) or
-                  ((Position.en_passant = lastMove.i) and (l = 4)))) and (color = White))
+                  ((Position.en_passant = lastMove.i) and (l = 4)))) and (color = fcWhite))
                 then Result:= Result + IntToStr(lastMove.j);
           end;
 
@@ -1694,7 +1694,7 @@ end;
 procedure TChessBoard.Refresh;
 begin
   DrawBoard; HilightLastMove;
-  ShowTime(White); ShowTime(Black);
+  ShowTime(fcWhite); ShowTime(fcBlack);
 end;
 
 
@@ -1702,8 +1702,8 @@ procedure TChessBoard.SetPlayerColor(const color: TFigureColor);
 begin
   CancelAnimationDragging;
   player_color:= color;
-  if player_color = White then SetFlipped(FALSE)
-    else SetFlipped(TRUE); // player_color = Black
+  if player_color = fcWhite then SetFlipped(FALSE)
+    else SetFlipped(TRUE); // player_color = fcBlack
 end;
 
 
@@ -1873,10 +1873,10 @@ procedure TTimeLabelThread.Execute;
 begin
   while ChessBoard.GameTimer.Enabled do
     begin
-      if self.player_time[White] <> ChessBoard.player_time[White] then
-        ChessBoard.ShowTime(White);
-      if self.player_time[Black] <> ChessBoard.player_time[Black] then
-        ChessBoard.ShowTime(Black);
+      if self.player_time[fcWhite] <> ChessBoard.player_time[fcWhite] then
+        ChessBoard.ShowTime(fcWhite);
+      if self.player_time[fcBlack] <> ChessBoard.player_time[fcBlack] then
+        ChessBoard.ShowTime(fcBlack);
       Sleep(ChessBoard.GameTimer.Interval div 2);
     end;
   ChessBoard.TimeLabelThread := nil;  
@@ -1886,8 +1886,8 @@ end;
 constructor TTimeLabelThread.Create(ChessBoard: TChessBoard);
 begin
   self.ChessBoard := ChessBoard;
-  self.player_time[White] := ChessBoard.player_time[White];
-  self.player_time[Black] := ChessBoard.player_time[Black];
+  self.player_time[fcWhite] := ChessBoard.player_time[fcWhite];
+  self.player_time[fcBlack] := ChessBoard.player_time[fcBlack];
 
   inherited Create(TRUE);
 //Priority := tpNormal;

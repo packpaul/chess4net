@@ -5,7 +5,7 @@ interface
 uses
   Graphics, Types,
   // Chess4Net
-  ChessBoardHeaderUnit;
+  ChessBoardHeaderUnit, ChessRulesEngine;
 
 type
   // Bitmap resources - introduced for 2009.1 (sizable board feature)

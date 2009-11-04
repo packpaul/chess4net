@@ -3,7 +3,7 @@ unit PosBaseChessBoardUnit;
 interface
 
 uses
-  Classes, PosBaseUnit, ChessBoardHeaderUnit, ChessBoardUnit;
+  Classes, PosBaseUnit, ChessBoardHeaderUnit, ChessRulesEngine, ChessBoardUnit;
 
 type
   TGameResult = (grWin, grWinTime, grDraw, grLost, grLostTime);
@@ -467,7 +467,7 @@ var
 begin
   gameID := Random($FFFF) + 1;
 
-  if PlayerColor = White then
+  if PlayerColor = fcWhite then
     ply := 0
   else
     ply := 1;
