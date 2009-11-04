@@ -62,14 +62,14 @@ begin
           (m_iSquareSize + INDENT_SIZE) * k + m_iSquareSize - 1, m_iSquareSize - 1));
 
       case m_fig_color of
-        White:
+        fcWhite:
           begin
             Draw(0, 0, m_bmFigure[WQ]);
             Draw(m_iSquareSize + 2, 0, m_bmFigure[WR]);
             Draw(2 * (m_iSquareSize + INDENT_SIZE), 0, m_bmFigure[WB]);
             Draw(3 * (m_iSquareSize + INDENT_SIZE), 0, m_bmFigure[WN]);
           end;
-        Black:
+        fcBlack:
           begin
             Draw(0, 0, m_bmFigure[BQ]);
             Draw(m_iSquareSize + INDENT_SIZE, 0, m_bmFigure[BR]);
