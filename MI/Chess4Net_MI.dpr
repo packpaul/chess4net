@@ -47,7 +47,7 @@ begin
   with _PluginInfo^ do
     begin
       shortName := 'Chess4Net';
-      version := MakeMirandaPluginVersion(200,9,1,2); // 2009.2
+      version := MakeMirandaPluginVersion(200,9,1,1); // 2009.1
       description := PLUGIN_PLAYING_VIA;
       author := 'Pavel Perminov';
       authorEmail := 'packpaul@mail.ru';
