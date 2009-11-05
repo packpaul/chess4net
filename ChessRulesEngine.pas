@@ -28,6 +28,7 @@ type
 
   IChessRulesEngineable = interface
     function AskPromotionFigure(FigureColor: TFigureColor): TFigureName;
+    procedure OnAfterMoveDone;
   end;
 
   TChessRulesEngine = class
@@ -48,6 +49,11 @@ type
     function FCheckMove(const chp: TChessPosition; var chp_res: TChessPosition; // TODO: -> private ?
       i0, j0, i, j: integer; var prom_fig: TFigureName): boolean;
 
+    function FGetLastMove: PMoveAbs;
+    procedure FDelPosList; // Удаляет текущую позицию из списка
+
+    procedure FOnAfterMoveDone;
+
   public
     constructor Create(ChessRulesEngineable: IChessRulesEngineable = nil);
     destructor Destroy; override;
@@ -58,7 +64,7 @@ type
     function DoMove(move_str: string): boolean; overload;
     function DoMove(i,j: integer; prom_fig: TFigureName = K): boolean; overload;
 
-    function FGetLastMove: PMoveAbs;
+    function TakeBack: boolean;
 
     property Position: PChessPosition read FGetPosition;
 
@@ -590,6 +596,13 @@ l2:
 end;
 
 
+procedure TChessRulesEngine.FOnAfterMoveDone;
+begin
+  if (Assigned(m_ChessRulesEngineable)) then
+    m_ChessRulesEngineable.OnAfterMoveDone;
+end;
+
+
 function TChessRulesEngine.DoMove(i,j: integer; prom_fig: TFigureName = K): boolean;
 var
   newPosition: TChessPosition;
@@ -608,6 +621,8 @@ begin
 
     m_strLastMoveStr := FMove2Str(newPosition);
     Position^ := newPosition;
+
+    FOnAfterMoveDone;
   end;
 end;
 
@@ -717,6 +732,27 @@ begin
         else
           if lastMove.i0 - lastMove.i = 2 then Result:= '0-0-0';
     end;
+end;
+
+
+function TChessRulesEngine.TakeBack: boolean;
+begin
+  Result := (PositionsList.Count > 0);
+  if (Result) then
+    FDelPosList;
+end;
+
+
+procedure TChessRulesEngine.FDelPosList;
+var
+  i: integer;
+begin
+  i := PositionsList.Count - 1;
+  if (i >= 0) then
+  begin
+    Dispose(PositionsList[i]);
+    PositionsList.Delete(i);
+  end;
 end;
 
 end.

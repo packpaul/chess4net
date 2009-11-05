@@ -22,7 +22,7 @@ type
     procedure FWriteGameToBase;
 
   protected
-    function DoMove(i,j: integer; prom_fig: TFigureName = K): boolean; override;
+    procedure ROnAfterMoveDone; override;
     procedure RSetPositionRec(const pos: TChessPosition); override;
     procedure RDrawHiddenBoard; override;
 
@@ -255,18 +255,14 @@ begin
  end;
 
 
-function TPosBaseChessBoard.DoMove(i,j: integer; prom_fig: TFigureName = K): boolean;
+procedure TPosBaseChessBoard.ROnAfterMoveDone;
 begin
-  Result := inherited DoMove(i,j, prom_fig);
-
-  if not Result then
-    exit;
-
-  if _bTrainingMode then
-    begin
-      if PlayerColor = PositionColor then
-        TPosBaseOperator.CreateRead(self, TRUE) // чтение из базы и вывод на скрытую доску
-    end;
+  inherited;
+  if (_bTrainingMode) then
+  begin
+    if (PlayerColor = PositionColor) then
+      TPosBaseOperator.CreateRead(self, TRUE) // чтение из базы и вывод на скрытую доску
+  end;
 end;
 
 

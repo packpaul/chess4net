@@ -175,9 +175,12 @@ type
     iSquareSize: integer; // Size of a chess board field
     bmHiddenBoard: TBitmap;
     procedure RDrawBoard;
+
     procedure RDrawHiddenBoard; virtual;
     procedure RSetPositionRec(const pos: TChessPosition); virtual;
-    function DoMove(i, j: integer; prom_fig: TFigureName = K): boolean; overload; virtual;
+    function RDoMove(i, j: integer; prom_fig: TFigureName = K): boolean;
+    procedure IChessRulesEngineable.OnAfterMoveDone = ROnAfterMoveDone;
+    procedure ROnAfterMoveDone; virtual;
 
     property PositionsList: TList read FGetPositionsList;
 
@@ -205,7 +208,7 @@ type
     function GetPositionRec: TChessPosition;
     function GetLastMoveAbs: TMoveAbs; // Возвращает последний сделанный ход в абс. координатах
     function NMoveDone: integer; // количество сделанных ходов
-    function DoMove(move_str: string): boolean; overload;
+    function DoMove(move_str: string): boolean;
     procedure Shut;
 
     property flipped: boolean read _flipped write SetFlipped;
@@ -654,7 +657,7 @@ begin
   case Mode of
     mGame:
     begin
-      if (DoMove(i, j)) then
+      if (RDoMove(i, j)) then
       begin
         SwitchClock(PositionColor);
         dragged_moved:= TRUE;
@@ -819,20 +822,22 @@ begin
 end;
 
 
-function TChessBoard.DoMove(i,j: integer; prom_fig: TFigureName = K): boolean;
+procedure TChessBoard.ROnAfterMoveDone;
 var
   strLastMove: string;
 begin
-  Result := ChessRulesEngine.DoMove(i, j, prom_fig);
-  if (Result) then
+  if (Assigned(Handler) and
+      ((Mode = mGame) and (Position.color <> player_color))) then
   begin
-    if (Assigned(Handler) and
-        ((Mode = mGame) and (Position.color <> player_color))) then
-    begin
-      strLastMove := ChessRulesEngine.LastMoveStr;
-      Handler(cbeMoved, @strLastMove, self);
-    end;
+    strLastMove := ChessRulesEngine.LastMoveStr;
+    Handler(cbeMoved, @strLastMove, self);
   end;
+end;
+
+
+function TChessBoard.RDoMove(i,j: integer; prom_fig: TFigureName = K): boolean;
+begin
+  Result := ChessRulesEngine.DoMove(i, j, prom_fig);
 end;
 
 
@@ -859,7 +864,7 @@ begin
             else
             begin
               hilighted:= FALSE;
-              if DoMove(i,j) then
+              if RDoMove(i,j) then
                 begin
                   Animate(i,j);
                   SwitchClock(PositionColor);
