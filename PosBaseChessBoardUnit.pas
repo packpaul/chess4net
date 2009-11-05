@@ -23,8 +23,8 @@ type
 
   protected
     function DoMove(i,j: integer; prom_fig: TFigureName = K): boolean; override;
-    procedure SetPositionRec(const pos: TChessPosition); override;
-    procedure DrawHiddenBoard; override;
+    procedure RSetPositionRec(const pos: TChessPosition); override;
+    procedure RDrawHiddenBoard; override;
 
   public
     procedure WriteGameToBase(vGameResult: TGameResult);
@@ -161,7 +161,7 @@ begin
 end;
 
 
-procedure TPosBaseChessBoard.DrawHiddenBoard;
+procedure TPosBaseChessBoard.RDrawHiddenBoard;
 const
   ARROW_END_LENGTH = 10; // в пикселях
   ARROW_END_ANGLE = 15 * (Pi / 180); // угол концов стрелки
@@ -270,17 +270,17 @@ begin
 end;
 
 
-procedure TPosBaseChessBoard.SetPositionRec(const pos: TChessPosition);
+procedure TPosBaseChessBoard.RSetPositionRec(const pos: TChessPosition);
 var
   PosBaseOperator: TPosBaseOperator;
 begin
   inherited;
   if _bTrainingMode then
-    begin
-      PosBaseOperator := TPosBaseOperator.CreateRead(self, FALSE, FALSE); // чтение из базы и вывод на скрытую доску
-      PosBaseOperator.WaitFor;
-      PosBaseOperator.Free;
-    end;
+  begin
+    PosBaseOperator := TPosBaseOperator.CreateRead(self, FALSE, FALSE); // чтение из базы и вывод на скрытую доску
+    PosBaseOperator.WaitFor;
+    PosBaseOperator.Free;
+  end;
 end;
 
 
@@ -472,9 +472,9 @@ begin
   else
     ply := 1;
 
-  while ((ply < lstPosition.Count) and ((MAX_PLY_TO_BASE < 0) or (ply <= MAX_PLY_TO_BASE))) do
+  while ((ply < PositionsList.Count) and ((MAX_PLY_TO_BASE < 0) or (ply <= MAX_PLY_TO_BASE))) do
     begin
-      _oPosBase.Add(PPosMove(lstPosition[ply])^);
+      _oPosBase.Add(PPosMove(PositionsList[ply])^);
       inc(ply, 2);
     end;
 end;

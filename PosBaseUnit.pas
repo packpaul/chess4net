@@ -3,7 +3,7 @@ unit PosBaseUnit;
 interface
 
 uses
-  ChessBoardHeaderUnit, ChessBoardUnit, Classes;
+  ChessBoardHeaderUnit, ChessRulesEngine, ChessBoardUnit, Classes;
 
 type
   PMoveEst = ^TMoveEst;
@@ -44,7 +44,7 @@ type
 implementation
 
 uses
-  SysUtils, ChessRulesEngine;
+  SysUtils;
 
 type
   TCoord = record
