@@ -23,7 +23,7 @@ type
 
   protected
     procedure ROnAfterMoveDone; override;
-    procedure RSetPositionRec(const pos: TChessPosition); override;
+    procedure ROnAfterSetPosition; override;
     procedure RDrawHiddenBoard; override;
 
   public
@@ -252,7 +252,7 @@ begin
       bmHiddenBoard.Canvas.LineTo(Round(xa), Round(ya));
     end;
 
- end;
+end;
 
 
 procedure TPosBaseChessBoard.ROnAfterMoveDone;
@@ -266,12 +266,11 @@ begin
 end;
 
 
-procedure TPosBaseChessBoard.RSetPositionRec(const pos: TChessPosition);
+procedure TPosBaseChessBoard.ROnAfterSetPosition;
 var
   PosBaseOperator: TPosBaseOperator;
 begin
-  inherited;
-  if _bTrainingMode then
+  if (_bTrainingMode) then
   begin
     PosBaseOperator := TPosBaseOperator.CreateRead(self, FALSE, FALSE); // чтение из базы и вывод на скрытую доску
     PosBaseOperator.WaitFor;
@@ -431,9 +430,9 @@ begin
     lstExtMove := TList.Create;
 
     if _bUseUserBase or (not Assigned(_oExtPosBase)) then
-      _oPosBase.Find(GetPositionRec, lstUsrMove);
+      _oPosBase.Find(Position^, lstUsrMove);
     if Assigned(_oExtPosBase) then
-      _oExtPosBase.Find(GetPositionRec, lstExtMove);
+      _oExtPosBase.Find(Position^, lstExtMove);
 
     // TODO: обработка неправильной базы
 

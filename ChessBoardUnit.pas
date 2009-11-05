@@ -11,7 +11,7 @@ uses
   ChessBoardHeaderUnit, ChessRulesEngine, BitmapResUnit, LocalizerUnit;
 
 type
-  TMode = (mView, mGame, mEdit); // состо€ние доски
+  TMode = (mView, mGame); // состо€ние доски
   TChessBoardEvent =
     (cbeMoved, cbeMate, cbeStaleMate, cbeInsuffMaterial, cbeKeyPressed,
      cbeClockSwitched, cbeTimeOut, cbeExit, cbeMenu, cbeActivate, cbeFormMoving,
@@ -120,10 +120,10 @@ type
 {$IFDEF THREADED_CHESSCLOCK}
     TimeLabelThread: TTimeLabelThread; // нить используетс€ дл€ борьбы с лагом в ћиранде
 {$ENDIF}
+
     procedure HilightLastMove;
-    procedure DelPosList; // ”дал€ет текущую позицию из списка
     procedure WhatSquare(const P: TPoint; var i: Integer; var j: Integer);
-    procedure Animate(const i,j: integer); // јнимирует перемещение фигуры с (i0,j0) до (i,j)
+    procedure Animate(const i, j: integer); // јнимирует перемещение фигуры с (i0,j0) до (i,j)
     procedure SetMode(const m: TMode);
     procedure ShowTime(const c: TFigureColor);
     procedure SetPlayerColor(const color: TFigureColor);
@@ -138,7 +138,7 @@ type
     procedure SetFlipped(const f: boolean); // ѕереварачивает позицию при отображении
     function GetStayOnTop: boolean;
     procedure SetStayOnTop(onTop: boolean);
-    procedure CancelAnimationDragging; // отмена анимации и перетаскивани€ дл€ удалени€ гр€зи при прорисовки
+    procedure FCancelAnimationDragging; // отмена анимации и перетаскивани€ дл€ удалени€ гр€зи при прорисовки
     procedure SetAutoFlag(auto_flag: boolean);
     procedure FFlashWindow;
     // Localization
@@ -152,8 +152,8 @@ type
     function FGetPosition: PChessPosition;
     function AskPromotionFigure(FigureColor: TFigureColor): TFigureName;
 
-    function FGetI0J0(iIndex: integer): integer;
-    procedure FSetI0J0(iIndex, iValue: integer);
+    function FGetI0J0(iIndex: integer): integer; // TODO: Get rid of
+    procedure FSetI0J0(iIndex, iValue: integer); // TODO: Get rid of
     function FGetLastMove: PMoveAbs;
 
     function FGetPositionsList: TList;
@@ -161,14 +161,15 @@ type
     function FGetFig: TFigure;
     procedure FSetFig(Value: TFigure);
 
+    procedure IChessRulesEngineable.OnAfterMoveDone = FOnAfterMoveDone;
+    procedure FOnAfterMoveDone;
+
     property ChessRulesEngine: TChessRulesEngine read m_ChessRulesEngine;
     property Position: PChessPosition read FGetPosition;
 
     property i0: integer index 0 read FGetI0J0 write FSetI0J0;
     property j0: integer index 1 read FGetI0J0 write FSetI0J0;
-
     property fig: TFigure read FGetFig write FSetFig;
-
     property lastMove: PMoveAbs read FGetLastMove;
 
   protected
@@ -177,9 +178,8 @@ type
     procedure RDrawBoard;
 
     procedure RDrawHiddenBoard; virtual;
-    procedure RSetPositionRec(const pos: TChessPosition); virtual;
+    procedure ROnAfterSetPosition; virtual;
     function RDoMove(i, j: integer; prom_fig: TFigureName = K): boolean;
-    procedure IChessRulesEngineable.OnAfterMoveDone = ROnAfterMoveDone;
     procedure ROnAfterMoveDone; virtual;
 
     property PositionsList: TList read FGetPositionsList;
@@ -189,9 +189,17 @@ type
 
     procedure TakeBack; // вз€тие хода обратно
     procedure SwitchClock(clock_color: TFigureColor);
-    procedure ResetMoveList; // очищает список позиций
-    procedure Copy(cb: TChessBoard); // копирует пол€ cb в self
-    procedure Refresh;
+    procedure InitPosition;
+    procedure PPRandom;
+    procedure StopClock;
+
+    procedure ResetMoveList;
+    function SetPosition(const posstr: string): boolean;
+    function GetPosition: string;
+    function NMoveDone: integer; // количество сделанных ходов
+    function DoMove(move_str: string): boolean;
+    procedure Shut;
+
     property Unlimited[color: TFigureColor]: boolean read GetUnlimited write SetUnlimited;
     property Time[color: TFigureColor]: TDateTime read GetTime write SetTime;
     property PlayerColor: TFigureColor read player_color write SetPlayerColor;
@@ -199,17 +207,6 @@ type
     property ClockColor: TFigureColor read clock_color;
     property Mode: TMode read mode_var write SetMode;
     property CoordinatesShown: boolean read coord_show write SetCoordinates;
-    procedure InitPosition;
-    procedure PPRandom;
-    procedure StopClock;
-
-    function SetPosition(const posstr: string): boolean;
-    function GetPosition: string;
-    function GetPositionRec: TChessPosition;
-    function GetLastMoveAbs: TMoveAbs; // ¬озвращает последний сделанный ход в абс. координатах
-    function NMoveDone: integer; // количество сделанных ходов
-    function DoMove(move_str: string): boolean;
-    procedure Shut;
 
     property flipped: boolean read _flipped write SetFlipped;
     property LastMoveHilighted: boolean read last_hilight write SetHilightLastMove;
@@ -218,10 +215,6 @@ type
     property AutoFlag: boolean read auto_flag write SetAutoFlag;
     property animation: TAnimation read m_animation write m_animation;
   end;
-
-const
-  INITIAL_CHESS_POSITION = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -';
-  EMPTY_CHESS_POSITION = '8/8/8/8/8/8/8/8 w - -';
 
 implementation
 
@@ -333,181 +326,29 @@ begin
 end;
 
 
-function TChessBoard.SetPosition(const posstr: string): boolean;
-var
-  i, j, k: integer;
-  l: byte;
-  pos: TChessPosition;
+procedure TChessBoard.ResetMoveList;
 begin
-  Result:= FALSE;
-  l := 1;
-  for j := 8 downto 1 do
-    begin
-      i := 1;
-      repeat
-        case posstr[l] of
-          'K': pos.board[i,j]:= WK;
-          'Q': pos.board[i,j]:= WQ;
-          'R': pos.board[i,j]:= WR;
-          'B': pos.board[i,j]:= WB;
-          'N': pos.board[i,j]:= WN;
-          'P': pos.board[i,j]:= WP;
+  ChessRulesEngine.ResetMoveList;
+end;
 
-          'k': pos.board[i,j]:= BK;
-          'q': pos.board[i,j]:= BQ;
-          'r': pos.board[i,j]:= BR;
-          'b': pos.board[i,j]:= BB;
-          'n': pos.board[i,j]:= BN;
-          'p': pos.board[i,j]:= BP;
 
-          '1'..'8':      // ¬ставка пустых полей
-            begin
-              k:= StrToInt(posstr[l]);
-              repeat
-                pos.board[i,j]:= ES;
-                dec(k); inc(i);
-              until k = 0;
-              dec(i);
-            end;
-
-          ' ': break;  // ѕозици€ прочитана - выход из цикла
-
-          else exit; // ошибка в posstr
-        end;
-        inc(i); inc(l);
-      until (posstr[l] = '/') or (i > 8); // ѕовтор до по€влени€ '/' или пока на горизонтали
-      inc(l);
-    end;
-
-  case posstr[l] of
-    'w': pos.color:= fcWhite;
-    'b': pos.color:= fcBlack;
-    else exit;
-  end;
-
-  inc(l,2);
-  pos.castling:= [];
-  while posstr[l] <> ' ' do
-    begin
-      with pos do
-        case posstr[l] of
-          'K': castling:= castling + [WhiteKingSide];
-          'Q': castling:= castling + [WhiteQueenSide];
-          'k': castling:= castling + [BlackKingSide];
-          'q': castling:= castling + [BlackQueenSide];
-          '-':
-            if castling <> [] then exit
-              else
-                begin
-                  inc(l);
-                  break;
-                end;
-          else exit;
-        end;
-      inc(l);
-    end;
-
-  inc(l);
-  with pos do
-    case posstr[l] of
-      'a'..'h': en_passant:= ord(posstr[l]) - ord('a') + 1;
-      '-': en_passant:= 0;
-      else exit;
-    end;
-
-  if (Trim(RightStr(posstr, length(posstr) - l)) <> '') then
+function TChessBoard.SetPosition(const posstr: string): boolean;
+begin
+  Result := ChessRulesEngine.SetPosition(posstr);
+  if (not Result) then
     exit;
 
-  CancelAnimationDragging;
-  RSetPositionRec(pos);
-  clock_color:= Position.color;
+  FCancelAnimationDragging;
+  ROnAfterSetPosition;
+  clock_color := Position.color;
   lastMove.i0 := 0; // предыдущего хода ещЄ не было
-  Result:= TRUE;
   RDrawBoard;
 end;
 
 
 function TChessBoard.GetPosition: string;
-var
-  i,j: Integer;
-  k: byte;
-  chFig: char;
 begin
-  Result:= '';
-
-  with Position^ do
-    begin
-      // –асстановка фигур
-      for j:= 8 downto 1 do
-        begin
-          k:= 0;
-          for i:= 1 to 8 do
-            begin
-              case board[i,j] of
-                WK: chFig := 'K';
-                WQ: chFig := 'Q';
-                WR: chFig := 'R';
-                WB: chFig := 'B';
-                WN: chFig := 'N';
-                WP: chFig := 'P';
-                BK: chFig := 'k';
-                BQ: chFig := 'q';
-                BR: chFig := 'r';
-                BB: chFig := 'b';
-                BN: chFig := 'n';
-                BP: chFig := 'p';
-                ES:
-                  begin
-                    inc(k);
-                    continue;
-                  end;
-              end;
-
-              if k > 0 then
-                begin
-                  Result:= Result + IntToStr(k);
-                  k:= 0;
-                end;
-
-              Result := Result + chFig;
-            end;
-
-          if k > 0 then Result:= Result + IntToStr(k);
-          if j = 1 then Result:= Result + ' '
-            else Result:= Result + '/'; // i <= 7
-        end;
-
-        if color = fcWhite then Result:= Result + 'w '
-          else Result:= Result + 'b '; // color = fcBlack
-        // –окировка
-        if castling = [] then Result:= Result + '-'
-          else
-            begin
-              if WhiteKingSide in castling then Result:= Result + 'K';
-              if WhiteQueenSide in castling then Result:= Result + 'Q';
-              if BlackKingSide in castling then Result:= Result + 'k';
-              if BlackQueenSide in castling then Result:= Result + 'q';
-            end;
-        // en-passant
-        if en_passant = 0 then Result:= Result + ' -'
-          else Result:= Result + ' ' + Chr(Ord('a')-1 + en_passant);
-    end;
-end;
-
-
-function TChessBoard.GetPositionRec: TChessPosition;
-begin
-  Result := Position^;
-end;
-
-
-function TChessBoard.GetLastMoveAbs: TMoveAbs;
-begin
-  Result.i0 := lastMove.i0;
-  Result.j0 := lastMove.j0;
-  Result.i := lastMove.i;
-  Result.j := lastMove.j;
-  Result.prom_fig := lastMove.prom_fig;
+  Result := ChessRulesEngine.GetPosition;
 end;
 
 
@@ -553,15 +394,13 @@ begin
 
   // Copy empty board to the hidden one
   with bmHiddenBoard do
-    begin
-      Canvas.CopyRect(Bounds(0,0, Width,Height), m_bmChessBoard.Canvas, Bounds(0,0, Width,Height));
-//      Canvas.Brush.Color := self.Color;
-//      Canvas.FloodFill(0,0, Canvas.Pixels[0,0], fsSurface);
-    end;
+  begin
+    Canvas.CopyRect(Bounds(0,0, Width,Height), m_bmChessBoard.Canvas, Bounds(0,0, Width,Height));
+  end;
 
   // Draw coordinates
-  if coord_show then
-  with bmHiddenBoard, bmHiddenBoard.Canvas do
+  if (coord_show) then
+    with bmHiddenBoard, bmHiddenBoard.Canvas do
     begin
       x:= CHB_X + iSquareSize div 2;
       y:= (bmHiddenBoard.Height + CHB_Y + 8 * iSquareSize + CHB_WIDTH) div 2;
@@ -663,12 +502,6 @@ begin
         dragged_moved:= TRUE;
       end;
     end;
-
-    mEdit:
-      begin
-        Position.board[i0, j0] := ES;
-        Position.board[i, j] := fig;
-      end;
   end; // case
 end;
 
@@ -835,6 +668,12 @@ begin
 end;
 
 
+procedure TChessBoard.FOnAfterMoveDone;
+begin
+  ROnAfterMoveDone;
+end;
+
+
 function TChessBoard.RDoMove(i,j: integer; prom_fig: TFigureName = K): boolean;
 begin
   Result := ChessRulesEngine.DoMove(i, j, prom_fig);
@@ -857,23 +696,23 @@ begin
       case Mode of
         mGame:
           begin
-            if not hilighted then exit;
+            if (not hilighted) then
+              exit;
             WhatSquare(Point(X,Y), i,j);
-            if dragged_moved then
+            if (dragged_moved) then
               RDrawBoard
             else
             begin
               hilighted:= FALSE;
               if RDoMove(i,j) then
-                begin
-                  Animate(i,j);
-                  SwitchClock(PositionColor);
-                end
+              begin
+                Animate(i,j);
+                SwitchClock(PositionColor);
+              end
               else
                 RDrawBoard;
             end;
           end;
-        mEdit: ;
       end;
     mbRight:
       if Assigned(Handler) then Handler(cbeMenu, self);
@@ -980,15 +819,7 @@ end;
 
 procedure TChessBoard.InitPosition;
 begin
-  case Mode of
-    mGame, mView:
-      begin
-        SetPosition(INITIAL_CHESS_POSITION);
-        ResetMoveList;
-      end;
-    mEdit:
-      SetPosition(EMPTY_CHESS_POSITION);
-  end;
+  ChessRulesEngine.InitPosition;
   RDrawBoard;
 end;
 
@@ -998,7 +829,7 @@ begin
   mode_var := m;
   RDrawBoard;
   HilightLastMove;
-  if mode_var <> mGame then
+  if (mode_var <> mGame) then
     begin
       WhiteFlagButton.Visible := FALSE;
       BlackFlagButton.Visible := FALSE;
@@ -1070,24 +901,24 @@ end;
 
 function TChessBoard.GetUnlimited(color: TFigureColor): boolean;
 begin
-  Result:= unlimited_var[color];
+  Result := unlimited_var[color];
 end;
 
 
 procedure TChessBoard.SwitchClock(clock_color: TFigureColor);
 begin
   self.clock_color := clock_color;
-  if not GameTimer.Enabled then
-    begin
-      past_time := Now;
-      GameTimer.Enabled := TRUE;
-    end;
-  if Assigned(Handler) and (Mode = mGame) then
+  if (not GameTimer.Enabled) then
+  begin
+    past_time := Now;
+    GameTimer.Enabled := TRUE;
+  end;
+  if (Assigned(Handler) and (Mode = mGame)) then
     Handler(cbeClockSwitched, self);
   ShowTime(clock_color);
 
 {$IFDEF THREADED_CHESSCLOCK}
-  if not Assigned(TimeLabelThread) then
+  if (not Assigned(TimeLabelThread)) then
     TimeLabelThread := TTimeLabelThread.Create(self);
 {$ENDIF}
 end;
@@ -1139,42 +970,14 @@ begin
 end;
 
 
-procedure TChessBoard.Copy(cb: TChessBoard);
-begin
-  Position^ := cb.Position^;
-  _flipped:= cb._flipped;
-
-  lastMove.i0:= cb.lastMove.i0; lastMove.j0:= cb.lastMove.j0;
-  lastMove.i:= cb.lastMove.i; lastMove.j:= cb.lastMove.j;
-{
-  player_nick:= cb.player_nick;
-}
-  player_color:= cb.player_color;
-
-  player_time:= cb.player_time;
-  clock_color:= cb.clock_color;
-  unlimited_var:= cb.unlimited_var;
-
-  mode_var:= cb.mode_var;
-
-  Refresh;
-end;
-
-
-procedure TChessBoard.Refresh;
-begin
-  RDrawBoard;
-  HilightLastMove;
-  ShowTime(fcWhite); ShowTime(fcBlack);
-end;
-
-
 procedure TChessBoard.SetPlayerColor(const color: TFigureColor);
 begin
-  CancelAnimationDragging;
+  FCancelAnimationDragging;
   player_color:= color;
-  if player_color = fcWhite then SetFlipped(FALSE)
-    else SetFlipped(TRUE); // player_color = fcBlack
+  if (player_color = fcWhite) then
+    SetFlipped(FALSE)
+  else
+    SetFlipped(TRUE); // player_color = fcBlack
 end;
 
 
@@ -1235,71 +1038,31 @@ end;
 
 procedure TChessBoard.Evaluate;
 begin
-  if Assigned(Handler) and not CanMove(Position^) then
-     if CheckCheck(Position^) then
-       Handler(cbeMate, self)
-       else Handler(cbeStaleMate, self);
+  if (Assigned(Handler) and (not CanMove(Position^))) then
+  begin
+    if (CheckCheck(Position^)) then // TODO: Evaluate -> ChessRulesEngine
+      Handler(cbeMate, self)
+    else
+      Handler(cbeStaleMate, self);
+  end;
   // TODO: ќценка позиции на возможность технической ничьи
 end;
 
 
 procedure TChessBoard.PPRandom;
-const
-  FIG: array[0..5] of TFigureName = (B,B,Q,R,N,N);
-  SQR: array[0..5] of byte = (2,3,4,6,7,0);
-var
-  rnd_sqr: array[0..5] of byte;
-  i,j: integer;
-  f: boolean;
 begin
-  InitPosition;
-  If Random(2) = 0 then SQR[5] := 1 // с какой стороны оставл€ем ладью
-    else SQR[5] := 8;
-  for i := 0 to 5 do
-    begin
-      repeat
-        rnd_sqr[i] := SQR[Random(6)];
-        f := FALSE;
-        for j := 0 to i-1 do f := f or (rnd_sqr[i] = rnd_sqr[j]);
-      until not (f or ((i = 1) and (((rnd_sqr[0] xor rnd_sqr[1]) and 1) = 0)));
-      Position.board[rnd_sqr[i], 1] := TFigure(ord(FIG[i]));
-      Position.board[rnd_sqr[i], 8] := TFigure(ord(BK) + ord(FIG[i]));
-    end;
+  ChessRulesEngine.PPRandom;
   RDrawBoard;
 end;
 
 
 procedure TChessBoard.TakeBack;
 begin
-  if PositionsList.Count = 0 then
+  if (not ChessRulesEngine.TakeBack) then
     exit;
-  RSetPositionRec(PPosMove(PositionsList[PositionsList.Count - 1]).pos);
-  DelPosList;
+  ROnAfterSetPosition;
   // TODO: анимаци€
   RDrawBoard;
-end;
-
-
-procedure TChessBoard.DelPosList;
-var
-   i: integer;
-begin
-  i := PositionsList.Count - 1;
-  if i >= 0 then
-    begin
-      Dispose(PositionsList[i]);
-      PositionsList.Delete(i);
-    end;
-end;
-
-
-procedure TChessBoard.ResetMoveList;
-var
-  i: integer;
-begin
-  for i := 0 to PositionsList.Count - 1 do
-    Dispose(PositionsList[i]);
-  PositionsList.Clear;
 end;
 
 
@@ -1321,15 +1084,13 @@ end;
 
 function TChessBoard.NMoveDone: integer;
 begin
-  Result := (PositionsList.Count + 1) shr 1; // div 2
+  Result := ChessRulesEngine.NMoveDone;
 end;
 
 
-procedure TChessBoard.RSetPositionRec(const pos: TChessPosition);
+procedure TChessBoard.ROnAfterSetPosition;
 begin
-  Position^ := pos;
 end;
-
 
 {$IFDEF THREADED_CHESSCLOCK}
 procedure TTimeLabelThread.Execute;
@@ -1375,7 +1136,7 @@ end;
 
 procedure TChessBoard.SetStayOnTop(onTop: boolean);
 begin
-  if onTop then
+  if (onTop) then
     self.FormStyle := fsStayOnTop
   else
     self.FormStyle := fsNormal;
@@ -1481,20 +1242,20 @@ begin
 end;
 
 
-procedure TChessBoard.CancelAnimationDragging;
+procedure TChessBoard.FCancelAnimationDragging;
 begin
   // ќтмена анимации и перетаскивани€
-  if AnimateTimer.Enabled then
-    begin
-      AnimateTimer.Enabled := FALSE;
-      // anim_step := anim_step_num;
-      // AnimateTimerTimer(nil);
-    end;
-  if PBoxBoard.Dragging then
-    begin
-      dragged_moved := FALSE;
-      PBoxBoard.EndDrag(FALSE);
-    end;
+  if (AnimateTimer.Enabled) then
+  begin
+    AnimateTimer.Enabled := FALSE;
+    // anim_step := anim_step_num;
+    // AnimateTimerTimer(nil);
+  end;
+  if (PBoxBoard.Dragging) then
+  begin
+    dragged_moved := FALSE;
+    PBoxBoard.EndDrag(FALSE);
+  end;
 end;
 
 
@@ -1508,11 +1269,11 @@ end;
 procedure TChessBoard.SetAutoFlag(auto_flag: boolean);
 begin
   self.auto_flag := auto_flag;
-  if auto_flag then
-    begin
-      WhiteFlagButton.Visible := FALSE;
-      BlackFlagButton.Visible := FALSE;
-    end;
+  if (auto_flag) then
+  begin
+    WhiteFlagButton.Visible := FALSE;
+    BlackFlagButton.Visible := FALSE;
+  end;
 end;
 
 
@@ -1606,7 +1367,7 @@ begin
  flushWindowInfo.dwtimeout := 0; // speed in msec, 0 - frequency of cursor flashing
  FlashWindowEx(flushWindowInfo);
 
- if self.Focused then
+ if (self.Focused) then
    exit;
  // Flash window
  flushWindowInfo.hwnd := self.Handle; // handle of the flashing window

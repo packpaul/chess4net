@@ -65,6 +65,13 @@ type
     function DoMove(i,j: integer; prom_fig: TFigureName = K): boolean; overload;
 
     function TakeBack: boolean;
+    function SetPosition(const posstr: string): boolean;
+    function GetPosition: string;
+    procedure InitPosition;
+    procedure PPRandom;
+    procedure ResetMoveList; // очищает список позиций
+
+    function NMoveDone: integer; // amount of moves done
 
     property Position: PChessPosition read FGetPosition;
 
@@ -84,12 +91,16 @@ type
     move: TMoveAbs;
   end;
 
+const
+  INITIAL_CHESS_POSITION = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -';
+  EMPTY_CHESS_POSITION = '8/8/8/8/8/8/8/8 w - -';
+
 implementation
 
 {$J+}
 
 uses
-  SysUtils;
+  SysUtils, StrUtils;
 
 type
   TDeltaMove = array [TFigureName] of
@@ -754,5 +765,221 @@ begin
     PositionsList.Delete(i);
   end;
 end;
+
+
+function TChessRulesEngine.SetPosition(const posstr: string): boolean;
+var
+  i, j, k: integer;
+  l: byte;
+  pos: TChessPosition;
+begin
+  Result:= FALSE;
+
+  l := 1;
+  for j := 8 downto 1 do
+    begin
+      i := 1;
+      repeat
+        case posstr[l] of
+          'K': pos.board[i,j]:= WK;
+          'Q': pos.board[i,j]:= WQ;
+          'R': pos.board[i,j]:= WR;
+          'B': pos.board[i,j]:= WB;
+          'N': pos.board[i,j]:= WN;
+          'P': pos.board[i,j]:= WP;
+
+          'k': pos.board[i,j]:= BK;
+          'q': pos.board[i,j]:= BQ;
+          'r': pos.board[i,j]:= BR;
+          'b': pos.board[i,j]:= BB;
+          'n': pos.board[i,j]:= BN;
+          'p': pos.board[i,j]:= BP;
+
+          '1'..'8':      // Вставка пустых полей
+            begin
+              k:= StrToInt(posstr[l]);
+              repeat
+                pos.board[i,j]:= ES;
+                dec(k); inc(i);
+              until k = 0;
+              dec(i);
+            end;
+
+          ' ': break;  // Позиция прочитана - выход из цикла
+
+          else exit; // ошибка в posstr
+        end;
+        inc(i); inc(l);
+      until (posstr[l] = '/') or (i > 8); // Повтор до появления '/' или пока на горизонтали
+      inc(l);
+    end;
+
+  case posstr[l] of
+    'w': pos.color:= fcWhite;
+    'b': pos.color:= fcBlack;
+    else exit;
+  end;
+
+  inc(l,2);
+  pos.castling:= [];
+  while posstr[l] <> ' ' do
+    begin
+      with pos do
+        case posstr[l] of
+          'K': castling:= castling + [WhiteKingSide];
+          'Q': castling:= castling + [WhiteQueenSide];
+          'k': castling:= castling + [BlackKingSide];
+          'q': castling:= castling + [BlackQueenSide];
+          '-':
+            if castling <> [] then exit
+              else
+                begin
+                  inc(l);
+                  break;
+                end;
+        else
+          exit;
+        end;
+      inc(l);
+    end;
+
+  inc(l);
+  with pos do
+    case posstr[l] of
+      'a'..'h': en_passant:= ord(posstr[l]) - ord('a') + 1;
+      '-': en_passant:= 0;
+    else
+      exit;
+    end;
+
+  if (Trim(RightStr(posstr, length(posstr) - l)) <> '') then
+    exit;
+
+  Position^ := pos;
+
+  Result := TRUE;
+end;
+
+
+procedure TChessRulesEngine.InitPosition;
+begin
+  SetPosition(INITIAL_CHESS_POSITION);
+  ResetMoveList;
+end;
+
+
+procedure TChessRulesEngine.ResetMoveList;
+var
+  i: integer;
+begin
+  for i := 0 to PositionsList.Count - 1 do
+    Dispose(PositionsList[i]);
+  PositionsList.Clear;
+end;
+
+
+function TChessRulesEngine.GetPosition: string;
+var
+  i,j: Integer;
+  k: byte;
+  chFig: char;
+begin
+  Result:= '';
+
+  with Position^ do
+    begin
+      // Расстановка фигур
+      for j := 8 downto 1 do
+        begin
+          k:= 0;
+          for i:= 1 to 8 do
+            begin
+              case board[i,j] of
+                WK: chFig := 'K';
+                WQ: chFig := 'Q';
+                WR: chFig := 'R';
+                WB: chFig := 'B';
+                WN: chFig := 'N';
+                WP: chFig := 'P';
+                BK: chFig := 'k';
+                BQ: chFig := 'q';
+                BR: chFig := 'r';
+                BB: chFig := 'b';
+                BN: chFig := 'n';
+                BP: chFig := 'p';
+                ES:
+                  begin
+                    inc(k);
+                    continue;
+                  end;
+              end;
+
+              if k > 0 then
+                begin
+                  Result:= Result + IntToStr(k);
+                  k:= 0;
+                end;
+
+              Result := Result + chFig;
+            end;
+
+          if k > 0 then Result:= Result + IntToStr(k);
+          if j = 1 then Result:= Result + ' '
+            else Result:= Result + '/'; // i <= 7
+        end;
+
+        if color = fcWhite then Result:= Result + 'w '
+          else Result:= Result + 'b '; // color = fcBlack
+        // Рокировка
+        if castling = [] then Result:= Result + '-'
+          else
+            begin
+              if WhiteKingSide in castling then Result:= Result + 'K';
+              if WhiteQueenSide in castling then Result:= Result + 'Q';
+              if BlackKingSide in castling then Result:= Result + 'k';
+              if BlackQueenSide in castling then Result:= Result + 'q';
+            end;
+        // en-passant
+        if (en_passant = 0) then
+          Result := Result + ' -'
+        else
+          Result := Result + ' ' + Chr(Ord('a') - 1 + en_passant);
+    end;
+end;
+
+
+procedure TChessRulesEngine.PPRandom;
+const
+  FIG: array[0..5] of TFigureName = (B,B,Q,R,N,N);
+  SQR: array[0..5] of byte = (2, 3, 4, 6, 7, 0);
+var
+  rnd_sqr: array[0..5] of byte;
+  i,j: integer;
+  f: boolean;
+begin
+  InitPosition;
+  if (Random(2) = 0) then
+    SQR[5] := 1 // с какой стороны оставляем ладью
+  else
+    SQR[5] := 8;
+
+  for i := 0 to 5 do
+  begin
+    repeat
+      rnd_sqr[i] := SQR[Random(6)];
+      f := FALSE;
+      for j := 0 to i-1 do f := f or (rnd_sqr[i] = rnd_sqr[j]);
+    until not (f or ((i = 1) and (((rnd_sqr[0] xor rnd_sqr[1]) and 1) = 0)));
+    Position.board[rnd_sqr[i], 1] := TFigure(ord(FIG[i]));
+    Position.board[rnd_sqr[i], 8] := TFigure(ord(BK) + ord(FIG[i]));
+  end;
+end;
+
+
+function TChessRulesEngine.NMoveDone: integer;
+begin
+  Result := (PositionsList.Count + 1) shr 1; // div 2
+end;
+
 
 end.
