@@ -46,7 +46,7 @@ type
     procedure FAddPosMoveToList; // Добавляет позицию и ход из неё в список
     function FMove2Str(const pos: TChessPosition): string;
 
-    function FCheckMove(const chp: TChessPosition; var chp_res: TChessPosition; // TODO: -> private ?
+    function FCheckMove(const chp: TChessPosition; var chp_res: TChessPosition;
       i0, j0, i, j: integer; var prom_fig: TFigureName): boolean;
 
     function FGetLastMove: PMoveAbs;
@@ -54,34 +54,34 @@ type
 
     procedure FOnAfterMoveDone;
 
+    function FDoMove(i, j: integer; prom_fig: TFigureName = K): boolean; overload;    
+
+    property i0: integer read m_i0 write m_i0;
+    property j0: integer read m_j0 write m_j0;
+    property fig: TFigure read m_fig write m_fig;
+
+    class function FFieldUnderAttack(const pos: TChessPosition; i0,j0: integer): boolean; // TODO: -> private ?
+
   public
     constructor Create(ChessRulesEngineable: IChessRulesEngineable = nil);
     destructor Destroy; override;
 
     class function CheckCheck(const pos: TChessPosition): boolean; // TODO: -> private ?
-    class function FieldUnderAttack(const pos: TChessPosition; i0,j0: integer): boolean; // TODO: -> private ?
+
     function CanMove(pos: TChessPosition): boolean;
     function DoMove(move_str: string): boolean; overload;
-    function DoMove(i,j: integer; prom_fig: TFigureName = K): boolean; overload;
-
+    function DoMove(i0, j0, i, j: integer; prom_fig: TFigureName = K): boolean; overload;
     function TakeBack: boolean;
     function SetPosition(const posstr: string): boolean;
     function GetPosition: string;
     procedure InitPosition;
     procedure PPRandom;
     procedure ResetMoveList; // очищает список позиций
-
     function NMoveDone: integer; // amount of moves done
 
     property Position: PChessPosition read FGetPosition;
-
-    property i0: integer read m_i0 write m_i0;
-    property j0: integer read m_j0 write m_j0;
-
-    property fig: TFigure read m_fig write m_fig;
     property lastMove: PMoveAbs read FGetLastMove;
     property lastMoveStr: string read m_strLastMoveStr;
-
     property PositionsList: TList read m_lstPosition;
   end;
 
@@ -167,15 +167,15 @@ class function TChessRulesEngine.CheckCheck(const pos: TChessPosition): boolean;
 label
   l;
 const
-  i0: integer = 1; // для увеличения скорости обработки
-  j0: integer = 1;
+  _i0: integer = 1; // для увеличения скорости обработки
+  _j0: integer = 1;
 var
-  i,j: integer;
+  i, j: integer;
 begin
   with pos do
   begin
-    if ((color = fcWhite) and (board[i0,j0] = WK)) or
-       ((color = fcBlack) and (board[i0,j0] = BK)) then goto l;
+    if ((color = fcWhite) and (board[_i0, _j0] = WK)) or
+       ((color = fcBlack) and (board[_i0, _j0] = BK)) then goto l;
     // поиск короля на доске
     for i:= 1 to 8 do
     begin
@@ -184,19 +184,19 @@ begin
         if ((color = fcWhite) and (board[i,j] = WK)) or
            ((color = fcBlack) and (board[i,j] = BK)) then
         begin
-          i0 := i;
-          j0:= j;
+          _i0 := i;
+          _j0 := j;
           goto l;
         end;
       end; // for j
     end; // for i
 l:
-    Result := FieldUnderAttack(pos, i0, j0);
+    Result := FFieldUnderAttack(pos, _i0, _j0);
   end;
 end;
 
 
-class function TChessRulesEngine.FieldUnderAttack(const pos: TChessPosition; i0, j0: integer): boolean;
+class function TChessRulesEngine.FFieldUnderAttack(const pos: TChessPosition; i0, j0: integer): boolean;
 var
   f: TFigureName;
   ef: TFigure;
@@ -256,18 +256,19 @@ var
   ti,tj: integer;
   l: byte;
   f: TFigureName;
-  fig: TFigure;
+  _fig: TFigure;
   pos: TChessPosition;
 begin
   Result:= FALSE;
   if not ((i0 in [1..8]) and (j0 in [1..8]) and
           (i in [1..8]) and (j in [1..8])) then exit;
 
-  fig:= chp.board[i0,j0];
-  if ((chp.color = fcWhite) and (fig > ES)) or
-     ((chp.color = fcBlack) and (fig < ES)) then exit;
+  _fig := chp.board[i0, j0];
+  if ((chp.color = fcWhite) and (_fig > ES)) or
+     ((chp.color = fcBlack) and (_fig < ES)) then
+    exit;
 
-  f:= TFigureName(ord(fig) - ord(chp.color) * ord(BK));
+  f := TFigureName(ord(_fig) - ord(chp.color) * ord(BK));
 
   for l:= 1 to 8 do
     with DELTA_MOVE[f], chp do
@@ -320,27 +321,24 @@ begin
           begin
             if (i-i0 = 2) and (j = j0) and
                (((color = fcWhite) and (WhiteKingSide in castling)) or
-                ((color = fcBlack) and (BlackKingSide in castling)))
-              then
-                begin
-                  if (board[6,j0] <> ES) or (board[7,j0] <> ES) or // 0-0
-                     FieldUnderAttack(chp,5,j0) or
-                     FieldUnderAttack(chp,6,j0)
-                    then exit;
-                end
-              else
-            if (i-i0 = -2) and (j = j0) and
+                ((color = fcBlack) and (BlackKingSide in castling))) then
+            begin
+              if ((board[6,j0] <> ES) or (board[7,j0] <> ES) or // 0-0
+                  FFieldUnderAttack(chp,5,j0) or
+                  FFieldUnderAttack(chp,6,j0)) then exit;
+            end
+            else if ((i-i0 = -2) and (j = j0) and
                (((color = fcWhite) and (WhiteQueenSide in castling)) or
-                ((color = fcBlack) and (BlackQueenSide in castling)))
-              then
-                begin
-                  if (board[4,j0] <> ES) or (board[3,j0] <> ES) or // 0-0-0
-                     (board[2,j0] <> ES) or
-                     FieldUnderAttack(chp,5,j0) or
-                     FieldUnderAttack(chp,4,j0)
-                    then exit;
-                end
-              else exit;
+                ((color = fcBlack) and (BlackQueenSide in castling)))) then
+            begin
+              if ((board[4,j0] <> ES) or (board[3,j0] <> ES) or // 0-0-0
+                  (board[2,j0] <> ES) or
+                  FFieldUnderAttack(chp,5,j0) or
+                  FFieldUnderAttack(chp,4,j0)) then
+                exit;
+            end
+            else exit;
+
             goto here;
           end;
       exit; // передвижение фигуры не по правилам
@@ -400,7 +398,8 @@ here:
       else
         en_passant := 0; // выкл. e.p.
       // Сделать ход
-      board[i0,j0]:= ES; board[i,j]:= fig;
+      board[i0, j0]:= ES;
+      board[i, j] := _fig;
       if CheckCheck(pos) then
         exit; // ход невозможен из-за шаха
       if (f = P) and ((j = 1) or (j = 8)) then
@@ -410,7 +409,7 @@ here:
           else
             prom_fig := FAskPromotionFigure(pos.color);
           end; // case
-          board[i,j]:= TFigure(ord(color) * ord(BK) + ord(prom_fig));
+          board[i, j] := TFigure(ord(color) * ord(BK) + ord(prom_fig));
         end;
       if color = fcWhite then color:= fcBlack
         else color:= fcWhite;
@@ -455,11 +454,11 @@ begin
                   end;
                   if not ((ti in [1..8]) and (tj in [1..8])) then break;
                   prom_fig := Q;
-                  if FCheckMove(pos,pos, i,j,ti,tj, prom_fig) then
-                    begin
-                      Result:= TRUE;
-                      exit;
-                    end;
+                  if FCheckMove(pos, pos, i, j, ti, tj, prom_fig) then
+                  begin
+                    Result:= TRUE;
+                    exit;
+                  end;
                 until not longRange;
               end;
         end;
@@ -476,20 +475,27 @@ var
   i, j, ti,tj: integer;
 begin
   // Проверка на рокировку
-  if move_str = '0-0' then
-    if Position.color = fcWhite then move_str:= 'Ke1g1'
-      else move_str:= 'Ke8g8'
-  else
-    if move_str = '0-0-0' then
-      if Position.color = fcWhite then move_str:= 'Ke1c1'
-        else move_str:= 'Ke8c8';
+  if (move_str = '0-0') then
+  begin
+    if (Position.color = fcWhite) then
+      move_str:= 'Ke1g1'
+    else
+      move_str:= 'Ke8g8'
+  end
+  else if (move_str = '0-0-0') then
+  begin
+    if (Position.color = fcWhite) then
+      move_str:= 'Ke1c1'
+    else
+      move_str:= 'Ke8c8';
+  end;
 
   i0 := 0;
   j0 := 0;
   i := 0;
   j := 0;
 
-  l:= length(move_str);
+  l := length(move_str);
   prom_f := K;
   case move_str[l] of
     'Q': prom_f := Q;
@@ -512,12 +518,12 @@ l1:
     end;
   if (l > 0) and (move_str[l] in ['1'..'8']) then
     begin
-      j0:= StrToInt(move_str[l]);
+      j0 := StrToInt(move_str[l]);
       dec(l);
     end;
   if (l > 0) and (move_str[l] in ['a'..'h']) then
     begin
-      i0:= ord(move_str[l]) - ord('a') + 1;
+      i0 := ord(move_str[l]) - ord('a') + 1;
       dec(l);
     end;
 
@@ -551,8 +557,8 @@ l1:
                     if ((i0 = 0) or (i0 = ti)) and ((j0 = 0) or (j0 = tj)) and
                        (board[ti,tj] = fig) then
                       begin // Ходящая фигура найдена
-                        i0:= ti;
-                        j0:= tj;
+                        i0 := ti;
+                        j0 := tj;
                         goto l2;
                       end;
                   until (f = K) or (f = N); // Если Кр или К, то выход
@@ -563,47 +569,51 @@ l1:
             if (i0 <> 0) and (i0 <> i) then // взятие пешкой
               begin
                 for l:= 2 to 7 do
-                  if (board[i0,l] = fig) and ((j0 = 0) or (j0 = l)) then
+                  if (board[i0, l] = fig) and ((j0 = 0) or (j0 = l)) then
                     if color = fcWhite then
                       begin
                         if ((board[i,l+1] > ES) or
                             ((l = 5) and (en_passant = i))) and
-                           ((j = 0) or (j = l+1)) and (abs(i-i0) = 1) then
+                           ((j = 0) or (j = l+1)) and (abs(i - i0) = 1) then
                           begin
-                            j0:= l; j:= l+1;
+                            j0 := l;
+                            j := l + 1;
                             goto l2;
                           end;
                       end
                     else // color = fcBlack
                       if ((board[i,l-1] < ES) or
                           ((l = 4) and (en_passant = i))) and
-                         ((j = 0) or (j = l-1)) and (abs(i-i0) = 1) then
+                         ((j = 0) or (j = l-1)) and (abs(i - i0) = 1) then
                         begin
-                          j0:= l; j:= l-1;
+                          j0 := l;
+                          j := l-1;
                           goto l2;
                         end;
               end
             else  // Ход прямо
               begin
-                i0:= i;
+                i0 := i;
                 if color = fcWhite then
                   begin
-                    if board[i,j-1] = fig then j0:= j-1
-                      else
-                        if (j = 4) and (board[i,3] = ES) and
-                           (board[i,2] = fig) then j0:= 2;
+                    if board[i, j - 1] = fig then
+                      j0 := j - 1
+                    else if (j = 4) and (board[i, 3] = ES) and
+                            (board[i,2] = fig) then
+                      j0 := 2;
                   end
                 else // color = fcBlack
-                  if board[i,j+1] = fig then j0:= j+1
-                    else
-                      if (j = 5) and (board[i,6] = ES) and
-                         (board[i,7] = fig) then j0:= 7;
+                  if board[i,j+1] = fig then
+                    j0 := j + 1
+                  else if (j = 5) and (board[i,6] = ES) and
+                          (board[i, 7] = fig) then
+                    j0 := 7;
               end;
           end;
       end;
     end;
 l2:
-  Result := DoMove(i, j, prom_f);
+  Result := FDoMove(i, j, prom_f);
 end;
 
 
@@ -614,7 +624,7 @@ begin
 end;
 
 
-function TChessRulesEngine.DoMove(i,j: integer; prom_fig: TFigureName = K): boolean;
+function TChessRulesEngine.FDoMove(i, j: integer; prom_fig: TFigureName = K): boolean;
 var
   newPosition: TChessPosition;
 begin
@@ -635,6 +645,14 @@ begin
 
     FOnAfterMoveDone;
   end;
+end;
+
+
+function TChessRulesEngine.DoMove(i0, j0, i, j: integer; prom_fig: TFigureName = K): boolean;
+begin
+  self.i0 := i0;
+  self.j0 := j0;
+  Result := FDoMove(i, j, prom_fig);
 end;
 
 
@@ -661,6 +679,7 @@ var
   l: byte;
   ti, tj: integer;
   ambig, hor, ver: boolean;
+  _fig: TFigure;
 begin
   if lastMove.i0 = 0 then // Ход не задан
   begin
@@ -668,7 +687,8 @@ begin
     exit;
   end;
 
-  f := TFigureName(ord(fig) + (ord(pos.color) - 1) * ord(BK));
+  _fig := Position.board[lastMove.i0, lastMove.j0];
+  f := TFigureName(ord(_fig) + (ord(pos.color) - 1) * ord(BK));
   // Ход пешкой
   if (f = P) then
   begin
@@ -717,8 +737,9 @@ begin
         repeat
           ti:= ti + dx[l]; tj:= tj + dy[l];
           if not (ti in [1..8]) or not (tj in [1..8]) or
-             ((board[ti,tj] <> ES) and (board[ti,tj] <> fig)) then break;
-          if (board[ti,tj] = fig) then
+             ((board[ti,tj] <> ES) and (board[ti,tj] <> _fig)) then
+            break;
+          if (board[ti,tj] = _fig) then
             begin
               ambig:= TRUE;
               ver:= ver or (ti = lastMove.i0); hor:= hor or (tj = lastMove.j0);
@@ -761,6 +782,7 @@ begin
   i := PositionsList.Count - 1;
   if (i >= 0) then
   begin
+    Position^ := PPosMove(PositionsList[i]).pos;
     Dispose(PositionsList[i]);
     PositionsList.Delete(i);
   end;
@@ -777,42 +799,42 @@ begin
 
   l := 1;
   for j := 8 downto 1 do
-    begin
-      i := 1;
-      repeat
-        case posstr[l] of
-          'K': pos.board[i,j]:= WK;
-          'Q': pos.board[i,j]:= WQ;
-          'R': pos.board[i,j]:= WR;
-          'B': pos.board[i,j]:= WB;
-          'N': pos.board[i,j]:= WN;
-          'P': pos.board[i,j]:= WP;
+  begin
+    i := 1;
+    repeat
+      case posstr[l] of
+        'K': pos.board[i,j]:= WK;
+        'Q': pos.board[i,j]:= WQ;
+        'R': pos.board[i,j]:= WR;
+        'B': pos.board[i,j]:= WB;
+        'N': pos.board[i,j]:= WN;
+        'P': pos.board[i,j]:= WP;
 
-          'k': pos.board[i,j]:= BK;
-          'q': pos.board[i,j]:= BQ;
-          'r': pos.board[i,j]:= BR;
-          'b': pos.board[i,j]:= BB;
-          'n': pos.board[i,j]:= BN;
-          'p': pos.board[i,j]:= BP;
+        'k': pos.board[i,j]:= BK;
+        'q': pos.board[i,j]:= BQ;
+        'r': pos.board[i,j]:= BR;
+        'b': pos.board[i,j]:= BB;
+        'n': pos.board[i,j]:= BN;
+        'p': pos.board[i,j]:= BP;
 
-          '1'..'8':      // Вставка пустых полей
-            begin
-              k:= StrToInt(posstr[l]);
-              repeat
-                pos.board[i,j]:= ES;
-                dec(k); inc(i);
-              until k = 0;
-              dec(i);
-            end;
+        '1'..'8':      // Вставка пустых полей
+          begin
+            k:= StrToInt(posstr[l]);
+            repeat
+              pos.board[i,j]:= ES;
+              dec(k); inc(i);
+            until k = 0;
+            dec(i);
+          end;
 
-          ' ': break;  // Позиция прочитана - выход из цикла
+        ' ': break;  // Позиция прочитана - выход из цикла
 
-          else exit; // ошибка в posstr
-        end;
-        inc(i); inc(l);
-      until (posstr[l] = '/') or (i > 8); // Повтор до появления '/' или пока на горизонтали
-      inc(l);
-    end;
+        else exit; // ошибка в posstr
+      end;
+      inc(i); inc(l);
+    until (posstr[l] = '/') or (i > 8); // Повтор до появления '/' или пока на горизонтали
+    inc(l);
+  end;
 
   case posstr[l] of
     'w': pos.color:= fcWhite;
@@ -856,6 +878,7 @@ begin
     exit;
 
   Position^ := pos;
+  lastMove.i0 := 0; // предыдущего хода ещё не было
 
   Result := TRUE;
 end;
