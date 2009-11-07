@@ -28,8 +28,9 @@ type
 
   IChessRulesEngineable = interface
     function AskPromotionFigure(FigureColor: TFigureColor): TFigureName;
-    procedure OnAfterMoveDone;
   end;
+
+  TEvaluation = (evInGame, evMate, evStaleMate);
 
   TChessRulesEngine = class
   private
@@ -52,32 +53,30 @@ type
     function FGetLastMove: PMoveAbs;
     procedure FDelPosList; // Удаляет текущую позицию из списка
 
-    procedure FOnAfterMoveDone;
+    function FDoMove(i, j: integer; prom_fig: TFigureName = K): boolean; overload;
 
-    function FDoMove(i, j: integer; prom_fig: TFigureName = K): boolean; overload;    
+    class function FFieldUnderAttack(const pos: TChessPosition; i0,j0: integer): boolean; // TODO: -> private ?
+    class function FCheckCheck(const pos: TChessPosition): boolean;
+    function FCanMove(pos: TChessPosition): boolean;
 
     property i0: integer read m_i0 write m_i0;
     property j0: integer read m_j0 write m_j0;
     property fig: TFigure read m_fig write m_fig;
 
-    class function FFieldUnderAttack(const pos: TChessPosition; i0,j0: integer): boolean; // TODO: -> private ?
-
   public
     constructor Create(ChessRulesEngineable: IChessRulesEngineable = nil);
     destructor Destroy; override;
 
-    class function CheckCheck(const pos: TChessPosition): boolean; // TODO: -> private ?
-
-    function CanMove(pos: TChessPosition): boolean;
     function DoMove(move_str: string): boolean; overload;
     function DoMove(i0, j0, i, j: integer; prom_fig: TFigureName = K): boolean; overload;
     function TakeBack: boolean;
     function SetPosition(const posstr: string): boolean;
     function GetPosition: string;
-    procedure InitPosition;
-    procedure PPRandom;
+    procedure InitNewGame;
+    procedure InitNewPPRandomGame;
     procedure ResetMoveList; // очищает список позиций
-    function NMoveDone: integer; // amount of moves done
+    function NMovesDone: integer; // amount of moves done
+    function GetEvaluation: TEvaluation;
 
     property Position: PChessPosition read FGetPosition;
     property lastMove: PMoveAbs read FGetLastMove;
@@ -163,7 +162,7 @@ begin
 end;
 
 
-class function TChessRulesEngine.CheckCheck(const pos: TChessPosition): boolean;
+class function TChessRulesEngine.FCheckCheck(const pos: TChessPosition): boolean;
 label
   l;
 const
@@ -400,7 +399,7 @@ here:
       // Сделать ход
       board[i0, j0]:= ES;
       board[i, j] := _fig;
-      if CheckCheck(pos) then
+      if (FCheckCheck(pos)) then
         exit; // ход невозможен из-за шаха
       if (f = P) and ((j = 1) or (j = 8)) then
         begin
@@ -420,7 +419,7 @@ here:
 end;
 
 
-function TChessRulesEngine.CanMove(pos: TChessPosition): boolean;
+function TChessRulesEngine.FCanMove(pos: TChessPosition): boolean;
 var
   i,j: integer;
   ti,tj: integer;
@@ -617,13 +616,6 @@ l2:
 end;
 
 
-procedure TChessRulesEngine.FOnAfterMoveDone;
-begin
-  if (Assigned(m_ChessRulesEngineable)) then
-    m_ChessRulesEngineable.OnAfterMoveDone;
-end;
-
-
 function TChessRulesEngine.FDoMove(i, j: integer; prom_fig: TFigureName = K): boolean;
 var
   newPosition: TChessPosition;
@@ -642,8 +634,6 @@ begin
 
     m_strLastMoveStr := FMove2Str(newPosition);
     Position^ := newPosition;
-
-    FOnAfterMoveDone;
   end;
 end;
 
@@ -728,12 +718,16 @@ begin
     N: Result:= 'N';
   end;
   // [<Вертикаль>][<Горизонталь>]
-  ambig:= FALSE; hor:= FALSE; ver:= FALSE;
-  for l:= 1 to 8 do
+  ambig:= FALSE;
+  hor:= FALSE;
+  ver:= FALSE;
+  for l := 1 to 8 do
     with pos, DELTA_MOVE[f] do
       begin
-        if (dx[l] = 0) and (dy[l] = 0) then break; // Все ходы просмотрены
-        ti:= lastMove.i; tj:= lastMove.j;
+        if (dx[l] = 0) and (dy[l] = 0) then
+          break; // Все ходы просмотрены
+        ti := lastMove.i;
+        tj := lastMove.j;
         repeat
           ti:= ti + dx[l]; tj:= tj + dy[l];
           if not (ti in [1..8]) or not (tj in [1..8]) or
@@ -750,20 +744,23 @@ begin
 
   if ambig then
     begin
-      if not ver or hor then Result:= Result + chr(ord('a') + lastMove.i0 - 1);
-      if ver then Result:= Result + IntToStr(lastMove.j0);
+      if not ver or hor then
+        Result:= Result + chr(ord('a') + lastMove.i0 - 1);
+      if ver then
+        Result := Result + IntToStr(lastMove.j0);
     end;
 
   // <Конечное поле>
-  Result:= Result + chr(ord('a') + lastMove.i - 1) + IntToStr(lastMove.j);
+  Result := Result + chr(ord('a') + lastMove.i - 1) + IntToStr(lastMove.j);
 
   // <Короткая рокировка> | <Длинная рокировка>
   if f = K then
-    begin
-      if lastMove.i - lastMove.i0 = 2 then Result:= '0-0'
-        else
-          if lastMove.i0 - lastMove.i = 2 then Result:= '0-0-0';
-    end;
+  begin
+    if lastMove.i - lastMove.i0 = 2 then
+      Result:= '0-0'
+    else if lastMove.i0 - lastMove.i = 2 then
+      Result:= '0-0-0';
+  end;
 end;
 
 
@@ -884,7 +881,7 @@ begin
 end;
 
 
-procedure TChessRulesEngine.InitPosition;
+procedure TChessRulesEngine.InitNewGame;
 begin
   SetPosition(INITIAL_CHESS_POSITION);
   ResetMoveList;
@@ -971,16 +968,16 @@ begin
 end;
 
 
-procedure TChessRulesEngine.PPRandom;
+procedure TChessRulesEngine.InitNewPPRandomGame;
 const
-  FIG: array[0..5] of TFigureName = (B,B,Q,R,N,N);
+  FIG: array[0..5] of TFigureName = (B, B, Q, R, N, N);
   SQR: array[0..5] of byte = (2, 3, 4, 6, 7, 0);
 var
   rnd_sqr: array[0..5] of byte;
   i,j: integer;
   f: boolean;
 begin
-  InitPosition;
+  InitNewGame;
   if (Random(2) = 0) then
     SQR[5] := 1 // с какой стороны оставляем ладью
   else
@@ -999,10 +996,23 @@ begin
 end;
 
 
-function TChessRulesEngine.NMoveDone: integer;
+function TChessRulesEngine.NMovesDone: integer;
 begin
   Result := (PositionsList.Count + 1) shr 1; // div 2
 end;
 
+
+function TChessRulesEngine.GetEvaluation: TEvaluation;
+begin
+  Result := evInGame;
+  if (not FCanMove(Position^)) then
+  begin
+    if (FCheckCheck(Position^)) then
+      Result := evMate
+    else
+      Result := evStaleMate;
+  end;
+  // TODO: Оценка позиции на возможность технической ничьи
+end;
 
 end.

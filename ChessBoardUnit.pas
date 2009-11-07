@@ -135,7 +135,6 @@ type
     procedure SetUnlimited(color: TFigureColor; const unl: boolean);
     function GetUnlimited(color: TFigureColor): boolean;
     procedure Evaluate;
-    function CanMove(pos: TChessPosition): boolean;
     procedure SetHilightLastMove(const yes: boolean);
     procedure SetCoordinates(const yes: boolean);
     procedure SetFlipped(const f: boolean); // Переварачивает позицию при отображении
@@ -159,7 +158,6 @@ type
 
     function FGetPositionsList: TList;
 
-    procedure IChessRulesEngineable.OnAfterMoveDone = FOnAfterMoveDone;
     procedure FOnAfterMoveDone;
 
     property ChessRulesEngine: TChessRulesEngine read m_ChessRulesEngine;
@@ -248,18 +246,6 @@ const
 ////////////////////////////////////////////////////////////////////////////////
 // Globals
 
-function CheckCheck(const pos: TChessPosition): boolean;
-begin
-  Result := TChessRulesEngine.CheckCheck(pos);
-end;
-
-
-function TChessBoard.CanMove(pos: TChessPosition): boolean;
-begin
-  Result := ChessRulesEngine.CanMove(pos);
-end;
-
-
 function TChessBoard.DoMove(move_str: string): boolean;
 begin
   // Отмена анимации
@@ -274,6 +260,7 @@ begin
 
   if (Result) then
   begin
+    FOnAfterMoveDone;
     Animate(lastMove.i, lastMove.j);
     SwitchClock(PositionColor);
     if (m_bFlash_move and (mode_var = mGame)) then
@@ -694,6 +681,8 @@ end;
 function TChessBoard.RDoMove(i, j: integer; prom_fig: TFigureName = K): boolean;
 begin
   Result := ChessRulesEngine.DoMove(m_i0, m_j0, i, j, prom_fig);
+  if (Result) then
+    FOnAfterMoveDone;
 end;
 
 
@@ -721,7 +710,7 @@ begin
             else
             begin
               hilighted:= FALSE;
-              if RDoMove(i, j) then
+              if (RDoMove(i, j)) then
               begin
                 Animate(i, j);
                 SwitchClock(PositionColor);
@@ -837,7 +826,7 @@ end;
 
 procedure TChessBoard.InitPosition;
 begin
-  ChessRulesEngine.InitPosition;
+  ChessRulesEngine.InitNewGame;
   RDrawBoard;
 end;
 
@@ -1055,20 +1044,21 @@ end;
 
 procedure TChessBoard.Evaluate;
 begin
-  if (Assigned(Handler) and (not CanMove(Position^))) then
+  if (Assigned(Handler)) then
   begin
-    if (CheckCheck(Position^)) then // TODO: Evaluate -> ChessRulesEngine
-      Handler(cbeMate, self)
-    else
-      Handler(cbeStaleMate, self);
+    case ChessRulesEngine.GetEvaluation of
+      evMate:
+        Handler(cbeMate, self);
+      evStaleMate:
+        Handler(cbeStaleMate, self);
+    end;
   end;
-  // TODO: Оценка позиции на возможность технической ничьи
 end;
 
 
 procedure TChessBoard.PPRandom;
 begin
-  ChessRulesEngine.PPRandom;
+  ChessRulesEngine.InitNewPPRandomGame;
   RDrawBoard;
 end;
 
@@ -1101,7 +1091,7 @@ end;
 
 function TChessBoard.NMoveDone: integer;
 begin
-  Result := ChessRulesEngine.NMoveDone;
+  Result := ChessRulesEngine.NMovesDone;
 end;
 
 
