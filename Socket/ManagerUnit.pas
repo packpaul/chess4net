@@ -1043,7 +1043,6 @@ begin
     begin
       SetClock;
       InitPosition;
-      ResetMoveList;
       SendData(CMD_POSITION + ' ' + GetPosition + CMD_DELIMITER + CMD_START_GAME);
       Mode:= mGame;
       move_done:= FALSE;
@@ -1161,7 +1160,6 @@ begin
     begin
       SetClock;
       PPRandom;
-      ResetMoveList;
       SendData(CMD_POSITION + ' ' + GetPosition + CMD_DELIMITER + CMD_START_GAME);
       Mode:= mGame;
       move_done:= FALSE;
