@@ -10,7 +10,7 @@ DCC = $(ROOT)\bin\dcc32.exe $**
 BRCC = $(ROOT)\bin\brcc32.exe $**
 #------------------------------------------------------------------------------
 PROJECTS = Chess4Net.exe Chess4Net_MI.dll Chess4Net_Trillian.dll \
-  Chess4Net_AndRQ.dll Chess4Net_QIP.dll
+  Chess4Net_AndRQ.dll Chess4Net_QIP.dll Chess4Net_Skype.exe
 #------------------------------------------------------------------------------
 default: $(PROJECTS)
 #------------------------------------------------------------------------------
@@ -28,6 +28,9 @@ Chess4Net_AndRQ.dll: AndRQ\Chess4Net_AndRQ.dpr
   $(DCC)
 
 Chess4Net_QIP.dll: QIP\Chess4Net_QIP.dpr
+  $(DCC)
+
+Chess4Net_Skype.exe: Skype\Chess4Net_Skype.dpr
   $(DCC)
 
 
