@@ -11,15 +11,13 @@ uses
   FastMM4,
 {$ENDIF}
   Forms,
-  ConnectionUnit in '..\ConnectionUnit.pas' {ConnectionForm},
   ConnectingUnit in '..\ConnectingUnit.pas' {ConnectingForm},
   GameOptionsUnit in '..\GameOptionsUnit.pas' {GameOptionsForm},
-  ManagerUnit in 'ManagerUnit.pas' {Manager},
+  ManagerUnit in '..\ManagerUnit.pas' {Manager},
   ChessBoardHeaderUnit in '..\ChessBoardHeaderUnit.pas',
   ChessBoardUnit in '..\ChessBoardUnit.pas' {ChessBoard},
   PromotionUnit in '..\PromotionUnit.pas' {PromotionForm},
   LookFeelOptionsUnit in '..\LookFeelOptionsUnit.pas' {OptionsForm},
-  ConnectorUnit in 'ConnectorUnit.pas' {Connector: TDataModule},
   PosBaseUnit in '..\PosBaseUnit.pas',
   PosBaseChessBoardUnit in '..\PosBaseChessBoardUnit.pas',
   ModalForm in '..\ModalForm.pas',
@@ -30,7 +28,9 @@ uses
   MessageDialogUnit in '..\MessageDialogUnit.pas',
   BitmapResUnit in '..\BitmapResUnit.pas',
   ChessRulesEngine in '..\ChessRulesEngine.pas',
-  LocalizerUnit in '..\LocalizerUnit.pas';
+  LocalizerUnit in '..\LocalizerUnit.pas',
+  ConnectorUnit in 'ConnectorUnit.pas',
+  InfoUnit in '..\InfoUnit.pas' {InfoForm};
 
 {$R ..\Chess4Net.res}
 

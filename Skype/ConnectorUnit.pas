@@ -3,262 +3,346 @@ unit ConnectorUnit;
 interface
 
 uses
-  SysUtils, Classes, ScktComp, ExtCtrls;
+  Classes, ExtCtrls;
 
 type
-  TConnectionState = set of (csServer, csClient);
-
-  TConnectorEvent = (ceConnected, ceDisconnected, ceData, ceError);
+  TConnectorEvent = (ceConnected, ceDisconnected, ceData, ceError, ceQIPError);
 
   TConnectorHandler = procedure(ce: TConnectorEvent; d1: pointer = nil;
                                 d2: pointer = nil) of object;
 
   TConnector = class(TDataModule)
-    Client: TClientSocket;
-    Server: TServerSocket;
     sendTimer: TTimer;
-    procedure ClientConnect(Sender: TObject; Socket: TCustomWinSocket);
-    procedure ClientError(Sender: TObject; Socket: TCustomWinSocket;
-      ErrorEvent: TErrorEvent; var ErrorCode: Integer);
-    procedure ServerClientError(Sender: TObject; Socket: TCustomWinSocket;
-      ErrorEvent: TErrorEvent; var ErrorCode: Integer);
-    procedure ClientRead(Sender: TObject; Socket: TCustomWinSocket);
-    procedure ServerClientRead(Sender: TObject; Socket: TCustomWinSocket);
-    procedure ClientDisconnect(Sender: TObject; Socket: TCustomWinSocket);
-    procedure ServerClientConnect(Sender: TObject;
-      Socket: TCustomWinSocket);
-    procedure ServerClientDisconnect(Sender: TObject;
-      Socket: TCustomWinSocket);
     procedure sendTimerTimer(Sender: TObject);
   private
-    Handler: TConnectorHandler;
-    prt: integer;
-    sendTextBuffer: string;
+    _connected : boolean;
+    _handler: TConnectorHandler;
 
-    procedure SetPort(const p: integer);
+{$IFDEF DEBUG_LOG}
+    _logFile: Text;
+
+    procedure InitLog;
+    procedure WriteToLog(const s: string);
+    procedure CloseLog;
+{$ENDIF}
 
   public
-    State: TConnectionState;
-    ClientConnected: boolean;
-    constructor Create(Owner: TComponent;  h: TConnectorHandler); reintroduce;
-    property Port: integer read prt write SetPort;
-    function IP: string; overload;
-    function IP(const cl: pointer): string; overload;
-    procedure OpenServer(port: integer = 0);
-    procedure OpenClient(host: string; port: integer = 0);
-    procedure Close; overload;
-    procedure Close(const cs: TConnectionState); overload;
-    procedure Close(const cl: pointer); overload;
+    property connected: boolean read _connected;
+    procedure Close;
     procedure SendData(const d: string);
+    procedure Free;
+    class function Create(const wAccName: WideString; iProtoDllHandle: integer; h: TConnectorHandler): TConnector; reintroduce;
   end;
+
+procedure MessageGot(const msg: string; const accName: WideString; protoDllHandle: integer);
+procedure MessageSent(const msg: string);
+procedure ErrorSendingMessage(const msg: string);
 
 implementation
 
 {$R *.dfm}
 
-function TConnector.IP: string; // ?????
+{$J+} {$I-}
+
+uses
+  SysUtils, StrUtils, Windows,
+  GlobalsLocalUnit{, ControlUnit};
+
+var
+  connector: TConnector; // singleton
+
+  gwAccName: WideString;
+  giProtoDllHandle: integer;
+
+  msg_sending, unformated_msg_sending: string; // отсылаемое сообщение
+
+  // cntrMsgIn и cntrMsgOut были введены для преодоления бага с зависающими сообщениями
+  cntrMsgIn: integer;  // счётчик входящих сообщений
+  cntrMsgOut: integer; // счётчик исходящих сообщений
+  msg_buf: string; // буфер сообщений
+
+const
+  CONNECTOR_INSTANCES: integer = 0;
+  // <сообщение> ::= PROMPT_HEAD <номер сообщения> PROMPT_TAIL <сообщение>
+  PROMPT_HEAD = 'Ch4N:';
+  PROMPT_TAIL = '>';
+  MSG_CLOSE = 'ext';
+  MAX_RESEND_TRYS = 9; // максимальное количество попыток пересыла
+
+
+procedure SendMessage(const vMessage: string);
 begin
-  if Server.Active then Result:= Server.Socket.LocalAddress // не работает
-    else
-  if Client.Active then Result:= Client.Socket.LocalAddress
-    else Result:= '';
+//  QIPSendMessage(vMessage, gwAccName, giProtoDllHandle);
+  // TODO:
 end;
 
-function TConnector.IP(const cl: pointer): string;
+
+// деформатирование входящих сообщений. TRUE - если декодирование удалось
+function DeformatMsg(var msg: string; var n: integer): boolean;
+var
+  l: integer;
 begin
-  if (csServer in State) then
-    try
-      Result:= TCustomWinSocket(cl).RemoteAddress;
-    except
-      on Exception do Handler(ceError); // Клиент cl не существует
-    end
-  else
-    Result:= '';
-end;
-
-procedure TConnector.SetPort(const p: integer);
-begin
-  if State = [] then prt:= p
-    else Exception.Create('Cannot assign port');
-end;
-
-constructor TConnector.Create(Owner: TComponent; h: TConnectorHandler);
-begin
-  inherited Create(Owner);
-  Handler:= h;
-end;
-
-procedure TConnector.OpenServer(port: integer);
-  begin
-    try
-      if Server.Active then Exception.Create('Server is already running');
-      if port <> 0 then SetPort(port);
-      Server.Port:= prt;
-      State:= State + [csServer];
-      Server.Open;
-    except
-      on Exception do
-        begin
-          Handler(ceError); // Ошибка открытия сервера
-          State:= State - [csServer];
-        end;
-    end;
-  end;
-
-procedure TConnector.OpenClient(host: string; port: integer);
-  function IsIP(ipstr: string): boolean;
-  var
-    i: integer;
-    s: string;
-  begin
-    Result:= FALSE;
-    ipstr:= ipstr + '.';
-    for i:= 1 to 4 do
+  result := FALSE;
+  if LeftStr(msg, length(PROMPT_HEAD)) = PROMPT_HEAD then
+    begin
+{$IFDEF DEBUG_LOG}
+      connector.WriteToLog('>> ' + msg);
+{$ENDIF}
+      msg := RightStr(msg, length(msg) - length(PROMPT_HEAD));
+      l := pos(PROMPT_TAIL, msg);
+      if l = 0 then exit;
       try
-        s:= copy(ipstr, 1, pos('.', ipstr) - 1);
-        if not ((StrToInt(s) >= 0) and (StrToInt(s) <= 255)) then exit;
-        Delete(ipstr, 1, length(s) + 1);
+        n := StrToInt(LeftStr(msg, l-1));
       except
         on Exception do exit;
       end;
-    if ipstr = '' then Result:= TRUE;
-  end;
-  begin
-    try
-      if Client.Active then Exception.Create('Client is already created');
-      if (host = '') or ((csServer in State) and (host <> IP)) then //????
-        Exception.Create('Wrong host name');
-      if isIP(host) then Client.Address:= host
-        else Client.Host:= host;
-      if port <> 0 then SetPort(port);
-      Client.Port:= prt;
-      State:= State + [csClient]; ClientConnected:= FALSE;
-      Client.Open;
-    except
-      on Exception do
-        begin
-          State:= State - [csClient];
-          Handler(ceError); // Ошибка открытия клиента
-        end;
+      msg := AnsiReplaceStr(RightStr(msg, length(msg) - l), '&amp;', '&');
+      result := TRUE;
     end;
-  end;
-
-procedure TConnector.Close(const cs: TConnectionState);
-  begin
-    if csServer in cs then
-      begin
-        State:= State - [csServer];
-        Server.Close;
-      end;
-    if csClient in cs then
-      begin
-        State:= State - [csClient];
-        Client.Close;
-        ClientConnected:= TRUE;
-      end;
-  end;
-
-procedure TConnector.SendData(const d: string);
-  begin
-    sendTextBuffer := sendTextBuffer + d;
-    sendTimer.Enabled := TRUE;
-  end;
-
-procedure TConnector.ClientConnect(Sender: TObject; Socket: TCustomWinSocket);
-begin
-  ClientConnected:= TRUE;
-{
-  State:= State + [csClient];
-}
-  Handler(ceConnected);
 end;
 
-procedure TConnector.ClientError(Sender: TObject; Socket: TCustomWinSocket;
-  ErrorEvent: TErrorEvent; var ErrorCode: Integer);
-begin
-  // Обработка ошибок со стороны клиента
-  case ErrorEvent of
-    eeConnect:
-      if not ClientConnected then Client.Open; // Клиент ожидает сервер
-    eeLookup: Client.Close; // Неправильный адрес хоста
-  else
-    Handler(ceError);
-  end;
-  ErrorCode:= 0;
-end;
 
-procedure TConnector.ServerClientError(Sender: TObject;
-  Socket: TCustomWinSocket; ErrorEvent: TErrorEvent;
-  var ErrorCode: Integer);
-begin
-  // Обработка ошибок со стороны сервера
-  Handler(ceError);
-end;
-
-procedure TConnector.ClientRead(Sender: TObject; Socket: TCustomWinSocket);
+function FilterMsg(msg: string): boolean;
 var
-  data: string;
+  cntrMsg: integer;
 begin
-  data:= Socket.ReceiveText;
-  Handler(ceData, @data);
+  if not connector.connected then
+    begin
+      if msg = MSG_INVITATION then
+        begin
+          SendMessage(MSG_INVITATION);
+          connector._connected := TRUE;
+          connector._handler(ceConnected);
+          Result := TRUE;
+        end
+      else
+        Result := FALSE;
+    end
+  else // connector.connected
+    begin
+      if msg_sending <> '' then
+        begin
+          msg_sending := '';
+          unformated_msg_sending := '';
+          inc(cntrMsgOut);
+        end;
+      if DeformatMsg(msg, cntrMsg) then
+        begin
+          Result := TRUE;
+          if cntrMsg > cntrMsgIn then
+            begin
+              inc(cntrMsgIn);
+              if cntrMsg > cntrMsgIn then
+                begin
+                  connector._handler(ceError); // пакет исчез
+                  exit;
+                end
+            end
+          else
+            exit; // пропуск пакетов с более низкими номерами
+          if msg = MSG_CLOSE then
+            begin
+              connector._handler(ceDisconnected);
+              connector._connected := FALSE;
+            end
+          else
+            connector._handler(ceData, @msg);
+        end
+      else
+        Result := FALSE;
+    end;
 end;
 
-procedure TConnector.ServerClientRead(Sender: TObject; Socket: TCustomWinSocket);
-var
-  data: string;
+function NotifySender(const vMessage: string): boolean;
 begin
-  data:= Socket.ReceiveText;
-  Handler(ceData, @data, Socket);
+  if not Assigned(connector) then
+    begin
+      Result := FALSE;
+      exit;
+    end;
+  if (not connector.connected) and (vMessage = MSG_INVITATION) then
+    begin
+      Result := TRUE;
+      exit;
+    end;
+
+  Result := (msg_sending = vMessage);
+  if not Result then
+    exit;
+
+{$IFDEF DEBUG_LOG}
+   connector.WriteToLog('<< ' + msg_sending);
+{$ENDIF}
+   msg_sending := '';
+   unformated_msg_sending := '';
+   inc(cntrMsgOut);
 end;
 
-procedure TConnector.ClientDisconnect(Sender: TObject;
-  Socket: TCustomWinSocket);
+// форматирование исходящих сообщений
+function FormatMsg(const msg: string): string;
 begin
-  Handler(ceDisconnected);
-end;
-
-procedure TConnector.ServerClientConnect(Sender: TObject;
-                                         Socket: TCustomWinSocket);
-begin
-  Handler(ceConnected, Socket);
-end;
-
-procedure TConnector.ServerClientDisconnect(Sender: TObject;
-  Socket: TCustomWinSocket);
-begin
-  Handler(ceDisconnected, Socket);
-end;
-
-procedure TConnector.Close(const cl: pointer);
-begin
-  if not (csServer in State) then exit;
-  try
-    TCustomWinSocket(cl).Close;
-  except
-    on Exception do Handler(ceError); // Клиент cl не существует
-  end;
+  Result := PROMPT_HEAD + IntToStr(cntrMsgOut) + PROMPT_TAIL + msg;
 end;
 
 
 procedure TConnector.Close;
 begin
-  Close(State);
+  if _connected then
+    begin
+      msg_sending := FormatMsg(MSG_CLOSE);
+      SendMessage(msg_sending);
+      sendTimer.Enabled := FALSE;
+      _connected := FALSE;
+      _handler(ceDisconnected);
+    end;
+{$IFDEF DEBUG_LOG}
+  CloseLog;
+{$ENDIF}
 end;
 
+
+procedure TConnector.SendData(const d: string);
+begin
+  if d = MSG_CLOSE then
+    connector._handler(ceError)
+  else
+    begin
+      msg_buf := msg_buf + d;
+      sendTimer.Enabled := TRUE; // Отослать сообщение с некоторой оттяжкой -> всё одним пакетом
+    end; { if d = MSG_CLOSE }
+end;
+
+
+class function TConnector.Create(const wAccName: WideString; iProtoDllHandle: integer; h: TConnectorHandler): TConnector;
+begin
+  if CONNECTOR_INSTANCES > 0 then
+    raise Exception.Create('No more than 1 instance of TConnector is possible!');
+
+  gwAccName := wAccName;
+  giProtoDllHandle := iProtoDllHandle;
+
+  if not Assigned(connector) then
+    begin
+      connector := inherited Create(nil); // Owner - ?
+      connector._handler := h;
+      // TODO: добавить connector в список
+      SendMessage(MSG_INVITATION);
+    end;
+
+  cntrMsgIn := 0;
+  cntrMsgOut := 1;
+  msg_sending := '';
+  unformated_msg_sending := '';
+  msg_buf := '';
+  inc(CONNECTOR_INSTANCES);
+  result := connector;
+
+{$IFDEF DEBUG_LOG}
+  connector.InitLog;
+{$ENDIF}
+end;
+
+
+procedure TConnector.Free;
+begin
+  Close;
+//  DisableBroadcast;
+  dec(CONNECTOR_INSTANCES);
+  // TODO: убрать connector из хэша
+  if CONNECTOR_INSTANCES = 0 then
+    begin
+      inherited;
+      connector := nil;
+    end;
+end;
+
+{$IFDEF DEBUG_LOG}
+procedure TConnector.InitLog;
+begin
+  AssignFile(_logFile, Chess4NetPath + 'Chess4Net_CONNECTORLOG.txt');
+  Append(_logFile);
+  if IOResult <> 0 then
+    begin
+      Rewrite(_logFile);
+      if IOResult <> 0 then
+        begin
+          AssignFile(_logFile, Chess4NetPath + 'Chess4Net_CONNECTORLOG~.txt');
+          Append(_logFile);
+          if IOResult <> 0 then Rewrite(_logFile);
+        end;
+    end;
+
+   WriteToLog('[' + DateTimeToStr(Now) + ']');
+end;
+
+
+procedure TConnector.WriteToLog(const s: string);
+begin
+  writeln(_logFile, s);
+  Flush(_logFile);
+end;
+
+
+procedure TConnector.CloseLog;
+begin
+  CloseFile(_logFile);
+end;
+{$ENDIF}
 
 procedure TConnector.sendTimerTimer(Sender: TObject);
+const
+  RESEND_COUNT : integer = 0;
 begin
-  sendTimer.Enabled := FALSE;
-  try
-    if csServer in State then
-      Server.Socket.Connections[0].SendText(sendTextBuffer)
-    else
-    if csClient in State then
-      Client.Socket.SendText(sendTextBuffer);
-    sendTextBuffer := '';
-  except
-    on Exception do Handler(ceError); // Ошибка отрпавления сообщения клиентом
-  end;
+  if msg_sending = '' then
+    begin
+      sendTimer.Enabled := FALSE;
+      if msg_buf <> '' then
+        begin
+          unformated_msg_sending := msg_buf;
+          msg_sending := FormatMsg(msg_buf);
+          msg_buf := '';
+          SendMessage(msg_sending);
+        end;
+    end
+  else
+    begin
+{$IFDEF DEBUG_LOG}
+      WriteToLog('resend: ' + msg_sending);
+{$ENDIF}
+      inc(RESEND_COUNT);
+      if RESEND_COUNT = MAX_RESEND_TRYS then
+        begin
+          RESEND_COUNT := 0;
+          SendMessage(msg_sending);
+        end;
+    end;
 end;
+
+
+procedure MessageGot(const msg: string; const accName: WideString; protoDllHandle: integer);
+begin
+  if not Assigned(connector) then
+    exit;
+  if (protoDllHandle <> giProtoDllHandle) or (gwAccName <> accName) then
+    exit;
+
+  FilterMsg(msg);
+  // TODO: подавление сообщения при обмене через основной канал
+end;
+
+
+procedure MessageSent(const msg: string);
+begin
+  NotifySender(msg);
+  // TODO: если сообщение ушло по основному каналу - подавить сообщение
+end;
+
+
+procedure ErrorSendingMessage(const msg: string);
+begin
+  if (not connector.connected) and (msg = MSG_INVITATION) then
+    connector._handler(ceQIPError);
+end;
+
 
 end.

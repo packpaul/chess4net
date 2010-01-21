@@ -96,7 +96,7 @@ PackageDLLOutputDir=
 PackageDCPOutputDir=
 SearchPath=..\lib\FastMM4;..\lib\PNGImage;..\lib\TntUnicodeControls\Source
 Packages=vcl;rtl;dbrtl;vcldb;vclx;bdertl;delphiclxide;proide;delphivclide;direct;vclie;stride;VclSmp;vclactnband
-Conditionals=SOCKET;xFASTMM4
+Conditionals=SKYPE;xFASTMM4
 DebugSourceDirs=
 UsePackages=0
 [Parameters]

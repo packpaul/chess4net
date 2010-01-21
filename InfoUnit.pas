@@ -41,8 +41,13 @@ begin
   if not Assigned(infoForm) then
     begin
       infoForm := TInfoForm.Create(Application);
+{$IFDEF SKYPE}
+      infoForm.Icon := Chess4NetIcon;
+      infoForm.Caption := DIALOG_CAPTION;      
+{$ELSE} // MI, TRILLIAN, AND_RQ, QIP
       infoForm.Icon := pluginIcon;
       infoForm.Caption := PLUGIN_NAME;
+{$ENDIF}
     end;
   if not infoForm.Showing then
     infoForm.Show
