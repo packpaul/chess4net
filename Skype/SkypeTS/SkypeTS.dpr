@@ -2,7 +2,7 @@ program SkypeTS;
 
 uses
   Forms,
-  SkypeTS.MainForm in 'SkypeTS.MainForm.pas' {Form1},
+  SkypeTS.MainForm in 'SkypeTS.MainForm.pas' {MainForm},
   SkypeTS_TLB in 'SkypeTS_TLB.pas' {Skype: CoClass},
   SkypeTS.Skype in 'SkypeTS.Skype.pas';
 
@@ -12,6 +12,6 @@ uses
 
 begin
   Application.Initialize;
-  Application.CreateForm(TForm1, Form1);
+  Application.CreateForm(TMainForm, MainForm);
   Application.Run;
 end.

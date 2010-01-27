@@ -12,10 +12,10 @@ unit SkypeTS_TLB;
 // ************************************************************************ //
 
 // PASTLWTR : 1.2
-// File generated on 26/01/2010 21:49:47 from Type Library described below.
+// File generated on 26/01/2010 20:22:58 from Type Library described below.
 
 // ************************************************************************  //
-// Type Lib: C:\PP\MyProjects\Chess4Net\Current\Skype\SkypeTS\SkypeTS.tlb (1)
+// Type Lib: C:\PP\MyProjects\Chess4Net\Current\bin\SkypeTS.exe (1)
 // LIBID: {0B450383-2533-476F-B023-398C65839F2A}
 // LCID: 0
 // Helpfile: 
@@ -23,13 +23,23 @@ unit SkypeTS_TLB;
 // DepndLst: 
 //   (1) v2.0 stdole, (C:\Windows\system32\stdole2.tlb)
 // ************************************************************************ //
+// *************************************************************************//
+// NOTE:                                                                      
+// Items guarded by $IFDEF_LIVE_SERVER_AT_DESIGN_TIME are used by properties  
+// which return objects that may need to be explicitly created via a function 
+// call prior to any access via the property. These items have been disabled  
+// in order to prevent accidental use from within the object inspector. You   
+// may enable them by defining LIVE_SERVER_AT_DESIGN_TIME or by selectively   
+// removing them from the $IFDEF blocks. However, such items must still be    
+// programmatically created via a method of the appropriate CoClass before    
+// they can be used.                                                          
 {$TYPEDADDRESS OFF} // Unit must be compiled without type-checked pointers. 
 {$WARN SYMBOL_PLATFORM OFF}
 {$WRITEABLECONST ON}
 {$VARPROPSETTER ON}
 interface
 
-uses Windows, ActiveX, Classes, Graphics, StdVCL, Variants;
+uses Windows, ActiveX, Classes, Graphics, OleServer, StdVCL, Variants;
   
 
 // *********************************************************************//
@@ -336,6 +346,97 @@ type
     class function CreateRemote(const MachineName: string): ISkype;
   end;
 
+  TSkypeMessageStatus = procedure(ASender: TObject; const pMessage: IChatMessage; 
+                                                    Status: TChatMessageStatus) of object;
+  TSkypeAttachmentStatus = procedure(ASender: TObject; Status: TAttachmentStatus) of object;
+  TSkypeApplicationDatagram = procedure(ASender: TObject; const pApp: IApplication; 
+                                                          const pStream: IApplicationStream; 
+                                                          const Text: WideString) of object;
+
+
+// *********************************************************************//
+// OLE Server Proxy class declaration
+// Server Object    : TSkype
+// Help String      : Skype testing class
+// Default Interface: ISkype
+// Def. Intf. DISP? : No
+// Event   Interface: ISkypeEvents
+// TypeFlags        : (2) CanCreate
+// *********************************************************************//
+{$IFDEF LIVE_SERVER_AT_DESIGN_TIME}
+  TSkypeProperties= class;
+{$ENDIF}
+  TSkype = class(TOleServer)
+  private
+    FOnMessageStatus: TSkypeMessageStatus;
+    FOnAttachmentStatus: TSkypeAttachmentStatus;
+    FOnApplicationDatagram: TSkypeApplicationDatagram;
+    FIntf:        ISkype;
+{$IFDEF LIVE_SERVER_AT_DESIGN_TIME}
+    FProps:       TSkypeProperties;
+    function      GetServerProperties: TSkypeProperties;
+{$ENDIF}
+    function      GetDefaultInterface: ISkype;
+  protected
+    procedure InitServerData; override;
+    procedure InvokeEvent(DispID: TDispID; var Params: TVariantArray); override;
+    function Get_Application(const Name: WideString): IApplication;
+    function Get_Client: IClient;
+    function Get_CurrentUser: IUser;
+    function Get_CurrentUserHandle: WideString;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor  Destroy; override;
+    procedure Connect; override;
+    procedure ConnectTo(svrIntf: ISkype);
+    procedure Disconnect; override;
+    procedure Attach(Protocol: Integer; Wait: WordBool);
+    function SendMessage(const Username: WideString; const Text: WideString): IChatMessage;
+    property DefaultInterface: ISkype read GetDefaultInterface;
+    property Application[const Name: WideString]: IApplication read Get_Application;
+    property Client: IClient read Get_Client;
+    property CurrentUser: IUser read Get_CurrentUser;
+    property CurrentUserHandle: WideString read Get_CurrentUserHandle;
+  published
+{$IFDEF LIVE_SERVER_AT_DESIGN_TIME}
+    property Server: TSkypeProperties read GetServerProperties;
+{$ENDIF}
+    property OnMessageStatus: TSkypeMessageStatus read FOnMessageStatus write FOnMessageStatus;
+    property OnAttachmentStatus: TSkypeAttachmentStatus read FOnAttachmentStatus write FOnAttachmentStatus;
+    property OnApplicationDatagram: TSkypeApplicationDatagram read FOnApplicationDatagram write FOnApplicationDatagram;
+  end;
+
+{$IFDEF LIVE_SERVER_AT_DESIGN_TIME}
+// *********************************************************************//
+// OLE Server Properties Proxy Class
+// Server Object    : TSkype
+// (This object is used by the IDE's Property Inspector to allow editing
+//  of the properties of this server)
+// *********************************************************************//
+ TSkypeProperties = class(TPersistent)
+  private
+    FServer:    TSkype;
+    function    GetDefaultInterface: ISkype;
+    constructor Create(AServer: TSkype);
+  protected
+    function Get_Application(const Name: WideString): IApplication;
+    function Get_Client: IClient;
+    function Get_CurrentUser: IUser;
+    function Get_CurrentUserHandle: WideString;
+  public
+    property DefaultInterface: ISkype read GetDefaultInterface;
+  published
+  end;
+{$ENDIF}
+
+
+procedure Register;
+
+resourcestring
+  dtlServerPage = 'ActiveX';
+
+  dtlOcxPage = 'ActiveX';
+
 implementation
 
 uses ComObj;
@@ -348,6 +449,164 @@ end;
 class function CoSkype.CreateRemote(const MachineName: string): ISkype;
 begin
   Result := CreateRemoteComObject(MachineName, CLASS_Skype) as ISkype;
+end;
+
+procedure TSkype.InitServerData;
+const
+  CServerData: TServerData = (
+    ClassID:   '{6FA5F7DB-1A72-42BE-B66B-A38137470205}';
+    IntfIID:   '{8618CC27-13EF-4DC6-92C8-1EB7C6F11031}';
+    EventIID:  '{E55935D9-34ED-4248-8A17-FE9C6B30F1E3}';
+    LicenseKey: nil;
+    Version: 500);
+begin
+  ServerData := @CServerData;
+end;
+
+procedure TSkype.Connect;
+var
+  punk: IUnknown;
+begin
+  if FIntf = nil then
+  begin
+    punk := GetServer;
+    ConnectEvents(punk);
+    Fintf:= punk as ISkype;
+  end;
+end;
+
+procedure TSkype.ConnectTo(svrIntf: ISkype);
+begin
+  Disconnect;
+  FIntf := svrIntf;
+  ConnectEvents(FIntf);
+end;
+
+procedure TSkype.DisConnect;
+begin
+  if Fintf <> nil then
+  begin
+    DisconnectEvents(FIntf);
+    FIntf := nil;
+  end;
+end;
+
+function TSkype.GetDefaultInterface: ISkype;
+begin
+  if FIntf = nil then
+    Connect;
+  Assert(FIntf <> nil, 'DefaultInterface is NULL. Component is not connected to Server. You must call ''Connect'' or ''ConnectTo'' before this operation');
+  Result := FIntf;
+end;
+
+constructor TSkype.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+{$IFDEF LIVE_SERVER_AT_DESIGN_TIME}
+  FProps := TSkypeProperties.Create(Self);
+{$ENDIF}
+end;
+
+destructor TSkype.Destroy;
+begin
+{$IFDEF LIVE_SERVER_AT_DESIGN_TIME}
+  FProps.Free;
+{$ENDIF}
+  inherited Destroy;
+end;
+
+{$IFDEF LIVE_SERVER_AT_DESIGN_TIME}
+function TSkype.GetServerProperties: TSkypeProperties;
+begin
+  Result := FProps;
+end;
+{$ENDIF}
+
+procedure TSkype.InvokeEvent(DispID: TDispID; var Params: TVariantArray);
+begin
+  case DispID of
+    -1: Exit;  // DISPID_UNKNOWN
+    11: if Assigned(FOnMessageStatus) then
+         FOnMessageStatus(Self,
+                          IUnknown(TVarData(Params[0]).VPointer) as IChatMessage {const IChatMessage},
+                          Params[1] {TChatMessageStatus});
+    4: if Assigned(FOnAttachmentStatus) then
+         FOnAttachmentStatus(Self, Params[0] {TAttachmentStatus});
+    18: if Assigned(FOnApplicationDatagram) then
+         FOnApplicationDatagram(Self,
+                                IUnknown(TVarData(Params[0]).VPointer) as IApplication {const IApplication},
+                                IUnknown(TVarData(Params[1]).VPointer) as IApplicationStream {const IApplicationStream},
+                                Params[2] {const WideString});
+  end; {case DispID}
+end;
+
+function TSkype.Get_Application(const Name: WideString): IApplication;
+begin
+    Result := DefaultInterface.Application[Name];
+end;
+
+function TSkype.Get_Client: IClient;
+begin
+    Result := DefaultInterface.Client;
+end;
+
+function TSkype.Get_CurrentUser: IUser;
+begin
+    Result := DefaultInterface.CurrentUser;
+end;
+
+function TSkype.Get_CurrentUserHandle: WideString;
+begin
+    Result := DefaultInterface.CurrentUserHandle;
+end;
+
+procedure TSkype.Attach(Protocol: Integer; Wait: WordBool);
+begin
+  DefaultInterface.Attach(Protocol, Wait);
+end;
+
+function TSkype.SendMessage(const Username: WideString; const Text: WideString): IChatMessage;
+begin
+  Result := DefaultInterface.SendMessage(Username, Text);
+end;
+
+{$IFDEF LIVE_SERVER_AT_DESIGN_TIME}
+constructor TSkypeProperties.Create(AServer: TSkype);
+begin
+  inherited Create;
+  FServer := AServer;
+end;
+
+function TSkypeProperties.GetDefaultInterface: ISkype;
+begin
+  Result := FServer.DefaultInterface;
+end;
+
+function TSkypeProperties.Get_Application(const Name: WideString): IApplication;
+begin
+    Result := DefaultInterface.Application[Name];
+end;
+
+function TSkypeProperties.Get_Client: IClient;
+begin
+    Result := DefaultInterface.Client;
+end;
+
+function TSkypeProperties.Get_CurrentUser: IUser;
+begin
+    Result := DefaultInterface.CurrentUser;
+end;
+
+function TSkypeProperties.Get_CurrentUserHandle: WideString;
+begin
+    Result := DefaultInterface.CurrentUserHandle;
+end;
+
+{$ENDIF}
+
+procedure Register;
+begin
+  RegisterComponents(dtlServerPage, [TSkype]);
 end;
 
 end.
