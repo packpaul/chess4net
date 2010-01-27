@@ -7,8 +7,8 @@ uses
   SkypeTS_TLB;
 
 type
-  TState = (sAttached);
-  TStates = set of TState;
+  TSkypeState = (ssAttached);
+  TSkypeStates = set of TSkypeState;
 
   TOnInstantMessageReceived = procedure(Sender: TObject; const wstrMessage: WideString) of object;
 
@@ -27,14 +27,13 @@ type
     m_Client: IClient;
     m_CurrentUser: IUser;
 
-    m_States: TStates;
+    m_States: TSkypeStates;
     m_AttachTimer: TTimer;
     m_bCanAttach: boolean;
 
     m_Applications: TInterfaceList;
 
     FOnInstantMessageReceived: TOnInstantMessageReceived;
-
 
     procedure FAttachID;
     procedure FDetachID;
@@ -48,6 +47,8 @@ type
     procedure FWaitForAllAttached;
 
     procedure FDoReceiveInstantMessage(const ChatMessage: IChatMessage);
+    procedure FDoReceiveApplicationDatagram(const AApplication: IApplication;
+      const wstrText: WideString);
 
     procedure Attach(Protocol: Integer; Wait: WordBool); safecall;
     function Get_Application(const Name: WideString): IApplication; safecall;
@@ -69,7 +70,7 @@ type
     procedure SendInstantMessge(const wstrSkypeHandle, wstrMessage: WideString);
 
     property ID: integer read m_iID;
-    property States: TStates read m_States;
+    property States: TSkypeStates read m_States;
     property CurrentUserHandle: WideString read Get_CurrentUserHandle;
 
     property OnInstantMessageReceived: TOnInstantMessageReceived read FOnInstantMessageReceived
@@ -79,6 +80,8 @@ type
 var
   g_arrSkypes: array of TSkype;
 
+function GetSkypeByID(iID: integer): TSkype;
+
 implementation
 
 uses
@@ -87,6 +90,7 @@ uses
 
 const
   MAX_SKYPES_NUM = 2;
+  APPLICATION_CONNECTING_USER_TIMEOUT = 700;
 
 type
   TAutoObjectFactory_ = class(TAutoObjectFactory)
@@ -122,9 +126,18 @@ type
     m_Skype: TSkype;
     m_wstrName: WideString;
     m_bHasContext: boolean;
+    m_ConnectingUsers: TInterfaceList;
+
+    m_ConnectableUser: IUser;
+    m_lstConnectedSkypeIDs: TList;
+    m_ConnectingUserTimer: TTimer;
+
+    procedure FOnConnectingUserTimer(Sender: TObject);
+    function FGetConnectingUserTimer: TTimer;
 
     procedure FCheckContext;
     procedure FWaitForAllAttached;
+    procedure FAddUserSkypeToConnected(const wstrHandle: WideString);
 
     procedure Delete; safecall;
     procedure IApplication.Create = FCreate;
@@ -135,6 +148,8 @@ type
     function Get_ConnectableUsers: IUserCollection; safecall;
     function Get_ConnectingUsers: IUserCollection; safecall;
     function Get_Name: WideString; safecall;
+
+    property ConnectingUserTimer: TTimer read FGetConnectingUserTimer;
 
   public
     constructor Create(const wstrName: WideString; const ASkype: TSkype);
@@ -173,6 +188,15 @@ begin
     LoadRegTypeLib(LIBID_SkypeTS, SkypeTSMajorVersion, SkypeTSMinorVersion,
       0, g_TypeLib);
   Result := g_TypeLib;
+end;
+
+
+function GetSkypeByID(iID: integer): TSkype;
+begin
+  if ((iID >= 0) and (iID < Length(g_arrSkypes))) then
+    Result := g_arrSkypes[iID]
+  else
+    Result := nil;
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -249,7 +273,7 @@ begin
     exit;
 
   m_AttachTimer.Enabled := FALSE;
-  Include(m_States, sAttached);
+  Include(m_States, ssAttached);
   FEvents.AttachmentStatus(apiAttachSuccess);
   MainForm.UpdateGUI;
 end;
@@ -283,7 +307,7 @@ begin
   m_AttachTimer.Enabled := TRUE;
   if (Wait) then
   begin
-    while (not (sAttached in m_States)) do
+    while (not (ssAttached in m_States)) do
       Sleep(1);
   end;
 end;
@@ -351,7 +375,7 @@ procedure TSkype.FWaitForAllAttached;
     for i := Low(g_arrSkypes) to High(g_arrSkypes) do
     begin
       Skype := g_arrSkypes[i];
-      if (not (Assigned(Skype) and (sAttached in Skype.States))) then
+      if (not (Assigned(Skype) and (ssAttached in Skype.States))) then
         exit;
     end;
     Result := TRUE;
@@ -371,6 +395,13 @@ begin
   FEvents.MessageStatus(ChatMessage, cmsReceived);
   if (Assigned(OnInstantMessageReceived)) then
     OnInstantMessageReceived(self, ChatMessage.Body);
+end;
+
+
+procedure TSkype.FDoReceiveApplicationDatagram(const AApplication: IApplication;
+  const wstrText: WideString);
+begin
+  FEvents.ApplicationDatagram(AApplication, nil, wstrText);
 end;
 
 
@@ -443,14 +474,21 @@ end;
 
 constructor TApplication.Create(const wstrName: WideString; const ASkype: TSkype);
 begin
+  inherited Create(GetDataTypeLib, IApplicationDisp);
+
   m_Skype := ASkype;
   m_wstrName := wstrName;
-  inherited Create(GetDataTypeLib, IApplicationDisp);
+  m_ConnectingUsers := TInterfaceList.Create;
+  m_lstConnectedSkypeIDs := TList.Create;
 end;
 
 
 destructor TApplication.Destroy;
 begin
+  m_ConnectingUserTimer.Free;
+  m_lstConnectedSkypeIDs.Free;
+  m_ConnectingUsers.Free;
+  
   inherited;
 end;
 
@@ -470,11 +508,94 @@ begin
 end;
 
 
-procedure TApplication.Connect(const Username: WideString; WaitConnected: WordBool);
+procedure TApplication.FAddUserSkypeToConnected(const wstrHandle: WideString);
+var
+  i: integer;
 begin
-  FCheckContext;
+  for i := Low(g_arrSkypes) to High(g_arrSkypes) do
+    if (Assigned(g_arrSkypes[i]) and (g_arrSkypes[i].CurrentUserHandle = wstrHandle)) then
+    begin
+      m_lstConnectedSkypeIDs.Add(Pointer(g_arrSkypes[i].ID));
+      exit;
+    end;
   Assert(FALSE);
-  // TODO:
+end;
+
+
+procedure TApplication.Connect(const Username: WideString; WaitConnected: WordBool);
+
+  function NGetConnectableUser(const wstrHandle: WideString): IUser;
+  var
+    UserCollection: IUserCollection;
+    i: integer;
+  begin
+    UserCollection := Get_ConnectableUsers;
+    for i := 1 to UserCollection.Count do
+    begin
+      Result := UserCollection.Item[i];
+      if (Result.Handle = wstrHandle) then
+        exit;
+    end;
+    Result := nil;
+  end;
+
+  function NUserAlreadyConnected(const wstrHandle: WideString): boolean;
+  var
+    i: integer;
+    ConnectedSkype: TSkype;
+  begin
+    Result := FALSE;
+    for i := 0 to m_lstConnectedSkypeIDs.Count - 1 do
+    begin
+      ConnectedSkype := GetSkypeByID(Integer(m_lstConnectedSkypeIDs[i]));
+      Result := (Assigned(ConnectedSkype) and (ConnectedSkype.CurrentUserHandle = wstrHandle));
+      if (Result) then
+        exit;
+    end; // for
+  end;
+
+var
+  i: integer;
+begin // TApplication.Connect
+  FCheckContext;
+
+  m_ConnectableUser := NGetConnectableUser(UserName);
+  if (not Assigned(m_ConnectableUser)) then
+    EApplication.CreateFmt('User handle %s is not connectable!', [UserName]);
+
+  if (WaitConnected) then
+  begin
+    try
+      m_ConnectingUsers.Add(m_ConnectableUser);
+      i := APPLICATION_CONNECTING_USER_TIMEOUT;
+      while (i > 0) do
+      begin
+        Sleep(1);
+        Forms.Application.ProcessMessages;
+        dec(i);
+      end;
+
+      FAddUserSkypeToConnected(UserName);
+
+      i := m_ConnectingUsers.IndexOf(m_ConnectableUser);
+      m_ConnectingUsers.Delete(i);
+    finally
+      m_ConnectableUser := nil;
+    end;
+  end
+  else // (not WaitConnected)
+  begin
+    while (ConnectingUserTimer.Enabled) do // Wait for other users to be connected
+    begin
+      Sleep(1);
+      Forms.Application.ProcessMessages;
+    end;
+    if (not NUserAlreadyConnected(UserName)) then
+    begin
+      m_ConnectingUsers.Add(m_ConnectableUser);
+      ConnectingUserTimer.Enabled := TRUE;
+    end;
+  end; // if
 end;
 
 
@@ -492,18 +613,31 @@ end;
 
 
 procedure TApplication.SendDatagram(const Text: WideString; const pStreams: IApplicationStreamCollection);
+var
+  i: integer;
+  ReceiverSkype: TSkype;
 begin
   FCheckContext;
-  Assert(FALSE);
-  // TODO:
+
+  i := 0;
+  while (i < m_lstConnectedSkypeIDs.Count) do
+  begin
+    ReceiverSkype := GetSkypeByID(Integer(m_lstConnectedSkypeIDs[i]));
+    if (Assigned(ReceiverSkype)) then
+    begin
+      ReceiverSkype.FDoReceiveApplicationDatagram(self, Text);
+      inc(i);
+    end
+    else
+      m_lstConnectedSkypeIDs.Delete(i);
+  end; // while
 end;
 
 
 function TApplication.Get_Streams: IApplicationStreamCollection;
 begin
   FCheckContext;
-  Assert(FALSE);
-  // TODO:
+  Result := nil;
 end;
 
 
@@ -535,14 +669,45 @@ function TApplication.Get_ConnectingUsers: IUserCollection;
 begin
   FCheckContext;
   FWaitForAllAttached;
-
-  Result := TUserCollection.Create(nil);
+  Result := TUserCollection.Create(m_ConnectingUsers);
 end;
 
 
 function TApplication.Get_Name: WideString;
 begin
   Result := m_wstrName;
+end;
+
+
+function TApplication.FGetConnectingUserTimer: TTimer;
+begin
+  if (not Assigned(m_ConnectingUserTimer)) then
+  begin
+    m_ConnectingUserTimer := TTimer.Create(nil);
+    m_ConnectingUserTimer.Enabled := FALSE;
+    m_ConnectingUserTimer.Interval := APPLICATION_CONNECTING_USER_TIMEOUT;
+    m_ConnectingUserTimer.OnTimer := FOnConnectingUserTimer;
+//    m_ConnectingUserTimer.Name := m_Skype.CurrentUserHandle + '_ConnectingUserTimer'; // test
+  end;
+  Result := m_ConnectingUserTimer;
+end;
+
+
+procedure TApplication.FOnConnectingUserTimer(Sender: TObject);
+var
+  i: integer;
+begin
+  ConnectingUserTimer.Enabled := FALSE;
+                                                
+  Assert(Assigned(m_ConnectableUser));
+  try
+    FAddUserSkypeToConnected(m_ConnectableUser.Handle);
+    i := m_ConnectingUsers.IndexOf(m_ConnectableUser);
+    if (i >= 0) then
+      m_ConnectingUsers.Delete(i);
+  finally
+    m_ConnectableUser := nil;
+  end;
 end;
 
 ////////////////////////////////////////////////////////////////////////////////

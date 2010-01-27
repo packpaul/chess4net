@@ -42,9 +42,9 @@ type
     procedure SendIM2ButtonClick(Sender: TObject);
 
   private
-    function FGetSkype(wID: word): TSkype;
+    function FGetSkypeByID(wID: word): TSkype;
     procedure FOnInstantMessageReceived(Sender: TObject; const wstrMessage: WideString);
-    property Skypes[wID: word]: TSkype read FGetSkype;
+    property Skypes[wID: word]: TSkype read FGetSkypeByID;
   public
     procedure UpdateGUI;
   end;
@@ -73,10 +73,10 @@ begin // TMainForm.UpdateGUI
     Skype1GroupBox.Controls[i].Enabled := bAvailable1;
   if (bAvailable1) then
   begin
-    Attach1Button.Enabled := (not (sAttached in Skype1.States));
-    Handle1Edit.ReadOnly := (sAttached in Skype1.States);
-    FullName1Edit.ReadOnly := (sAttached in Skype1.States);
-    DisplayName1Edit.ReadOnly := (sAttached in Skype1.States);
+    Attach1Button.Enabled := (not (ssAttached in Skype1.States));
+    Handle1Edit.ReadOnly := (ssAttached in Skype1.States);
+    FullName1Edit.ReadOnly := (ssAttached in Skype1.States);
+    DisplayName1Edit.ReadOnly := (ssAttached in Skype1.States);
     Skype1.OnInstantMessageReceived := FOnInstantMessageReceived;
   end;
 
@@ -88,15 +88,15 @@ begin // TMainForm.UpdateGUI
     Skype2GroupBox.Controls[i].Enabled := bAvailable2;
   if (bAvailable2) then
   begin
-    Attach2Button.Enabled := (not (sAttached in Skype2.States));
-    Handle2Edit.ReadOnly := (sAttached in Skype2.States);
-    FullName2Edit.ReadOnly := (sAttached in Skype2.States);
-    DisplayName2Edit.ReadOnly := (sAttached in Skype2.States);
+    Attach2Button.Enabled := (not (ssAttached in Skype2.States));
+    Handle2Edit.ReadOnly := (ssAttached in Skype2.States);
+    FullName2Edit.ReadOnly := (ssAttached in Skype2.States);
+    DisplayName2Edit.ReadOnly := (ssAttached in Skype2.States);
     Skype2.OnInstantMessageReceived := FOnInstantMessageReceived;
   end;
 
   bEnabled := (bAvailable1 and bAvailable2 and
-    (sAttached in Skype1.States) and (sAttached in Skype2.States));
+    (ssAttached in Skype1.States) and (ssAttached in Skype2.States));
   SendIM1Button.Enabled := bEnabled;
   SendIM1Edit.Enabled := bEnabled;
   SendIM2Button.Enabled := bEnabled;
@@ -110,12 +110,9 @@ begin
 end;
 
 
-function TMainForm.FGetSkype(wID: word): TSkype;
+function TMainForm.FGetSkypeByID(wID: word): TSkype;
 begin
-  if (Length(g_arrSkypes) > wID) then
-    Result := g_arrSkypes[wID]
-  else
-    Result := nil;
+  Result := GetSkypeByID(wID);
 end;
 
 
