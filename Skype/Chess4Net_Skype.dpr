@@ -4,6 +4,11 @@ program Chess4Net_Skype;
 {$IFDEF FASTMM4}
   FastMM4,
 {$ENDIF}
+{$IFDEF TESTING}
+  , SkypeTS_TLB in 'SkypeTS_TLB.pas'
+{$ELSE}
+  , SKYPE4COMLib_TLB in '.\Skype4COM\SKYPE4COMLib_TLB.pas'
+{$ENDIF}
 *)
 
 uses
@@ -30,18 +35,24 @@ uses
   ChessRulesEngine in '..\ChessRulesEngine.pas',
   LocalizerUnit in '..\LocalizerUnit.pas',
   ConnectorUnit in 'ConnectorUnit.pas',
-  InfoUnit in '..\InfoUnit.pas' {InfoForm};
+  InfoUnit in '..\InfoUnit.pas' {InfoForm}
+{$IFDEF TESTING}
+  , SkypeTS_TLB in 'SkypeTS_TLB.pas'
+{$ELSE}
+  , SKYPE4COMLib_TLB in '.\Skype4COM\SKYPE4COMLib_TLB.pas'
+{$ENDIF}
+  ;
 
 {$R ..\Chess4Net.res}
 
 var
   Manager: TManager;
-  
+
 begin
-  Application.Initialize;
-  Application.Title := 'Chess4Net';
-  Application.CreateForm(TManager, Manager);
-  Application.ShowMainForm := False;
-  Application.Run;
+  Forms.Application.Initialize;
+  Forms.Application.Title := 'Chess4Net';
+  Forms.Application.CreateForm(TManager, Manager);
+  Forms.Application.ShowMainForm := False;
+  Forms.Application.Run;
 end.
 

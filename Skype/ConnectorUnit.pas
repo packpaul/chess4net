@@ -3,10 +3,16 @@ unit ConnectorUnit;
 interface
 
 uses
-  Classes, ExtCtrls;
+  Classes, ExtCtrls
+{$IFDEF TESTING}
+  , SkypeTS_TLB
+{$ELSE}
+  , SKYPE4COMLib_TLB
+{$ENDIF}
+  ;
 
 type
-  TConnectorEvent = (ceConnected, ceDisconnected, ceData, ceError, ceQIPError);
+  TConnectorEvent = (ceConnected, ceDisconnected, ceData, ceError, ceSkypeError);
 
   TConnectorHandler = procedure(ce: TConnectorEvent; d1: pointer = nil;
                                 d2: pointer = nil) of object;
@@ -16,7 +22,6 @@ type
     procedure sendTimerTimer(Sender: TObject);
   private
     _connected : boolean;
-    _handler: TConnectorHandler;
 
 {$IFDEF DEBUG_LOG}
     _logFile: Text;
@@ -31,7 +36,7 @@ type
     procedure Close;
     procedure SendData(const d: string);
     procedure Free;
-    class function Create(const wAccName: WideString; iProtoDllHandle: integer; h: TConnectorHandler): TConnector; reintroduce;
+    class function Create(h: TConnectorHandler): TConnector; reintroduce;
   end;
 
 procedure MessageGot(const msg: string; const accName: WideString; protoDllHandle: integer);
@@ -46,14 +51,12 @@ implementation
 
 uses
   SysUtils, StrUtils, Windows,
-  GlobalsLocalUnit{, ControlUnit};
+  GlobalsLocalUnit;
 
 var
-  connector: TConnector; // singleton
-
-  gwAccName: WideString;
-  giProtoDllHandle: integer;
-
+  g_Skype: TSkype = nil;
+  g_handler: TConnectorHandler;
+  connector: TConnector = nil; // singleton
   msg_sending, unformated_msg_sending: string; // отсылаемое сообщение
 
   // cntrMsgIn и cntrMsgOut были введены для преодоления бага с зависающими сообщениями
@@ -112,7 +115,7 @@ begin
         begin
           SendMessage(MSG_INVITATION);
           connector._connected := TRUE;
-          connector._handler(ceConnected);
+          g_handler(ceConnected);
           Result := TRUE;
         end
       else
@@ -134,7 +137,7 @@ begin
               inc(cntrMsgIn);
               if cntrMsg > cntrMsgIn then
                 begin
-                  connector._handler(ceError); // пакет исчез
+                  g_handler(ceError); // пакет исчез
                   exit;
                 end
             end
@@ -142,11 +145,11 @@ begin
             exit; // пропуск пакетов с более низкими номерами
           if msg = MSG_CLOSE then
             begin
-              connector._handler(ceDisconnected);
+              g_handler(ceDisconnected);
               connector._connected := FALSE;
             end
           else
-            connector._handler(ceData, @msg);
+            g_handler(ceData, @msg);
         end
       else
         Result := FALSE;
@@ -193,7 +196,7 @@ begin
       SendMessage(msg_sending);
       sendTimer.Enabled := FALSE;
       _connected := FALSE;
-      _handler(ceDisconnected);
+      g_handler(ceDisconnected);
     end;
 {$IFDEF DEBUG_LOG}
   CloseLog;
@@ -204,7 +207,7 @@ end;
 procedure TConnector.SendData(const d: string);
 begin
   if d = MSG_CLOSE then
-    connector._handler(ceError)
+    g_handler(ceError)
   else
     begin
       msg_buf := msg_buf + d;
@@ -213,29 +216,36 @@ begin
 end;
 
 
-class function TConnector.Create(const wAccName: WideString; iProtoDllHandle: integer; h: TConnectorHandler): TConnector;
+class function TConnector.Create(h: TConnectorHandler): TConnector;
 begin
   if CONNECTOR_INSTANCES > 0 then
     raise Exception.Create('No more than 1 instance of TConnector is possible!');
 
-  gwAccName := wAccName;
-  giProtoDllHandle := iProtoDllHandle;
+  g_handler := h;
 
-  if not Assigned(connector) then
-    begin
-      connector := inherited Create(nil); // Owner - ?
-      connector._handler := h;
-      // TODO: добавить connector в список
-      SendMessage(MSG_INVITATION);
-    end;
+  g_Skype := TSkype.Create(nil);
+{$IFDEF TESTING}
+  m_Skype.Connect;
+{$ENDIF}
+  // TODO: handle here cases when Skype4COM is not registered
+
+  if (not g_Skype.Client.IsRunning) then
+    g_Skype.Client.Start(TRUE, TRUE);
+  // TODO: handle here cases when Skype cannot start
+
+  if (not Assigned(connector)) then
+  begin
+    connector := inherited Create(nil);
+    inc(CONNECTOR_INSTANCES);
+  end;
 
   cntrMsgIn := 0;
   cntrMsgOut := 1;
   msg_sending := '';
   unformated_msg_sending := '';
   msg_buf := '';
-  inc(CONNECTOR_INSTANCES);
-  result := connector;
+
+  Result := connector;
 
 {$IFDEF DEBUG_LOG}
   connector.InitLog;
@@ -321,6 +331,8 @@ end;
 
 procedure MessageGot(const msg: string; const accName: WideString; protoDllHandle: integer);
 begin
+  // TODO:
+{
   if not Assigned(connector) then
     exit;
   if (protoDllHandle <> giProtoDllHandle) or (gwAccName <> accName) then
@@ -328,6 +340,7 @@ begin
 
   FilterMsg(msg);
   // TODO: подавление сообщения при обмене через основной канал
+}
 end;
 
 
@@ -341,8 +354,7 @@ end;
 procedure ErrorSendingMessage(const msg: string);
 begin
   if (not connector.connected) and (msg = MSG_INVITATION) then
-    connector._handler(ceQIPError);
+    g_handler(ceSkypeError);
 end;
-
 
 end.

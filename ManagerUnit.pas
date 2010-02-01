@@ -21,7 +21,7 @@ uses
 type
 {$IFDEF MIRANDA}
   TManager = class(TForm, IMirandaPlugin, ILocalizable)
-{$ELSE} // TRILLIAN, AND_RQ, QIP
+{$ELSE} // TRILLIAN, AND_RQ, QIP, SKYPE
   TManager = class(TForm, ILocalizable)
 {$ENDIF}
     ActionList: TTntActionList;
@@ -89,6 +89,9 @@ type
 {$ENDIF}
 {$IFDEF TRILLIAN}
     contactlistEntry: TTtkContactListEntry;
+{$ENDIF}
+{$IFDEF SKYPE}
+    SkypeConnectionError: boolean;
 {$ENDIF}         
     opponentClientVersion : LongWord;
     // для ChessBoard
@@ -151,7 +154,10 @@ type
 {$ENDIF}
 {$IFDEF TRILLIAN}
     constructor Create(const vContactlistEntry: TTtkContactListEntry); reintroduce;
-{$ENDIF}        
+{$ENDIF}
+{$IFDEF SKYPE}
+    constructor Create; reintroduce;
+{$ENDIF}
   end;
 
 implementation
@@ -288,22 +294,26 @@ begin
     FLocalize;
 
     with ChessBoard do
-      begin
-        CB2View;
-        Left:= (Screen.Width - Width) div 2;
-        Top:= (Screen.Height - Height) div 2;
-        Show;
-        SetPrivateSettings;
-      end;
+    begin
+      CB2View;
+      Left:= (Screen.Width - Width) div 2;
+      Top:= (Screen.Height - Height) div 2;
+      Show;
+      SetPrivateSettings;
+    end;
 {$IFDEF AND_RQ}
-    Connector:= TConnector.Create(RQ_GetChatUIN, ConnectorHandler);
+    Connector := TConnector.Create(RQ_GetChatUIN, ConnectorHandler);
 {$ENDIF}
 {$IFDEF QIP}
     QIPConnectionError := FALSE;
     Connector := TConnector.Create(wAccName, iProtoDllHandle, ConnectorHandler);
 {$ENDIF}
 {$IFDEF TRILLIAN}
-    Connector:= TConnector.Create(@contactlistEntry, ConnectorHandler);
+    Connector := TConnector.Create(@contactlistEntry, ConnectorHandler);
+{$ENDIF}
+{$IFDEF SKYPE}
+    SkypeConnectionError := FALSE;
+    Connector := TConnector.Create(ConnectorHandler);
 {$ENDIF}
     // список внешних баз
     ExtBaseList := TStringList.Create;
@@ -328,7 +338,11 @@ begin
     opponent_id := contactlistEntry.real_name;
 {$ENDIF}
 {$IFDEF QIP}
-    if not QIPConnectionError then
+    if (not QIPConnectionError) then
+      begin
+{$ENDIF}
+{$IFDEF SKYPE}
+    if (not SkypeConnectionError) then
       begin
 {$ENDIF}
         ConnectingForm := (dialogs.CreateDialog(TConnectingForm) as TConnectingForm);
@@ -336,6 +350,10 @@ begin
 {$IFDEF QIP}
       end;
 {$ENDIF}
+{$IFDEF SKYPE}
+      end;
+{$ENDIF}
+
   except
     Release;
     raise;
@@ -519,23 +537,24 @@ label
   l;
 begin
   case e of
-  ceConnected:
+    ceConnected:
     begin
       if Assigned(ConnectingForm) then
         ConnectingForm.Shut;
       SendData(CMD_VERSION + ' ' + IntToStr(CHESS4NET_VERSION));
     end;
-  ceDisconnected:
+
+    ceDisconnected:
     begin
       case ChessBoard.Mode of
-      mView:
+        mView:
         begin
           if (not Connector.connected) then
             exit;
           dialogs.MessageDlg(TLocalizer.Instance.GetMessage(5), mtCustom, [mbOK],
             mfMsgLeave); // 'Your opponent leaves.'
         end;
-      mGame:
+        mGame:
         begin
           if (not Connector.connected) then
             exit;
@@ -547,9 +566,10 @@ begin
           dialogs.MessageDlg(TLocalizer.Instance.GetMessage(6), mtWarning,
                              [mbOK], mfMsgLeave); // Your opponent leaves. The game is aborted.
         end;
-    end;
-  end; { ceDisconnected }
-  ceError:
+      end;
+    end; { ceDisconnected }
+
+    ceError:
     begin
 {$IFDEF MIRANDA}
      Connector.Close;
@@ -565,10 +585,11 @@ begin
                            [mbOk], mfMsgLeave); // An error during connection occured.
     end;
 {$IFDEF QIP}
-  ceQIPError:
+
+    ceQIPError:
     begin
       QIPConnectionError := TRUE;
-      // TODO: Localize 
+      // TODO: Localize
       dialogs.MessageDlg('Special message channel is not responding.' + #13#10 +
                          'This can happen by one of the following reasons:' + #13#10 +
                          '  1) Your partner is using an IM other than QIP Infium. OR' + #13#10 +
@@ -578,7 +599,15 @@ begin
                          'Chess4Net won''t start.', mtWarning, [mbOk], mfMsgLeave);
     end;
 {$ENDIF}
-  ceData:
+{$IFDEF SKYPE}
+    ceSkypeError:
+    begin
+      SkypeConnectionError := TRUE;
+      // TODO: message
+    end;
+{$ENDIF}
+
+    ceData:
     begin
 {$IFDEF MIRANDA}
       Assert(High(TStringDynArray(d1)) >= 0);
@@ -1215,6 +1244,13 @@ end;
 constructor TManager.Create(const vContactlistEntry: TTtkContactListEntry);
 begin
   contactListEntry := vContactlistEntry;  
+  inherited Create(Application);
+end;
+{$ENDIF}
+
+{$IFDEF SKYPE}
+constructor TManager.Create;
+begin
   inherited Create(Application);
 end;
 {$ENDIF}
