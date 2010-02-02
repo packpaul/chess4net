@@ -16,10 +16,11 @@ const
 
   PLUGIN_PLAYING_VIA = 'Plugin for playing chess via Skype';
 
-  PLUGIN_INFO_NAME = 'Chess4Net 2009.1.0';
+  PLUGIN_INFO_NAME = 'Chess4Net 2010.1.0';
   PLUGIN_URL = 'http://chess4net.ru';
   PLUGIN_EMAIL = 'packpaul@mail.ru';
 
+  SKYPE_APP_NAME = 'Chess4Net_Skype';
 
 var
   Chess4NetPath: string;

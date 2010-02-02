@@ -35,7 +35,8 @@ uses
   ChessRulesEngine in '..\ChessRulesEngine.pas',
   LocalizerUnit in '..\LocalizerUnit.pas',
   ConnectorUnit in 'ConnectorUnit.pas',
-  InfoUnit in '..\InfoUnit.pas' {InfoForm}
+  InfoUnit in '..\InfoUnit.pas', {InfoForm}
+  SelectSkypeContactUnit in 'SelectSkypeContactUnit.pas' {SelectSkypeContactForm}
 {$IFDEF TESTING}
   , SkypeTS_TLB in 'SkypeTS_TLB.pas'
 {$ELSE}

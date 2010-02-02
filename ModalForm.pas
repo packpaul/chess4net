@@ -11,7 +11,11 @@ type
 
   TModalFormID = (mfNone, mfMsgClose, mfMsgLeave, mfMsgAbort, mfMsgResign,
                   mfMsgDraw, mfMsgTakeBack, mfMsgAdjourn, mfConnecting, mfGameOptions,
-                  mfLookFeel, mfCanPause, mfContinue, mfIncompatible);
+                  mfLookFeel, mfCanPause, mfContinue, mfIncompatible
+{$IFDEF SKYPE}
+                  , mfSelectSkypeContact
+{$ENDIF}
+                  );
 
   TModalFormHandler = procedure(modSender: TModalForm; modID: TModalFormID) of object;
 

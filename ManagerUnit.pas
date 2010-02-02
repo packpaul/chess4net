@@ -179,6 +179,9 @@ uses
 {$IFDEF QIP}
   , ControlUnit
 {$ENDIF}
+{$IFDEF SKYPE}
+  , SelectSkypeContactUnit
+{$ENDIF}
   ;
 
 const
@@ -539,6 +542,12 @@ begin
   case e of
     ceConnected:
     begin
+{$IFDEF SKYPE}
+      player_nick := Connector.UserHandle;
+      opponent_nick := Connector.ContactHandle;
+      opponent_id := IntToStr(Random(9999));
+      opponent_nick_id := opponent_nick + opponent_id;      
+{$ENDIF}
       if Assigned(ConnectingForm) then
         ConnectingForm.Shut;
       SendData(CMD_VERSION + ' ' + IntToStr(CHESS4NET_VERSION));
@@ -546,18 +555,21 @@ begin
 
     ceDisconnected:
     begin
+      if (not Connector.connected) then
+      begin
+{$IFDEF SKYPE}
+        Application.Terminate; // KLUDGE
+{$ENDIF}
+        exit;
+      end;
       case ChessBoard.Mode of
         mView:
         begin
-          if (not Connector.connected) then
-            exit;
           dialogs.MessageDlg(TLocalizer.Instance.GetMessage(5), mtCustom, [mbOK],
             mfMsgLeave); // 'Your opponent leaves.'
         end;
         mGame:
         begin
-          if (not Connector.connected) then
-            exit;
           ChessBoard.StopClock;
 {$IFDEF GAME_LOG}
           WriteToGameLog('*');
@@ -572,7 +584,7 @@ begin
     ceError:
     begin
 {$IFDEF MIRANDA}
-     Connector.Close;
+      Connector.Close;
 {$ENDIF}
 {$IFDEF GAME_LOG}
       if ChessBoard.Mode = mGame then
@@ -590,12 +602,12 @@ begin
     begin
       QIPConnectionError := TRUE;
       // TODO: Localize
-      dialogs.MessageDlg('Special message channel is not responding.' + #13#10 +
-                         'This can happen by one of the following reasons:' + #13#10 +
-                         '  1) Your partner is using an IM other than QIP Infium. OR' + #13#10 +
-                         '  2) Your partner is offline. OR' + #13#10 +
-                         '  3) Protocol doesn''t support multiple channels. OR' + #13#10 +
-                         '  4) Other reasons.' + #13#10 +
+      dialogs.MessageDlg('Special message channel is not responding.' + sLineBreak +
+                         'This can happen due to the following reasons:' + sLineBreak +
+                         '  1) Your partner is using an IM other than QIP Infium. OR' + sLineBreak +
+                         '  2) Your partner is offline. OR' + sLineBreak +
+                         '  3) Protocol doesn''t support multiple channels. OR' + sLineBreak +
+                         '  4) Other reasons.' + sLineBreak +
                          'Chess4Net won''t start.', mtWarning, [mbOk], mfMsgLeave);
     end;
 {$ENDIF}
@@ -603,8 +615,24 @@ begin
     ceSkypeError:
     begin
       SkypeConnectionError := TRUE;
-      // TODO: message
+      dialogs.MessageDlg('Chess4Net was unable to attach to your Skype application' + sLineBreak +
+                         'This can happen due to the following reasons:' + sLineBreak +
+                         '  1) You have an old version of Skype. OR' + sLineBreak +
+                         '  2) Your Skype is blocking Chess4Net. OR' + sLineBreak +
+                         '  3) Your Skype doesn''t support extras. OR' + sLineBreak +
+                         '  4) Other reasons.' + sLineBreak +
+                         'Chess4Net won''t start.', mtWarning, [mbOk], mfMsgLeave);
     end;
+
+    ceShowConnectableUsers:
+    begin
+      with dialogs.CreateDialog(TSelectSkypeContactForm) as TSelectSkypeContactForm do
+      begin
+        Init(d1);
+        Show;
+      end;
+    end;
+    
 {$ENDIF}
 
     ceData:
@@ -994,13 +1022,16 @@ begin
   if connectionOccured then
     WriteSettings;
   ExtBaseList.Free;
-{$IFNDEF MIRANDA}
-  if (Connector.Connected) then
+
+  if (Assigned(Connector)) then
+  begin
+{$IFNDEF MIRANDA} // TODO: ??? examine it
     Connector.Close;
-{$ELSE} // TRILLIAN, AND_RQ, QIP
-  if Assigned(Connector) then
+{$ELSE} // TRILLIAN, AND_RQ, QIP, SKYPE
     Connector.Free;
 {$ENDIF MIRANDA}
+  end;
+  
   ChessBoard.Release;
   ChessBoard := nil;
   dialogs.Free;
@@ -1163,11 +1194,11 @@ end;
 
 procedure TManager.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
-  if Connector.connected then
-    begin
-      dialogs.MessageDlg(TLocalizer.Instance.GetMessage(26), mtConfirmation, [mbYes, mbNo], mfMsgClose); // Do you want to exit?
-      Action:= caNone;
-    end
+  if (Assigned(Connector) and Connector.connected) then
+  begin
+    dialogs.MessageDlg(TLocalizer.Instance.GetMessage(26), mtConfirmation, [mbYes, mbNo], mfMsgClose); // Do you want to exit?
+    Action:= caNone;
+  end
   else
 //    Release;    
     Action := caFree;
@@ -1176,14 +1207,15 @@ end;
 
 procedure TManager.CloseConnector;
 begin
-  ConnectorTimer.Enabled:= TRUE;
+  ConnectorTimer.Enabled := TRUE;
 end;
 
 
 procedure TManager.ConnectorTimerTimer(Sender: TObject);
 begin
-  ConnectorTimer.Enabled:= FALSE;
-  Connector.Close;
+  ConnectorTimer.Enabled := FALSE;
+  if (Assigned(Connector)) then
+    Connector.Close;
   Release;
 end;
 
@@ -1263,114 +1295,133 @@ begin
   modRes := modSender.ModalResult;
   case msgDlgID of
     mfNone: ;
+
     mfMsgClose:
+    begin
+      if modRes = mrYes then
+      begin
+{$IFDEF GAME_LOG}
+        if ChessBoard.Mode = mGame then
+          begin
+            WriteToGameLog('*');
+            FlushGameLog;
+          end;
+{$ENDIF}
+        Release;
+      end;
+    end;
+
+    mfMsgLeave, mfIncompatible:
+    begin
+      if (Assigned(Connector) and Connector.connected) then
+        CloseConnector
+      else
+        Close;      
+    end;
+
+    mfMsgAbort:
+    begin
+      if ChessBoard.Mode = mGame then
+      begin
+        if (modRes = mrNo) or (modRes = mrNone) then
+          SendData(CMD_ABORT_DECLINED)
+        else
+        begin
+          SendData(CMD_ABORT_ACCEPTED);
+          FExitGameMode;
+{$IFDEF GAME_LOG}
+          WriteToGameLog('*');
+          FlushGameLog;
+{$ENDIF}
+          dialogs.MessageDlg(TLocalizer.Instance.GetMessage(13), mtCustom,
+            [mbOK], mfNone); // The game is aborted.
+        end;
+      end;
+    end;
+
+    mfMsgResign:
+    begin
+	    if ChessBoard.Mode = mGame then
       begin
         if modRes = mrYes then
-          begin
-{$IFDEF GAME_LOG}
-            if ChessBoard.Mode = mGame then
-		          begin
-                WriteToGameLog('*');
-                FlushGameLog;
-		          end;
-{$ENDIF}
-            Release;
-          end;
-      end;
-    mfMsgLeave:
-      begin
-        CloseConnector;
-      end;
-    mfIncompatible:
-      begin
-        CloseConnector;
-      end;
-    mfMsgAbort:
-      if ChessBoard.Mode = mGame then
         begin
-          if (modRes = mrNo) or (modRes = mrNone) then
-            SendData(CMD_ABORT_DECLINED)
+          FExitGameMode;
+          SendData(CMD_RESIGN);
+          ChessBoard.WriteGameToBase(grLost);
+{$IFDEF GAME_LOG}
+          if ChessBoard.PlayerColor = fcWhite then
+            WriteToGameLog(#13#10 + 'White resigns' + #13#10 + '0 - 1')
           else
-            begin
-              SendData(CMD_ABORT_ACCEPTED);
-              FExitGameMode;
-{$IFDEF GAME_LOG}
-              WriteToGameLog('*');
-              FlushGameLog;
+            WriteToGameLog(#13#10 + 'Black resigns' + #13#10 + '1 - 0');
+          FlushGameLog;
 {$ENDIF}
-              dialogs.MessageDlg(TLocalizer.Instance.GetMessage(13), mtCustom,
-                [mbOK], mfNone); // The game is aborted.
-            end;
-      end;
-    mfMsgResign:
-	    if ChessBoard.Mode = mGame then
-        begin
-          if modRes = mrYes then
-            begin
-              FExitGameMode;
-              SendData(CMD_RESIGN);
-              ChessBoard.WriteGameToBase(grLost);
-{$IFDEF GAME_LOG}
-              if ChessBoard.PlayerColor = fcWhite then
-                WriteToGameLog(#13#10 + 'White resigns' + #13#10 + '0 - 1')
-              else
-                WriteToGameLog(#13#10 + 'Black resigns' + #13#10 + '1 - 0');
-              FlushGameLog;
-{$ENDIF}
-            end;
         end;
+      end;
+    end;
+
     mfMsgDraw:
+    begin
       if ChessBoard.Mode = mGame then
-        begin
-          if (modRes = mrNo) or (modRes = mrNone) then
-            SendData(CMD_DRAW_DECLINED)
-          else
-            begin
-              SendData(CMD_DRAW_ACCEPTED);
-              FExitGameMode;
-{$IFDEF GAME_LOG}
-                WriteToGameLog('=' + #13#10 + '1/2 - 1/2');
-                FlushGameLog;
-{$ENDIF}
-              dialogs.MessageDlg(TLocalizer.Instance.GetMessage(15), mtCustom, [mbOK], mfNone);
-              ChessBoard.WriteGameToBase(grDraw); // The game is drawn.
-            end;
-        end;
-    mfMsgTakeBack:
-      if ChessBoard.Mode = mGame then
-        begin
-          if modRes = mrYes then
-            begin
-              SendData(CMD_TAKEBACK_YES);
-              ChessBoard.TakeBack;
-              FBuildAdjournedStr;
-              TakebackGame.Enabled:= (ChessBoard.NMoveDone > 0);
-{$IFDEF GAME_LOG}
-              WriteToGameLog(' <takeback>');
-{$ENDIF}
-              ChessBoard.SwitchClock(ChessBoard.PositionColor);
-            end
-          else
-            SendData(CMD_TAKEBACK_NO);
-        end;
-    mfMsgAdjourn:
-      if ChessBoard.Mode = mGame then
-        begin
-          if modRes = mrYes then
-            begin
-              SendData(CMD_ADJOURN_GAME_YES);
-              FAdjournGame;
-            end
-          else
-            SendData(CMD_ADJOURN_GAME_NO);
-        end;
-    mfConnecting:
       begin
-        ConnectingForm := nil;
-        if modRes = mrAbort then
-          Close; // ConnectionAbort;
+        if (modRes = mrNo) or (modRes = mrNone) then
+          SendData(CMD_DRAW_DECLINED)
+        else
+        begin
+          SendData(CMD_DRAW_ACCEPTED);
+          FExitGameMode;
+{$IFDEF GAME_LOG}
+            WriteToGameLog('=' + #13#10 + '1/2 - 1/2');
+            FlushGameLog;
+{$ENDIF}
+          dialogs.MessageDlg(TLocalizer.Instance.GetMessage(15), mtCustom, [mbOK], mfNone);
+          ChessBoard.WriteGameToBase(grDraw); // The game is drawn.
+        end;
       end;
+    end;
+
+    mfMsgTakeBack:
+    begin
+      if ChessBoard.Mode = mGame then
+      begin
+        if modRes = mrYes then
+        begin
+          SendData(CMD_TAKEBACK_YES);
+          ChessBoard.TakeBack;
+          FBuildAdjournedStr;
+          TakebackGame.Enabled:= (ChessBoard.NMoveDone > 0);
+{$IFDEF GAME_LOG}
+          WriteToGameLog(' <takeback>');
+{$ENDIF}
+          ChessBoard.SwitchClock(ChessBoard.PositionColor);
+        end
+        else
+          SendData(CMD_TAKEBACK_NO);
+      end;
+    end;
+
+    mfMsgAdjourn:
+    begin
+      if ChessBoard.Mode = mGame then
+      begin
+        if modRes = mrYes then
+        begin
+          SendData(CMD_ADJOURN_GAME_YES);
+          FAdjournGame;
+        end
+        else
+          SendData(CMD_ADJOURN_GAME_NO);
+      end;
+    end;
+
+    mfConnecting:
+    begin
+      ConnectingForm := nil;
+      if modRes = mrAbort then
+        Close; // ConnectionAbort;
+    end;
+
     mfGameOptions:
+    begin
       if (ChessBoard.Mode <> mGame) and (modRes = mrOK) then
         with (modSender as TGameOptionsForm) do
         begin
@@ -1387,33 +1438,33 @@ begin
           // синхронизация времени у оппонента
           s := ClockToStr;
           if (opponentClientVersion >= 200705) then
-            begin
-              if prevClock <> s then
-                SendData(CMD_SET_CLOCK + ' ' + s);
-              SendData(CMD_ALLOW_TAKEBACKS + IfThen(TakeBackCheckBox.Checked, ' 1', ' 0'));
-            end;
+          begin
+            if prevClock <> s then
+              SendData(CMD_SET_CLOCK + ' ' + s);
+            SendData(CMD_ALLOW_TAKEBACKS + IfThen(TakeBackCheckBox.Checked, ' 1', ' 0'));
+          end;
           you_takebacks := TakeBackCheckBox.Checked;
           if (opponentClientVersion >= 200706) then
+          begin
+            if can_pause_game <> GamePauseCheckBox.Checked then
             begin
-              if can_pause_game <> GamePauseCheckBox.Checked then
-                begin
-                  can_pause_game := GamePauseCheckBox.Checked;
-                  SendData(CMD_CAN_PAUSE_GAME + IfThen(can_pause_game, ' 1', ' 0'))
-                end;
+              can_pause_game := GamePauseCheckBox.Checked;
+              SendData(CMD_CAN_PAUSE_GAME + IfThen(can_pause_game, ' 1', ' 0'))
             end;
+          end;
           if (opponentClientVersion >= 200801) then
+          begin
+            if can_adjourn_game <> GameAdjournCheckBox.Checked then
             begin
-              if can_adjourn_game <> GameAdjournCheckBox.Checked then
-                begin
-                  can_adjourn_game := GameAdjournCheckBox.Checked;
-                  SendData(CMD_CAN_ADJOURN_GAME + IfThen(can_adjourn_game, ' 1', ' 0'))
-                end;
+              can_adjourn_game := GameAdjournCheckBox.Checked;
+              SendData(CMD_CAN_ADJOURN_GAME + IfThen(can_adjourn_game, ' 1', ' 0'))
             end;
+          end;
           // тренировочный режим
           if (opponentClientVersion >= 200705) and (ChessBoard.pTrainingMode <> TrainingEnabledCheckBox.Checked) then
-            begin
-              SendData(CMD_SET_TRAINING + IfThen(TrainingEnabledCheckBox.Checked, ' 1', ' 0'));
-            end;
+          begin
+            SendData(CMD_SET_TRAINING + IfThen(TrainingEnabledCheckBox.Checked, ' 1', ' 0'));
+          end;
           ChessBoard.pTrainingMode := TrainingEnabledCheckBox.Checked;
           ExtBaseName := ExtBaseList[ExtBaseComboBox.ItemIndex];
           if ExtBaseName <> '' then
@@ -1425,43 +1476,63 @@ begin
           TakebackGame.Visible := (ChessBoard.pTrainingMode or opponent_takebacks);
 
           if (opponentClientVersion < 200705) then // 2007.4
-            begin
-              if ChessBoard.pTrainingMode then
-                s := s + ' 1 1'
-              else
-                s := s + IfThen(you_takebacks, ' 1 0', ' 0 0');
-              SendData(CMD_GAME_OPTIONS + ' ' + s);
-            end;
-        end;
-    mfLookFeel:
-      with (modSender as TLookFeelOptionsForm), ChessBoard do
-        begin
-          animation := TAnimation(AnimationComboBox.ItemIndex);
-          LastMoveHilighted := HilightLastMoveBox.Checked;
-          FlashOnMove := FlashIncomingMoveBox.Checked;
-          CoordinatesShown := CoordinatesBox.Checked;
-          StayOnTop := StayOnTopBox.Checked;
-          extra_exit := ExtraExitBox.Checked;
-        end;
-    mfContinue:
-      begin
-        ContinueForm := nil;
-        if modRes = mrOk then
           begin
-            SendData(CMD_CONTINUE_GAME);
-            ContinueGame;
+            if ChessBoard.pTrainingMode then
+              s := s + ' 1 1'
+            else
+              s := s + IfThen(you_takebacks, ' 1 0', ' 0 0');
+            SendData(CMD_GAME_OPTIONS + ' ' + s);
           end;
-      end;
-    mfCanPause:
+        end;
+    end;
+
+    mfLookFeel:
+    begin
+      with (modSender as TLookFeelOptionsForm), ChessBoard do
       begin
-        if modRes = mrYes then
-          begin
-            SendData(CMD_PAUSE_GAME_YES);
-            PauseGame;
-          end
-        else // mdRes = mrNo
-          SendData(CMD_PAUSE_GAME_NO);
+        animation := TAnimation(AnimationComboBox.ItemIndex);
+        LastMoveHilighted := HilightLastMoveBox.Checked;
+        FlashOnMove := FlashIncomingMoveBox.Checked;
+        CoordinatesShown := CoordinatesBox.Checked;
+        StayOnTop := StayOnTopBox.Checked;
+        extra_exit := ExtraExitBox.Checked;
       end;
+    end;
+
+    mfContinue:
+    begin
+      ContinueForm := nil;
+      if modRes = mrOk then
+      begin
+        SendData(CMD_CONTINUE_GAME);
+        ContinueGame;
+      end;
+    end;
+
+    mfCanPause:
+    begin
+      if modRes = mrYes then
+      begin
+        SendData(CMD_PAUSE_GAME_YES);
+        PauseGame;
+      end
+      else // modRes = mrNo
+        SendData(CMD_PAUSE_GAME_NO);
+    end;
+{$IFDEF SKYPE}
+    mfSelectSkypeContact:
+    begin
+      if (modRes = mrOk) then
+      begin
+        with modSender as TSelectSkypeContactForm do
+        begin
+          Connector.ConnectToContact(SelectedContactIndex);
+        end;
+      end
+      else
+        Close;
+    end;
+{$ENDIF}
   end;
 end;
 
