@@ -29,9 +29,10 @@ var
 implementation
 
 uses
-  Forms;
+  Forms, SysUtils;
 
 initialization
   Chess4NetIcon := Application.Icon;
+  Chess4NetPath := ExtractFilePath(Application.ExeName);
 
 end.

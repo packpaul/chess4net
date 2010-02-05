@@ -92,6 +92,7 @@ type
 {$ENDIF}
 {$IFDEF SKYPE}
     SkypeConnectionError: boolean;
+    bDontShowCredits: boolean;
 {$ENDIF}         
     opponentClientVersion : LongWord;
     // для ChessBoard
@@ -139,6 +140,10 @@ type
     procedure ILocalizable.Localize = FLocalize;
     procedure FLocalize;
 
+{$IFDEF SKYPE}
+    procedure FShowCredits;
+{$ENDIF}
+
     property AdjournedStr: string read m_strAdjourned write m_strAdjourned;
 
   public
@@ -180,7 +185,7 @@ uses
   , ControlUnit
 {$ENDIF}
 {$IFDEF SKYPE}
-  , SelectSkypeContactUnit
+  , SelectSkypeContactUnit, CreditsFormUnit
 {$ENDIF}
   ;
 
@@ -262,6 +267,9 @@ const
   CLOCK_KEY_NAME = 'Clock';
   ADJOURNED_KEY_NAME = 'Adjourned';
   LANGUAGE_KEY_NAME = 'Language';
+{$IFDEF SKYPE}
+  DONT_SHOW_CREDITS = 'DontShowCredits';
+{$ENDIF}  
 
 ////////////////////////////////////////////////////////////////////////////////
 // TManager
@@ -545,7 +553,7 @@ begin
 {$IFDEF SKYPE}
       player_nick := Connector.UserHandle;
       opponent_nick := Connector.ContactHandle;
-      opponent_id := IntToStr(Random(9999));
+      opponent_id := opponent_nick;
       opponent_nick_id := opponent_nick + opponent_id;      
 {$ENDIF}
       if Assigned(ConnectingForm) then
@@ -570,7 +578,6 @@ begin
         end;
         mGame:
         begin
-          ChessBoard.StopClock;
 {$IFDEF GAME_LOG}
           WriteToGameLog('*');
           FlushGameLog;
@@ -1021,6 +1028,7 @@ begin
 
   if connectionOccured then
     WriteSettings;
+
   ExtBaseList.Free;
 
   if (Assigned(Connector)) then
@@ -1302,10 +1310,13 @@ begin
       begin
 {$IFDEF GAME_LOG}
         if ChessBoard.Mode = mGame then
-          begin
-            WriteToGameLog('*');
-            FlushGameLog;
-          end;
+        begin
+          WriteToGameLog('*');
+          FlushGameLog;
+        end;
+{$ENDIF}
+{$IFDEF SKYPE}
+        FShowCredits;
 {$ENDIF}
         Release;
       end;
@@ -1313,10 +1324,13 @@ begin
 
     mfMsgLeave, mfIncompatible:
     begin
+{$IFDEF SKYPE}
+      FShowCredits;
+{$ENDIF}
       if (Assigned(Connector) and Connector.connected) then
         CloseConnector
       else
-        Close;      
+        Close;
     end;
 
     mfMsgAbort:
@@ -1677,7 +1691,11 @@ begin
     ChessBoard.CoordinatesShown := iniFile.ReadBool(PRIVATE_SECTION_NAME, SHOW_COORDINATES_KEY_NAME, TRUE);
     ChessBoard.StayOnTop := iniFile.ReadBool(PRIVATE_SECTION_NAME, STAY_ON_TOP_KEY_NAME, FALSE);
     extra_exit := iniFile.ReadBool(PRIVATE_SECTION_NAME, EXTRA_EXIT_KEY_NAME, FALSE);
-    TLocalizer.Instance.ActiveLanguage := iniFile.ReadInteger(PRIVATE_SECTION_NAME, LANGUAGE_KEY_NAME, 1) - 1;    
+    TLocalizer.Instance.ActiveLanguage := iniFile.ReadInteger(PRIVATE_SECTION_NAME, LANGUAGE_KEY_NAME, 1) - 1;
+{$IFDEF SKYPE}
+    bDontShowCredits := iniFile.ReadBool(PRIVATE_SECTION_NAME, DONT_SHOW_CREDITS, FALSE);
+{$ENDIF}
+
   finally
     iniFile.Free;
   end;
@@ -1797,6 +1815,10 @@ begin
     iniFile.WriteBool(PRIVATE_SECTION_NAME, STAY_ON_TOP_KEY_NAME, ChessBoard.StayOnTop);
     iniFile.WriteBool(PRIVATE_SECTION_NAME, EXTRA_EXIT_KEY_NAME, extra_exit);
     iniFile.WriteInteger(PRIVATE_SECTION_NAME, LANGUAGE_KEY_NAME, TLocalizer.Instance.ActiveLanguage + 1);
+{$IFDEF SKYPE}
+    if (bDontShowCredits) then
+      iniFile.WriteBool(PRIVATE_SECTION_NAME, DONT_SHOW_CREDITS, bDontShowCredits);
+{$ENDIF}
     // Запись общих настроек
     commonSectionName := COMMON_SECTION_PREFIX + ' ' + opponent_id;
     iniFile.WriteInteger(commonSectionName, PLAYER_COLOR_KEY_NAME, Ord(ChessBoard.PlayerColor));
@@ -1809,6 +1831,7 @@ begin
     iniFile.WriteBool(commonSectionName, CAN_ADJOURN_GAME_KEY_NAME, can_adjourn_game);
     iniFile.WriteBool(commonSectionName, AUTO_FLAG_KEY_NAME, ChessBoard.AutoFlag);
     iniFile.WriteString(commonSectionName, ADJOURNED_KEY_NAME, AdjournedStr);
+
   finally
     iniFile.Free;
   end;
@@ -2054,7 +2077,30 @@ begin
   AdjournGame.Visible := can_adjourn_game;
   AdjournGame.Enabled := ((adjournedStr <> '') and move_done);
   StartAdjournedGameConnected.Visible := (adjournedStr <> '');
-end;  
+end;
+
+
+{$IFDEF SKYPE}
+procedure TManager.FShowCredits;
+
+  function NFridayThe13: boolean; // just for fun!
+  begin
+    Result := ((DayOfTheMonth(Today) = 13) and (DayOfWeek(Today) = 6));
+  end;
+
+begin // TManager.FShowCredits
+  if (connectionOccured and (not bDontShowCredits) and (not NFridayThe13)) then
+  begin
+    with TCreditsForm.Create(nil) do
+    try
+      ShowModal;
+      bDontShowCredits := DontShowAgain;
+    finally
+      Free;
+    end;
+  end;
+end;
+{$ENDIF}
 
 end.
 

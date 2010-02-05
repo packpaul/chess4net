@@ -13,6 +13,7 @@ type
     CancelButton: TTntButton;
     ContactsListBox: TTntListBox;
     procedure FormCreate(Sender: TObject);
+    procedure ContactsListBoxDblClick(Sender: TObject);
   private
     procedure FLocalize;
     procedure FUpdateGUI;
@@ -78,6 +79,12 @@ begin
       Result := -1;
   end; // with
 
+end;
+
+
+procedure TSelectSkypeContactForm.ContactsListBoxDblClick(Sender: TObject);
+begin
+  OkButton.Click;
 end;
 
 end.

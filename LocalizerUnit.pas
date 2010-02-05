@@ -53,7 +53,7 @@ const
   LOCALIZER_INI_FILE = 'Lang.ini';
 
   // Labels are used to name interface controls s.a. TLabel and the like
-  DEFAULT_LABELS: array[0..63] of WideString =
+  DEFAULT_LABELS: array[0..66] of WideString =
     ('Look & Feel Options', {0}
      'Animate Move:',
      'No',
@@ -117,7 +117,10 @@ const
      'Resign', {60}
      'Adjourn',
      'Pause',
-     'Takeback'
+     'Takeback',
+     'If you liked plying Chess4Net give your credits at',
+     '&Close',
+     'Don''t show again'
     );
 
   // Messages are used in message boxes

@@ -80,9 +80,12 @@ procedure TModalForm.FormShow(Sender: TObject);
 var
   frmOwner: TForm;
 begin
-  frmOwner := (Owner as TForm);
-  Left:= frmOwner.Left + (frmOwner.Width - Width) div 2;
-  Top:= frmOwner.Top + (frmOwner.Height - Height) div 2;
+  if (Assigned(Owner)) then
+  begin
+    frmOwner := (Owner as TForm);
+    Left:= frmOwner.Left + (frmOwner.Width - Width) div 2;
+    Top:= frmOwner.Top + (frmOwner.Height - Height) div 2;
+  end;
   if Assigned(GenFormShow) then
     GenFormShow(Sender);
 end;
@@ -114,7 +117,8 @@ constructor TModalForm.Create(Owner: TForm; modID: TModalFormID; modHandler: TMo
 var
   i: integer;
 begin
-  FormStyle := Owner.FormStyle;
+  if (Assigned(Owner)) then
+    FormStyle := Owner.FormStyle;
   inherited Create(Owner);
   Handler := modhandler;
 
