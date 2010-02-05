@@ -1544,7 +1544,12 @@ begin
         end;
       end
       else
-        Close;
+      begin
+        if (Assigned(ConnectingForm)) then
+          ConnectingForm.Close
+        else
+          Close;
+      end;
     end;
 {$ENDIF}
   end;
