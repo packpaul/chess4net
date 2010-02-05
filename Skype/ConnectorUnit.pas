@@ -568,7 +568,9 @@ procedure TConnector.DataModuleDestroy(Sender: TObject);
 begin
   m_wstrlInBuffer.Free;
   SkypeApplication.Delete;
+{$IFDEF TESTING}
   Skype.Disconnect;
+{$ENDIF}
   FreeAndNil(g_Skype);
 end;
 
@@ -591,7 +593,9 @@ initialization
 finalization
   if (Assigned(g_Skype)) then
   begin
+{$IFDEF TESTING}
     g_Skype.Disconnect;
+{$ENDIF}    
     FreeAndNil(g_Skype);
   end;
 
