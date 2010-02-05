@@ -37,7 +37,8 @@ uses
   ConnectorUnit in 'ConnectorUnit.pas',
   InfoUnit in '..\InfoUnit.pas' {InfoForm},
   SelectSkypeContactUnit in 'SelectSkypeContactUnit.pas' {SelectSkypeContactForm},
-  CreditsFormUnit in 'CreditsFormUnit.pas' {CreditsForm}
+  CreditsFormUnit in 'CreditsFormUnit.pas' {CreditsForm},
+  InterProc in 'InterProc.pas'
 {$IFDEF TESTING}
   , SkypeTS_TLB in 'SkypeTS_TLB.pas'
 {$ELSE}
@@ -52,7 +53,11 @@ var
 
 begin
   Forms.Application.Initialize;
-  Forms.Application.Title := 'Chess4Net';
+  Forms.Application.Title := 'Chess4Net [Skype]';
+{$IFNDEF TESTING}
+  if (ActivateApplicationIfRunning) then
+    exit;
+{$ENDIF}
   Forms.Application.CreateForm(TManager, Manager);
   Forms.Application.ShowMainForm := False;
   Forms.Application.Run;
