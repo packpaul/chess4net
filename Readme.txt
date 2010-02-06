@@ -1,5 +1,5 @@
 Chess4Net
-(c) 2007-2009 No rights reserved
+(c) 2007-2010 No rights reserved
 E-Mail: packpaul@mail.ru
 URL:    http://chess4net.ru
 ==============================
@@ -7,7 +7,7 @@ URL:    http://chess4net.ru
 Opening
 --------
 
-Chess4Net is a program for playing chess via Internet. It can be used as standalone application (Socket version for Microsoft Windows or Linux) or as plug-in for such instant messengers as Miranda, QIP Infium, Trillian Pro and &RQ. Two modes of chess game are supported: standart chess and its random counterpart - PP Random Chess. Chess4Net supports sudden death and incremental time controls as well as possibility to give your opponent a time-handicap. If you want to improve your chess skills there is also a support for a training mode.
+Chess4Net is a program for playing chess via Internet. It can be used as standalone application (Socket version for Microsoft Windows or Linux) or as plug-in for such instant messengers as Skype, Miranda, QIP Infium, Trillian Pro and &RQ. Two modes of chess game are supported: standart chess and its random counterpart - PP Random Chess. Chess4Net supports sudden death and incremental time controls as well as possibility to give your opponent a time-handicap. If you want to improve your chess skills there is also a support for a training mode.
 
 Middle game
 ------------
@@ -16,6 +16,9 @@ Installation:
 
 Socket version:
   Extract the archive to desired folder on your computer.
+
+Skype plug-in:
+  There're two options. You can either install from installation package or download an archive and extract it to a desired folder on your computer.
 
 Miranda plug-in:
   Extract archive to the Miranda Plugins directory and re/start Miranda.
@@ -29,7 +32,7 @@ Trillian Pro plug-in:
 &RQ plug-in:
   Extract archive folder Plugins\ to the installation directory of &RQ (the one where &RQ.exe is located).
 
-Using:
+How to use:
 
 Socket version:
   1) Start Chess4Net.exe
@@ -38,6 +41,11 @@ Socket version:
     a) Choose Server; provide your partner with IP (type 'ipconfig' in Start->Run... or command line to find it out in Windows; run ./get_ip.pl from installation in terminal on Linux); enter Port# (agree upon it with your partner).
     b) Choose Client; Enter IP or domain Name that your partner told you; Enter Port# (for each instance of Chess4Net it should be unique).
   4) Click OK and wait until the connection is completed.
+
+Skype:
+  1) Run Chess4Net_Skype.exe. If you don't have Skype running it will start automatically.
+  2) When a window with Skype contacts appears choose a contact you want to play chess with.
+  3) Wait until connection is completed.
 
 Miranda:
   1) Right-click the contact you want to play chess with and select 'Chess4Net' from contact pop-up menu.
@@ -59,7 +67,7 @@ you may want to switch off the sounds for incomming messages while playing.
   3) Wait until connection is completed.
 
 Chess4Net uses context-menu so if you find yourself in trouble don't hesitate and press the right button of your mouse.
-After several runs in installation folder (socket) or \Chess4Net folder (messengers) you will find Chess4Net_GAMELOG.txt with all games you have played with Chess4Net so far, user data base (Chess4Net.pos and Chess4Net.mov) and external data bases (other files *.pos and *.mov) which are used in training mode.
+After several runs in installation folder (socket, Skype) or \Chess4Net folder (messengers other than Skype) you will find Chess4Net_GAMELOG.txt with all games you have played with Chess4Net so far, user data base (Chess4Net.pos and Chess4Net.mov) and external data bases (other files *.pos and *.mov) which are used in training mode.
 
 Training mode:
 
@@ -75,7 +83,7 @@ Chess4Net is a software and, like it is peculiar to software, it will never be b
 
 How you can help?
 -----------------
-If you liked Chess4Net you could make some reasonable donations to Yandex-Money: 41001124111397 or Web Money: 774788633995. Also you could provide localization into new languages (see Lang.ini), and, of course, your fresh ideas won't be unnoticed!
+If you like Chess4Net you can give your credits at http://chess4net.ru or make some reasonable donations to Yandex-Money: 41001124111397 or Web Money: 774788633995. Also you can provide localization into new languages (see Lang.ini), and, of course, your fresh ideas won't be unnoticed!
 
 Congratulations you won!
 ------------------------
@@ -84,9 +92,9 @@ Congratulations you won!
 You can have this tuning. Drop me an E-mail we will discuss it.
 
 "I want more external data bases!"
-Yes, you can have them - visit the main site.
+Yes, you can have them. E-mail me and we will discuss it too.
 
-"I want an external DB with the games of the champion of our town and my games played in the Icelandic National Championship!"
+"I want an external DB with the games of the champion from our town and my games played in the Icelandic National Championship!"
 Why not? You can have them. Send me an E-mail and we will discuss this.
 
 ENJOY!
@@ -98,6 +106,8 @@ PP
 Change log
 -----------
 
+Chess4Net 2010.1 (Skype)
+[2010-02-07] Released with Credits reminder.
 
 Chess4net 2009.1 (MI)
 [2009-01-01] Localization for English and Russian and possibility to add new languages. Chess board resizing. Possibility to play more than one game simultaneously (multi-sessionality). Flashing window on incomming move.
