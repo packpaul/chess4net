@@ -43,7 +43,7 @@ Socket version:
   4) Click OK and wait until the connection is completed.
 
 Skype:
-  1) Run Chess4Net_Skype.exe. If you don't have Skype running it will start automatically.
+  1) Run Chess4Net_Skype.exe. If you don't have Skype running it will start automatically. Click 'Allow access' when dialog 'Chess4Net_Skype.exe wants to use Skype' pops-up.
   2) When a window with Skype contacts appears choose a contact you want to play chess with.
   3) Wait until connection is completed.
 
