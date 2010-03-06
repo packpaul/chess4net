@@ -16,7 +16,7 @@ uses
   FastMM4,
 {$ENDIF}
   Forms,
-  ConnectingUnit in '..\ConnectingUnit.pas' {ConnectingForm},
+  ConnectingUnit in 'ConnectingUnit.pas' {ConnectingForm},
   GameOptionsUnit in '..\GameOptionsUnit.pas' {GameOptionsForm},
   ManagerUnit in '..\ManagerUnit.pas' {Manager},
   ChessBoardHeaderUnit in '..\ChessBoardHeaderUnit.pas',

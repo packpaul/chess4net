@@ -633,6 +633,8 @@ begin
 
     ceShowConnectableUsers:
     begin
+      if (Assigned(ConnectingForm)) then
+        ConnectingForm.ShowSkypeAcceptLogo := FALSE;
       with dialogs.CreateDialog(TSelectSkypeContactForm) as TSelectSkypeContactForm do
       begin
         Init(d1);
