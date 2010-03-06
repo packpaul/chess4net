@@ -5,7 +5,7 @@ RD /S /Q ..\bin\Chess4Net_Skype\
 
 rem -= Compilation =-
 
-// dcc32 -DTESTING -B Chess4Net_Skype.dpr
+rem dcc32 -DTESTING -B Chess4Net_Skype.dpr
 dcc32 -B Chess4Net_Skype.dpr
 
 rem -= Build =-
