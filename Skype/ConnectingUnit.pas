@@ -5,7 +5,7 @@ interface
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, TntStdCtrls,
   Forms, {Dialogs, }ExtCtrls, StdCtrls,
-  DialogUnit, ModalForm, frxpngimage;
+  DialogUnit, ModalForm;
 
 type
   TConnectingHandler = procedure of object;
