@@ -108,6 +108,7 @@ Change log
 
 Chess4Net 2010.1 (Skype)
 [2010-02-07] Released with Credits reminder.
+[2010-03-06] Skype accept help image added.
 
 Chess4net 2009.1 (MI)
 [2009-01-01] Localization for English and Russian and possibility to add new languages. Chess board resizing. Possibility to play more than one game simultaneously (multi-sessionality). Flashing window on incomming move.
