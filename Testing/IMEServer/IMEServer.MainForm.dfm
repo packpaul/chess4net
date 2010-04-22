@@ -13,8 +13,6 @@ object MainForm: TMainForm
   Font.Name = 'MS Sans Serif'
   Font.Style = []
   OldCreateOrder = False
-  OnCreate = FormCreate
-  OnDestroy = FormDestroy
   PixelsPerInch = 96
   TextHeight = 13
   object PortLabel: TLabel
@@ -34,7 +32,7 @@ object MainForm: TMainForm
   object DelayLabel: TLabel
     Left = 40
     Top = 160
-    Width = 15
+    Width = 25
     Height = 13
     Caption = '3.0'
   end
@@ -70,34 +68,5 @@ object MainForm: TMainForm
     Height = 41
     ReadOnly = True
     TabOrder = 2
-  end
-  object DelayedStepTimer: TTimer
-    Enabled = False
-    Interval = 200
-    OnTimer = DelayedStepTimerTimer
-    Left = 160
-    Top = 184
-  end
-  object TCPServer: TIdTCPServer
-    Active = True
-    Bindings = <>
-    CommandHandlers = <>
-    DefaultPort = 5555
-    Greeting.NumericCode = 0
-    MaxConnectionReply.NumericCode = 0
-    OnConnect = TCPServerConnect
-    OnExecute = TCPServerExecute
-    OnDisconnect = TCPServerDisconnect
-    OnException = TCPServerException
-    ReplyExceptionCode = 0
-    ReplyTexts = <>
-    ReplyUnknownCommand.NumericCode = 0
-    ThreadMgr = IdThreadMgrDefault
-    Left = 192
-    Top = 152
-  end
-  object IdThreadMgrDefault: TIdThreadMgrDefault
-    Left = 160
-    Top = 152
   end
 end
