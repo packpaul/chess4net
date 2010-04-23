@@ -15,8 +15,7 @@ object MainForm: TMainForm
   OldCreateOrder = False
   Position = poDefault
   OnClose = FormClose
-  OnCreate = FormCreate
-  OnDestroy = FormDestroy
+  OnShow = FormShow
   PixelsPerInch = 96
   TextHeight = 13
   object Label1: TLabel
@@ -49,6 +48,7 @@ object MainForm: TMainForm
     Height = 33
     ReadOnly = True
     TabOrder = 0
+    OnChange = memOutChange
   end
   object btnSend: TButton
     Left = 80
@@ -66,6 +66,7 @@ object MainForm: TMainForm
     Height = 21
     TabOrder = 4
     Text = 'HandleName'
+    OnChange = HandleNameEditChange
   end
   object HandleIdEdit: TMaskEdit
     Left = 248
@@ -76,6 +77,7 @@ object MainForm: TMainForm
     MaxLength = 4
     TabOrder = 3
     Text = '1234'
+    OnChange = HandleIdEditChange
   end
   object DisConnectButton: TButton
     Left = 288
@@ -94,15 +96,5 @@ object MainForm: TMainForm
     ItemHeight = 13
     TabOrder = 6
     OnClick = ContactsListBoxClick
-  end
-  object TCPClient: TIdTCPClient
-    MaxLineAction = maException
-    ReadTimeout = 0
-    OnDisconnected = TCPClientDisconnected
-    Host = '127.0.0.1'
-    OnConnected = TCPClientConnected
-    Port = 5555
-    Left = 8
-    Top = 208
   end
 end

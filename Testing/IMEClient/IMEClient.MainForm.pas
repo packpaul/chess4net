@@ -3,16 +3,15 @@ unit IMEClient.MainForm;
 interface
 
 uses
-  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms, Dialogs,
-  StdCtrls, IdBaseComponent, IdComponent, IdTCPConnection, IdTCPClient, IdException,
-  Mask;
+  Forms, Controls, StdCtrls, Mask, Classes,
+  //
+  IMEClient.Headers;
 
 type
-  TMainForm = class(TForm)
+  TMainForm = class(TForm, IView)
     memIn: TMemo;
     memOut: TMemo;
     btnSend: TButton;
-    TCPClient: TIdTCPClient;
     HandleNameEdit: TEdit;
     Label1: TLabel;
     Label2: TLabel;
@@ -20,38 +19,52 @@ type
     DisConnectButton: TButton;
     ContactsListBox: TListBox;
     procedure btnSendClick(Sender: TObject);
-    procedure TCPClientConnected(Sender: TObject);
-    procedure TCPClientDisconnected(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
 
     function FGetHandleID: integer;
-    procedure FSetHandleID(Value: integer);
     function FGetHandleName: string;
-    procedure FSetHandleName(const Value: string);    
+    function FGetSendText: string;
 
-    property HandleID: integer read FGetHandleID write FSetHandleID;
-    property HandleName: string read FGetHandleName write FSetHandleName;
     procedure DisConnectButtonClick(Sender: TObject);
-    procedure FormCreate(Sender: TObject);
-    procedure FormDestroy(Sender: TObject);
     procedure ContactsListBoxClick(Sender: TObject);
+    procedure FormShow(Sender: TObject);
+    procedure HandleIdEditChange(Sender: TObject);
+    procedure HandleNameEditChange(Sender: TObject);
+    procedure memOutChange(Sender: TObject);
 
   private
-    m_strTCPClientData: string;
-    m_strlContacts: TStringList;
-    procedure FOnTCPClientDataReceived;
-    procedure FSendConnect;
-    procedure FSendMessage(const strMsg: string; iHandleID: integer);
+    m_Events: IViewEvents;
+    m_bConnected: boolean;
+    m_bUpdating: boolean;
+
     procedure FUpdateControls;
-    function FParseCommands(strData: string): boolean;
-    procedure FAddContact(iHandleID: integer; const strHandleName: string);
-    procedure FDeleteContact(iHandleID: integer; const strHandleName: string);
-    procedure FOnDisconnectedFromServer;
-    procedure FDisConnect;
-    procedure FLoadSettings;
-    procedure FSaveSettings;
-    function FGetIniFileName: string;
-    property IniFileName: string read FGetIniFileName;
+    procedure FDoClose;
+    procedure FDoSend;
+    procedure FDoDisconnect;
+    procedure FDoConnect;
+  protected
+    procedure IView.SetEvents = RSetEvents;
+    procedure RSetEvents(Value: IViewEvents);
+    function IView.GetContactHandleID = RGetContactHandleID;
+    function RGetContactHandleID: integer;
+    procedure IView.SetConnected = RSetConnected;
+    procedure RSetConnected(bConnected: boolean);
+    procedure IView.AddContact = RAddContact;
+    procedure RAddContact(iHandleID: integer; const strHandleName: string);
+    procedure IView.DeleteContact = RDeleteContact;
+    procedure RDeleteContact(iHandleID: integer; const strHandleName: string);
+    procedure IView.SetInMessage = RSetInMessage;
+    procedure RSetInMessage(iFromHandleID: integer; const strFromHandleName, strMsg: string);
+    procedure IView.SetServerMessage = RSetServerMessage;
+    procedure RSetServerMessage(const strData: string);
+    procedure IView.OutputError = ROutputError;
+    procedure ROutputError(const strError: string);
+    procedure IView.SetHandleID = RSetHandleID;
+    procedure RSetHandleID(iHandleID: integer);
+    procedure IView.SetHandleName = RSetHandleName;
+    procedure RSetHandleName(const strHandleName: string);
+    procedure IView.SetSendText = RSetSendText;
+    procedure RSetSendText(const strValue: string);
   end;
 
 implementation
@@ -59,36 +72,7 @@ implementation
 {$R *.dfm}
 
 uses
-  HTTPApp, StrUtils, IniFiles;
-
-type
-  TCPClientListenerThread = class(TThread)
-  private
-    m_MsgClientForm: TMainForm;
-    procedure FOnTCPClientDataReceived(const strData: string);
-  protected
-    procedure Execute; override;
-  public
-    constructor Create(AMsgClientForm: TMainForm);
-  end;
-
-function GetNextToken(var strData: string; chDelim: char = ' '): string;
-var
-  iPos: integer;
-begin
-  strData := TrimLeft(strData);
-  iPos := Pos(string(chDelim), strData);
-  if (iPos > 0) then
-  begin
-    Result := LeftStr(strData, Pred(iPos));
-    strData := Copy(strData, Succ(iPos), MaxInt);
-  end
-  else
-  begin
-    Result := strData;
-    strData := '';
-  end;
-end;
+  Dialogs, SysUtils;
 
 ////////////////////////////////////////////////////////////////////////////////
 // TMainForm
@@ -97,171 +81,123 @@ const
   CONNECT_BTN_STR = 'Connect';
   DISCONNECT_BTN_STR = 'Disconnect';
 
-  INI_SECTION_SETTINGS = 'Settings';
-  INI_HANDLE_ID_IDENT = 'HandleID';
-  INI_HANDLE_NAME_IDENT = 'HandleName';
+function TMainForm.RGetContactHandleID: integer;
+begin
+ with ContactsListBox do
+ begin
+   if (ItemIndex >= 0) then
+     Result := Integer(ContactsListBox.Items.Objects[ItemIndex])
+   else
+     Result := 0;
+ end;
+end;
+
 
 procedure TMainForm.btnSendClick(Sender: TObject);
-var
-  iHandleID: integer;
 begin
-  with ContactsListBox do
-  begin
-    Assert(ItemIndex >= 0);
-    iHandleID := Integer(m_strlContacts.Objects[ItemIndex]);
-  end;
-
-  if (memOut.Text <> '') then
-  begin
-    FSendMessage(memOut.Text, iHandleID);
-    memOut.Text := '';
-  end;
+  FDoSend;
 end;
 
 
-procedure TMainForm.FSendMessage(const strMsg: string; iHandleID: integer);
+procedure TMainForm.RSetConnected(bConnected: boolean);
 begin
-  TCPClient.WriteLn(Format('>message %d %s', [iHandleID, HTTPEncode(strMsg)]));
-end;
-
-
-procedure TMainForm.TCPClientConnected(Sender: TObject);
-begin
+  m_bConnected := bConnected;
+  if (not m_bConnected) then
+  begin
+    ContactsListBox.Clear;
+    memIn.Clear;
+    memOut.Clear;
+  end;
   FUpdateControls;
-  TCPClientListenerThread.Create(self);
-  FSendConnect;
 end;
 
 
 procedure TMainForm.FUpdateControls;
-var
-  bConnected: boolean;
 begin
-  bConnected := TCPClient.Connected;
+  btnSend.Enabled := (m_bConnected and (ContactsListBox.ItemIndex >= 0));
+  memOut.ReadOnly := (not m_bConnected);
+  memOut.Enabled := m_bConnected;
+  ContactsListBox.Enabled := m_bConnected;
 
-  btnSend.Enabled := (bConnected and (ContactsListBox.ItemIndex >= 0));
-  memOut.ReadOnly := (not bConnected);
-  memOut.Enabled := bConnected;
-  ContactsListBox.Enabled := bConnected;
-
-  if (bConnected) then
+  if (m_bConnected) then
     DisConnectButton.Caption := DISCONNECT_BTN_STR
   else
     DisConnectButton.Caption := CONNECT_BTN_STR;
 
-  HandleIdEdit.Enabled := (not bConnected);
-  HandleNameEdit.Enabled := (not bConnected);
+  HandleIdEdit.Enabled := (not m_bConnected);
+  HandleNameEdit.Enabled := (not m_bConnected);
 end;
 
 
-procedure TMainForm.FOnDisconnectedFromServer;
+procedure TMainForm.FDoClose;
 begin
-  ContactsListBox.Clear;
-  memIn.Clear;
-  memOut.Clear;
-  FUpdateControls;
+  if (Assigned(m_Events)) then
+    m_Events.OnClose;
 end;
 
 
-procedure TMainForm.FSendConnect;
-var
-  strHTTPHN, strCmd: string;
+procedure TMainForm.FDoSend;
 begin
-  strHTTPHN := HttpEncode(HandleName);
-  strCmd := Format('>connect %s %d', [strHTTPHN, HandleID]);
-  TCPClient.WriteLn(strCmd);
-end;
-
-
-procedure TMainForm.TCPClientDisconnected(Sender: TObject);
-begin
-  FOnDisconnectedFromServer;
-end;
-
-
-procedure TMainForm.FOnTCPClientDataReceived;
-var
-  strData: string;
-begin
-  if (m_strTCPClientData <> '') then
-  begin
-    strData := m_strTCPClientData;
-    m_strTCPClientData := '';
-    if (not FParseCommands(strData)) then
-      memIn.Lines.Add(strData);
-  end;
+  if (Assigned(m_Events)) then
+    m_Events.OnSend;
 end;
 
 
 procedure TMainForm.FormClose(Sender: TObject;
   var Action: TCloseAction);
 begin
-  if (TCPClient.Connected) then
-    TCPClient.Disconnect;
-//  if (Assigned(m_TCPClientListener)) then
-//    m_TCPClientListener.WaitFor;
+  FDoClose;
 end;
 
 
 function TMainForm.FGetHandleID: integer;
 begin
-  Result := StrToInt(HandleIdEdit.Text);
+  Result := StrToIntDef(HandleIdEdit.Text, 0);
 end;
 
 
-procedure TMainForm.FSetHandleID(Value: integer);
+procedure TMainForm.RSetHandleID(iHandleID: integer);
 begin
-  HandleIdEdit.Text := IntToStr(Value);
+  m_bUpdating := TRUE;
+  try
+    HandleIdEdit.Text := IntToStr(iHandleID);
+  finally
+    m_bUpdating := FALSE;
+  end;
 end;
 
 
 function TMainForm.FGetHandleName: string;
 begin
   Result := HandleNameEdit.Text;
-  if (Result = '') then
-    Result := IntToStr(HandleID);
 end;
 
 
-procedure TMainForm.FSetHandleName(const Value: string);
+function TMainForm.FGetSendText: string;
 begin
-  HandleNameEdit.Text := Value;
+  Result := memOut.Text;
 end;
 
 
-procedure TMainForm.FDisConnect;
+procedure TMainForm.RSetHandleName(const strHandleName: string);
 begin
-  if (TCPClient.Connected) then
-    TCPClient.Disconnect
-  else
-  begin
-    try
-      TCPClient.Connect;
-    except
-      on EIdSocketError do
-        MessageDlg('Cannot connect to server!', mtError, [mbOk], 0);
-    end;
+  m_bUpdating := TRUE;
+  try
+    HandleNameEdit.Text := strHandleName;
+  finally
+    m_bUpdating := FALSE;
   end;
 end;
 
 
-procedure TMainForm.FormCreate(Sender: TObject);
-begin
-  m_strlContacts := TStringList.Create;
-  FLoadSettings;  
-  FUpdateControls;
-end;
-
-
-procedure TMainForm.FAddContact(iHandleID: integer; const strHandleName: string);
+procedure TMainForm.RAddContact(iHandleID: integer; const strHandleName: string);
 begin
   ContactsListBox.AddItem(Format('%s (%d)', [strHandleName, iHandleID]), Pointer(iHandleID));
-  m_strlContacts.AddObject(strHandleName, Pointer(iHandleID));
   FUpdateControls;
 end;
 
 
-procedure TMainForm.FDeleteContact(iHandleID: integer; const strHandleName: string);
+procedure TMainForm.RDeleteContact(iHandleID: integer; const strHandleName: string);
 var
   iIndex: integer;
 begin
@@ -269,83 +205,19 @@ begin
   if (iIndex >= 0) then
     ContactsListBox.Items.Delete(iIndex);
 
-  iIndex := m_strlContacts.IndexOfObject(Pointer(iHandleID));
-  if (iIndex >= 0) then
-    m_strlContacts.Delete(iIndex);
-
-  FUpdateControls;    
+  FUpdateControls;
 end;
 
 
-function TMainForm.FParseCommands(strData: string): boolean;
-
- function NParseCommandEnters(strData: string): boolean;
-  var
-    strHandleName: string;
-    iHandleID: integer;
-  begin
-    strHandleName := HTTPDecode(GetNextToken(strData));
-    iHandleID := StrToIntDef(GetNextToken(strData), 0);
-    Result := ((strHandleName <> '') and (iHandleID > 0));
-    if (Result) then
-      FAddContact(iHandleID, strHandleName);
-  end;
-
-  function NParseCommandLeaves(strData: string): boolean;
-  var
-    strHandleName: string;
-    iHandleID: integer;
-  begin
-    strHandleName := GetNextToken(strData);
-    iHandleID := StrToIntDef(GetNextToken(strData), 0);
-    Result := ((strHandleName <> '') and (iHandleID > 0));
-    if (Result) then
-      FDeleteContact(iHandleID, strHandleName);
-  end;
-
-
-  function NParseCommandMessage(strData: string): boolean;
-  var
-    strMsg: string;
-    iFromHandleID: integer;
-    strFromHandleName: string;
-    iIndex: integer;
-  begin
-    Result := FALSE;
-    iFromHandleID := StrToIntDef(GetNextToken(strData), 0);
-    strMsg := HTTPDecode(GetNextToken(strData));
-    if (strMsg <> '') then
-    begin
-      iIndex := m_strlContacts.IndexOfObject(Pointer(iFromHandleID));
-      if (iIndex >= 0) then
-        strFromHandleName := Format('%s (%d)', [m_strlContacts[iIndex], Integer(m_strlContacts.Objects[iIndex])])
-      else
-        strFromHandleName := '';
-
-      memIn.Lines.Add('[' + strFromHandleName + ']');
-      memIn.Lines.Add(strMsg);
-      Result := TRUE;
-    end;
-  end;
-
+procedure TMainForm.RSetInMessage(iFromHandleID: integer; const strFromHandleName, strMsg: string);
 var
-  strCmd: string;
-begin // TMainForm.FParseCommands
-  strCmd := GetNextToken(strData);
-  if (strCmd = '>message') then
-    Result := NParseCommandMessage(strData)
-  else if (strCmd = '>enters') then
-    Result := NParseCommandEnters(strData)
-  else if (strCmd = '>leaves') then
-    Result := NParseCommandLeaves(strData)
-  else
-    Result := FALSE;
-end;
-
-procedure TMainForm.FormDestroy(Sender: TObject);
+  str: string;
 begin
-  FSaveSettings;
-  m_strlContacts.Free;
+  if (strFromHandleName <> '') then
+    str := Format('%s (%d)', [strFromHandleName, iFromHandleID]);
+
+  memIn.Lines.Add('[' + str + ']');
+  memIn.Lines.Add(strMsg);
 end;
 
 
@@ -355,84 +227,86 @@ begin
 end;
 
 
-procedure TMainForm.FLoadSettings;
+procedure TMainForm.RSetEvents(Value: IViewEvents);
 begin
-  with TIniFile.Create(IniFileName) do
-  try
-    HandleID := ReadInteger(INI_SECTION_SETTINGS, INI_HANDLE_ID_IDENT, 1234);
-    HandleName := ReadString(INI_SECTION_SETTINGS, INI_HANDLE_NAME_IDENT, 'HandleName' + IntToStr(HandleID));
-  finally
-    Free;
-  end;
-end;
-
-
-procedure TMainForm.FSaveSettings;
-begin
-  with TIniFile.Create(IniFileName) do
-  try
-    WriteInteger(INI_SECTION_SETTINGS, INI_HANDLE_ID_IDENT, HandleID);
-    WriteString(INI_SECTION_SETTINGS, INI_HANDLE_NAME_IDENT, HandleName);
-  finally
-    Free;
-  end;
-end;
-
-
-function TMainForm.FGetIniFileName: string;
-begin
-  Result := ChangeFileExt(Application.ExeName, '.ini');
-end;
-
-
-////////////////////////////////////////////////////////////////////////////////
-// TCPClientListenerThread
-
-constructor TCPClientListenerThread.Create(AMsgClientForm: TMainForm);
-begin
-  inherited Create(TRUE);
-  m_MsgClientForm := AMsgClientForm;
-  FreeOnTerminate := TRUE;
-  Resume;
-end;
-
-
-procedure TCPClientListenerThread.Execute;
-var
-  strData: string;
-begin
-  while (m_MsgClientForm.TCPClient.Connected) do
-  begin
-    try
-      strData := m_MsgClientForm.TCPClient.ReadLn;
-    except
-      on EIdNotConnected do
-        ;
-      on EIdConnClosedGracefully do
-        ;
-      on Exception do
-        raise;
-    end;
-    if (strData <> '') then
-    begin
-      FOnTCPClientDataReceived(strData);
-      strData := '';
-    end;
-    Sleep(1);
-  end;
-end;
-
-
-procedure TCPClientListenerThread.FOnTCPClientDataReceived(const strData: string);
-begin
-  m_MsgClientForm.m_strTCPClientData := strData;
-  Synchronize(m_MsgClientForm.FOnTCPClientDataReceived);
+  m_Events := Value;
 end;
 
 
 procedure TMainForm.DisConnectButtonClick(Sender: TObject);
 begin
-  FDisConnect;
+  if (m_bConnected) then
+    FDoDisconnect
+  else
+    FDoConnect;
+end;
+
+
+procedure TMainForm.FDoDisconnect;
+begin
+  if (Assigned(m_Events)) then
+    m_Events.OnDisconnect;
+end;
+
+
+procedure TMainForm.FDoConnect;
+begin
+  if (Assigned(m_Events)) then
+    m_Events.OnConnect;
+end;
+
+procedure TMainForm.FormShow(Sender: TObject);
+begin
+  FUpdateControls;
+end;
+
+
+procedure TMainForm.RSetServerMessage(const strData: string);
+begin
+  memIn.Lines.Add(strData);
+end;
+
+
+procedure TMainForm.ROutputError(const strError: string);
+begin
+  MessageDlg(strError, mtError, [mbOk], 0);
+end;
+
+
+procedure TMainForm.HandleIdEditChange(Sender: TObject);
+begin
+  if (m_bUpdating) then
+    exit;
+  if (Assigned(m_Events)) then
+    m_Events.OnChangeHandleID(FGetHandleID); 
+end;
+
+procedure TMainForm.HandleNameEditChange(Sender: TObject);
+begin
+  if (m_bUpdating) then
+    exit;
+  if (Assigned(m_Events)) then
+    m_Events.OnChangeHandleName(FGetHandleName);
+end;
+
+
+procedure TMainForm.RSetSendText(const strValue: string);
+begin
+  m_bUpdating := TRUE;
+  try
+    memOut.Text := strValue;
+  finally
+    m_bUpdating := FALSE;
+  end;
+end;
+
+
+procedure TMainForm.memOutChange(Sender: TObject);
+begin
+  if (m_bUpdating) then
+    exit;
+  if (Assigned(m_Events)) then
+    m_Events.OnChangeSendText(FGetSendText);    
 end;
 
 end.
