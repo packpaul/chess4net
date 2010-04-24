@@ -10,7 +10,8 @@ type
     procedure OnDisconnect;
     procedure OnChangeHandleID(iNewHandleID: integer);
     procedure OnChangeHandleName(const strNewHandleName: string);
-    procedure OnChangeSendText(const strNewSendText: string);    
+    procedure OnChangeSendText(const strNewSendText: string);
+    procedure OnChangeContactHandleID(iNewContactHandleID: integer);
   end;
 
   IView = interface
@@ -24,7 +25,6 @@ type
     procedure SetHandleID(iHandleID: integer);
     procedure SetHandleName(const strHandleName: string);
     procedure SetSendText(const strValue: string);
-    function GetContactHandleID: integer;
   end;
 
 implementation

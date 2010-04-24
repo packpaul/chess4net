@@ -37,16 +37,18 @@ type
     m_bConnected: boolean;
     m_bUpdating: boolean;
 
+    function FGetContactHandleID: integer;
+    procedure FDoChangeContactHandleID(iNewContactHandleID: integer);
+
     procedure FUpdateControls;
     procedure FDoClose;
     procedure FDoSend;
     procedure FDoDisconnect;
     procedure FDoConnect;
+    
   protected
     procedure IView.SetEvents = RSetEvents;
     procedure RSetEvents(Value: IViewEvents);
-    function IView.GetContactHandleID = RGetContactHandleID;
-    function RGetContactHandleID: integer;
     procedure IView.SetConnected = RSetConnected;
     procedure RSetConnected(bConnected: boolean);
     procedure IView.AddContact = RAddContact;
@@ -81,7 +83,7 @@ const
   CONNECT_BTN_STR = 'Connect';
   DISCONNECT_BTN_STR = 'Disconnect';
 
-function TMainForm.RGetContactHandleID: integer;
+function TMainForm.FGetContactHandleID: integer;
 begin
  with ContactsListBox do
  begin
@@ -90,6 +92,13 @@ begin
    else
      Result := 0;
  end;
+end;
+
+
+procedure TMainForm.FDoChangeContactHandleID(iNewContactHandleID: integer);
+begin
+  if (Assigned(m_Events)) then
+    m_Events.OnChangeContactHandleID(iNewContactHandleID)
 end;
 
 
@@ -105,8 +114,11 @@ begin
   if (not m_bConnected) then
   begin
     ContactsListBox.Clear;
-    memIn.Clear;
     memOut.Clear;
+  end
+  else
+  begin
+    memIn.Clear;
   end;
   FUpdateControls;
 end;
@@ -203,7 +215,10 @@ var
 begin
   iIndex := ContactsListBox.Items.IndexOfObject(Pointer(iHandleID));
   if (iIndex >= 0) then
+  begin
     ContactsListBox.Items.Delete(iIndex);
+    FDoChangeContactHandleID(FGetContactHandleID);
+  end;
 
   FUpdateControls;
 end;
@@ -224,6 +239,7 @@ end;
 procedure TMainForm.ContactsListBoxClick(Sender: TObject);
 begin
   FUpdateControls;
+  FDoChangeContactHandleID(FGetContactHandleID);
 end;
 
 

@@ -26,6 +26,8 @@ type
     m_strHandleName: string;
     m_strSendText: string;
 
+    m_iContactHandleID: integer;
+
     procedure FInitializeView;
     procedure FSynchronizeView;
     procedure FSendConnect;
@@ -51,7 +53,6 @@ type
     procedure FLoadSettings;
     procedure FSaveSettings;
 
-    function FGetContactHandleID: integer;
     procedure FSetSendMessageToView(const strValue: string);
 
     procedure FOutputErrorToView(const strError: string);
@@ -70,7 +71,7 @@ type
     property HandleName: string read FGetHandleName write FSetHandleName;
     property SendText: string read FGetSendText write FSetSendText;
 
-    property ContactHandleID: integer read FGetContactHandleID;
+    property ContactHandleID: integer read m_iContactHandleID;
     property IniFileName: string read FGetIniFileName;    
 
   protected
@@ -88,6 +89,8 @@ type
     procedure ROnChangeHandleName(const strNewHandleName: string);
     procedure IViewEvents.OnChangeSendText = ROnChangeSendText;
     procedure ROnChangeSendText(const strNewSendText: string);
+    procedure IViewEvents.OnChangeContactHandleID = ROnChangeContactHandleID;
+    procedure ROnChangeContactHandleID(iNewContactHandleID: integer);
 
   public
     procedure SetView(Value: IView);
@@ -269,6 +272,7 @@ end;
 
 procedure TModelModule.FDisConnect;
 begin
+  m_iContactHandleID := 0;
   if (TCPClient.Connected) then
     TCPClient.Disconnect
   else
@@ -493,15 +497,6 @@ begin
 end;
 
 
-function TModelModule.FGetContactHandleID: integer;
-begin
-  if (Assigned(m_View)) then
-    Result := m_View.GetContactHandleID
-  else
-    Result := 0;
-end;
-
-
 procedure TModelModule.FSetSendMessageToView(const strValue: string);
 begin
   if (Assigned(m_View)) then
@@ -564,6 +559,12 @@ procedure TModelModule.FSetSendTextToView(const strValue: string);
 begin
   if (Assigned(m_View)) then
     m_View.SetSendText(strValue);
+end;
+
+
+procedure TModelModule.ROnChangeContactHandleID(iNewContactHandleID: integer);
+begin
+  m_iContactHandleID := iNewContactHandleID;
 end;
 
 end.
