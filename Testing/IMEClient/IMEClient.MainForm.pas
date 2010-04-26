@@ -5,7 +5,7 @@ interface
 uses
   Forms, Controls, StdCtrls, Mask, Classes,
   //
-  IMEClient.Headers;
+  IMEClient.Headers, Buttons;
 
 type
   TMainForm = class(TForm, IView)
@@ -18,6 +18,9 @@ type
     HandleIdEdit: TMaskEdit;
     DisConnectButton: TButton;
     ContactsListBox: TListBox;
+    StartPluginButton: TSpeedButton;
+    PluginLogMemo: TMemo;
+    Label3: TLabel;
     procedure btnSendClick(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
 
@@ -31,6 +34,7 @@ type
     procedure HandleIdEditChange(Sender: TObject);
     procedure HandleNameEditChange(Sender: TObject);
     procedure memOutChange(Sender: TObject);
+    procedure StartPluginButtonClick(Sender: TObject);
 
   private
     m_Events: IViewEvents;
@@ -45,7 +49,10 @@ type
     procedure FDoSend;
     procedure FDoDisconnect;
     procedure FDoConnect;
-    
+
+    function FIsContactSelected: boolean;
+    function FFormExtHandleName(iHandleID: integer; const strHandleName: string): string;
+
   protected
     procedure IView.SetEvents = RSetEvents;
     procedure RSetEvents(Value: IViewEvents);
@@ -67,6 +74,8 @@ type
     procedure RSetHandleName(const strHandleName: string);
     procedure IView.SetSendText = RSetSendText;
     procedure RSetSendText(const strValue: string);
+    procedure IView.AddPluginData = RAddPluginData;
+    procedure RAddPluginData(iHandleID: integer; const strHandleName, strData: string; bReceived: boolean);
   end;
 
 implementation
@@ -74,7 +83,7 @@ implementation
 {$R *.dfm}
 
 uses
-  Dialogs, SysUtils;
+  Dialogs, SysUtils, StrUtils, Math;
 
 ////////////////////////////////////////////////////////////////////////////////
 // TMainForm
@@ -124,9 +133,17 @@ begin
 end;
 
 
+function TMainForm.FIsContactSelected: boolean;
+begin
+  Result := (ContactsListBox.ItemIndex >= 0);
+end;
+
+
 procedure TMainForm.FUpdateControls;
 begin
-  btnSend.Enabled := (m_bConnected and (ContactsListBox.ItemIndex >= 0));
+  btnSend.Enabled := (m_bConnected and FIsContactSelected);
+  StartPluginButton.Enabled := (m_bConnected and FIsContactSelected);
+
   memOut.ReadOnly := (not m_bConnected);
   memOut.Enabled := m_bConnected;
   ContactsListBox.Enabled := m_bConnected;
@@ -138,6 +155,7 @@ begin
 
   HandleIdEdit.Enabled := (not m_bConnected);
   HandleNameEdit.Enabled := (not m_bConnected);
+
 end;
 
 
@@ -204,9 +222,16 @@ end;
 
 procedure TMainForm.RAddContact(iHandleID: integer; const strHandleName: string);
 begin
-  ContactsListBox.AddItem(Format('%s (%d)', [strHandleName, iHandleID]), Pointer(iHandleID));
+  ContactsListBox.AddItem(FFormExtHandleName(iHandleID, strHandleName), Pointer(iHandleID));
   FUpdateControls;
 end;
+
+
+function TMainForm.FFormExtHandleName(iHandleID: integer; const strHandleName: string): string;
+begin
+  Result := Format('%s (%d)', [strHandleName, iHandleID]);
+end;
+
 
 
 procedure TMainForm.RDeleteContact(iHandleID: integer; const strHandleName: string);
@@ -317,12 +342,30 @@ begin
 end;
 
 
+procedure TMainForm.RAddPluginData(iHandleID: integer; const strHandleName, strData: string; bReceived: boolean);
+var
+  str: string;
+begin
+  str := IfThen(bReceived, '<< ', '>> ') + FFormExtHandleName(iHandleID, strHandleName);
+  PluginLogMemo.Lines.Add(str);
+  PluginLogMemo.Lines.Add(strData);
+end;
+
+
 procedure TMainForm.memOutChange(Sender: TObject);
 begin
   if (m_bUpdating) then
     exit;
   if (Assigned(m_Events)) then
-    m_Events.OnChangeSendText(FGetSendText);    
+    m_Events.OnChangeSendText(FGetSendText);
+end;
+
+
+procedure TMainForm.StartPluginButtonClick(Sender: TObject);
+begin
+  if (Assigned(m_Events)) then
+    m_Events.OnStartPlugin;
+  Width := Max(679, Width);
 end;
 
 end.

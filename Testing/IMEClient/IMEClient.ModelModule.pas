@@ -6,7 +6,8 @@ uses
   SysUtils, Classes, IdBaseComponent, IdComponent, IdTCPConnection,
   IdTCPClient, IdException,
   //
-  IMEClient.Headers;
+  IMEClient.Headers,
+  IMEClient.PluginSurrogate;
 
 type
   TModelModule = class(TDataModule, IViewEvents)
@@ -28,11 +29,19 @@ type
 
     m_iContactHandleID: integer;
 
+    m_PluginSurrogate: TPluginSurrogate;
+
     procedure FInitializeView;
     procedure FSynchronizeView;
     procedure FSendConnect;
-    procedure FSendMessage(const strMsg: string; iHandleID: integer);
+    function FSendMessage(const strMsg: string; iHandleID: integer): boolean;
+
     function FParseCommands(strData: string): boolean;
+    function FParseCommandEnters(strData: string): boolean;
+    function FParseCommandMessage(strData: string): boolean;
+    function FParseCommandLeaves(strData: string): boolean;
+    function FParsePluginData(strData: string; iFromHandleID: integer): boolean;
+
     procedure FOnTCPClientDataReceived;
     procedure FDisConnect;
 
@@ -67,12 +76,21 @@ type
 
     function FGetIniFileName: string;
 
+    function FGetPluginSurrogate: TPluginSurrogate;
+
+    function FContactAvailable(iHandleID: integer): boolean;
+    function FIsConnected: boolean;
+
+    procedure FAddPluginDataToView(iHandleID: integer; const strHandleName, strData: string; bReceived: boolean);
+
     property HandleID: integer read FGetHandleID write FSetHandleID;
     property HandleName: string read FGetHandleName write FSetHandleName;
     property SendText: string read FGetSendText write FSetSendText;
 
     property ContactHandleID: integer read m_iContactHandleID;
-    property IniFileName: string read FGetIniFileName;    
+    property IniFileName: string read FGetIniFileName;
+
+    property PluginSurrogate: TPluginSurrogate read FGetPluginSurrogate;
 
   protected
     procedure IViewEvents.OnClose = ROnClose;
@@ -91,9 +109,15 @@ type
     procedure ROnChangeSendText(const strNewSendText: string);
     procedure IViewEvents.OnChangeContactHandleID = ROnChangeContactHandleID;
     procedure ROnChangeContactHandleID(iNewContactHandleID: integer);
+    procedure IViewEvents.OnStartPlugin = ROnStartPlugin;
+    procedure ROnStartPlugin;
 
   public
     procedure SetView(Value: IView);
+    function SendPluginData(const strData: string; iContactHandleID: integer): boolean;
+    function GetHandleName: string;
+    function GetContactHandleName(iContactHandleID: integer): string;
+    procedure CanUnloadPlugin;
   end;
 
 implementation
@@ -101,7 +125,9 @@ implementation
 {$R *.dfm}
 
 uses
-  Forms, StrUtils, HTTPApp, IniFiles;
+  Forms, StrUtils, HTTPApp, IniFiles,
+  //
+  IMEClient.PluginSurrogate.MI;
 
 type
   TCPClientListenerThread = class(TThread)
@@ -153,7 +179,7 @@ procedure TCPClientListenerThread.Execute;
 var
   strData: string;
 begin
-  while (m_ModelModule.TCPClient.Connected) do
+  while (m_ModelModule.FIsConnected) do
   begin
     try
       strData := m_ModelModule.TCPClient.ReadLn;
@@ -198,6 +224,21 @@ begin
 end;
 
 
+function TModelModule.SendPluginData(const strData: string; iContactHandleID: integer): boolean;
+begin
+  Result := FSendMessage(strData, iContactHandleID);
+  if (Result) then
+    FAddPluginDataToView(iContactHandleID, GetContactHandleName(iContactHandleID), strData, FALSE);
+end;
+
+
+procedure TModelModule.FAddPluginDataToView(iHandleID: integer; const strHandleName, strData: string; bReceived: boolean);
+begin
+  if (Assigned(m_View)) then
+    m_View.AddPluginData(iHandleID, strHandleName, strData, bReceived);
+end;
+
+
 procedure TModelModule.FInitializeView;
 begin
   FSynchronizeView;
@@ -221,21 +262,29 @@ end;
 
 procedure TModelModule.TCPClientConnected(Sender: TObject);
 begin
-  FSetConnectedToView(TCPClient.Connected);
+  FSetConnectedToView(FIsConnected);
   TCPClientListenerThread.Create(self);
   FSendConnect;
 end;
 
 
-procedure TModelModule.TCPClientDisconnected(Sender: TObject);
+function TModelModule.FIsConnected: boolean;
 begin
-  FSetConnectedToView(TCPClient.Connected);
+  Result := TCPClient.Connected;
 end;
 
 
-procedure TModelModule.FSendMessage(const strMsg: string; iHandleID: integer);
+procedure TModelModule.TCPClientDisconnected(Sender: TObject);
 begin
-  TCPClient.WriteLn(Format('>message %d %s', [iHandleID, HTTPEncode(strMsg)]));
+  FSetConnectedToView(FIsConnected);
+end;
+
+
+function TModelModule.FSendMessage(const strMsg: string; iHandleID: integer): boolean;
+begin
+  Result := (FIsConnected and FContactAvailable(iHandleID));
+  if (Result) then
+    TCPClient.WriteLn(Format('>message %d %s', [iHandleID, HTTPEncode(strMsg)]));
 end;
 
 
@@ -251,7 +300,7 @@ end;
 
 procedure TModelModule.ROnClose;
 begin
-  if (TCPClient.Connected) then
+  if (FIsConnected) then
     TCPClient.Disconnect;
 //  if (Assigned(m_TCPClientListener)) then
 //    m_TCPClientListener.WaitFor;
@@ -264,8 +313,10 @@ begin
 
   if (SendText <> '') then
   begin
-    FSendMessage(SendText, ContactHandleID);
-    FSetSendMessageToView('');
+    if (FSendMessage(SendText, ContactHandleID)) then
+      FSetSendMessageToView('')
+    else
+      FOutputErrorToView('Message couldn''t be sent!');
   end;
 end;
 
@@ -273,7 +324,7 @@ end;
 procedure TModelModule.FDisConnect;
 begin
   m_iContactHandleID := 0;
-  if (TCPClient.Connected) then
+  if (FIsConnected) then
     TCPClient.Disconnect
   else
   begin
@@ -327,65 +378,82 @@ begin
 end;
 
 
-function TModelModule.FParseCommands(strData: string): boolean;
-
- function NParseCommandEnters(strData: string): boolean;
-  var
-    strHandleName: string;
-    iHandleID: integer;
-  begin
-    strHandleName := HTTPDecode(GetNextToken(strData));
-    iHandleID := StrToIntDef(GetNextToken(strData), 0);
-    Result := ((strHandleName <> '') and (iHandleID > 0));
-    if (Result) then
-      FAddContact(iHandleID, strHandleName);
-  end;
-
-  function NParseCommandLeaves(strData: string): boolean;
-  var
-    strHandleName: string;
-    iHandleID: integer;
-  begin
-    strHandleName := GetNextToken(strData);
-    iHandleID := StrToIntDef(GetNextToken(strData), 0);
-    Result := ((strHandleName <> '') and (iHandleID > 0));
-    if (Result) then
-      FDeleteContact(iHandleID, strHandleName);
-  end;
+function TModelModule.FParseCommandEnters(strData: string): boolean;
+var
+  strHandleName: string;
+  iHandleID: integer;
+begin
+  strHandleName := HTTPDecode(GetNextToken(strData));
+  iHandleID := StrToIntDef(GetNextToken(strData), 0);
+  Result := ((strHandleName <> '') and (iHandleID > 0));
+  if (Result) then
+    FAddContact(iHandleID, strHandleName);
+end;
 
 
-  function NParseCommandMessage(strData: string): boolean;
-  var
-    strMsg: string;
-    iFromHandleID: integer;
-    iIndex: integer;
-  begin
+function TModelModule.FParsePluginData(strData: string; iFromHandleID: integer): boolean;
+begin
+  if (Assigned(PluginSurrogate)) then
+    Result := PluginSurrogate.SendData(strData, iFromHandleID)
+  else
     Result := FALSE;
-    iFromHandleID := StrToIntDef(GetNextToken(strData), 0);
-    strMsg := HTTPDecode(GetNextToken(strData));
-    if (strMsg <> '') then
-    begin
-      iIndex := m_strlContacts.IndexOfObject(Pointer(iFromHandleID));
 
-      if (iIndex >= 0) then
-        FSetInMessageToView(Integer(m_strlContacts.Objects[iIndex]), m_strlContacts[iIndex], strMsg)
-      else
-        FSetInMessageToView(0, '', strMsg);
+  if (Result) then
+    FAddPluginDataToView(iFromHandleID, self.GetContactHandleName(iFromHandleID), strData, TRUE);
+end;
 
-      Result := TRUE;
-    end;
+
+function TModelModule.FParseCommandMessage(strData: string): boolean;
+var
+  strMsg: string;
+  iFromHandleID: integer;
+  iIndex: integer;
+begin
+  Result := FALSE;
+  iFromHandleID := StrToIntDef(GetNextToken(strData), 0);
+  strMsg := HTTPDecode(GetNextToken(strData));
+  if (strMsg <> '') then
+  begin
+    Result := FParsePluginData(strMsg, iFromHandleID);
+    if (Result) then
+      exit;
+
+    iIndex := m_strlContacts.IndexOfObject(Pointer(iFromHandleID));
+
+    if (iIndex >= 0) then
+      FSetInMessageToView(iFromHandleID, m_strlContacts[iIndex], strMsg)
+    else
+      FSetInMessageToView(0, '', strMsg);
+
+    Result := TRUE;
   end;
+end;
 
+
+function TModelModule.FParseCommandLeaves(strData: string): boolean;
+var
+  strHandleName: string;
+  iHandleID: integer;
+begin
+  strHandleName := GetNextToken(strData);
+  iHandleID := StrToIntDef(GetNextToken(strData), 0);
+  Result := ((strHandleName <> '') and (iHandleID > 0));
+  if (Result) then
+    FDeleteContact(iHandleID, strHandleName);
+end;
+
+
+function TModelModule.FParseCommands(strData: string): boolean;
 var
   strCmd: string;
-begin // TMainForm.FParseCommands
+begin
   strCmd := GetNextToken(strData);
   if (strCmd = '>message') then
-    Result := NParseCommandMessage(strData)
+    Result := FParseCommandMessage(strData)
   else if (strCmd = '>enters') then
-    Result := NParseCommandEnters(strData)
+    Result := FParseCommandEnters(strData)
   else if (strCmd = '>leaves') then
-    Result := NParseCommandLeaves(strData)
+    Result := FParseCommandLeaves(strData)
   else
     Result := FALSE;
 end;
@@ -450,6 +518,24 @@ begin
 end;
 
 
+function TModelModule.GetHandleName: string;
+begin
+  Result := FGetHandleName;
+end;
+
+
+function TModelModule.GetContactHandleName(iContactHandleID: integer): string;
+var
+  iIndex: integer;
+begin
+  iIndex := self.m_strlContacts.IndexOfObject(Pointer(iContactHandleID));
+  if (iIndex >= 0) then
+    Result := m_strlContacts[iIndex]
+  else
+    Result := '<Unknown name>';
+end;
+
+
 procedure TModelModule.FSetHandleName(const strValue: string);
 begin
   if (strValue <> '') then
@@ -492,8 +578,12 @@ end;
 
 procedure TModelModule.DataModuleDestroy(Sender: TObject);
 begin
+  m_PluginSurrogate.Free;
+  
   FSaveSettings;
-  m_strlContacts.Free;  
+  m_strlContacts.Free;
+
+  m_View.SetEvents(nil);
 end;
 
 
@@ -565,6 +655,35 @@ end;
 procedure TModelModule.ROnChangeContactHandleID(iNewContactHandleID: integer);
 begin
   m_iContactHandleID := iNewContactHandleID;
+end;
+
+
+procedure TModelModule.ROnStartPlugin;
+begin
+  PluginSurrogate.StartPlugin(ContactHandleID);
+end;
+
+
+function TModelModule.FGetPluginSurrogate: TPluginSurrogate;
+begin
+  if (not Assigned(m_PluginSurrogate)) then
+    m_PluginSurrogate := TPluginSurrogateMI.Create(self);
+  Result := m_PluginSurrogate;
+end;
+
+
+function TModelModule.FContactAvailable(iHandleID: integer): boolean;
+var
+  iIndex: integer;
+begin
+  iIndex := m_strlContacts.IndexOfObject(Pointer(iHandleID));
+  Result := (iIndex >= 0);
+end;
+
+
+procedure TModelModule.CanUnloadPlugin;
+begin
+  FreeAndNil(m_PluginSurrogate);
 end;
 
 end.
