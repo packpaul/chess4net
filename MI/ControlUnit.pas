@@ -53,6 +53,7 @@ uses
 
 var
   PluginInterfaces: array[0..1] of TGUID;
+  g_hMenuCommand: THandle;
 
 function MirandaPluginInfo(mirandaVersion: DWORD): PPLUGININFO; cdecl;
 begin
@@ -116,7 +117,7 @@ begin
     gInitializeControls;
 
   PLUGINLINK := Pointer(link);
-  pluginLink^.CreateServiceFunction(PChar(PLUGIN_NAME + '/MenuCommand'), @Start);
+  g_hMenuCommand := pluginLink^.CreateServiceFunction(PChar(PLUGIN_NAME + '/MenuCommand'), @Start); // TODO: It may not work in MI
   FillChar(mi, sizeof(mi), 0);
   mi.cbSize := sizeof(mi);
   mi.position := MirandaPluginMenuPosition;
@@ -143,6 +144,8 @@ function Unload: int; cdecl;
 begin
   if Assigned(gDeinitializeControls) then
     gDeinitializeControls;
+  pluginLink^.DestroyServiceFunction(g_hMenuCommand);
+  g_hMenuCommand := 0;
   Result := 0;
 end;
 
