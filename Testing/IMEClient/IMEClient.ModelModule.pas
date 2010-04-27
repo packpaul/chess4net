@@ -7,15 +7,17 @@ uses
   IdTCPClient, IdException,
   //
   IMEClient.Headers,
-  IMEClient.PluginSurrogate;
+  IMEClient.PluginSurrogate, ExtCtrls;
 
 type
   TModelModule = class(TDataModule, IViewEvents)
     TCPClient: TIdTCPClient;
+    UnloadPluginTimer: TTimer;
     procedure TCPClientConnected(Sender: TObject);
     procedure TCPClientDisconnected(Sender: TObject);
     procedure DataModuleCreate(Sender: TObject);
     procedure DataModuleDestroy(Sender: TObject);
+    procedure UnloadPluginTimerTimer(Sender: TObject);
   private
     m_View: IView;
 
@@ -667,7 +669,10 @@ end;
 function TModelModule.FGetPluginSurrogate: TPluginSurrogate;
 begin
   if (not Assigned(m_PluginSurrogate)) then
+  begin
+    UnloadPluginTimer.Enabled := FALSE;
     m_PluginSurrogate := TPluginSurrogateMI.Create(self);
+  end;
   Result := m_PluginSurrogate;
 end;
 
@@ -683,7 +688,14 @@ end;
 
 procedure TModelModule.CanUnloadPlugin;
 begin
-  FreeAndNil(m_PluginSurrogate);
+  UnloadPluginTimer.Enabled := TRUE;
+end;
+
+
+procedure TModelModule.UnloadPluginTimerTimer(Sender: TObject);
+begin
+  UnloadPluginTimer.Enabled := FALSE;
+  FreeAndNil(m_PluginSurrogate);  
 end;
 
 end.

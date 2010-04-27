@@ -16,4 +16,11 @@ object ModelModule: TModelModule
     Left = 16
     Top = 8
   end
+  object UnloadPluginTimer: TTimer
+    Enabled = False
+    Interval = 500
+    OnTimer = UnloadPluginTimerTimer
+    Left = 104
+    Top = 8
+  end
 end

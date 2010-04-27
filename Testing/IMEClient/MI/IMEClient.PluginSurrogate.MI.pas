@@ -3,21 +3,25 @@ unit IMEClient.PluginSurrogate.MI;
 interface
 
 uses
-  // Miranda
-  m_globaldefs, m_api,
+  Windows, SysUtils,
   //
   IMEClient.PluginSurrogate,
   IMEClient.ModelModule;
 
 type
+  EPluginSurrogateMI = class(Exception);
   TPluginSurrogateMI = class(TPluginSurrogate)
   private
 //    m_Model: TModelModule;
+    m_hLib: THandle;
 
     constructor FCreate(Model: TModelModule);
 
     procedure FLoadPlugin;
     procedure FUnloadPlugin;
+
+    procedure FLoadLibrary;
+    procedure FUnLoadLibrary;
 
   public
     class function Create(Model: TModelModule): TPluginSurrogateMI;
@@ -30,10 +34,12 @@ type
 
 implementation
 
+uses
+  // Miranda
+  m_globaldefs, m_api;
+
 const
-//  CHESS4NET_MI = '..\Miranda\v0.3.3\Plugins\Chess4Net_MI.dll';
-  CHESS4NET_MI = '.\Plugins\Chess4Net_MI.dll';
-//  PLUGIN_MI = 'Plugins\icq.dll';
+  CHESS4NET_MI_LIB = '.\Plugins\Chess4Net_MI.dll';
 
 ////////////////////////// Miranda API ///////////////////////////////
 
@@ -49,9 +55,16 @@ var
   g_pi: PPLUGININFO;
   g_bChainReceivedFlag: boolean = FALSE;
 
-const
-  CONTACT_NAME = 'Contact';
-  OWNER_NAME = 'Owner';
+  MirandaPluginInfoEx: TMirandaPluginInfo = nil;
+  Load: TLoad = nil;
+  Unload: TUnload = nil;
+
+(*
+// function MirandaPluginInfo(mirandaVersion: DWORD): PPLUGININFO; cdecl; external CHESS4NET_MI;
+function MirandaPluginInfoEx(mirandaVersion: DWORD): PPLUGININFO; cdecl; external CHESS4NET_MI_LIB;
+function Load(link: PPLUGINLINK): int; cdecl; external CHESS4NET_MI_LIB;
+function Unload: int; cdecl; external CHESS4NET_MI_LIB;
+*)
 
 function CreateServiceFunction(const char: PChar; MIRANDASERVICE: TMIRANDASERVICE): THandle; cdecl;
 const
@@ -135,17 +148,6 @@ begin
   Result := 0;
 end;
 
-// function MirandaPluginInfo(mirandaVersion: DWORD): PPLUGININFO; cdecl; external CHESS4NET_MI;
-function MirandaPluginInfoEx(mirandaVersion: DWORD): PPLUGININFO; cdecl; external CHESS4NET_MI;
-function Load(link: PPLUGINLINK): int; cdecl; external CHESS4NET_MI;
-function Unload: int; cdecl; external CHESS4NET_MI;
-
-(*
-function MirandaPluginInfo(mirandaVersion: DWORD): PPLUGININFO; cdecl; external PLUGIN_MI;
-function Load(link: PPLUGINLINK): int; cdecl; external PLUGIN_MI;
-function Unload: int; cdecl; external PLUGIN_MI;
-*)
-
 ////////////////////////////////////////////////////////////////////////////////
 // TPluginSurrogateMI
 
@@ -157,6 +159,8 @@ begin
   inherited Create;
 
   g_Model := Model;
+
+  FLoadLibrary;
   FLoadPlugin;
 end;
 
@@ -173,7 +177,10 @@ destructor TPluginSurrogateMI.Destroy;
 begin
   g_Model := nil;
   g_Instance := nil;
+
   FUnloadPlugin;
+  FUnLoadLibrary;
+
   inherited;
 end;
 
@@ -210,6 +217,48 @@ begin
   Start(iContactID, 0);
 end;
 
+
+procedure TPluginSurrogateMI.FLoadLibrary;
+
+  procedure NRaiseError;
+  begin
+    raise EPluginSurrogateMI.Create('DLL couldn''t be loaded!');
+  end;
+
+begin
+  if (m_hLib <> 0) then
+    exit;
+
+  m_hLib := LoadLibrary(CHESS4NET_MI_LIB);
+  if (m_hLib = 0) then
+    NRaiseError;
+
+  @MirandaPluginInfoEx := GetProcAddress(m_hLib, 'MirandaPluginInfoEx');
+  @Load := GetProcAddress(m_hLib, 'Load');
+  @Unload := GetProcAddress(m_hLib, 'Unload');
+
+  if (not (Assigned(MirandaPluginInfoEx) and Assigned(Load) and Assigned(Unload))) then
+  begin
+    FUnloadLibrary;
+    NRaiseError;
+  end;
+end;
+
+
+procedure TPluginSurrogateMI.FUnLoadLibrary;
+begin
+  if (m_hLib <> 0) then
+  begin
+    MirandaPluginInfoEx := nil;
+    Load := nil;
+    Unload := nil;
+
+    FreeLibrary(m_hLib);
+    m_hLib := 0;
+  end;
+end;
+
+
 procedure TPluginSurrogateMI.FLoadPlugin;
 begin
   PLUGINLINK.CreateServiceFunction := @CreateServiceFunction;
@@ -226,7 +275,8 @@ end;
 
 procedure TPluginSurrogateMI.FUnloadPlugin;
 begin
-  Unload;
+  if (Assigned(Unload)) then
+    Unload;
 end;
 
 end.
