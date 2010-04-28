@@ -1,16 +1,16 @@
 object MainForm: TMainForm
   Left = 274
   Top = 322
-  Width = 416
-  Height = 273
+  Width = 420
+  Height = 280
   HorzScrollBar.Visible = False
   VertScrollBar.Visible = False
   BorderIcons = [biSystemMenu, biMinimize]
   Caption = 'IMEClient'
   Color = clBtnFace
-  Constraints.MaxHeight = 273
-  Constraints.MinHeight = 273
-  Constraints.MinWidth = 416
+  Constraints.MaxHeight = 280
+  Constraints.MinHeight = 280
+  Constraints.MinWidth = 420
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
   Font.Height = -11
@@ -21,8 +21,8 @@ object MainForm: TMainForm
   OnClose = FormClose
   OnShow = FormShow
   DesignSize = (
-    408
-    246)
+    404
+    244)
   PixelsPerInch = 96
   TextHeight = 13
   object Label1: TLabel
