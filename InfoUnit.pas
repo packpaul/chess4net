@@ -40,7 +40,8 @@ procedure ShowInfo;
 begin
   if not Assigned(infoForm) then
     begin
-      infoForm := TInfoForm.Create(Application);
+//      infoForm := TInfoForm.Create(Application);
+      infoForm := TInfoForm.Create(nil);
 {$IFDEF SKYPE}
       infoForm.Icon := Chess4NetIcon;
       infoForm.Caption := DIALOG_CAPTION;      

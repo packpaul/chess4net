@@ -37,7 +37,8 @@ uses
   PosBaseChessBoardUnit in '..\PosBaseChessBoardUnit.pas',
   PosBaseUnit in '..\PosBaseUnit.pas',
   PromotionUnit in '..\PromotionUnit.pas' {PromotionForm},
-  ChessRulesEngine in '..\ChessRulesEngine.pas';
+  ChessRulesEngine in '..\ChessRulesEngine.pas',
+  ManagerUnit.MI in 'ManagerUnit.MI.pas';
 
 {$R ..\Chess4Net.res}
 

@@ -101,8 +101,8 @@ type
   end;
 
 var
-  connectorList: TConnectorList = nil;
-  msgBufferSize: integer;
+  g_connectorList: TConnectorList = nil;
+  g_msgBufferSize: integer;
   g_bMultiSession: boolean;
 
   // cntrMsgIn и cntrMsgOut были введены для преодоления бага с зависающими сообщениями
@@ -166,7 +166,7 @@ begin
           msg := RightStr(msg, length(msg) - l);
         end
         else
-          lstId := connectorList.LastAddedConnector._lstId;
+          lstId := g_connectorList.LastAddedConnector._lstId;
       end
       else
         lstId := -1; // no contactListId specified in message
@@ -361,19 +361,23 @@ end;
 
 function TConnector.Open(bMultiSession: boolean = TRUE): boolean;
 var
-  i: integer;
+  AConnector: TConnector;
 begin
   Result := FALSE;
 
   if (not g_bMultiSession) then
     g_bMultiSession := bMultisession;
 
-  for i := 0 to connectorList.Count - 1 do
+  if (Assigned(g_connectorList)) then
+  begin
+    AConnector := g_connectorList.GetFirstConnector(_hContact);
+    while (Assigned(AConnector)) do
     begin
-      if Assigned(connectorList[i]) and TConnector(connectorList[i]).Opened and
-        (TConnector(connectorList[i])._contactLstId < 0) then
+      if (AConnector.Opened and (AConnector._contactLstId < 0)) then
         exit;
+      AConnector := g_connectorList.GetNextConnector;
     end;
+  end;
 
   _cntrMsgIn := 0;
   _cntrMsgOut := 1;
@@ -393,7 +397,7 @@ function TConnector.SendData(const d: string): boolean;
 begin
   Result := FALSE;
   if (d = '') or
-     (length(_msg_buf) + length(d) + length(DATA_SEPARATOR) > msgBufferSize) or
+     (length(_msg_buf) + length(d) + length(DATA_SEPARATOR) > g_msgBufferSize) or
      (LeftStr(d, length(CMD_CLOSE)) = CMD_CLOSE) or
      (LeftStr(d, length(CMD_CONTACT_LIST_ID)) = CMD_CONTACT_LIST_ID) or
      (pos(DATA_SEPARATOR, d) > 0) then
@@ -419,16 +423,16 @@ begin
 
   proceeded := FALSE;
 
-  if Assigned(connectorList) then
+  if Assigned(g_connectorList) then
+  begin
+    connector := g_connectorList.GetFirstConnector(hContact);
+    while (Assigned(connector)) do
     begin
-      connector := connectorList.GetFirstConnector(hContact);
-      while Assigned(connector) do
-        begin
-          if connector.Opened then
-            proceeded := (connector.FFilterMsg(msg) or proceeded);
-          connector := connectorList.GetNextConnector;
-        end;
+      if connector.Opened then
+        proceeded := (connector.FFilterMsg(msg) or proceeded);
+      connector := g_connectorList.GetNextConnector;
     end;
+  end;
 
   if proceeded then
     Result := 0
@@ -452,47 +456,47 @@ begin
 
   case PACKDATA(lParam_)^.result_ of
     ACKRESULT_SUCCESS:
-      begin
-        MSG_TRYS := 1;
+    begin
+      MSG_TRYS := 1;
 
-        connector := connectorList.GetFirstConnector(hContact);
-        while Assigned(connector) do
-          begin
-            if connector._msg_sending <> '' then
-              connector.FNotifySender;
-            connector := connectorList.GetNextConnector;
-         end;
-      end;
+      connector := g_connectorList.GetFirstConnector(hContact);
+      while Assigned(connector) do
+      begin
+        if (connector._msg_sending <> '') then
+          connector.FNotifySender;
+        connector := g_connectorList.GetNextConnector;
+     end;
+    end;
 
     ACKRESULT_FAILED:
+    begin
+      inc(MSG_TRYS);
+      if (MSG_TRYS <= MAX_MSG_TRYS) then
+        begin
+          connector := g_connectorList.GetFirstConnector(hContact);
+          while (Assigned(connector)) do
+          begin
+            if connector._msg_sending <> '' then
+              with connector do
+              begin
+                _msg_buf := _unformated_msg_sending + _msg_buf;
+                _sendTimer.Enabled := TRUE;
+              end;
+            connector := g_connectorList.GetNextConnector;
+          end; // while
+        end
+      else
       begin
-        inc(MSG_TRYS);
-        if MSG_TRYS <= MAX_MSG_TRYS then
-          begin
-            connector := connectorList.GetFirstConnector(hContact);
-            while Assigned(connector) do
-              begin
-                if connector._msg_sending <> '' then
-                  with connector do
-                    begin
-                      _msg_buf := _unformated_msg_sending + _msg_buf;
-                      _sendTimer.Enabled := TRUE;
-                    end;
-                connector := connectorList.GetNextConnector;
-              end;
-          end
-        else
-          begin
-            connector := connectorList.GetFirstConnector(hContact);
-            while Assigned(connector) do
-              begin
-                if connector._msg_sending <> '' then
-                  connector._plugin.ConnectorHandler(ceError);
-                connector := connectorList.GetNextConnector;
-              end;
-          end; { if MSG_TRYS <= MAX_MSG_TRYS }
-      end; { ACKRESULT_FAILED }
-  end; { case PACKDATA }
+        connector := g_connectorList.GetFirstConnector(hContact);
+        while (Assigned(connector)) do
+        begin
+          if (connector._msg_sending <> '') then
+            connector._plugin.ConnectorHandler(ceError);
+          connector := g_connectorList.GetNextConnector;
+        end;
+      end; // if (MSG_TRYS <= MAX_MSG_TRYS)
+    end; // ACKRESULT_FAILED
+  end; // case PACKDATA
 end;
 
 
@@ -520,24 +524,24 @@ begin
   _hContact := hContact;
   _systemDataList := TStringList.Create;
 
-  if not Assigned(connectorList) then
-    connectorList := TConnectorList.Create;
+  if (not Assigned(g_connectorList)) then
+    g_connectorList := TConnectorList.Create;
 
-  connector := connectorList.GetFirstConnector(_hContact);
+  connector := g_connectorList.GetFirstConnector(_hContact);
   if Assigned(connector) then
-    begin
-      _hFilterMsg := connector._hFilterMsg;
-      _hNotifySender := connector._hNotifySender;
-    end
+  begin
+    _hFilterMsg := connector._hFilterMsg;
+    _hNotifySender := connector._hNotifySender;
+  end
   else
-    begin
-      _hFilterMsg := CreateProtoServiceFunction(PChar(PLUGIN_NAME), PSR_MESSAGE, FilterMsg);
-      if CallService(MS_PROTO_ISPROTOONCONTACT, _hContact, LPARAM(PChar(PLUGIN_NAME))) = 0 then
-        CallService(MS_PROTO_ADDTOCONTACT, _hContact, LPARAM(PChar(PLUGIN_NAME)));
-      _hNotifySender := HookEvent(ME_PROTO_ACK, NotifySender);
-    end;
+  begin
+    _hFilterMsg := CreateProtoServiceFunction(PChar(PLUGIN_NAME), PSR_MESSAGE, FilterMsg);
+    if CallService(MS_PROTO_ISPROTOONCONTACT, _hContact, LPARAM(PChar(PLUGIN_NAME))) = 0 then
+      CallService(MS_PROTO_ADDTOCONTACT, _hContact, LPARAM(PChar(PLUGIN_NAME)));
+    _hNotifySender := HookEvent(ME_PROTO_ACK, NotifySender);
+  end;
 
-  connectorList.AddConnector(self);
+  g_connectorList.AddConnector(self);
 
 {$IFDEF DEBUG_LOG}
   InitLog;
@@ -553,21 +557,21 @@ begin
 
   _systemDataList.Free;
 
-  connectorList.RemoveConnector(self);
-  if (connectorList.Count = 0) then
+  g_connectorList.RemoveConnector(self);
+  if (g_connectorList.Count = 0) then
     g_bMultiSession := FALSE;
 
-  if not Assigned(connectorList.GetFirstConnector(_hContact)) then
-    begin
-      if _hNotifySender <> 0 then
-        UnhookEvent(_hNotifySender);
-      if CallService(MS_PROTO_ISPROTOONCONTACT, _hContact, LPARAM(PChar(PLUGIN_NAME))) <> 0 then
-        CallService(MS_PROTO_REMOVEFROMCONTACT, _hContact, LPARAM(PChar(PLUGIN_NAME)));
-      PluginLink.DestroyServiceFunction(_hFilterMsg);
-    end;
+  if (not Assigned(g_connectorList.GetFirstConnector(_hContact))) then
+  begin
+    if _hNotifySender <> 0 then
+      UnhookEvent(_hNotifySender);
+    if CallService(MS_PROTO_ISPROTOONCONTACT, _hContact, LPARAM(PChar(PLUGIN_NAME))) <> 0 then
+      CallService(MS_PROTO_REMOVEFROMCONTACT, _hContact, LPARAM(PChar(PLUGIN_NAME)));
+    PluginLink.DestroyServiceFunction(_hFilterMsg);
+  end;
 
-  if connectorList.Count = 0 then
-    FreeAndNil(connectorList);
+  if (g_connectorList.Count = 0) then
+    FreeAndNil(g_connectorList);
 
   _sendSystemTimer.Free;
   _sendTimer.Free;
@@ -669,7 +673,7 @@ begin
   MSG_INVITATION := invitationStr;
   PROMPT_HEAD := promtHeadStr;
   DATA_SEPARATOR := dataSeparator;
-  msgBufferSize := maxMsgSize;
+  g_msgBufferSize := maxMsgSize;
 end;
 
 {---------------------------- TConnectorList ---------------------------------}

@@ -16,11 +16,11 @@ implementation
 uses
   Windows, Forms, Dialogs, Graphics, SysUtils, Controls
   // plugin units
-  , GlobalsLocalUnit, ManagerUnit;
+  , GlobalsLocalUnit, ManagerUnit.MI;
 
 function CreatePluginInstance(Connector: TConnector): IMirandaPlugin;
 begin
-  Result := TManager.Create(Connector);
+  Result := TManagerMI.Create(Connector);
 end;
 
 

@@ -31,9 +31,6 @@ type
 //    constructor Create(dlgOwner: TDialogs; h: TConnectingHandler); reintroduce; overload;
   end;
 
-var
-  ConnectingForm: TConnectingForm;
-
 implementation
 
 {$R *.dfm}
