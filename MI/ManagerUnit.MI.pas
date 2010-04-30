@@ -3,18 +3,30 @@ unit ManagerUnit.MI;
 interface
 
 uses
+  SysUtils,
+  //
   ManagerUnit, ControlUnit, ConnectorUnit;
 
 type
+  EManagerMI = class(Exception);
   TManagerMI = class(TManager, IMirandaPlugin)
-    constructor Create(Connector: TConnector); reintroduce;
+  protected
     procedure Start;
+    procedure ROnCreate; override;
+    procedure ConnectorHandler(e: TConnectorEvent;
+      d1: pointer = nil; d2: pointer = nil); override;
+    procedure RSetOpponentClientVersion(lwVersion: LongWord); override;
+    procedure RSendData(const cmd: string); override;
+  public
+    constructor Create(Connector: TConnector); reintroduce;
   end;
 
 implementation
 
 uses
-  SysUtils;
+  Types, StrUtils,
+  //
+  LocalizerUnit;
 
 ////////////////////////////////////////////////////////////////////////////////
 // TManagerMI
@@ -43,12 +55,78 @@ begin
     RShowConnectingForm;
 
     if (not Connector.Open(FALSE)) then
-      raise Exception.Create('ERROR: Cannot open connector!');
+      raise EManagerMI.Create('ERROR: Cannot open connector!');
   except
     ChessBoard.Release;
     ChessBoard := nil;
     raise;
   end;
+end;
+
+
+procedure TManagerMI.ROnCreate;
+begin
+  RCreateAndPopulateExtBaseList;
+
+  // Nicks initialization
+  PlayerNick := Connector.OwnerNick;
+
+  OpponentNick := Connector.ContactNick;
+  OpponentId := IntToStr(Connector.ContactID);
+//  OpponentNickId := OpponentNick + OpponentId;
+//    connectionOccured := FALSE;
+
+  TLocalizer.Instance.AddSubscriber(self);
+  RLocalize;
+end;
+
+
+procedure TManagerMI.ConnectorHandler(e: TConnectorEvent;
+  d1: pointer = nil; d2: pointer = nil);
+var
+  iData: integer;
+  strCmd: string;
+  strLeft: string;
+begin
+  case e of
+    ceError:
+    begin
+      Connector.Close;
+      inherited ConnectorHandler(e, d1, d2);      
+    end;
+
+    ceData:
+    begin
+      Assert(High(TStringDynArray(d1)) >= 0);
+      iData := 0;
+      repeat
+        strLeft := TStringDynArray(d1)[iData];
+        inc(iData);
+        strCmd := IfThen((iData <= High(TStringDynArray(d1))), '*');
+
+        RHandleConnectorDataCommand(strLeft);
+      until (strCmd = '');
+
+    end; // ceData
+
+  else
+    inherited ConnectorHandler(e, d1, d2);
+  end; // case
+end;
+
+
+procedure TManagerMI.RSetOpponentClientVersion(lwVersion: LongWord);
+begin
+  inherited RSetOpponentClientVersion(lwVersion);
+
+  if (lwVersion >= 200901) then
+    Connector.MultiSession := TRUE;
+end;
+
+
+procedure TManagerMI.RSendData(const cmd: string);
+begin
+  Connector.SendData(cmd);
 end;
 
 end.

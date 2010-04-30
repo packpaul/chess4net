@@ -64,26 +64,6 @@ function CreateMessageDialog(AOwner: TComponent; const Msg: WideString;
     Result.X := Result.X div 52;
   end;
 
-(*
-  function NGetButtonCaption(MsgDlgBtn: TMsgDlgBtn): WideString;
-  begin
-    case MsgDlgBtn of
-      mbYes:         Result := SMsgDlgYes;
-      mbNo:          Result := SMsgDlgNo;
-      mbOK:          Result := SMsgDlgOK;
-      mbCancel:      Result := SMsgDlgCancel;
-      mbAbort:       Result := SMsgDlgAbort;
-      mbRetry:       Result := SMsgDlgRetry;
-      mbIgnore:      Result := SMsgDlgIgnore;
-      mbAll:         Result := SMsgDlgAll;
-      mbNoToAll:     Result := SMsgDlgNoToAll;
-      mbYesToAll:    Result := SMsgDlgYesToAll;
-      mbHelp:        Result := SMsgDlgHelp;
-    else
-      raise Exception.Create('Unexpected MsgDlgBtn in CreateMessageDialog\NGetButtonCaption.');
-    end;
-  end;
-*)
   function NGetButtonCaption(MsgDlgBtn: TMsgDlgBtn): WideString;
   begin
     with TLocalizer.Instance do
