@@ -13,6 +13,7 @@ type
   protected
     procedure Start;
     procedure ROnCreate; override;
+    procedure ROnDestroy; override;
     procedure ConnectorHandler(e: TConnectorEvent;
       d1: pointer = nil; d2: pointer = nil); override;
     procedure RSetOpponentClientVersion(lwVersion: LongWord); override;
@@ -46,19 +47,25 @@ begin
     exit;
   end;
 
-  RCreateChessBoardAndDialogs;
+//  RCreateChessBoardAndDialogs;
 
   try
+    if (not Connector.Open(FALSE)) then
+      raise EManagerMI.Create('ERROR: Cannot open connector!');
+
+    RCreateChessBoardAndDialogs;
     RSetChessBoardToView;
-    RSetPrivateSettings;    
+
+    RSetPrivateSettings;
 
     RShowConnectingForm;
 
-    if (not Connector.Open(FALSE)) then
-      raise EManagerMI.Create('ERROR: Cannot open connector!');
   except
-    ChessBoard.Release;
-    ChessBoard := nil;
+    if (Assigned(ChessBoard)) then
+    begin
+      ChessBoard.Release;
+      ChessBoard := nil;
+    end;
     raise;
   end;
 end;
@@ -78,6 +85,18 @@ begin
 
   TLocalizer.Instance.AddSubscriber(self);
   RLocalize;
+end;
+
+
+procedure TManagerMI.ROnDestroy;
+begin
+  if (Assigned(Connector)) then
+  begin
+    Connector.Free;
+    Connector := nil;
+  end;
+
+  inherited ROnDestroy;
 end;
 
 

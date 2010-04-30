@@ -100,7 +100,11 @@ begin
     Result := 0;
   except
     if Assigned(Connector) then
+    begin
+      Connector.SetPlugin(nil);
+      pluginInstance := nil;
       Connector.Free;
+    end;
     if Assigned(gErrorDuringPluginStart) then
       gErrorDuringPluginStart;
     Result := -1;

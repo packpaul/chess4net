@@ -25,7 +25,6 @@ type
     LookFeelOptionsConnected: TTntMenuItem;
     StartStandartGameConnected: TTntMenuItem;
     StartPPRandomGameConnected: TTntMenuItem;
-    N3: TTntMenuItem;
     GameOptionsConnected: TTntMenuItem;
     ChangeColorConnected: TTntMenuItem;
     GamePopupMenu: TTntPopupMenu;
@@ -49,7 +48,8 @@ type
 
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
-    procedure ActionListUpdate;
+    procedure ActionListUpdate(Action: TBasicAction;
+      var Handled: Boolean);
     procedure LookFeelOptionsActionExecute(Sender: TObject);
     procedure AbortGameClick(Sender: TObject);
     procedure DrawGameClick(Sender: TObject);
@@ -129,8 +129,6 @@ type
     procedure FStartAdjournedGame;
 
     function FGetOpponentNickId: string;
-    procedure FOnDestroy;
-
 {$IFDEF SKYPE}
     procedure FShowCredits;
 {$ENDIF}
@@ -141,7 +139,9 @@ type
 
   protected
     constructor RCreate;
-    procedure ROnCreate; virtual;
+
+    procedure ROnCreate; virtual; abstract;
+    procedure ROnDestroy; virtual;
 
     procedure ConnectorHandler(e: TConnectorEvent;
       d1: pointer = nil; d2: pointer = nil); virtual;
@@ -157,7 +157,8 @@ type
     class procedure RSplitStr(s: string; var strLeft: string; var strRight: string);
     procedure RHandleConnectorDataCommand(sl: string);
     procedure RSetOpponentClientVersion(lwVersion: LongWord); virtual;
-    procedure RSendData(const cmd: string = ''); virtual;
+
+    procedure RSendData(const cmd: string = ''); virtual; abstract;
 
     property Connector: TConnector read m_Connector write m_Connector;
     property ChessBoard: TPosBaseChessBoard read m_ChessBoard write m_ChessBoard;
@@ -168,16 +169,16 @@ type
 
   public
 {$IFDEF AND_RQ}
-    constructor Create; reintroduce;
+    class function Create: TManager; reintroduce;
 {$ENDIF}
 {$IFDEF QIP}
-    constructor Create(const accName: WideString; const protoDllHandle: integer); reintroduce;
+    class function Create(const accName: WideString; const protoDllHandle: integer): TManager; reintroduce;
 {$ENDIF}
 {$IFDEF TRILLIAN}
-    constructor Create(const vContactlistEntry: TTtkContactListEntry); reintroduce;
+    class function Create(const vContactlistEntry: TTtkContactListEntry): TManager; reintroduce;
 {$ENDIF}
 {$IFDEF SKYPE}
-    constructor Create; reintroduce;
+    class function Create: TManager; reintroduce;
 {$ENDIF}
   end;
 
@@ -281,99 +282,38 @@ const
   LANGUAGE_KEY_NAME = 'Language';
 {$IFDEF SKYPE}
   DONT_SHOW_CREDITS = 'DontShowCredits';
-{$ENDIF}  
+{$ENDIF}
+
+type
+  TManagerDefault = class(TManager) // TODO: TRILLIAN, AND_RQ, QIP, SKYPE -> own classes
+  protected
+    procedure ROnCreate; override;
+    procedure ROnDestroy; override;
+    procedure RSendData(const cmd: string = ''); override;
+  public
+{$IFDEF AND_RQ}
+    constructor Create; reintroduce;
+{$ENDIF}
+{$IFDEF QIP}
+    constructor Create(const accName: WideString; const protoDllHandle: integer); reintroduce;
+{$ENDIF}
+{$IFDEF TRILLIAN}
+    constructor Create(const vContactlistEntry: TTtkContactListEntry); reintroduce;
+{$ENDIF}
+{$IFDEF SKYPE}
+    constructor Create; reintroduce;
+{$ENDIF}
+  end;
 
 ////////////////////////////////////////////////////////////////////////////////
 // TManager
 
 procedure TManager.RCreateChessBoardAndDialogs;
 begin
-  m_ChessBoard := TPosBaseChessBoard.Create(self, ChessBoardHandler, Chess4NetPath + USR_BASE_NAME);
+//  m_ChessBoard := TPosBaseChessBoard.Create(self, ChessBoardHandler, Chess4NetPath + USR_BASE_NAME);
+  m_ChessBoard := TPosBaseChessBoard.Create(nil, ChessBoardHandler, Chess4NetPath + USR_BASE_NAME);
   m_Dialogs := TDialogs.Create(ChessBoard, DialogFormHandler);
 end;
-
-{$IFDEF MIRANDA}
-procedure TManager.ROnCreate;
-begin
-  Assert(FALSE);
-end;
-
-
-procedure TManager.RSendData(const cmd: string);
-begin
-  Assert(FALSE);
-end;
-{$ENDIF}
-
-{$IFNDEF MIRANDA}
-procedure TManager.ROnCreate;
-begin
-  try
-    RCreateChessBoardAndDialogs;
-
-    TLocalizer.Instance.AddSubscriber(self);
-    RLocalize;
-
-    RSetChessBoardToView;
-    RSetPrivateSettings;
-        
-{$IFDEF AND_RQ}
-    Connector := TConnector.Create(RQ_GetChatUIN, ConnectorHandler);
-{$ENDIF}
-{$IFDEF QIP}
-//    QIPConnectionError := FALSE;
-    Connector := TConnector.Create(wAccName, iProtoDllHandle, ConnectorHandler);
-{$ENDIF}
-{$IFDEF TRILLIAN}
-    Connector := TConnector.Create(@contactlistEntry, ConnectorHandler);
-{$ENDIF}
-{$IFDEF SKYPE}
-//    SkypeConnectionError := FALSE;
-    Connector := TConnector.Create(ConnectorHandler);
-{$ENDIF}
-
-    RCreateAndPopulateExtBaseList;
-
-    // инициализация ников
-{$IFDEF AND_RQ}
-    PlayerNick := RQ_GetDisplayedName(RQ_GetCurrentUser);
-    OpponentNick := RQ_GetDisplayedName(RQ_GetChatUIN);
-    OpponentId := IntToStr(RQ_GetChatUIN);
-{$ENDIF}
-{$IFDEF QIP}
-    PlayerNick := GetOwnerNick(wAccName, iProtoDllHandle);
-    OpponentNick := GetContactNick(wAccName, iProtoDllHandle);
-    OpponentId := wAccName;
-{$ENDIF}
-//    OpponentNickId := OpponentNick + OpponentId;
-//    connectionOccured := FALSE;
-{$IFDEF TRILLIAN}
-    PlayerNick := trillianOwnerNick;
-    OpponentNick := contactlistEntry.name;
-    OpponentId := contactlistEntry.real_name;
-{$ENDIF}
-{$IFDEF QIP}
-    if (not QIPConnectionError) then
-      begin
-{$ENDIF}
-{$IFDEF SKYPE}
-    if (not SkypeConnectionError) then
-      begin
-{$ENDIF}
-        RShowConnectingForm;
-{$IFDEF QIP}
-      end;
-{$ENDIF}
-{$IFDEF SKYPE}
-      end;
-{$ENDIF}
-
-  except
-    Release;
-    raise;
-  end;
-end;
-{$ENDIF}
 
 
 procedure TManager.FormCreate(Sender: TObject);
@@ -645,7 +585,7 @@ begin
                          'This can happen due to the following reasons:' + sLineBreak +
                          '  1) You have an old version of Skype. OR' + sLineBreak +
                          '  2) Your Skype is blocking Chess4Net. OR' + sLineBreak +
-                         '  3) Your Skype doesn''t support extras. OR' + sLineBreak +
+                         '  3) Your Skype doesn''t support Skype applications. OR' + sLineBreak +
                          '  4) Other reasons.' + sLineBreak +
                          'Chess4Net won''t start.', mtWarning, [mbOk], mfMsgLeave);
     end;
@@ -1020,18 +960,8 @@ begin
 end;
 
 
-procedure TManager.FOnDestroy;
+procedure TManager.ROnDestroy;
 begin
-  if (Assigned(Connector)) then
-  begin
-{$IFDEF MIRANDA} // TODO: ??? examine it
-    Connector.Close;
-{$ENDIF}
-{$IFNDEF MIRANDA} // TRILLIAN, AND_RQ, QIP, SKYPE
-    Connector.Free;
-{$ENDIF MIRANDA}
-  end;
-
   TLocalizer.Instance.DeleteSubscriber(self);
 
   if (connectionOccured) then
@@ -1047,7 +977,7 @@ end;
 
 procedure TManager.FormDestroy(Sender: TObject);
 begin
-  FOnDestroy;
+  ROnDestroy;
 end;
 
 
@@ -1148,18 +1078,6 @@ begin
   InitGameLog;
 {$ENDIF}
 end;
-
-{$IFNDEF MIRANDA} // TRILLIAN, AND_RQ, QIP
-procedure TManager.RSendData(const cmd: string);
-const
-  last_cmd: string = '';
-begin
-  if (cmd = '') then
-    exit;
-  last_cmd := cmd + CMD_DELIMITER;
-  Connector.SendData(last_cmd);
-end;
-{$ENDIF}
 
 
 procedure TManager.SetClock;
@@ -1266,36 +1184,33 @@ begin
 end;
 
 {$IFDEF AND_RQ}
-constructor TManager.Create;
+class function TManager.Create: TManager;
 begin
-  RCreate;
+  Result := TManagerDefault.Create;
 end;
 {$ENDIF}
 
 {$IFDEF QIP}
-constructor TManager.Create(const accName: WideString; const protoDllHandle: integer);
+class function TManager.Create(const accName: WideString; const protoDllHandle: integer): TManager;
 begin
-  iProtoDllHandle := protoDllHandle;
-  wAccName := accName;
-
-  RCreate;
+  Result := TManagerDefault.Create(accName, protoDllHandle);
 end;
 {$ENDIF}
 
 {$IFDEF TRILLIAN}
-constructor TManager.Create(const vContactlistEntry: TTtkContactListEntry);
+class function TManager.Create(const vContactlistEntry: TTtkContactListEntry): TManager;
 begin
-  contactListEntry := vContactlistEntry;  
-  RCreate;
+  Result := TManagerDefault.Create(vContactlistEntry);
 end;
 {$ENDIF}
 
 {$IFDEF SKYPE}
-constructor TManager.Create;
+class function TManager.Create: TManager;
 begin
-  RCreate;
+  Result := TManagerDefault.Create;
 end;
 {$ENDIF}
+
 
 procedure TManager.DialogFormHandler(modSender: TModalForm; msgDlgID: TModalFormID);
 var
@@ -2062,13 +1977,13 @@ begin
 end;
 
 
-procedure TManager.ActionListUpdate;
+procedure TManager.ActionListUpdate(Action: TBasicAction;
+  var Handled: Boolean);
 begin
   AdjournGame.Visible := can_adjourn_game;
   AdjournGame.Enabled := ((adjournedStr <> '') and move_done);
   StartAdjournedGameConnected.Visible := (adjournedStr <> '');
 end;
-
 
 {$IFDEF SKYPE}
 procedure TManager.FShowCredits;
@@ -2091,6 +2006,129 @@ begin // TManager.FShowCredits
   end;
 end;
 {$ENDIF}
+
+
+{$IFDEF AND_RQ}
+constructor TManagerDefault.Create;
+begin
+  RCreate;
+end;
+{$ENDIF}
+
+{$IFDEF QIP}
+constructor TManagerDefault.Create(const accName: WideString; const protoDllHandle: integer);
+begin
+  iProtoDllHandle := protoDllHandle;
+  wAccName := accName;
+
+  RCreate;
+end;
+{$ENDIF}
+
+{$IFDEF TRILLIAN}
+constructor TManagerDefault.Create(const vContactlistEntry: TTtkContactListEntry);
+begin
+  contactListEntry := vContactlistEntry;
+  RCreate;
+end;
+{$ENDIF}
+
+{$IFDEF SKYPE}
+constructor TManagerDefault.Create;
+begin
+  RCreate;
+end;
+{$ENDIF}
+
+procedure TManagerDefault.ROnCreate;
+begin
+  try
+    RCreateChessBoardAndDialogs;
+
+    TLocalizer.Instance.AddSubscriber(self);
+    RLocalize;
+
+    RSetChessBoardToView;
+    RSetPrivateSettings;
+        
+{$IFDEF AND_RQ}
+    Connector := TConnector.Create(RQ_GetChatUIN, ConnectorHandler);
+{$ENDIF}
+{$IFDEF QIP}
+//    QIPConnectionError := FALSE;
+    Connector := TConnector.Create(wAccName, iProtoDllHandle, ConnectorHandler);
+{$ENDIF}
+{$IFDEF TRILLIAN}
+    Connector := TConnector.Create(@contactlistEntry, ConnectorHandler);
+{$ENDIF}
+{$IFDEF SKYPE}
+//    SkypeConnectionError := FALSE;
+    Connector := TConnector.Create(ConnectorHandler);
+{$ENDIF}
+
+    RCreateAndPopulateExtBaseList;
+
+    // инициализация ников
+{$IFDEF AND_RQ}
+    PlayerNick := RQ_GetDisplayedName(RQ_GetCurrentUser);
+    OpponentNick := RQ_GetDisplayedName(RQ_GetChatUIN);
+    OpponentId := IntToStr(RQ_GetChatUIN);
+{$ENDIF}
+{$IFDEF QIP}
+    PlayerNick := GetOwnerNick(wAccName, iProtoDllHandle);
+    OpponentNick := GetContactNick(wAccName, iProtoDllHandle);
+    OpponentId := wAccName;
+{$ENDIF}
+//    OpponentNickId := OpponentNick + OpponentId;
+//    connectionOccured := FALSE;
+{$IFDEF TRILLIAN}
+    PlayerNick := trillianOwnerNick;
+    OpponentNick := contactlistEntry.name;
+    OpponentId := contactlistEntry.real_name;
+{$ENDIF}
+{$IFDEF QIP}
+    if (not QIPConnectionError) then
+      begin
+{$ENDIF}
+{$IFDEF SKYPE}
+    if (not SkypeConnectionError) then
+      begin
+{$ENDIF}
+        RShowConnectingForm;
+{$IFDEF QIP}
+      end;
+{$ENDIF}
+{$IFDEF SKYPE}
+      end;
+{$ENDIF}
+
+  except
+    Release;
+    raise;
+  end;
+end;
+
+
+procedure TManagerDefault.ROnDestroy;
+begin
+  if (Assigned(Connector)) then
+  begin
+    Connector.Close;
+  end;
+
+  inherited ROnDestroy;
+end;
+
+
+procedure TManagerDefault.RSendData(const cmd: string);
+const
+  last_cmd: string = '';
+begin
+  if (cmd = '') then
+    exit;
+  last_cmd := cmd + CMD_DELIMITER;
+  Connector.SendData(last_cmd);
+end;
 
 end.
 

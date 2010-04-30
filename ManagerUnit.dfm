@@ -49,7 +49,7 @@ object Manager: TManager
       Caption = 'Start PP Random Game'
       OnClick = StartPPRandomGameConnectedClick
     end
-    object N5: TMenuItem
+    object N5: TTntMenuItem
       Caption = '-'
     end
     object ChangeColorConnected: TTntMenuItem
@@ -114,7 +114,7 @@ object Manager: TManager
     object LookFeelOptionsGame: TTntMenuItem
       Action = LookFeelOptionsAction
     end
-    object N2: TMenuItem
+    object N2: TTntMenuItem
       Caption = '-'
     end
     object AboutGame: TTntMenuItem

@@ -55,6 +55,8 @@ type
     function FGetOwnerID: integer;
     function FGetMultiSession: boolean;
     procedure FSetMultiSession(bValue: boolean);
+    procedure FPluginConnectorHandler(ce: TConnectorEvent;
+      d1: pointer = nil; d2: pointer = nil);
 
   public
     constructor Create(hContact: THandle); reintroduce;
@@ -198,7 +200,7 @@ function TConnector.FFilterMsg(msg: string): boolean;
       end
       else if (msg = CMD_CLOSE) then
       begin
-        _plugin.ConnectorHandler(ceDisconnected);
+        FPluginConnectorHandler(ceDisconnected);
         _connected := FALSE;
         _opened := FALSE;
       end
@@ -250,7 +252,9 @@ function TConnector.FFilterMsg(msg: string): boolean;
     end; { while }
 
     if (n > 0) then
-      _plugin.ConnectorHandler(ceData, arrDatas);
+    begin
+      FPluginConnectorHandler(ceData, arrDatas);
+    end;
 
     Finalize(arrDatas);
   end;
@@ -272,7 +276,7 @@ begin { TConnector.FFilterMsg }
           if (g_bMultiSession) then
             FSendSystemData(FFormatMsg(CMD_CONTACT_LIST_ID + ' ' + IntToStr(_lstId)));
           _connected := TRUE;
-          _plugin.ConnectorHandler(ceConnected);
+          FPluginConnectorHandler(ceConnected);
           Result := TRUE;
         end
       else
@@ -298,7 +302,7 @@ begin { TConnector.FFilterMsg }
               inc(_cntrMsgIn);
               if (cntrMsg > _cntrMsgIn) then
                 begin
-                  _plugin.ConnectorHandler(ceError); // пакет исчез
+                  FPluginConnectorHandler(ceError); // пакет исчез
                   exit;
                 end;
             end
@@ -347,7 +351,7 @@ begin
       FSendSystemData(FFormatMsg(CMD_CLOSE));
 
       _connected := FALSE;
-      _plugin.ConnectorHandler(ceDisconnected);
+      FPluginConnectorHandler(ceDisconnected);
     end;
 
   _sendTimer.Enabled := FALSE;
@@ -491,7 +495,9 @@ begin
         while (Assigned(connector)) do
         begin
           if (connector._msg_sending <> '') then
-            connector._plugin.ConnectorHandler(ceError);
+          begin
+            connector.FPluginConnectorHandler(ceError);
+          end;
           connector := g_connectorList.GetNextConnector;
         end;
       end; // if (MSG_TRYS <= MAX_MSG_TRYS)
@@ -769,6 +775,13 @@ begin
     FSendSystemData(FFormatMsg(CMD_CONTACT_LIST_ID + ' ' + IntToStr(_lstId)));
     g_bMultiSession := TRUE;
   end;
+end;
+
+procedure TConnector.FPluginConnectorHandler(ce: TConnectorEvent;
+  d1: pointer = nil; d2: pointer = nil);
+begin
+  if (Assigned(_plugin)) then
+    _plugin.ConnectorHandler(ce, d1, d2); 
 end;
 
 
