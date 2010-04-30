@@ -246,6 +246,8 @@ end;
 
 
 procedure TPluginSurrogateMI.FUnLoadLibrary;
+var
+  bRes: boolean;
 begin
   if (m_hLib <> 0) then
   begin
@@ -253,7 +255,9 @@ begin
     Load := nil;
     Unload := nil;
 
-    FreeLibrary(m_hLib);
+    bRes := FreeLibrary(m_hLib);
+    if (not bRes) then
+      raise EPluginSurrogateMI.Create((Format('Cannot unload plugin DLL! Error code: %d', [GetLastError])));
     m_hLib := 0;
   end;
 end;

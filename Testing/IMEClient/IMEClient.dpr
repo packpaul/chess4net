@@ -1,6 +1,15 @@
 program IMEClient;
 
+(*
+{$IFDEF FASTMM4}
+  FastMM4,
+{$ENDIF}
+*)
+
 uses
+{$IFDEF FASTMM4}
+  FastMM4,
+{$ENDIF}
   Forms,
   IMEClient.MainForm in 'IMEClient.MainForm.pas' {MainForm},
   IMEClient.ModelModule in 'IMEClient.ModelModule.pas' {ModelModule: TDataModule},

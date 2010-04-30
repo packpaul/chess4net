@@ -94,9 +94,9 @@ OutputDir=..\..\bin
 UnitOutputDir=.\dcu
 PackageDLLOutputDir=
 PackageDCPOutputDir=
-SearchPath=..\..\MI\MirandaINC
+SearchPath=..\..\lib\FastMM4;..\..\MI\MirandaINC
 Packages=vcl;rtl;indy;inet;xmlrtl;vclie;inetdbbde;inetdbxpress;vclx;dbrtl;dsnap;dsnapcon;vcldb;soaprtl;VclSmp;dbexpress;dbxcds;inetdb;bdertl;vcldbx;webdsnap;websnap;adortl;ibxpress;teeui;teedb;tee;dss;visualclx;visualdbclx;vclactnband;vclshlctrls;IntrawebDB_50_70;Intraweb_50_70;dclOfficeXP;SkinPack;VirtualTreesD7;GuiComponents;AdvEditPkgD7;VSTComboBox
-Conditionals=
+Conditionals=xFASTMM4
 DebugSourceDirs=
 UsePackages=0
 [Parameters]
@@ -139,8 +139,9 @@ Item0=WinTypes=Windows;WinProcs=Windows;DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE;
 Count=1
 Item0=.\dcu
 [HistoryLists\hlOutputDirectorry]
-Count=1
-Item0=..\..\bin
+Count=2
+Item0=..\..\..\Testing\IMEServices\IMEClient2
+Item1=..\..\bin
 [Exception Log]
 EurekaLog Version=6011
 Activate=0
