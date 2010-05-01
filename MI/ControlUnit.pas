@@ -11,6 +11,7 @@ uses
 type
   IMirandaPlugin = interface(IConnectorable)
     procedure Start;
+    procedure Release;
   end;
 
 const
@@ -102,8 +103,8 @@ begin
     if Assigned(Connector) then
     begin
       Connector.SetPlugin(nil);
+      pluginInstance.Release;
       pluginInstance := nil;
-      Connector.Free;
     end;
     if Assigned(gErrorDuringPluginStart) then
       gErrorDuringPluginStart;

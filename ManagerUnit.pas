@@ -969,8 +969,11 @@ begin
 
   m_ExtBaseList.Free;
 
-  ChessBoard.Release;
-  m_ChessBoard := nil;
+  if (Assigned(ChessBoard)) then
+  begin
+    ChessBoard.Release;
+    m_ChessBoard := nil;
+  end;
   m_Dialogs.Free;
 end;
 
