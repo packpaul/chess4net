@@ -15,6 +15,10 @@ type
 {$IFDEF SKYPE}
                   , mfSelectSkypeContact
 {$ENDIF}
+{$IFDEF MIRANDA}
+                  , mfTransmitting
+{$ENDIF}
+
                   );
 
   TModalFormHandler = procedure(modSender: TModalForm; modID: TModalFormID) of object;
@@ -235,8 +239,11 @@ begin
     end
   else
     begin
-      TForm(Owner).Enabled := TRUE;
-      TForm(Owner).SetFocus;
+      if (Assigned(Owner)) then
+      begin
+        Owner.Enabled := TRUE;
+        Owner.SetFocus;
+      end;
     end;
 end;
 

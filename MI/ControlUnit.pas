@@ -9,9 +9,9 @@ uses
   ConnectorUnit;
 
 type
-  IMirandaPlugin = interface(IConnectorable)
+  IMirandaPlugin = interface(IConnectorable) // Implementatation class must be non-referenced
     procedure Start;
-    procedure Release;
+    procedure Stop;
   end;
 
 const
@@ -100,10 +100,11 @@ begin
     pluginInstance.Start;
     Result := 0;
   except
-    if Assigned(Connector) then
-    begin
+    if (Assigned(Connector)) then
       Connector.SetPlugin(nil);
-      pluginInstance.Release;
+    if (Assigned(pluginInstance)) then
+    begin
+      pluginInstance.Stop;
       pluginInstance := nil;
     end;
     if Assigned(gErrorDuringPluginStart) then

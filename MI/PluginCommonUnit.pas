@@ -20,7 +20,7 @@ uses
 
 function CreatePluginInstance(Connector: TConnector): IMirandaPlugin;
 begin
-  Result := TManagerMI.Create(Connector);
+  Result := TManagerMIFactory.Create(Connector);
 end;
 
 

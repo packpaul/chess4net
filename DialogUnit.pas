@@ -81,8 +81,11 @@ var
   frmOwner: TForm;
 begin
   frmOwner := (Owner as TForm);
-  msgDlg.Left := frmOwner.Left + (frmOwner.Width - msgDlg.Width) div 2;
-  msgDlg.Top := frmOwner.Top + (frmOwner.Height - msgDlg.Height) div 2;
+  if (Assigned(frmOwner)) then
+  begin
+    msgDlg.Left := frmOwner.Left + (frmOwner.Width - msgDlg.Width) div 2;
+    msgDlg.Top := frmOwner.Top + (frmOwner.Height - msgDlg.Height) div 2;
+  end;
 end;
 
 

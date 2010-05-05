@@ -102,7 +102,7 @@ type
     m_strPlayerNickId: string;
 
     extra_exit: boolean;
-    connectionOccured: boolean;
+    m_bConnectionOccured: boolean;
 {$IFDEF GAME_LOG}
     // для лога игры
     gameLog: string;
@@ -159,6 +159,8 @@ type
     procedure RSetOpponentClientVersion(lwVersion: LongWord); virtual;
 
     procedure RSendData(const cmd: string = ''); virtual; abstract;
+
+    procedure RSetConnectionOccured; virtual;
 
     property Connector: TConnector read m_Connector write m_Connector;
     property ChessBoard: TPosBaseChessBoard read m_ChessBoard write m_ChessBoard;
@@ -516,7 +518,6 @@ begin
       PlayerNick := Connector.UserHandle;
       OpponentNick := Connector.ContactHandle;
       OpponentId := OpponentNick;
-//      OpponentNickId := OpponentNick + OpponentId;      
 {$ENDIF}
       if (Assigned(m_ConnectingForm)) then
         m_ConnectingForm.Shut;
@@ -624,14 +625,26 @@ begin
 end;
 
 
+procedure TManager.RSetConnectionOccured;
+begin
+  m_bConnectionOccured := TRUE;
+end;
+
+
 procedure TManager.RHandleConnectorDataCommand(sl: string);
 var
+  AMode: TMode;
   sr: string;
   ms: string;
 begin
   RSplitStr(sl, sl, sr);
 
-  case ChessBoard.Mode of
+  if (Assigned(ChessBoard)) then
+    AMode := ChessBoard.Mode
+  else
+    AMode := mView;
+
+  case AMode of
   mView:
     if (sl = CMD_VERSION) then
     begin
@@ -639,8 +652,10 @@ begin
       RSetOpponentClientVersion(StrToInt(sl));
       RSendData(CMD_WELCOME);
       if (m_lwOpponentClientVersion < CHESS4NET_VERSION) then
+      begin
         m_Dialogs.MessageDlg(TLocalizer.Instance.GetMessage(8), mtWarning,
           [mbOK], mfNone); // Your opponent is using an older version of Chess4Net. ...
+      end;
 
         // 2007.4 is the first client with a backward compatibility
         // For incompatible versions:
@@ -649,9 +664,10 @@ begin
     else if (sl = CMD_WELCOME) then
     begin
       RSendData(CMD_NICK_ID + ' ' + OpponentNickId);
-      ChessBoard.InitPosition;
+      if (Assigned(ChessBoard)) then
+        ChessBoard.InitPosition;
       SetClock;
-      connectionOccured := TRUE;
+      RSetConnectionOccured;
     end
     else if (sl = CMD_GOODBYE) then // For the future versions
     begin
@@ -736,8 +752,11 @@ begin
       begin
         StartStandartGameConnected.Enabled := TRUE;
         StartPPRandomGameConnected.Enabled := TRUE;
-        ChessBoard.PlayerColor := fcWhite;
-        ChessBoard.Caption := PlayerNick + ' - ' + OpponentNick;
+        if (Assigned(ChessBoard)) then
+        begin
+          ChessBoard.PlayerColor := fcWhite;
+          ChessBoard.Caption := PlayerNick + ' - ' + OpponentNick;
+        end;
         if (not SetCommonSettings(TRUE)) then
           RSendData(CMD_NO_SETTINGS);
       end
@@ -745,14 +764,18 @@ begin
       begin
         StartStandartGameConnected.Enabled := FALSE;
         StartPPRandomGameConnected.Enabled := FALSE;
-        ChessBoard.PlayerColor := fcBlack;
-        ChessBoard.Caption := OpponentNick + ' - ' + PlayerNick;
+        if (Assigned(ChessBoard)) then
+        begin
+          ChessBoard.PlayerColor := fcBlack;
+          ChessBoard.Caption := OpponentNick + ' - ' + PlayerNick;
+        end;
         SetCommonSettings(FALSE);
       end; // if CompareStr
     end
     else if (sl = CMD_POSITION) then
     begin
-      ChessBoard.SetPosition(sr);
+      if (Assigned(ChessBoard)) then
+        ChessBoard.SetPosition(sr);
     end
     else if (sl = CMD_NO_SETTINGS) then
     begin
@@ -964,7 +987,7 @@ procedure TManager.ROnDestroy;
 begin
   TLocalizer.Instance.DeleteSubscriber(self);
 
-  if (connectionOccured) then
+  if (m_bConnectionOccured) then
     WriteSettings;
 
   m_ExtBaseList.Free;
@@ -1085,23 +1108,26 @@ end;
 
 procedure TManager.SetClock;
 begin
+  if (not Assigned(ChessBoard)) then
+    exit;
+     
   with ChessBoard do
-    begin
-      Unlimited[PlayerColor]:= you_unlimited;
-      Time[PlayerColor]:= EncodeTime(you_time div 60, you_time mod 60, 0,0);
-      if PlayerColor = fcWhite then
-        begin
-          Unlimited[fcBlack]:= opponent_unlimited;
-          Time[fcBlack]:= EncodeTime(opponent_time div 60,
-                                   opponent_time mod 60, 0,0);
-        end
-      else
-        begin
-          Unlimited[fcWhite]:= opponent_unlimited;
-          Time[fcWhite]:= EncodeTime(opponent_time div 60,
-                                   opponent_time mod 60, 0,0);
-        end;
-    end;
+  begin
+    Unlimited[PlayerColor] := you_unlimited;
+    Time[PlayerColor] := EncodeTime(you_time div 60, you_time mod 60, 0,0);
+    if PlayerColor = fcWhite then
+      begin
+        Unlimited[fcBlack] := opponent_unlimited;
+        Time[fcBlack] := EncodeTime(opponent_time div 60,
+                                 opponent_time mod 60, 0,0);
+      end
+    else
+      begin
+        Unlimited[fcWhite] := opponent_unlimited;
+        Time[fcWhite] := EncodeTime(opponent_time div 60,
+                                 opponent_time mod 60, 0,0);
+      end;
+  end;
 end;
 
 procedure TManager.RSetChessBoardToView;
@@ -1655,51 +1681,51 @@ begin
   iniFile := TTntIniFile.Create(Chess4NetPath + INI_FILE_NAME);
   try
     commonSectionName := COMMON_SECTION_PREFIX + ' ' + OpponentId;
-    if not iniFile.SectionExists(commonSectionName) then
+    if (not iniFile.SectionExists(commonSectionName)) then
       exit;
 
-    if setToOpponent then
+    if (setToOpponent) then
+    begin
+      playerColor := TFigureColor(iniFile.ReadInteger(commonSectionName, PLAYER_COLOR_KEY_NAME, Ord(fcBlack)));
+      if (ChessBoard.PlayerColor = playerColor) then // каждый раз менять сохранённый цвет на противоположный
       begin
-        playerColor := TFigureColor(iniFile.ReadInteger(commonSectionName, PLAYER_COLOR_KEY_NAME, Ord(fcBlack)));
-        if (ChessBoard.PlayerColor = playerColor) then // каждый раз менять сохранённый цвет на противоположный
-          begin
-            ChangeColor;
-            RSendData(CMD_CHANGE_COLOR);
-          end;
-        clockStr := iniFile.ReadString(commonSectionName, CLOCK_KEY_NAME, INITIAL_CLOCK_TIME);
-        if clockStr <> ClockToStr then
-          begin
-            SetClock(clockStr);
-            RSendData(CMD_SET_CLOCK + ' ' + ClockToStr);
-          end;
+        ChangeColor;
+        RSendData(CMD_CHANGE_COLOR);
+      end;
+      clockStr := iniFile.ReadString(commonSectionName, CLOCK_KEY_NAME, INITIAL_CLOCK_TIME);
+      if (clockStr <> ClockToStr) then
+      begin
+        SetClock(clockStr);
+        RSendData(CMD_SET_CLOCK + ' ' + ClockToStr);
+      end;
 
-        flag := iniFile.ReadBool(commonSectionName, TRAINING_MODE_KEY_NAME, FALSE);
-        if ChessBoard.pTrainingMode <> flag then
+      flag := iniFile.ReadBool(commonSectionName, TRAINING_MODE_KEY_NAME, FALSE);
+      if (ChessBoard.pTrainingMode <> flag) then
+      begin
+        ChessBoard.pTrainingMode := flag;
+        RSendData(CMD_SET_TRAINING + IfThen(ChessBoard.pTrainingMode, ' 1', ' 0'));
+      end;
+
+      if (m_lwOpponentClientVersion >= 200706) then
+      begin
+        flag := iniFile.ReadBool(commonSectionName, CAN_PAUSE_GAME_KEY_NAME, FALSE);
+        if (can_pause_game <> flag) then
         begin
-          ChessBoard.pTrainingMode := flag;
-          RSendData(CMD_SET_TRAINING + IfThen(ChessBoard.pTrainingMode, ' 1', ' 0'));
+          can_pause_game := flag;
+          RSendData(CMD_CAN_PAUSE_GAME + IfThen(can_pause_game, ' 1', ' 0'));
         end;
+      end; { if opponentClientVersion >= 200706}
 
-        if (m_lwOpponentClientVersion >= 200706) then
+      if (m_lwOpponentClientVersion >= 200801) then
+      begin
+        flag := iniFile.ReadBool(commonSectionName, CAN_ADJOURN_GAME_KEY_NAME, FALSE);
+        if (can_adjourn_game <> flag) then
         begin
-          flag := iniFile.ReadBool(commonSectionName, CAN_PAUSE_GAME_KEY_NAME, FALSE);
-          if can_pause_game <> flag then
-            begin
-              can_pause_game := flag;
-              RSendData(CMD_CAN_PAUSE_GAME + IfThen(can_pause_game, ' 1', ' 0'));
-            end;
-        end; { if opponentClientVersion >= 200706}
-
-        if (m_lwOpponentClientVersion >= 200801) then
-        begin
-          flag := iniFile.ReadBool(commonSectionName, CAN_ADJOURN_GAME_KEY_NAME, FALSE);
-          if can_adjourn_game <> flag then
-            begin
-              can_adjourn_game := flag;
-              RSendData(CMD_CAN_ADJOURN_GAME + IfThen(can_adjourn_game, ' 1', ' 0'));
-            end;
-        end; { opponentClientVersion >= 200801 }
-      end; { if setToOpponent }
+          can_adjourn_game := flag;
+          RSendData(CMD_CAN_ADJOURN_GAME + IfThen(can_adjourn_game, ' 1', ' 0'));
+        end;
+      end; { opponentClientVersion >= 200801 }
+    end; { if setToOpponent }
 
     m_strExtBaseName := iniFile.ReadString(commonSectionName, EXTERNAL_BASE_NAME_KEY_NAME, '');
     if (m_strExtBaseName <> '') then

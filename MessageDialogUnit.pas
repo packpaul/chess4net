@@ -248,7 +248,7 @@ constructor TMessageForm.CreateNew(AOwner: TComponent);
 var
   NonClientMetrics: TNonClientMetrics;
 begin
-  if AOwner.InheritsFrom(TForm) then
+  if (Assigned(AOwner) and AOwner.InheritsFrom(TForm)) then
     FormStyle := TForm(AOwner).FormStyle;
   inherited CreateNew(AOwner);
   NonClientMetrics.cbSize := sizeof(NonClientMetrics);
