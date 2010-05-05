@@ -128,6 +128,9 @@ type
     procedure FBuildAdjournedStr;
     procedure FStartAdjournedGame;
 
+    function FGetPlayerColor: TFigureColor;
+    procedure FSetPlayerColor(Value: TFigureColor);
+
     function FGetOpponentNickId: string;
 {$IFDEF SKYPE}
     procedure FShowCredits;
@@ -136,6 +139,7 @@ type
     property AdjournedStr: string read m_strAdjourned write m_strAdjourned;
     property PlayerNickId: string read m_strPlayerNickId;
     property OpponentNickId: string read FGetOpponentNickId;
+    property _PlayerColor: TFigureColor read FGetPlayerColor write FSetPlayerColor;
 
   protected
     constructor RCreate;
@@ -403,8 +407,8 @@ begin
             wstrMsg1 := GetMessage(2); // Black is checkmated. You win.
             wstrMsg2 := GetMessage(3); // Black is checkmated. You loose.
           end;
-        if ((PlayerColor <> fcWhite) and (PositionColor = fcWhite)) or
-           ((PlayerColor <> fcBlack) and (PositionColor = fcBlack)) then
+        if ((_PlayerColor <> fcWhite) and (PositionColor = fcWhite)) or
+           ((_PlayerColor <> fcBlack) and (PositionColor = fcBlack)) then
         begin
           m_Dialogs.MessageDlg(wstrMsg1, mtCustom, [mbOK], mfNone);
           ChessBoard.WriteGameToBase(grWin);
@@ -432,17 +436,17 @@ begin
       begin
         if (move_done and (ClockColor = PositionColor)) then
         begin
-          if (ClockColor <> PlayerColor) then
+          if (ClockColor <> _PlayerColor) then
           begin
-            Time[PlayerColor] := IncSecond(Time[PlayerColor], you_inc);
+            Time[_PlayerColor] := IncSecond(Time[_PlayerColor], you_inc);
             LongTimeFormat:= FULL_TIME_FORMAT;
-            s := TimeToStr(Time[PlayerColor]);
-            if (not Unlimited[PlayerColor] or (m_lwOpponentClientVersion < 200706)) then
+            s := TimeToStr(Time[_PlayerColor]);
+            if (not Unlimited[_PlayerColor] or (m_lwOpponentClientVersion < 200706)) then
               RSendData(CMD_SWITCH_CLOCK + ' ' + s);
           end
           else
           begin
-            if (PlayerColor = fcWhite) then
+            if (_PlayerColor = fcWhite) then
               Time[fcBlack] := IncSecond(Time[fcBlack], opponent_inc)
             else
               Time[fcWhite] := IncSecond(Time[fcWhite], opponent_inc);
@@ -677,7 +681,7 @@ begin
       with ChessBoard do
       begin
         // Starting from 2007.6 only white can start the game
-        if ((m_lwOpponentClientVersion >= 200706) and (PlayerColor = fcWhite)) then
+        if ((m_lwOpponentClientVersion >= 200706) and (_PlayerColor = fcWhite)) then
           ChangeColor;
         SetClock;
         ResetMoveList;
@@ -754,7 +758,7 @@ begin
         StartPPRandomGameConnected.Enabled := TRUE;
         if (Assigned(ChessBoard)) then
         begin
-          ChessBoard.PlayerColor := fcWhite;
+          _PlayerColor := fcWhite;
           ChessBoard.Caption := PlayerNick + ' - ' + OpponentNick;
         end;
         if (not SetCommonSettings(TRUE)) then
@@ -766,7 +770,7 @@ begin
         StartPPRandomGameConnected.Enabled := FALSE;
         if (Assigned(ChessBoard)) then
         begin
-          ChessBoard.PlayerColor := fcBlack;
+          _PlayerColor := fcBlack;
           ChessBoard.Caption := OpponentNick + ' - ' + PlayerNick;
         end;
         SetCommonSettings(FALSE);
@@ -797,7 +801,7 @@ begin
     begin
       FExitGameMode;
 {$IFDEF GAME_LOG}
-      if ChessBoard.PlayerColor = fcWhite then
+      if (_PlayerColor = fcWhite) then
         WriteToGameLog(#13#10 + 'Black resigns' + #13#10 + '1 - 0')
       else
         WriteToGameLog(#13#10 + 'White resigns' + #13#10 + '0 - 1');
@@ -842,7 +846,7 @@ begin
         RSplitStr(sr, sl, sr);
         ms := RightStr(sl, length(sl) - LastDelimiter(':.', sl));
         sl := LeftStr(sl, length(sl) - length(ms) - 1);
-        if (PlayerColor = fcWhite) then
+        if (_PlayerColor = fcWhite) then
           Time[fcBlack] := StrToTime(sl) + EncodeTime(0, 0, 0, StrToInt(ms))
         else
           Time[fcWhite] := StrToTime(sl) + EncodeTime(0, 0, 0, StrToInt(ms));
@@ -850,12 +854,12 @@ begin
     else if (sl = CMD_FLAG) then
       with ChessBoard do
       begin
-        if (Time[PlayerColor] = 0.0) then
+        if (Time[_PlayerColor] = 0.0) then
           begin
             RSendData(CMD_FLAG_YES);
             FExitGameMode;
 {$IFDEF GAME_LOG}
-            if (ChessBoard.PlayerColor = fcWhite) then
+            if (_PlayerColor = fcWhite) then
               WriteToGameLog(#13#10 + 'White forfeits on time')
             else
               WriteToGameLog(#13#10 + 'Black forfeits on time');
@@ -872,7 +876,7 @@ begin
     begin
       FExitGameMode;
 {$IFDEF GAME_LOG}
-      if (ChessBoard.PlayerColor = fcWhite) then
+      if (_PlayerColor = fcWhite) then
         WriteToGameLog(#13#10 + 'Black forfeits on time')
       else
         WriteToGameLog(#13#10 + 'White forfeits on time');
@@ -885,7 +889,7 @@ begin
     else if (sl = CMD_FLAG_NO) then
       with ChessBoard do
       begin
-        case PlayerColor of
+        case _PlayerColor of
           fcWhite:
             if (Time[fcBlack] = 0.0) then
               RSendData(CMD_FLAG);
@@ -963,21 +967,21 @@ begin
     else
       with ChessBoard do
       begin
-        if (PlayerColor <> PositionColor) and DoMove(sl) then
-          begin
+        if ((_PlayerColor <> PositionColor) and DoMove(sl)) then
+        begin
 {$IFDEF GAME_LOG}
-            if ((PositionColor = fcBlack) or (not move_done)) then
-            begin
-              WriteToGameLog(' ' + IntToStr(NMoveDone) + '.');
-              if (PositionColor = fcWhite) then
-                WriteToGameLog(' ...');
-            end;
-            WriteToGameLog(' ' + sl);
-{$ENDIF}
-            move_done := TRUE;
-            TakebackGame.Enabled := TRUE;
-            FBuildAdjournedStr; // AdjournedStr помечается только при входящем ходе противника
+          if ((PositionColor = fcBlack) or (not move_done)) then
+          begin
+            WriteToGameLog(' ' + IntToStr(NMoveDone) + '.');
+            if (PositionColor = fcWhite) then
+              WriteToGameLog(' ...');
           end;
+          WriteToGameLog(' ' + sl);
+{$ENDIF}
+          move_done := TRUE;
+          TakebackGame.Enabled := TRUE;
+          FBuildAdjournedStr; // AdjournedStr помечается только при входящем ходе противника
+        end; // if
       end; // with ChessBoard
   end; // case ChessBoard.Mode
 end;
@@ -1113,20 +1117,20 @@ begin
      
   with ChessBoard do
   begin
-    Unlimited[PlayerColor] := you_unlimited;
-    Time[PlayerColor] := EncodeTime(you_time div 60, you_time mod 60, 0,0);
-    if PlayerColor = fcWhite then
-      begin
-        Unlimited[fcBlack] := opponent_unlimited;
-        Time[fcBlack] := EncodeTime(opponent_time div 60,
-                                 opponent_time mod 60, 0,0);
-      end
+    Unlimited[_PlayerColor] := you_unlimited;
+    Time[_PlayerColor] := EncodeTime(you_time div 60, you_time mod 60, 0,0);
+    if (_PlayerColor = fcWhite) then
+    begin
+      Unlimited[fcBlack] := opponent_unlimited;
+      Time[fcBlack] := EncodeTime(opponent_time div 60,
+                               opponent_time mod 60, 0,0);
+    end
     else
-      begin
-        Unlimited[fcWhite] := opponent_unlimited;
-        Time[fcWhite] := EncodeTime(opponent_time div 60,
-                                 opponent_time mod 60, 0,0);
-      end;
+    begin
+      Unlimited[fcWhite] := opponent_unlimited;
+      Time[fcWhite] := EncodeTime(opponent_time div 60,
+                               opponent_time mod 60, 0,0);
+    end;
   end;
 end;
 
@@ -1309,7 +1313,7 @@ begin
           RSendData(CMD_RESIGN);
           ChessBoard.WriteGameToBase(grLost);
 {$IFDEF GAME_LOG}
-          if ChessBoard.PlayerColor = fcWhite then
+          if (_PlayerColor = fcWhite) then
             WriteToGameLog(#13#10 + 'White resigns' + #13#10 + '0 - 1')
           else
             WriteToGameLog(#13#10 + 'Black resigns' + #13#10 + '1 - 0');
@@ -1511,7 +1515,7 @@ begin
   LongTimeFormat:= HOUR_TIME_FORMAT;
   WriteToGameLog('[' + DateTimeToStr(Now) + ']' + #13#10);
 
-  if ChessBoard.PlayerColor = fcWhite then
+  if (_PlayerColor = fcWhite) then
     WriteToGameLog(PlayerNick + ' - ' + OpponentNick)
   else
     WriteToGameLog(OpponentNick + ' - ' + PlayerNick);
@@ -1519,58 +1523,59 @@ begin
   if not (you_unlimited and opponent_unlimited) then
   begin
     WriteToGameLog(' (');
-    case ChessBoard.PlayerColor of
+    case _PlayerColor of
       fcWhite:
+      begin
+        if (not you_unlimited) then
         begin
-          if not you_unlimited then
-            begin
-              WriteToGameLog(IntToStr(you_time));
-              if you_inc > 0 then
-                WriteToGameLog('.' + IntToStr(you_inc));
-            end
-          else
-            WriteToGameLog('inf');
+          WriteToGameLog(IntToStr(you_time));
+          if (you_inc > 0) then
+            WriteToGameLog('.' + IntToStr(you_inc));
+        end
+        else
+          WriteToGameLog('inf');
 
-          WriteToGameLog(':');
+        WriteToGameLog(':');
 
-          if not opponent_unlimited then
-            begin
-              WriteToGameLog(IntToStr(opponent_time));
-              if opponent_inc > 0 then
-                WriteToGameLog('.' + IntToStr(opponent_inc));
-            end
-          else
-            WriteToGameLog('inf');
-        end;
+        if (not opponent_unlimited) then
+        begin
+          WriteToGameLog(IntToStr(opponent_time));
+          if (opponent_inc > 0) then
+            WriteToGameLog('.' + IntToStr(opponent_inc));
+        end
+        else
+          WriteToGameLog('inf');
+      end;
+
       fcBlack:
+      begin
+        if (not opponent_unlimited) then
         begin
-          if not opponent_unlimited then
-            begin
-              WriteToGameLog(IntToStr(opponent_time));
-              if opponent_inc > 0 then
-                WriteToGameLog('.' + IntToStr(opponent_inc));
-            end
-          else
-            WriteToGameLog('inf');
+          WriteToGameLog(IntToStr(opponent_time));
+          if (opponent_inc > 0) then
+            WriteToGameLog('.' + IntToStr(opponent_inc));
+        end
+        else
+          WriteToGameLog('inf');
 
-          WriteToGameLog(':');
+        WriteToGameLog(':');
 
-          if not you_unlimited then
-            begin
-              WriteToGameLog(IntToStr(you_time));
-              if you_inc > 0 then
-                WriteToGameLog('.' + IntToStr(you_inc));
-            end
-          else
-            WriteToGameLog('inf');
-        end;
+        if (not you_unlimited) then
+        begin
+          WriteToGameLog(IntToStr(you_time));
+          if (you_inc > 0) then
+            WriteToGameLog('.' + IntToStr(you_inc));
+        end
+        else
+          WriteToGameLog('inf');
+      end;
     end;
     WriteToGameLog(')');
   end;
   WriteToGameLog(#13#10);
 
   s := ChessBoard.GetPosition;
-  if s <> INITIAL_CHESS_POSITION then
+  if (s <> INITIAL_CHESS_POSITION) then
     WriteToGameLog(s + #13#10);
 end;
 
@@ -1667,7 +1672,7 @@ function TManager.SetCommonSettings(setToOpponent: boolean): boolean;
 var
   iniFile: TTntIniFile;
   commonSectionName: string;
-  playerColor: TFigureColor;
+  APlayerColor: TFigureColor;
   clockStr: string;
   flag: boolean;
 begin
@@ -1686,8 +1691,8 @@ begin
 
     if (setToOpponent) then
     begin
-      playerColor := TFigureColor(iniFile.ReadInteger(commonSectionName, PLAYER_COLOR_KEY_NAME, Ord(fcBlack)));
-      if (ChessBoard.PlayerColor = playerColor) then // каждый раз менять сохранённый цвет на противоположный
+      APlayerColor := TFigureColor(iniFile.ReadInteger(commonSectionName, PLAYER_COLOR_KEY_NAME, Ord(fcBlack)));
+      if (_PlayerColor = APlayerColor) then // Every time change the saved color to opposite one
       begin
         ChangeColor;
         RSendData(CMD_CHANGE_COLOR);
@@ -1784,7 +1789,7 @@ begin
 {$ENDIF}
     // Запись общих настроек
     commonSectionName := COMMON_SECTION_PREFIX + ' ' + OpponentId;
-    iniFile.WriteInteger(commonSectionName, PLAYER_COLOR_KEY_NAME, Ord(ChessBoard.PlayerColor));
+    iniFile.WriteInteger(commonSectionName, PLAYER_COLOR_KEY_NAME, Ord(_PlayerColor));
     iniFile.WriteString(commonSectionName, CLOCK_KEY_NAME, ClockToStr);
     iniFile.WriteBool(commonSectionName, TRAINING_MODE_KEY_NAME, ChessBoard.pTrainingMode);
     iniFile.WriteString(commonSectionName, EXTERNAL_BASE_NAME_KEY_NAME, m_strExtBaseName);
@@ -1821,24 +1826,24 @@ end;
 procedure TManager.ChangeColor;
 begin
    with ChessBoard do
+   begin
+     if (_PlayerColor = fcWhite) then
      begin
-       if PlayerColor = fcWhite then
-         begin
-           StartStandartGameConnected.Enabled := FALSE;
-           StartPPRandomGameConnected.Enabled := FALSE;
-           PlayerColor := fcBlack;
-           ChessBoard.Caption := OpponentNick + ' - ' + PlayerNick;
-           SetClock;
-         end
-       else
-         begin
-           StartStandartGameConnected.Enabled := TRUE;
-           StartPPRandomGameConnected.Enabled := TRUE;
-           PlayerColor := fcWhite;
-           ChessBoard.Caption := PlayerNick + ' - ' + OpponentNick;
-           SetClock;
-         end;
+       StartStandartGameConnected.Enabled := FALSE;
+       StartPPRandomGameConnected.Enabled := FALSE;
+       _PlayerColor := fcBlack;
+       ChessBoard.Caption := OpponentNick + ' - ' + PlayerNick;
+       SetClock;
      end
+     else // fcBlack
+     begin
+       StartStandartGameConnected.Enabled := TRUE;
+       StartPPRandomGameConnected.Enabled := TRUE;
+       _PlayerColor := fcWhite;
+       ChessBoard.Caption := PlayerNick + ' - ' + OpponentNick;
+       SetClock;
+     end;
+   end
 end;
 
 
@@ -1914,7 +1919,7 @@ begin
       // <position>
       str := ChessBoard.GetPosition + '&';
       // <this player's color>
-      str := str + IfThen((ChessBoard.PlayerColor = fcWhite), 'w', 'b') + '&';
+      str := str + IfThen((_PlayerColor = fcWhite), 'w', 'b') + '&';
       // <time control>
       str := str + ClockToStr + '&';
       // <current time>
@@ -1949,26 +1954,26 @@ begin
   strCurrentTime := RightStr(str, length(str) - l);
 
   SetClock(strTimeControl);
-  if ((ChessBoard.PlayerColor = fcWhite) and (strPlayerColor <> 'w')) or
-     ((ChessBoard.PlayerColor = fcBlack) and (strPlayerColor <> 'b')) then
+  if (((_PlayerColor = fcWhite) and (strPlayerColor <> 'w')) or
+      ((_PlayerColor = fcBlack) and (strPlayerColor <> 'b'))) then
     ChangeColor;
 
   with ChessBoard do
-    begin
-      SetPosition(strPosition);
+  begin
+    SetPosition(strPosition);
 
-      RSplitStr(strCurrentTime, str, strCurrentTime);
-      LongTimeFormat := HOUR_TIME_FORMAT;
-      Time[fcWhite] := StrToTime(str);
-      Time[fcBlack] := StrToTime(strCurrentTime);
+    RSplitStr(strCurrentTime, str, strCurrentTime);
+    LongTimeFormat := HOUR_TIME_FORMAT;
+    Time[fcWhite] := StrToTime(str);
+    Time[fcBlack] := StrToTime(strCurrentTime);
 
-      ResetMoveList;
+    ResetMoveList;
 
-      move_done:= FALSE;
-      TakebackGame.Enabled := FALSE;
-      Mode := mGame;
-      SwitchClock(PositionColor);
-    end;  
+    move_done:= FALSE;
+    TakebackGame.Enabled := FALSE;
+    Mode := mGame;
+    SwitchClock(PositionColor);
+  end;
 end;
 
 
@@ -2003,6 +2008,22 @@ end;
 function TManager.FGetOpponentNickId: string;
 begin
   Result := OpponentNick + OpponentId;
+end;
+
+
+function TManager.FGetPlayerColor: TFigureColor;
+begin
+  if (Assigned(ChessBoard)) then
+    Result := _PlayerColor
+  else
+    Result := fcWhite;
+end;
+
+
+procedure TManager.FSetPlayerColor(Value: TFigureColor);
+begin
+  if (Assigned(ChessBoard)) then
+    _PlayerColor := Value;
 end;
 
 

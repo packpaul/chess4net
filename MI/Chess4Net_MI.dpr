@@ -38,7 +38,8 @@ uses
   PosBaseUnit in '..\PosBaseUnit.pas',
   PromotionUnit in '..\PromotionUnit.pas' {PromotionForm},
   ChessRulesEngine in '..\ChessRulesEngine.pas',
-  ManagerUnit.MI in 'ManagerUnit.MI.pas';
+  ManagerUnit.MI in 'ManagerUnit.MI.pas',
+  TransmitGameSelectionUnit in 'TransmitGameSelectionUnit.pas' {TransmitGameSelectionForm};
 
 {$R ..\Chess4Net.res}
 

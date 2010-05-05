@@ -16,7 +16,7 @@ type
                   , mfSelectSkypeContact
 {$ENDIF}
 {$IFDEF MIRANDA}
-                  , mfTransmitting
+                  , mfTransmitting, mfTransmitGame
 {$ENDIF}
 
                   );
