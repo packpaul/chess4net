@@ -10,6 +10,7 @@ uses
 
 type
   IMirandaPlugin = interface(IConnectorable) // Implementatation class must be non-referenced
+    ['{CE794050-DBA2-4D2E-867E-59A873DF7304}']
     procedure Start;
     procedure Stop;
   end;
@@ -93,6 +94,7 @@ var
   pluginInstance: IMirandaPlugin;
 begin
   Connector := nil;
+  pluginInstance := nil;
   try
     Connector := TConnector.Create(wParam);
     pluginInstance := gCreatePluginInstance(Connector);
@@ -100,6 +102,8 @@ begin
     pluginInstance.Start;
     Result := 0;
   except
+    if (Assigned(gErrorDuringPluginStart)) then
+      gErrorDuringPluginStart;
     if (Assigned(Connector)) then
       Connector.SetPlugin(nil);
     if (Assigned(pluginInstance)) then
@@ -107,8 +111,6 @@ begin
       pluginInstance.Stop;
       pluginInstance := nil;
     end;
-    if Assigned(gErrorDuringPluginStart) then
-      gErrorDuringPluginStart;
     Result := -1;
   end;
 end;

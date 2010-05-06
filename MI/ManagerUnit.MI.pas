@@ -3,6 +3,8 @@ unit ManagerUnit.MI;
 interface
 
 uses
+  SysUtils,
+  //
   ControlUnit, ManagerUnit, ConnectorUnit, ModalForm;
 
 type
@@ -18,34 +20,48 @@ type
     m_Connector: TConnector;
     m_Manager: IMirandaPlugin;
     m_Dialogs: TDialogs;
+    m_bOwnExceptionHandler: boolean;
+    FErrorDuringPluginStart: TProcedure;
     procedure FDialogsHandler(modSender: TModalForm; msgDlgID: TModalFormID);
     function FGetDialogs: TDialogs;
     procedure FStartGaming;
     procedure FStartTransmitting; overload;
     procedure FStartTransmitting(ManagerForTransmition: TManager); overload;
     function FCanStartTransmitting: boolean;
+    procedure FHandleStartException;
     property Dialogs: TDialogs read FGetDialogs;
   protected
     procedure Start;
     procedure Stop;
     procedure ConnectorHandler(ce: TConnectorEvent; d1: pointer = nil; d2: pointer = nil);
   public
-    constructor Create(Connector: TConnector); reintroduce;
+    constructor Create(Connector: TConnector; AErrorDuringPluginStart: TProcedure); reintroduce;
     destructor Destroy; override;
   end;
+
+procedure StopAllPlugins;
 
 implementation
 
 uses
-  Types, StrUtils, SysUtils, Classes, Dialogs, Controls,
+  Types, StrUtils, Classes, Dialogs, Controls,
   //
   LocalizerUnit, TransmitGameSelectionUnit;
 
 type
+  TManagerMI = class(TManager, IMirandaPlugin) // abstract
+  protected
+    procedure Start;
+    procedure Stop;
+  public
+    constructor Create(Connector: TConnector); reintroduce;
+    destructor Destroy; override;
+  end;
+
   TTransmittingManagerMI = class;
 
   EGamingManagerMI = class(Exception);
-  TGamingManagerMI = class(TManager, IMirandaPlugin)
+  TGamingManagerMI = class(TManagerMI, IMirandaPlugin)
   private
     m_lstTransmittingManagers: TList;
 
@@ -54,7 +70,6 @@ type
 
   protected
     procedure Start;
-    procedure Stop;
     procedure ROnCreate; override;
     procedure ROnDestroy; override;
     procedure ConnectorHandler(e: TConnectorEvent;
@@ -62,32 +77,55 @@ type
     procedure RSetOpponentClientVersion(lwVersion: LongWord); override;
     procedure RSendData(const cmd: string); override;
     procedure RSetConnectionOccured; override;
-  public
-    constructor Create(Connector: TConnector); reintroduce;
   end;
 
   ETransmittingManagerMI = class(Exception);
-  TTransmittingManagerMI = class(TManager, IMirandaPlugin)
+  TTransmittingManagerMI = class(TManagerMI, IMirandaPlugin)
   protected
     procedure Start;
-    procedure Stop;
     procedure ROnDestroy; override;
   end;
 
-
 var
   g_lstGamingManagers: TList = nil;
+  g_Plugins: TInterfaceList = nil;
+
+procedure AddToPlugins(Plugin: IMirandaPlugin);
+begin
+  if (not Assigned(g_Plugins)) then
+    g_Plugins := TInterfaceList.Create;
+  g_Plugins.Add(Plugin);
+end;
+
+procedure RemoveFromPlugins(Plugin: IMirandaPlugin);
+begin
+  if (not Assigned(g_Plugins)) then
+    exit;
+  g_Plugins.Remove(Plugin);
+  if (g_Plugins.Count = 0) then
+    FreeAndNil(g_Plugins);
+end;
+
+
+procedure StopAllPlugins;
+var
+  i: integer;
+  Plugin: IMirandaPlugin;
+begin
+  if (not Assigned(g_Plugins)) then
+    exit;
+  i := g_Plugins.Count - 1;
+  while ((i >= 0) and Assigned(g_Plugins)) do
+  begin
+    Plugin := g_Plugins[i] as IMirandaPlugin;
+    Plugin.Stop;
+    dec(i);
+  end;
+  FreeAndNil(g_Plugins);
+end;
 
 ////////////////////////////////////////////////////////////////////////////////
 // TGamingManagerMI
-
-constructor TGamingManagerMI.Create(Connector: TConnector);
-begin
-  self.Connector := Connector;
-
-  RCreate;
-end;
-
 
 procedure TGamingManagerMI.FAddTransmitter(ATransmitter: TTransmittingManagerMI);
 begin
@@ -129,8 +167,11 @@ begin
     exit;
   end;
 
-  if (not Connector.Open(FALSE)) then
-    raise EGamingManagerMI.Create('ERROR: Cannot open connector!');
+  if (not Connector.Opened) then
+  begin
+    if (not Connector.Open(FALSE)) then
+      raise EGamingManagerMI.Create('ERROR: Cannot open connector!');
+  end;
 
   RCreateChessBoardAndDialogs;
   RSetChessBoardToView;
@@ -138,12 +179,6 @@ begin
   RSetPrivateSettings;
 
   RShowConnectingForm;
-end;
-
-
-procedure TGamingManagerMI.Stop;
-begin
-  Release;
 end;
 
 
@@ -271,15 +306,18 @@ end;
 ////////////////////////////////////////////////////////////////////////////////
 // TManagerMIFactory
 
-constructor TManagerMIFactory.Create(Connector: TConnector);
+constructor TManagerMIFactory.Create(Connector: TConnector; AErrorDuringPluginStart: TProcedure);
 begin
   inherited Create;
   m_Connector := Connector;
+  FErrorDuringPluginStart := AErrorDuringPluginStart;
+  AddToPlugins(self);
 end;
 
 
 destructor TManagerMIFactory.Destroy;
 begin
+  RemoveFromPlugins(self);
   m_Dialogs.Free;
   inherited;
 end;
@@ -297,6 +335,7 @@ begin
   begin
     Dialogs.MessageDlg('You are currently playing some games. Do you want to start broadcasting?',
       mtCustom, [mbYes, mbNo], mfTransmitting);
+    m_bOwnExceptionHandler := TRUE;
     exit;
   end;
 
@@ -332,10 +371,25 @@ begin
   m_Manager := TGamingManagerMI.Create(m_Connector);
   m_Connector.SetPlugin(m_Manager);
   m_Connector := nil;
-  m_Manager.Start;
-  m_Manager := nil; // non-ref counted
+
+  try
+    m_Manager.Start;
+    m_Manager := nil; // non-ref counted
+  except
+    if (m_bOwnExceptionHandler) then
+      FHandleStartException
+    else
+      raise;
+  end;
 
   Stop;
+end;
+
+
+procedure TManagerMIFactory.FHandleStartException;
+begin
+  if (Assigned(FErrorDuringPluginStart)) then
+    FErrorDuringPluginStart;
 end;
 
 
@@ -391,9 +445,16 @@ end;
 
 procedure TManagerMIFactory.Stop;
 begin
-  m_Connector.Free;
+  if (Assigned(m_Connector)) then
+  begin
+    m_Connector.SetPlugin(nil); 
+    m_Connector.Free;
+  end;
   if (Assigned(m_Manager)) then
+  begin
     m_Manager.Stop;
+    m_Manager := nil;
+  end;
   Free;
 end;
 
@@ -473,14 +534,12 @@ end;
 
 procedure TTransmittingManagerMI.Start;
 begin
-  if (not Connector.Open(FALSE)) then
-    raise ETransmittingManagerMI.Create('ERROR: Cannot open connector!');
-end;
-
-
-procedure TTransmittingManagerMI.Stop;
-begin
-  Release;
+  if (not Connector.Opened) then
+  begin
+    if (not Connector.Open(FALSE)) then
+      raise ETransmittingManagerMI.Create('ERROR: Cannot open connector!');
+  end;
+  // TODO:
 end;
 
 
@@ -513,6 +572,37 @@ begin // TTransmittingManagerMI.ROnDestroy
 
   inherited ROnDestroy;
 end;
+
+
+////////////////////////////////////////////////////////////////////////////////
+// TManagerMI
+
+constructor TManagerMI.Create(Connector: TConnector);
+begin
+  self.Connector := Connector;
+  RCreate;
+  AddToPlugins(self);
+end;
+
+
+destructor TManagerMI.Destroy;
+begin
+  RemoveFromPlugins(self);
+  inherited;
+end;
+
+
+procedure TManagerMI.Start;
+begin
+  Assert(FALSE);
+end;
+
+
+procedure TManagerMI.Stop;
+begin
+  Release;
+end;
+
 
 initialization
 

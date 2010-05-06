@@ -462,7 +462,7 @@ var
 begin
   gameID := Random($FFFF) + 1;
 
-  if PlayerColor = fcWhite then
+  if (PlayerColor = fcWhite) then
     ply := 0
   else
     ply := 1;

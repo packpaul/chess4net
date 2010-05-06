@@ -86,7 +86,10 @@ begin
   dec(g_iServiceFuncCount);
 
   if (g_iServiceFuncCount = 1) then
-    g_Model.CanUnloadPlugin
+  begin
+    if (Assigned(g_Model)) then
+      g_Model.CanUnloadPlugin;
+  end
   else if (g_iServiceFuncCount = 0) then
   begin
     FilterMsg := nil;

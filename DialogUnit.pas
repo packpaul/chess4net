@@ -34,7 +34,7 @@ type
     constructor Create(dlgOwner: TDialogs; const wstrMsg: WideString;
            DlgType: TMsgDlgType; Buttons: TMsgDlgButtons; modID: TModalFormID;
             msgDlgHandler: TModalFormHandler); overload;
-    destructor Destroy; reintroduce;
+    destructor Destroy; override;
     property Caption: TCaption read GetCaption write SetCaption;
   end;
 
@@ -52,7 +52,7 @@ begin
   inherited CreateNew(frmOwner);
 
   self.modID := modID;
-  Handler := msgDlgHandler;
+  RHandler := msgDlgHandler;
 
   msgDlg := MessageDialogUnit.CreateMessageDialog(frmOwner, wstrMsg, DlgType, Buttons);
   // msgDlg.FormStyle := frmOwner.FormStyle;
@@ -95,8 +95,8 @@ begin
     dlgOwner.UnsetShowing(modID, self);
   if fsModal in msgDlg.FormState then
     exit;
-  if Assigned(Handler) then
-    Handler(TModalForm(msgDlg), modID);
+  if (Assigned(RHandler)) then
+    RHandler(TModalForm(msgDlg), modID);
   Action := caFree;
 end;
 

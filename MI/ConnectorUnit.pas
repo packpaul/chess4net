@@ -22,7 +22,7 @@ type
 
     _connected, _opened: boolean;
     _plugin: IConnectorable;
-    _hContact, _hFilterMsg, _hNotifySender: THandle;
+    _hContact, _hFilterMsg: THandle;
     _lstId, _contactLstId: integer;
     // отсылаемое сообщение
     _msg_sending, _unformated_msg_sending: string;
@@ -106,6 +106,8 @@ var
   g_connectorList: TConnectorList = nil;
   g_msgBufferSize: integer;
   g_bMultiSession: boolean;
+
+  g_hNotifySender: THandle;
 
   // cntrMsgIn и cntrMsgOut были введены для преодоления бага с зависающими сообщениями
 
@@ -535,17 +537,16 @@ begin
 
   connector := g_connectorList.GetFirstConnector(_hContact);
   if Assigned(connector) then
-  begin
-    _hFilterMsg := connector._hFilterMsg;
-    _hNotifySender := connector._hNotifySender;
-  end
+    _hFilterMsg := connector._hFilterMsg
   else
   begin
     _hFilterMsg := CreateProtoServiceFunction(PChar(PLUGIN_NAME), PSR_MESSAGE, FilterMsg);
     if CallService(MS_PROTO_ISPROTOONCONTACT, _hContact, LPARAM(PChar(PLUGIN_NAME))) = 0 then
       CallService(MS_PROTO_ADDTOCONTACT, _hContact, LPARAM(PChar(PLUGIN_NAME)));
-    _hNotifySender := HookEvent(ME_PROTO_ACK, NotifySender);
   end;
+
+  if (g_connectorList.Count = 0) then
+    g_hNotifySender := HookEvent(ME_PROTO_ACK, NotifySender);
 
   g_connectorList.AddConnector(self);
 
@@ -569,15 +570,17 @@ begin
 
   if (not Assigned(g_connectorList.GetFirstConnector(_hContact))) then
   begin
-    if _hNotifySender <> 0 then
-      UnhookEvent(_hNotifySender);
     if CallService(MS_PROTO_ISPROTOONCONTACT, _hContact, LPARAM(PChar(PLUGIN_NAME))) <> 0 then
       CallService(MS_PROTO_REMOVEFROMCONTACT, _hContact, LPARAM(PChar(PLUGIN_NAME)));
     PluginLink.DestroyServiceFunction(_hFilterMsg);
   end;
 
   if (g_connectorList.Count = 0) then
+  begin
+    if (g_hNotifySender <> 0) then
+      UnhookEvent(g_hNotifySender);
     FreeAndNil(g_connectorList);
+  end;
 
   _sendSystemTimer.Free;
   _sendTimer.Free;

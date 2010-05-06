@@ -29,7 +29,7 @@ type
     frmList: TList;
     function GetShowing: boolean;
   protected
-    Handler: TModalFormHandler;
+    RHandler: TModalFormHandler;
   public
     Owner: TForm;
     procedure MessageDlg(const wstrMsg: WideString; DlgType: TMsgDlgType;
@@ -53,7 +53,7 @@ type
     GenFormShow: TNotifyEvent;
     GenFormClose: TCloseEvent;
   protected
-    Handler: TModalFormhandler;
+    RHandler: TModalFormHandler;
     dlgOwner: TDialogs;
     function GetHandle: hWnd; virtual;
     function GetEnabled_: boolean; virtual;
@@ -83,14 +83,28 @@ uses
 procedure TModalForm.FormShow(Sender: TObject);
 var
   frmOwner: TForm;
+  iWidth, iHeight: integer;
+  iLeft, iTop: integer;
 begin
   if (Assigned(Owner)) then
   begin
     frmOwner := (Owner as TForm);
-    Left:= frmOwner.Left + (frmOwner.Width - Width) div 2;
-    Top:= frmOwner.Top + (frmOwner.Height - Height) div 2;
+    iLeft := frmOwner.Left;
+    iTop := frmOwner.Top;
+    iWidth := frmOwner.Width;
+    iHeight := frmOwner.Height;
+  end
+  else
+  begin
+    iLeft := 0;
+    iTop := 0;
+    iWidth := Screen.Width;
+    iHeight := Screen.Height;
   end;
-  if Assigned(GenFormShow) then
+  Left := iLeft + (iWidth - self.Width) div 2;
+  Top := iTop + (iHeight - self.Height) div 2;
+
+  if (Assigned(GenFormShow)) then
     GenFormShow(Sender);
 end;
 
@@ -103,8 +117,8 @@ begin
     dlgOwner.UnsetShowing(GetModalID, self);
   if fsModal in FormState then
     exit;
-  if Assigned(Handler) then
-    Handler(self, GetModalID);
+  if (Assigned(RHandler)) then
+    RHandler(self, GetModalID);
   Action := caFree;  
 end;
 
@@ -124,7 +138,7 @@ begin
   if (Assigned(Owner)) then
     FormStyle := Owner.FormStyle;
   inherited Create(Owner);
-  Handler := modhandler;
+  RHandler := modHandler;
 
   GenFormShow := OnShow;
   GenFormClose := OnClose;
@@ -221,30 +235,31 @@ var
 begin
   dec(IDCount[msgDlgID]);
 
-  if Assigned(msgDlg) then
+  if (Assigned(msgDlg)) then
+  begin
+    for i := 0 to frmList.Count - 1 do
     begin
-      for i := 0 to frmList.Count - 1 do
-        begin
-          if TModalForm(frmList[i]).Handle = msgDlg.Handle then
-            begin
-              frmList.Delete(i);
-              break;
-            end;
-        end; { for }
-    end;
-  if frmList.Count > 0 then
-    begin
-      TModalForm(frmList.Last).Enabled := TRUE;
-      TModalForm(frmList.Last).SetFocus;
-    end
-  else
-    begin
-      if (Assigned(Owner)) then
+      if (TModalForm(frmList[i]).Handle = msgDlg.Handle) then
       begin
-        Owner.Enabled := TRUE;
-        Owner.SetFocus;
+        frmList.Delete(i);
+        break;
       end;
+    end; // for
+  end;
+
+  if (frmList.Count > 0) then
+  begin
+    TModalForm(frmList.Last).Enabled := TRUE;
+    TModalForm(frmList.Last).SetFocus;
+  end
+  else
+  begin
+    if (Assigned(Owner)) then
+    begin
+      Owner.Enabled := TRUE;
+      Owner.SetFocus;
     end;
+  end;
 end;
 
 
@@ -270,7 +285,7 @@ var
 begin
   if (msgDlgID <> mfNone) and (IDCount[msgDlgID] > 0) then
     exit;
-  DialogForm := TDialogForm.Create(self, wstrMsg, DlgType, Buttons, msgDlgID, Handler);
+  DialogForm := TDialogForm.Create(self, wstrMsg, DlgType, Buttons, msgDlgID, RHandler);
   DialogForm.Caption := DIALOG_CAPTION;
   SetShowing(msgDlgID);
   DialogForm.Show;
@@ -280,7 +295,7 @@ end;
 
 function TDialogs.CreateDialog(modalFormClass: TModalFormClass): TModalForm;
 begin
-  Result := modalFormClass.Create(self, modalFormClass.GetModalID, Handler);
+  Result := modalFormClass.Create(self, modalFormClass.GetModalID, RHandler);
   frmList.Add(Result);
 end;
 
@@ -290,7 +305,7 @@ var
   i: TModalFormID;
 begin
   self.Owner := Owner;
-  self.Handler := Handler;
+  self.RHandler := Handler;
   frmList := TList.Create;
   for i := Low(TModalFormID) to High(TModalFormID) do
     IDCount[i] := 0;
@@ -298,8 +313,17 @@ end;
 
 
 destructor TDialogs.Destroy;
+var
+  i: integer;
+  ModalForm: TModalForm;
 begin
-  frmList.Free;
+  for i := 0 to frmList.Count - 1 do
+  begin
+    ModalForm := frmList[i];
+    ModalForm.RHandler := nil;
+    ModalForm.Close;
+  end;
+
   inherited;
 end;
 
@@ -329,11 +353,13 @@ var
   i: integer;
 begin
   for i := 0 to frmList.Count - 1 do
+  begin
     with TModalForm(frmList[i]) do
-      begin
-        Left := Left + dx;
-        Top := Top + dy;
-      end;
+    begin
+      Left := Left + dx;
+      Top := Top + dy;
+    end;
+  end;
 end;
 
 end.

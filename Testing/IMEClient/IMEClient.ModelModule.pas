@@ -302,6 +302,8 @@ end;
 
 procedure TModelModule.ROnClose;
 begin
+
+
   if (FIsConnected) then
     TCPClient.Disconnect;
 //  if (Assigned(m_TCPClientListener)) then
@@ -695,7 +697,7 @@ end;
 procedure TModelModule.UnloadPluginTimerTimer(Sender: TObject);
 begin
   UnloadPluginTimer.Enabled := FALSE;
-  FreeAndNil(m_PluginSurrogate);  
+  FreeAndNil(m_PluginSurrogate);
 end;
 
 end.

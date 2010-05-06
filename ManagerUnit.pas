@@ -488,25 +488,27 @@ var
   sl: string;
 begin
   RSplitStr(sr, sl, sr);
-  if sl = 'u' then
+  if (sl = 'u') then
     opponent_unlimited := TRUE
   else
-    begin
-      opponent_unlimited:= FALSE;
-      opponent_time:= StrToInt(sl);
-      RSplitStr(sr, sl, sr);
-      opponent_inc := StrToInt(sl);
-    end;
+  begin
+    opponent_unlimited:= FALSE;
+    opponent_time:= StrToInt(sl);
     RSplitStr(sr, sl, sr);
-    if sl = 'u' then
-      you_unlimited:= TRUE
-    else
-      begin
-        you_unlimited := FALSE;
-        you_time := StrToInt(sl);
-        RSplitStr(sr, sl, sr);
-        you_inc := StrToInt(sl);
-      end;
+    opponent_inc := StrToInt(sl);
+  end;
+
+  RSplitStr(sr, sl, sr);
+  if (sl = 'u') then
+    you_unlimited:= TRUE
+  else
+  begin
+    you_unlimited := FALSE;
+    you_time := StrToInt(sl);
+    RSplitStr(sr, sl, sr);
+    you_inc := StrToInt(sl);
+  end;
+
   SetClock;
 end;
 
@@ -1216,6 +1218,7 @@ begin
 //  inherited Create(Application);
   inherited Create(nil);
 end;
+
 
 {$IFDEF AND_RQ}
 class function TManager.Create: TManager;
@@ -2010,7 +2013,7 @@ end;
 function TManager.FGetPlayerColor: TFigureColor;
 begin
   if (Assigned(ChessBoard)) then
-    Result := _PlayerColor
+    Result := ChessBoard.PlayerColor
   else
     Result := fcWhite;
 end;
@@ -2019,7 +2022,7 @@ end;
 procedure TManager.FSetPlayerColor(Value: TFigureColor);
 begin
   if (Assigned(ChessBoard)) then
-    _PlayerColor := Value;
+    ChessBoard.PlayerColor := Value;
 end;
 
 

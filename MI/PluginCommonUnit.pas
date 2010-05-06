@@ -20,7 +20,7 @@ uses
 
 function CreatePluginInstance(Connector: TConnector): IMirandaPlugin;
 begin
-  Result := TManagerMIFactory.Create(Connector);
+  Result := TManagerMIFactory.Create(Connector, ErrorDuringPluginStart);
 end;
 
 
@@ -42,6 +42,7 @@ end;
 
 procedure DeinitializeControls;
 begin
+  StopAllPlugins;
   FreeAndNil(Chess4NetIcon);
 end;
 
