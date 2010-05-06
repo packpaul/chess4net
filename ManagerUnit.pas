@@ -165,6 +165,7 @@ type
     procedure RSendData(const cmd: string = ''); virtual; abstract;
 
     procedure RSetConnectionOccured; virtual;
+    function RGetGameName: string;
 
     property Connector: TConnector read m_Connector write m_Connector;
     property ChessBoard: TPosBaseChessBoard read m_ChessBoard write m_ChessBoard;
@@ -752,14 +753,14 @@ begin
     else if (sl = CMD_NICK_ID) then
     begin
       m_strPlayerNickId := sr;
-      if CompareStr(PlayerNickId, OpponentNickId) < 0 then
+      if (CompareStr(PlayerNickId, OpponentNickId) < 0) then
       begin
         StartStandartGameConnected.Enabled := TRUE;
         StartPPRandomGameConnected.Enabled := TRUE;
         if (Assigned(ChessBoard)) then
         begin
           _PlayerColor := fcWhite;
-          ChessBoard.Caption := PlayerNick + ' - ' + OpponentNick;
+          ChessBoard.Caption := RGetGameName;
         end;
         if (not SetCommonSettings(TRUE)) then
           RSendData(CMD_NO_SETTINGS);
@@ -771,7 +772,7 @@ begin
         if (Assigned(ChessBoard)) then
         begin
           _PlayerColor := fcBlack;
-          ChessBoard.Caption := OpponentNick + ' - ' + PlayerNick;
+          ChessBoard.Caption := RGetGameName;
         end;
         SetCommonSettings(FALSE);
       end; // if CompareStr
@@ -1017,14 +1018,14 @@ var
 begin
   lookFeelOptionsForm := (m_Dialogs.CreateDialog(TLookFeelOptionsForm) as TLookFeelOptionsForm);
   with lookFeelOptionsForm, ChessBoard do
-    begin
-      AnimationComboBox.ItemIndex := ord(animation);
-      HilightLastMoveBox.Checked := LastMoveHilighted;
-      FlashIncomingMoveBox.Checked := FlashOnMove;
-      CoordinatesBox.Checked := CoordinatesShown;
-      StayOnTopBox.Checked := StayOnTop;
-      ExtraExitBox.Checked := extra_exit;
-    end;
+  begin
+    AnimationComboBox.ItemIndex := ord(animation);
+    HilightLastMoveBox.Checked := LastMoveHilighted;
+    FlashIncomingMoveBox.Checked := FlashOnMove;
+    CoordinatesBox.Checked := CoordinatesShown;
+    StayOnTopBox.Checked := StayOnTop;
+    ExtraExitBox.Checked := extra_exit;
+  end;
   lookFeelOptionsForm.Show;
 end;
 
@@ -1515,10 +1516,7 @@ begin
   LongTimeFormat:= HOUR_TIME_FORMAT;
   WriteToGameLog('[' + DateTimeToStr(Now) + ']' + #13#10);
 
-  if (_PlayerColor = fcWhite) then
-    WriteToGameLog(PlayerNick + ' - ' + OpponentNick)
-  else
-    WriteToGameLog(OpponentNick + ' - ' + PlayerNick);
+  WriteToGameLog(RGetGameName);
 
   if not (you_unlimited and opponent_unlimited) then
   begin
@@ -1832,17 +1830,15 @@ begin
        StartStandartGameConnected.Enabled := FALSE;
        StartPPRandomGameConnected.Enabled := FALSE;
        _PlayerColor := fcBlack;
-       ChessBoard.Caption := OpponentNick + ' - ' + PlayerNick;
-       SetClock;
      end
      else // fcBlack
      begin
        StartStandartGameConnected.Enabled := TRUE;
        StartPPRandomGameConnected.Enabled := TRUE;
        _PlayerColor := fcWhite;
-       ChessBoard.Caption := PlayerNick + ' - ' + OpponentNick;
-       SetClock;
      end;
+     ChessBoard.Caption := RGetGameName;
+     SetClock;
    end
 end;
 
@@ -2057,6 +2053,16 @@ begin // TManager.FShowCredits
 end;
 {$ENDIF}
 
+function TManager.RGetGameName: string;
+begin
+  if (_PlayerColor = fcWhite) then
+    Result := PlayerNick + ' - ' + OpponentNick
+  else // fcBlack
+    Result := OpponentNick + ' - ' + PlayerNick;
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TManagerDefault
 
 {$IFDEF AND_RQ}
 constructor TManagerDefault.Create;

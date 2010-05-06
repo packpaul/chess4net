@@ -21,7 +21,8 @@ type
     procedure FDialogsHandler(modSender: TModalForm; msgDlgID: TModalFormID);
     function FGetDialogs: TDialogs;
     procedure FStartGaming;
-    procedure FStartTransmitting;
+    procedure FStartTransmitting; overload;
+    procedure FStartTransmitting(ManagerForTransmition: TManager); overload;
     function FCanStartTransmitting: boolean;
     property Dialogs: TDialogs read FGetDialogs;
   protected
@@ -38,7 +39,7 @@ implementation
 uses
   Types, StrUtils, SysUtils, Classes, Dialogs, Controls,
   //
-  LocalizerUnit;
+  LocalizerUnit, TransmitGameSelectionUnit;
 
 type
   TTransmittingManagerMI = class;
@@ -338,11 +339,53 @@ begin
 end;
 
 
-procedure TManagerMIFactory.FStartTransmitting;
+procedure TManagerMIFactory.FStartTransmitting(ManagerForTransmition: TManager);
 begin
-  ShowMessage('TODO:');
-  // TODO:
+  ShowMessage('TODO: Transmit game: ' + TGamingManagerMI(ManagerForTransmition).RGetGameName);
   Stop;
+end;
+
+
+procedure TManagerMIFactory.FStartTransmitting;
+var
+  strlGames: TStringList;
+  i: integer;
+  GM: TGamingManagerMI;
+  ATransmitGameSelectionForm: TTransmitGameSelectionForm;
+begin
+  if (not Assigned(g_lstGamingManagers)) then
+  begin
+    Stop; // Don't do anything
+    exit;
+  end;
+
+  strlGames := TStringList.Create;
+  try
+    for i := 0 to g_lstGamingManagers.Count - 1 do
+    begin
+      GM := g_lstGamingManagers[i];
+      if (Assigned(GM) and (m_Connector.ContactID <> GM.Connector.ContactID)) then
+        strlGames.AddObject(GM.RGetGameName, GM);
+    end;
+
+    if (strlGames.Count > 1) then
+    begin
+      ATransmitGameSelectionForm :=
+        Dialogs.CreateDialog(TTransmitGameSelectionForm) as TTransmitGameSelectionForm;
+      ATransmitGameSelectionForm.SetGames(strlGames);
+      ATransmitGameSelectionForm.Show;
+    end
+    else if (strlGames.Count = 1) then
+    begin
+      GM := strlGames.Objects[0] as TGamingManagerMI;
+      FStartTransmitting(GM);
+    end
+    else // = 0
+      Stop;
+
+  finally
+    strlGames.Free;
+  end;
 end;
 
 
@@ -372,6 +415,7 @@ end;
 procedure TManagerMIFactory.FDialogsHandler(modSender: TModalForm; msgDlgID: TModalFormID);
 var
   modRes: TModalResult;
+  GM: TGamingManagerMI;
 begin
   modRes := modSender.ModalResult;
   case msgDlgID of
@@ -383,6 +427,20 @@ begin
         FStartTransmitting
       else // mrNo
         FStartGaming;
+    end;
+
+    mfTransmitGame:
+    begin
+      if (modRes = mrOk) then
+      begin
+        with modSender as TTransmitGameSelectionForm do
+        begin
+          GM := GetSelected as TGamingManagerMI;
+          FStartTransmitting(GM); 
+        end;
+      end
+      else
+        Stop;
     end;
   end; // case
 end;

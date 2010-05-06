@@ -18,6 +18,8 @@ type
 
   public
     class function GetModalID: TModalFormID; override;
+    procedure SetGames(Games: TStrings);
+    function GetSelected: TObject;
   end;
 
 implementation
@@ -49,6 +51,26 @@ end;
 class function TTransmitGameSelectionForm.GetModalID: TModalFormID;
 begin
   Result := mfTransmitGame;
+end;
+
+
+procedure TTransmitGameSelectionForm.SetGames(Games: TStrings);
+begin
+  TransmitGameListBox.Items.Assign(Games);
+  if (TransmitGameListBox.Count > 0) then
+    TransmitGameListBox.ItemIndex := 0;
+end;
+
+
+function TTransmitGameSelectionForm.GetSelected: TObject;
+var
+  iIndex: integer;
+begin
+  iIndex := TransmitGameListBox.ItemIndex;
+  if (iIndex > 0) then
+    Result := TransmitGameListBox.Items.Objects[iIndex]
+  else
+    Result := nil;
 end;
 
 end.
