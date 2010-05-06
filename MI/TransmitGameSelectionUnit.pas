@@ -29,6 +29,9 @@ implementation
 uses
   LocalizerUnit;
 
+////////////////////////////////////////////////////////////////////////////////
+// TTransmitGameSelectionForm
+
 procedure TTransmitGameSelectionForm.FormCreate(Sender: TObject);
 begin
   FLocalize;

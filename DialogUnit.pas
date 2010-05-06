@@ -60,11 +60,12 @@ begin
   msgDlg.OnClose := FormClose;
 
   for i := 0 to (msgDlg.ComponentCount - 1) do
-    begin
-      if (msgDlg.Components[i] is TButton) then
-         (msgDlg.Components[i] as TButton).OnClick := ButtonClick;
-    end;
+  begin
+    if (msgDlg.Components[i] is TButton) then
+       (msgDlg.Components[i] as TButton).OnClick := ButtonClick;
+  end;
 end;
+
 
 constructor TDialogForm.Create(dlgOwner: TDialogs; const wstrMsg: WideString;
                 DlgType: TMsgDlgType; Buttons: TMsgDlgButtons; modID: TModalFormID;
@@ -93,17 +94,20 @@ procedure TDialogForm.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
   if Assigned(dlgOwner) then
     dlgOwner.UnsetShowing(modID, self);
-  if fsModal in msgDlg.FormState then
+  if (fsModal in msgDlg.FormState) then
     exit;
   if (Assigned(RHandler)) then
     RHandler(TModalForm(msgDlg), modID);
-  Action := caFree;
+//  Action := caFree;
+  Release;
 end;
+
 
 procedure TDialogForm.Show;
 begin
   msgDlg.Show;
 end;
+
 
 function TDialogForm.ShowModal: integer;
 begin
@@ -118,7 +122,8 @@ end;
 
 destructor TDialogForm.Destroy;
 begin
-  msgDlg.Free;
+  msgDlg.Release;
+  inherited;
 end;
 
 function TDialogForm.GetCaption: TCaption;

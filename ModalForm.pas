@@ -268,13 +268,13 @@ var
   i: integer;
 begin
   for i := 0 to frmList.Count - 1 do
+  begin
+    if TModalForm(frmList[i]).Handle = frm.Handle then
     begin
-      if TModalForm(frmList[i]).Handle = frm.Handle then
-        begin
-          Result := TRUE;
-          exit;
-        end;
+      Result := TRUE;
+      exit;
     end;
+  end;
   Result := FALSE;
 end;
 
@@ -283,7 +283,7 @@ procedure TDialogs.MessageDlg(const wstrMsg: WideString; DlgType: TMsgDlgType; B
 var
   DialogForm: TDialogForm;
 begin
-  if (msgDlgID <> mfNone) and (IDCount[msgDlgID] > 0) then
+  if ((msgDlgID <> mfNone) and (IDCount[msgDlgID] > 0)) then
     exit;
   DialogForm := TDialogForm.Create(self, wstrMsg, DlgType, Buttons, msgDlgID, RHandler);
   DialogForm.Caption := DIALOG_CAPTION;
@@ -321,7 +321,7 @@ begin
   begin
     ModalForm := frmList[i];
     ModalForm.RHandler := nil;
-    ModalForm.Close;
+    ModalForm.Release;
   end;
 
   inherited;
