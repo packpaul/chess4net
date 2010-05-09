@@ -21,6 +21,7 @@ type
     StartPluginButton: TSpeedButton;
     PluginLogMemo: TMemo;
     Label3: TLabel;
+    ClearPluginLogButton: TButton;
     procedure btnSendClick(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
 
@@ -35,6 +36,7 @@ type
     procedure HandleNameEditChange(Sender: TObject);
     procedure memOutChange(Sender: TObject);
     procedure StartPluginButtonClick(Sender: TObject);
+    procedure ClearPluginLogButtonClick(Sender: TObject);
 
   private
     m_Events: IViewEvents;
@@ -76,6 +78,8 @@ type
     procedure RSetSendText(const strValue: string);
     procedure IView.AddPluginData = RAddPluginData;
     procedure RAddPluginData(iHandleID: integer; const strHandleName, strData: string; bReceived: boolean);
+    procedure IView.ClearPluginData = RClearPluginData;
+    procedure RClearPluginData;
   end;
 
 implementation
@@ -366,6 +370,19 @@ begin
   if (Assigned(m_Events)) then
     m_Events.OnStartPlugin;
   Width := Max(679, Width);
+end;
+
+
+procedure TMainForm.ClearPluginLogButtonClick(Sender: TObject);
+begin
+  if (Assigned(m_Events)) then
+    m_Events.OnClearPluginData;
+end;
+
+
+procedure TMainForm.RClearPluginData;
+begin
+  PluginLogMemo.Clear;
 end;
 
 end.

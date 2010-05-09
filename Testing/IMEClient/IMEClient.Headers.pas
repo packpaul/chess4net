@@ -13,7 +13,8 @@ type
     procedure OnChangeSendText(const strNewSendText: string);
     procedure OnChangeContactHandleID(iNewContactHandleID: integer);
     procedure OnStartPlugin;
-  end;                                                                                        
+    procedure OnClearPluginData;
+  end;
 
   IView = interface
     procedure SetEvents(Value: IViewEvents);
@@ -27,6 +28,7 @@ type
     procedure SetHandleName(const strHandleName: string);
     procedure SetSendText(const strValue: string);
     procedure AddPluginData(iHandleID: integer; const strHandleName, strData: string; bReceived: boolean);
+    procedure ClearPluginData;
   end;
 
 implementation

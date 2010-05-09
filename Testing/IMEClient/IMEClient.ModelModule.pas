@@ -72,6 +72,7 @@ type
     procedure FAddContactToView(iHandleID: integer; const strHandleName: string);
     procedure FDeleteContact(iHandleID: integer; const strHandleName: string);
     procedure FDeleteContactFromView(iHandleID: integer; const strHandleName: string);
+    procedure FClearPluginData;
 
     procedure FSetInMessageToView(iFromHandleID: integer; const strFromHandleName, strMsg: string);
     procedure FSetServerMessageToView(const strData: string);
@@ -113,6 +114,8 @@ type
     procedure ROnChangeContactHandleID(iNewContactHandleID: integer);
     procedure IViewEvents.OnStartPlugin = ROnStartPlugin;
     procedure ROnStartPlugin;
+    procedure IViewEvents.OnClearPluginData = ROnClearPluginData;
+    procedure ROnClearPluginData;
 
   public
     procedure SetView(Value: IView);
@@ -379,6 +382,13 @@ procedure TModelModule.FDeleteContactFromView(iHandleID: integer; const strHandl
 begin
   if (Assigned(m_View)) then
     m_View.DeleteContact(iHandleID, strHandleName);
+end;
+
+
+procedure TModelModule.FClearPluginData;
+begin
+  if (Assigned(m_View)) then
+    m_View.ClearPluginData;
 end;
 
 
@@ -698,6 +708,12 @@ procedure TModelModule.UnloadPluginTimerTimer(Sender: TObject);
 begin
   UnloadPluginTimer.Enabled := FALSE;
   FreeAndNil(m_PluginSurrogate);
+end;
+
+
+procedure TModelModule.ROnClearPluginData;
+begin
+  FClearPluginData;
 end;
 
 end.

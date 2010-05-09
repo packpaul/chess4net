@@ -182,4 +182,13 @@ object MainForm: TMainForm
     TabOrder = 7
     WordWrap = False
   end
+  object ClearPluginLogButton: TButton
+    Left = 480
+    Top = 216
+    Width = 75
+    Height = 25
+    Caption = 'Clear log'
+    TabOrder = 8
+    OnClick = ClearPluginLogButtonClick
+  end
 end
