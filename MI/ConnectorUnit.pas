@@ -31,6 +31,7 @@ type
     _msg_buf: string; // буфер сообщений
     // системное сообщение
     _systemDataList: TStringList;
+    m_lwId: Longword;
 
 {$IFDEF DEBUG_LOG}
     _logFile: Text;
@@ -92,14 +93,15 @@ type
   private
     _iterator: integer;
     _hContact: THandle;
-    _LastAddedConnector: TConnector;
+
+    function FGetLastAddedConnector: TConnector;
 
   public
     procedure AddConnector(Connector: TConnector);
     procedure RemoveConnector(Connector: TConnector);
     function GetFirstConnector(hContact: THandle): TConnector;
     function GetNextConnector: TConnector;
-    property LastAddedConnector: TConnector read _LastAddedConnector;
+    property LastAddedConnector: TConnector read FGetLastAddedConnector;
   end;
 
 var
@@ -155,36 +157,36 @@ var
 begin
   Result := FALSE;
   if LeftStr(msg, length(PROMPT_HEAD + PROMPT_SEPARATOR)) = (PROMPT_HEAD + PROMPT_SEPARATOR) then
-    begin
-      msg := RightStr(msg, length(msg) - length(PROMPT_HEAD + PROMPT_SEPARATOR));
+  begin
+    msg := RightStr(msg, length(msg) - length(PROMPT_HEAD + PROMPT_SEPARATOR));
 
-      // contactListId
+    // contactListId
 //      if (_contactLstId >= 0) then
-      if (g_bMultiSession) then
+    if (g_bMultiSession) then
+    begin
+      l := pos(PROMPT_SEPARATOR, msg);
+      if (l > 0) then
       begin
-        l := pos(PROMPT_SEPARATOR, msg);
-        if (l > 0) then
-        begin
-          if (not TryStrToInt(LeftStr(msg, l - 1), lstId)) then
-            exit;
-          msg := RightStr(msg, length(msg) - l);
-        end
-        else
-          lstId := g_connectorList.LastAddedConnector._lstId;
+        if (not TryStrToInt(LeftStr(msg, l - 1), lstId)) then
+          exit;
+        msg := RightStr(msg, length(msg) - l);
       end
       else
-        lstId := -1; // no contactListId specified in message
+        lstId := g_connectorList.LastAddedConnector._lstId;
+    end
+    else
+      lstId := -1; // no contactListId specified in message
 
-      // Message counter
-      l := pos(PROMPT_TAIL, msg);
-      if ((l = 0) or (not TryStrToInt(LeftStr(msg, l - 1), msgCntr))) then
-        exit;
+    // Message counter
+    l := pos(PROMPT_TAIL, msg);
+    if ((l = 0) or (not TryStrToInt(LeftStr(msg, l - 1), msgCntr))) then
+      exit;
 
-      msg := RightStr(msg, length(msg) - l);
-      // msg := AnsiReplaceStr(msg, '&amp;', '&');
+    msg := RightStr(msg, length(msg) - l);
+    // msg := AnsiReplaceStr(msg, '&amp;', '&');
 
-      Result := TRUE;
-    end;
+    Result := TRUE;
+  end;
 end;
 
 
@@ -268,54 +270,54 @@ begin { TConnector.FFilterMsg }
   WriteToLog('>> ' + msg);
 {$ENDIF}
   if (not Connected) then
+  begin
+ // if (msg = MSG_INVITATION) or (msg = MSG_RESPOND) then
+    if (msg = MSG_INVITATION) then
     begin
-   // if (msg = MSG_INVITATION) or (msg = MSG_RESPOND) then
-      if (msg = MSG_INVITATION) then
-        begin
-       // if msg = MSG_INVITATION then
-       //   FSendMessage(MSG_RESPOND);
-          FSendSystemData(MSG_INVITATION);
-          if (g_bMultiSession) then
-            FSendSystemData(FFormatMsg(CMD_CONTACT_LIST_ID + ' ' + IntToStr(_lstId)));
-          _connected := TRUE;
-          FPluginConnectorHandler(ceConnected);
-          Result := TRUE;
-        end
-      else
-        Result := FALSE;
+   // if msg = MSG_INVITATION then
+   //   FSendMessage(MSG_RESPOND);
+      FSendSystemData(MSG_INVITATION);
+      if (g_bMultiSession) then
+        FSendSystemData(FFormatMsg(CMD_CONTACT_LIST_ID + ' ' + IntToStr(_lstId)));
+      _connected := TRUE;
+      FPluginConnectorHandler(ceConnected);
+      Result := TRUE;
     end
+    else
+      Result := FALSE;
+  end
   else // Connected
-    begin
+  begin
 {
-      if (_msg_sending <> '') then
-      begin
-        _msg_sending := '';
-        _unformated_msg_sending := '';
-        inc(_cntrMsgOut);
-      end;
+    if (_msg_sending <> '') then
+    begin
+      _msg_sending := '';
+      _unformated_msg_sending := '';
+      inc(_cntrMsgOut);
+    end;
 }
 
-      if FDeformatMsg(msg, lstId, cntrMsg) and ((not g_bMultisession) or (lstId = _lstId)) then
+    if (FDeformatMsg(msg, lstId, cntrMsg) and ((not g_bMultisession) or (lstId = _lstId))) then
+    begin
+      Result := TRUE;
+
+      if cntrMsg > _cntrMsgIn then
         begin
-          Result := TRUE;
-
-          if cntrMsg > _cntrMsgIn then
+          inc(_cntrMsgIn);
+          if (cntrMsg > _cntrMsgIn) then
             begin
-              inc(_cntrMsgIn);
-              if (cntrMsg > _cntrMsgIn) then
-                begin
-                  FPluginConnectorHandler(ceError); // пакет исчез
-                  exit;
-                end;
-            end
-          else
-            exit; // пропуск пакетов с более низкими номерами
-
-          NProceedData(msg);
+              FPluginConnectorHandler(ceError); // пакет исчез
+              exit;
+            end;
         end
       else
-        Result := FALSE;
-    end;
+        exit; // пропуск пакетов с более низкими номерами
+
+      NProceedData(msg);
+    end
+    else
+      Result := FALSE;
+  end;
 end;
 
 
@@ -509,6 +511,8 @@ end;
 
 
 constructor TConnector.Create(hContact: THandle);
+const
+  ID_COUNTER: Longword = 0;
 var
   connector: TConnector;
 begin
@@ -547,6 +551,9 @@ begin
 
   if (g_connectorList.Count = 0) then
     g_hNotifySender := HookEvent(ME_PROTO_ACK, NotifySender);
+
+  inc(ID_COUNTER);
+  m_lwId := ID_COUNTER;
 
   g_connectorList.AddConnector(self);
 
@@ -691,17 +698,15 @@ procedure TConnectorList.AddConnector(Connector: TConnector);
 var
   i: integer;
 begin
-  _LastAddedConnector := Connector;
-  
   for i := 0 to Count - 1 do
+  begin
+    if (not Assigned(Items[i])) then
     begin
-      if not Assigned(Items[i]) then
-        begin
-          Connector._lstId := i;
-          Items[i] := Connector;
-          exit;
-        end;
-    end; {  for }
+      Connector._lstId := i;
+      Items[i] := Connector;
+      exit;
+    end;
+  end; // for
   Add(Connector);
   Connector._lstId := Count - 1;
 end;
@@ -729,15 +734,28 @@ begin
   Result := nil;
 
   while (_iterator < (Count - 1)) do
+  begin
+    inc(_iterator);
+    if (Assigned(Items[_iterator]) and
+       (_hContact = TConnector(Items[_iterator])._hContact)) then
     begin
-      inc(_iterator);
-      if (Assigned(Items[_iterator])) and
-         (_hContact = TConnector(Items[_iterator])._hContact) then
-        begin
-          Result := TConnector(Items[_iterator]);
-          exit;
-        end;
+      Result := Items[_iterator];
+      exit;
     end;
+  end;
+end;
+
+
+function TConnectorList.FGetLastAddedConnector: TConnector;
+var
+  i: integer;
+begin
+  Result := nil;
+  for i := 0 to Count - 1 do
+  begin
+    if ((not Assigned(Result)) or (TConnector(Items[i]).m_lwId > Result.m_lwId)) then
+    Result := Items[i];
+  end;
 end;
 
 

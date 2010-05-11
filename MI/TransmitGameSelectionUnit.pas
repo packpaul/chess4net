@@ -3,7 +3,7 @@ unit TransmitGameSelectionUnit;
 interface
 
 uses
-  Controls, StdCtrls, TntStdCtrls, Classes,
+  Forms, Controls, StdCtrls, TntStdCtrls, Classes,
   //
   ModalForm;
 
@@ -13,6 +13,7 @@ type
     CancelButton: TTntButton;
     TransmitGameListBox: TTntListBox;
     procedure FormCreate(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
   private
     procedure FLocalize;
 
@@ -70,10 +71,16 @@ var
   iIndex: integer;
 begin
   iIndex := TransmitGameListBox.ItemIndex;
-  if (iIndex > 0) then
+  if (iIndex >= 0) then
     Result := TransmitGameListBox.Items.Objects[iIndex]
   else
     Result := nil;
+end;
+
+procedure TTransmitGameSelectionForm.FormClose(Sender: TObject;
+  var Action: TCloseAction);
+begin
+  ModalResult := CancelButton.ModalResult;
 end;
 
 end.
