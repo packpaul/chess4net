@@ -350,13 +350,13 @@ end;
 
 procedure TConnector.Close;
 begin
-  if Connected then
-    begin
-      FSendSystemData(FFormatMsg(CMD_CLOSE));
+  if (Connected) then
+  begin
+    FSendSystemData(FFormatMsg(CMD_CLOSE));
 
-      _connected := FALSE;
-      FPluginConnectorHandler(ceDisconnected);
-    end;
+    _connected := FALSE;
+    FPluginConnectorHandler(ceDisconnected);
+  end;
 
   _sendTimer.Enabled := FALSE;
   _opened := FALSE;

@@ -115,7 +115,6 @@ type
     procedure SetClock; overload;
     procedure SetClock(var sr: string); overload;
     procedure DialogFormHandler(modSender: TModalForm; msgDlgID: TModalFormID);
-    procedure CloseConnector;
     procedure FPopulateExtBaseList;
     function SetCommonSettings(setToOpponent: boolean): boolean;
     procedure WriteSettings;
@@ -159,13 +158,15 @@ type
     procedure RLocalize;
 
     class procedure RSplitStr(s: string; var strLeft: string; var strRight: string);
-    procedure RHandleConnectorDataCommand(sl: string);
+    procedure RHandleConnectorDataCommand(sl: string); virtual;
     procedure RSetOpponentClientVersion(lwVersion: LongWord); virtual;
 
     procedure RSendData(const cmd: string = ''); virtual; abstract;
 
     procedure RSetConnectionOccured; virtual;
     function RGetGameName: string;
+
+    procedure RReleaseWithConnectorGracefully;    
 
     property Connector: TConnector read m_Connector write m_Connector;
     property ChessBoard: TPosBaseChessBoard read m_ChessBoard write m_ChessBoard;
@@ -193,6 +194,9 @@ type
 
 const
   CMD_DELIMITER = '&&'; // TODO: move to implementation
+
+  CMD_VERSION = 'ver';
+  CMD_GOODBYE = 'gdb'; // Refusion of connection  
 
 implementation
 
@@ -246,9 +250,9 @@ const
   CMD_SWITCH_CLOCK = 'swclck';
   CMD_REPEAT_COMMAND = 'rptcmd';
   CMD_POSITION = 'pos';
-  CMD_VERSION = 'ver';
+//  CMD_VERSION = 'ver';
   CMD_WELCOME = 'wlcm'; // Accept of connection
-  CMD_GOODBYE = 'gdb'; // Refusion of connection
+//  CMD_GOODBYE = 'gdb'; // Refusion of connection
   // существует с 2007.5
   CMD_NO_SETTINGS = 'noset'; // If global settings are absent then request from partner's client
   CMD_ALLOW_TAKEBACKS = 'alwtkb';
@@ -569,8 +573,8 @@ begin
         FlushGameLog;
       end;
 {$ENDIF}
-        m_Dialogs.MessageDlg(TLocalizer.Instance.GetMessage(7), mtWarning,
-                           [mbOk], mfMsgLeave); // An error during connection occured.
+      m_Dialogs.MessageDlg(TLocalizer.Instance.GetMessage(7), mtWarning,
+                         [mbOk], mfMsgLeave); // An error during connection occured.
     end;
 {$IFDEF QIP}
     ceQIPError:
@@ -658,7 +662,7 @@ begin
     if (sl = CMD_VERSION) then
     begin
       RSplitStr(sr, sl, sr);
-      RSetOpponentClientVersion(StrToInt(sl));
+      RSetOpponentClientVersion(StrToIntDef(sl, CHESS4NET_VERSION));
       RSendData(CMD_WELCOME);
       if (m_lwOpponentClientVersion < CHESS4NET_VERSION) then
       begin
@@ -1163,8 +1167,13 @@ procedure TManager.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
   if (Assigned(Connector) and Connector.connected) then
   begin
-    m_Dialogs.MessageDlg(TLocalizer.Instance.GetMessage(26), mtConfirmation, [mbYes, mbNo], mfMsgClose); // Do you want to exit?
-    Action:= caNone;
+    if (Assigned(m_Dialogs)) then
+    begin
+      m_Dialogs.MessageDlg(TLocalizer.Instance.GetMessage(26), mtConfirmation, [mbYes, mbNo], mfMsgClose); // Do you want to exit?
+      Action:= caNone;
+    end
+    else
+      Release;
   end
   else
 //    Release;    
@@ -1172,7 +1181,7 @@ begin
 end;
 
 
-procedure TManager.CloseConnector;
+procedure TManager.RReleaseWithConnectorGracefully;
 begin
   ConnectorTimer.Enabled := TRUE;
 end;
@@ -1283,8 +1292,8 @@ begin
 {$IFDEF SKYPE}
       FShowCredits;
 {$ENDIF}
-      if (Assigned(Connector) and Connector.connected) then
-        CloseConnector
+      if (Assigned(Connector) and Connector.Connected) then
+        RReleaseWithConnectorGracefully
       else
         Close;
     end;

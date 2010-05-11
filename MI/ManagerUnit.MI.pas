@@ -46,13 +46,22 @@ implementation
 uses
   Types, StrUtils, Classes, Dialogs, Controls,
   //
-  LocalizerUnit, TransmitGameSelectionUnit;
+  LocalizerUnit, TransmitGameSelectionUnit, GlobalsLocalUnit;
+
+const
+  CMD_TRANSMITTING = 'trnsm';  
 
 type
   TManagerMI = class(TManager, IMirandaPlugin) // abstract
   protected
     procedure Start;
     procedure Stop;
+    procedure RSendData(const cmd: string); override;
+    procedure ROnDestroy; override;
+
+    procedure ConnectorHandler(e: TConnectorEvent; d1: pointer = nil; d2: pointer = nil); override;
+    procedure RSetOpponentClientVersion(lwVersion: LongWord); override;    
+
   public
     constructor Create(Connector: TConnector); reintroduce;
     destructor Destroy; override;
@@ -72,18 +81,24 @@ type
     procedure Start;
     procedure ROnCreate; override;
     procedure ROnDestroy; override;
-    procedure ConnectorHandler(e: TConnectorEvent;
-      d1: pointer = nil; d2: pointer = nil); override;
-    procedure RSetOpponentClientVersion(lwVersion: LongWord); override;
-    procedure RSendData(const cmd: string); override;
+    procedure ConnectorHandler(e: TConnectorEvent; d1: pointer = nil; d2: pointer = nil); override;
     procedure RSetConnectionOccured; override;
   end;
 
   ETransmittingManagerMI = class(Exception);
   TTransmittingManagerMI = class(TManagerMI, IMirandaPlugin)
+  private
+    m_GamingManager: TGamingManagerMI;  
   protected
     procedure Start;
+    procedure ROnCreate; override;
     procedure ROnDestroy; override;
+
+    procedure ConnectorHandler(e: TConnectorEvent; d1: pointer = nil; d2: pointer = nil); override;
+    procedure RHandleConnectorDataCommand(sl: string); override;
+
+  public
+    constructor Create(Connector: TConnector; GamingManager: TGamingManagerMI); reintroduce;
   end;
 
 var
@@ -188,7 +203,6 @@ begin
 
   // Nicks initialization
   PlayerNick := Connector.OwnerNick;
-
   OpponentNick := Connector.ContactNick;
   OpponentId := IntToStr(Connector.ContactID);
 
@@ -229,23 +243,12 @@ procedure TGamingManagerMI.ROnDestroy;
 
 begin // TGamingManagerMI.ROnDestroy
   NRemoveFromGamings;
-
-  if (Assigned(Connector)) then
-  begin
-    Connector.Free;
-    Connector := nil;
-  end;
-
   inherited ROnDestroy;
 end;
 
 
 procedure TGamingManagerMI.ConnectorHandler(e: TConnectorEvent;
   d1: pointer = nil; d2: pointer = nil);
-var
-  iData: integer;
-  strCmd: string;
-  strLeft: string;
 begin
   case e of
     ceError:
@@ -254,38 +257,9 @@ begin
       inherited ConnectorHandler(e, d1, d2);
     end;
 
-    ceData:
-    begin
-      Assert(High(TStringDynArray(d1)) >= 0);
-      iData := 0;
-      repeat
-        strLeft := TStringDynArray(d1)[iData];
-        inc(iData);
-        strCmd := IfThen((iData <= High(TStringDynArray(d1))), '*');
-
-        RHandleConnectorDataCommand(strLeft);
-      until (strCmd = '');
-
-    end; // ceData
-
   else
     inherited ConnectorHandler(e, d1, d2);
   end; // case
-end;
-
-
-procedure TGamingManagerMI.RSetOpponentClientVersion(lwVersion: LongWord);
-begin
-  inherited RSetOpponentClientVersion(lwVersion);
-
-  if (lwVersion >= 200901) then
-    Connector.MultiSession := TRUE;
-end;
-
-
-procedure TGamingManagerMI.RSendData(const cmd: string);
-begin
-  Connector.SendData(cmd);
 end;
 
 
@@ -333,7 +307,7 @@ begin
 
   if (FCanStartTransmitting) then
   begin
-    Dialogs.MessageDlg('You are currently playing some games. Do you want to start broadcasting?',
+    Dialogs.MessageDlg('You are currently playing some games. Do you want to start broadcasting?', // TODO: Localize
       mtCustom, [mbYes, mbNo], mfTransmitting);
     m_bOwnExceptionHandler := TRUE;
     exit;
@@ -395,7 +369,20 @@ end;
 
 procedure TManagerMIFactory.FStartTransmitting(ManagerForTransmition: TManager);
 begin
-  ShowMessage('TODO: Transmit game: ' + TGamingManagerMI(ManagerForTransmition).RGetGameName);
+  m_Manager := TTransmittingManagerMI.Create(m_Connector, ManagerForTransmition as TGamingManagerMI);
+  m_Connector.SetPlugin(m_Manager);
+  m_Connector := nil;
+
+  try
+    m_Manager.Start;
+    m_Manager := nil; // non-ref counted
+  except
+    if (m_bOwnExceptionHandler) then
+      FHandleStartException
+    else
+      raise;
+  end;
+
   Stop;
 end;
 
@@ -532,6 +519,12 @@ end;
 ////////////////////////////////////////////////////////////////////////////////
 // TTransmittingManagerMI
 
+constructor TTransmittingManagerMI.Create(Connector: TConnector; GamingManager: TGamingManagerMI);
+begin
+  inherited Create(Connector);
+  m_GamingManager := GamingManager;
+end;
+
 procedure TTransmittingManagerMI.Start;
 begin
   if (not Connector.Opened) then
@@ -539,7 +532,7 @@ begin
     if (not Connector.Open(FALSE)) then
       raise ETransmittingManagerMI.Create('ERROR: Cannot open connector!');
   end;
-  // TODO:
+  m_GamingManager.FAddTransmitter(self);
 end;
 
 
@@ -563,14 +556,68 @@ procedure TTransmittingManagerMI.ROnDestroy;
 
 begin // TTransmittingManagerMI.ROnDestroy
   NRemoveFromTransmittings;
+  inherited ROnDestroy;
+end;
 
-  if (Assigned(Connector)) then
+
+procedure TTransmittingManagerMI.ROnCreate;
+begin
+  PlayerNick := m_GamingManager.PlayerNick;
+  OpponentNick := m_GamingManager.OpponentNick;
+  OpponentId := m_GamingManager.OpponentId;
+end;
+
+
+procedure TTransmittingManagerMI.ConnectorHandler(e: TConnectorEvent; d1: pointer = nil; d2: pointer = nil);
+begin
+  case e of
+    ceConnected:
+    begin
+      RSendData(CMD_VERSION + ' ' + IntToStr(CHESS4NET_VERSION));
+      RSendData(CMD_TRANSMITTING);
+    end;
+
+    ceError, ceDisconnected:
+    begin
+      Connector.Close;
+      Stop;
+    end;
+
+  else
+    inherited ConnectorHandler(e, d1, d2);
+  end; // case
+end;
+
+
+procedure TTransmittingManagerMI.RHandleConnectorDataCommand(sl: string);
+var
+  sr: string;
+  lwOpponentClientVersion: Longword;
+begin
+  RSplitStr(sl, sl, sr);
+  if (sl = CMD_VERSION) then
   begin
-    Connector.Free;
-    Connector := nil;
+    RSplitStr(sr, sl, sr);
+    lwOpponentClientVersion := StrToIntDef(sl, CHESS4NET_VERSION);
+
+    if (lwOpponentClientVersion < 201000) then
+    begin
+      RSendData(CMD_GOODBYE);
+      RReleaseWithConnectorGracefully;
+    end;
+
+    RSetOpponentClientVersion(lwOpponentClientVersion);
+  end
+  else if (sl = CMD_TRANSMITTING) then
+  begin
+    RSendData(CMD_GOODBYE); // TODO: some message or output to log
+    RReleaseWithConnectorGracefully;
+  end
+  else if (sl = CMD_GOODBYE) then
+  begin
+    Stop;  
   end;
 
-  inherited ROnDestroy;
 end;
 
 
@@ -603,6 +650,58 @@ begin
   Release;
 end;
 
+
+procedure TManagerMI.RSendData(const cmd: string);
+begin
+  Connector.SendData(cmd);
+end;
+
+
+procedure TManagerMI.ROnDestroy;
+begin
+  if (Assigned(Connector)) then
+  begin
+    Connector.Free;
+    Connector := nil;
+  end;
+
+  inherited ROnDestroy;
+end;
+
+
+procedure TManagerMI.ConnectorHandler(e: TConnectorEvent; d1: pointer = nil; d2: pointer = nil);
+var
+  iData: integer;
+  strCmd: string;
+  strLeft: string;
+begin
+  case e of
+    ceData:
+    begin
+      Assert(High(TStringDynArray(d1)) >= 0);
+      iData := 0;
+      repeat
+        strLeft := TStringDynArray(d1)[iData];
+        inc(iData);
+        strCmd := IfThen((iData <= High(TStringDynArray(d1))), '*');
+
+        RHandleConnectorDataCommand(strLeft);
+      until (strCmd = '');
+    end; // ceData
+
+  else
+    inherited ConnectorHandler(e, d1, d2);
+  end; // case
+end;
+
+
+procedure TManagerMI.RSetOpponentClientVersion(lwVersion: LongWord);
+begin
+  inherited RSetOpponentClientVersion(lwVersion);
+
+  if (lwVersion >= 200901) then
+    Connector.MultiSession := TRUE;
+end;
 
 initialization
 
