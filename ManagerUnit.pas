@@ -86,8 +86,8 @@ type
     contactlistEntry: TTtkContactListEntry;
 {$ENDIF}
 {$IFDEF SKYPE}
-    SkypeConnectionError: boolean;
-    bDontShowCredits: boolean;
+    m_bSkypeConnectionError: boolean;
+    m_bDontShowCredits: boolean;
 {$ENDIF}
     m_lwOpponentClientVersion: LongWord;
     // для ChessBoard
@@ -173,7 +173,9 @@ type
     property PlayerNick: string read m_strPlayerNick write m_strPlayerNick;
     property OpponentNick: string read m_strOpponentNick write m_strOpponentNick;
     property OpponentId: string read m_strOpponentId write m_strOpponentId;
-
+{$IFDEF SKYPE}
+    property SkypeConnectionError: boolean read m_bSkypeConnectionError;
+{$ENDIF}
   public
 {$IFDEF AND_RQ}
     class function Create: TManager; reintroduce;
@@ -188,6 +190,9 @@ type
     class function Create: TManager; reintroduce;
 {$ENDIF}
   end;
+
+const
+  CMD_DELIMITER = '&&'; // TODO: move to implementation
 
 implementation
 
@@ -263,7 +268,7 @@ const
   CMD_ADJOURN_GAME_NO = 'adjno';
   CMD_START_ADJOURNED_GAME = 'strtadj';
 
-  CMD_DELIMITER = '&&'; // CMD_DELIMITER has to be present in arguments
+//  CMD_DELIMITER = '&&'; // CMD_DELIMITER has to be present in arguments
 
   // CMD_DELIMITER = 'ext' - IS RESERVED
 
@@ -306,9 +311,6 @@ type
 {$ENDIF}
 {$IFDEF TRILLIAN}
     constructor Create(const vContactlistEntry: TTtkContactListEntry); reintroduce;
-{$ENDIF}
-{$IFDEF SKYPE}
-    constructor Create; reintroduce;
 {$ENDIF}
   end;
 
@@ -587,7 +589,7 @@ begin
 {$IFDEF SKYPE}
     ceSkypeError:
     begin
-      SkypeConnectionError := TRUE;
+      m_bSkypeConnectionError := TRUE;
       // TODO: Localize
       m_Dialogs.MessageDlg('Chess4Net was unable to attach to your Skype application' + sLineBreak +
                          'This can happen due to the following reasons:' + sLineBreak +
@@ -1660,7 +1662,7 @@ begin
     extra_exit := iniFile.ReadBool(PRIVATE_SECTION_NAME, EXTRA_EXIT_KEY_NAME, FALSE);
     TLocalizer.Instance.ActiveLanguage := iniFile.ReadInteger(PRIVATE_SECTION_NAME, LANGUAGE_KEY_NAME, 1) - 1;
 {$IFDEF SKYPE}
-    bDontShowCredits := iniFile.ReadBool(PRIVATE_SECTION_NAME, DONT_SHOW_CREDITS, FALSE);
+    m_bDontShowCredits := iniFile.ReadBool(PRIVATE_SECTION_NAME, DONT_SHOW_CREDITS, FALSE);
 {$ENDIF}
 
   finally
@@ -1785,8 +1787,8 @@ begin
     iniFile.WriteBool(PRIVATE_SECTION_NAME, EXTRA_EXIT_KEY_NAME, extra_exit);
     iniFile.WriteInteger(PRIVATE_SECTION_NAME, LANGUAGE_KEY_NAME, TLocalizer.Instance.ActiveLanguage + 1);
 {$IFDEF SKYPE}
-    if (bDontShowCredits) then
-      iniFile.WriteBool(PRIVATE_SECTION_NAME, DONT_SHOW_CREDITS, bDontShowCredits);
+    if (m_bDontShowCredits) then
+      iniFile.WriteBool(PRIVATE_SECTION_NAME, DONT_SHOW_CREDITS, m_bDontShowCredits);
 {$ENDIF}
     // Запись общих настроек
     commonSectionName := COMMON_SECTION_PREFIX + ' ' + OpponentId;
@@ -2043,12 +2045,12 @@ procedure TManager.FShowCredits;
   end;
 
 begin // TManager.FShowCredits
-  if (connectionOccured and (not bDontShowCredits) and (not NFridayThe13)) then
+  if (m_bConnectionOccured and (not m_bDontShowCredits) and (not NFridayThe13)) then
   begin
     with TCreditsForm.Create(nil) do
     try
       ShowModal;
-      bDontShowCredits := DontShowAgain;
+      m_bDontShowCredits := DontShowAgain;
     finally
       Free;
     end;
@@ -2092,13 +2094,6 @@ begin
 end;
 {$ENDIF}
 
-{$IFDEF SKYPE}
-constructor TManagerDefault.Create;
-begin
-  RCreate;
-end;
-{$ENDIF}
-
 procedure TManagerDefault.ROnCreate;
 begin
   try
@@ -2119,10 +2114,6 @@ begin
 {$ENDIF}
 {$IFDEF TRILLIAN}
     Connector := TConnector.Create(@contactlistEntry, ConnectorHandler);
-{$ENDIF}
-{$IFDEF SKYPE}
-//    SkypeConnectionError := FALSE;
-    Connector := TConnector.Create(ConnectorHandler);
 {$ENDIF}
 
     RCreateAndPopulateExtBaseList;
@@ -2147,18 +2138,11 @@ begin
 {$ENDIF}
 {$IFDEF QIP}
     if (not QIPConnectionError) then
-      begin
+    begin
 {$ENDIF}
-{$IFDEF SKYPE}
-    if (not SkypeConnectionError) then
-      begin
-{$ENDIF}
-        RShowConnectingForm;
+      RShowConnectingForm;
 {$IFDEF QIP}
-      end;
-{$ENDIF}
-{$IFDEF SKYPE}
-      end;
+    end;
 {$ENDIF}
 
   except

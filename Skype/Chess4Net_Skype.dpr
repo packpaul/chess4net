@@ -19,6 +19,7 @@ uses
   ConnectingUnit in 'ConnectingUnit.pas' {ConnectingForm},
   GameOptionsUnit in '..\GameOptionsUnit.pas' {GameOptionsForm},
   ManagerUnit in '..\ManagerUnit.pas' {Manager},
+  ManagerUnit.Skype in 'ManagerUnit.Skype.pas',  
   ChessBoardHeaderUnit in '..\ChessBoardHeaderUnit.pas',
   ChessBoardUnit in '..\ChessBoardUnit.pas' {ChessBoard},
   PromotionUnit in '..\PromotionUnit.pas' {PromotionForm},
@@ -49,7 +50,7 @@ uses
 {$R ..\Chess4Net.res}
 
 var
-  Manager: TManager;
+  Manager: TManagerSkype;
 
 begin
   Forms.Application.Initialize;
@@ -58,7 +59,7 @@ begin
   if (ActivateApplicationIfRunning) then
     exit;
 {$ENDIF}
-  Forms.Application.CreateForm(TManager, Manager);
+  Forms.Application.CreateForm(TManagerSkype, Manager);
   Forms.Application.ShowMainForm := False;
   Forms.Application.Run;
 end.
