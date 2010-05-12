@@ -161,7 +161,7 @@ begin
 
   for i := 0 to m_lstTransmittingManagers.Count - 1 do
   begin
-    if (m_lstTransmittingManagers[i] = self) then
+    if (m_lstTransmittingManagers[i] = ATransmitter) then
     begin
       m_lstTransmittingManagers.Delete(i);
       if (m_lstTransmittingManagers.Count = 0) then
@@ -170,7 +170,7 @@ begin
       Result := TRUE;
       exit;
     end;
-  end;
+  end; // for
 end;
 
 
@@ -299,12 +299,6 @@ end;
 
 procedure TManagerMIFactory.Start;
 begin
-{
-  // TODO: remove testing
-  GM := NGetNeededGamingManager;
-  GM.FAddTransmitter(self);
-}
-
   if (FCanStartTransmitting) then
   begin
     Dialogs.MessageDlg('You are currently playing some games. Do you want to start broadcasting?', // TODO: Localize
@@ -617,6 +611,8 @@ begin
   begin
     Stop;  
   end;
+
+  // TODO:
 
 end;
 
