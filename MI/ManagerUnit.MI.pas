@@ -48,9 +48,6 @@ uses
   //
   LocalizerUnit, TransmitGameSelectionUnit, GlobalsLocalUnit;
 
-const
-  CMD_TRANSMITTING = 'trnsm';  
-
 type
   TManagerMI = class(TManager, IMirandaPlugin) // abstract
   protected

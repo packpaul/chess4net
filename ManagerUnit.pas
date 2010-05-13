@@ -196,7 +196,8 @@ const
   CMD_DELIMITER = '&&'; // TODO: move to implementation
 
   CMD_VERSION = 'ver';
-  CMD_GOODBYE = 'gdb'; // Refusion of connection  
+  CMD_GOODBYE = 'gdb'; // Refusion of connection
+  CMD_TRANSMITTING = 'trnsm';
 
 implementation
 
@@ -274,7 +275,7 @@ const
 
 //  CMD_DELIMITER = '&&'; // CMD_DELIMITER has to be present in arguments
 
-  // CMD_DELIMITER = 'ext' - IS RESERVED
+  // CMD_CLOSE = 'ext' - IS RESERVED
 
   // INI-file
   PRIVATE_SECTION_NAME = 'Private';
@@ -793,6 +794,10 @@ begin
     else if (sl = CMD_NO_SETTINGS) then
     begin
       SetCommonSettings(TRUE);
+    end
+    else if (sl = CMD_TRANSMITTING) then
+    begin
+      m_Dialogs.MessageDlg('Game transmition is not supported by this client!', mtCustom, [mbOK], mfMsgLeave);
     end;
 
   mGame:
@@ -1184,14 +1189,14 @@ end;
 procedure TManager.RReleaseWithConnectorGracefully;
 begin
   ConnectorTimer.Enabled := TRUE;
+  if (Assigned(Connector)) then
+    Connector.Close;
 end;
 
 
 procedure TManager.ConnectorTimerTimer(Sender: TObject);
 begin
   ConnectorTimer.Enabled := FALSE;
-  if (Assigned(Connector)) then
-    Connector.Close;
   Release;
 end;
 
