@@ -103,11 +103,14 @@ type
 
     extra_exit: boolean;
     m_bConnectionOccured: boolean;
+
+    m_bTransmittable: boolean;
+
 {$IFDEF GAME_LOG}
     // для лога игры
     gameLog: string;
     procedure InitGameLog;
-    procedure WriteToGameLog(const s: string);
+    procedure FWriteToGameLog(const s: string);
     procedure FlushGameLog;
 {$ENDIF}
     procedure ChessBoardHandler(e: TChessBoardEvent;
@@ -116,8 +119,11 @@ type
     procedure SetClock(var sr: string); overload;
     procedure DialogFormHandler(modSender: TModalForm; msgDlgID: TModalFormID);
     procedure FPopulateExtBaseList;
-    function SetCommonSettings(setToOpponent: boolean): boolean;
-    procedure WriteSettings;
+
+    function FReadCommonSettings(setToOpponent: boolean): boolean;
+    procedure FWritePrivateSettings;
+    procedure FWriteCommonSettings;
+
     function ClockToStr: string;
     procedure ChangeColor;
     procedure PauseGame;
@@ -151,7 +157,8 @@ type
     procedure RCreateChessBoardAndDialogs;
     procedure RCreateAndPopulateExtBaseList;
     procedure RSetChessBoardToView;
-    procedure RSetPrivateSettings;
+
+    procedure RReadPrivateSettings;
     procedure RShowConnectingForm;
 
     procedure ILocalizable.Localize = RLocalize;
@@ -174,6 +181,9 @@ type
     property PlayerNick: string read m_strPlayerNick write m_strPlayerNick;
     property OpponentNick: string read m_strOpponentNick write m_strOpponentNick;
     property OpponentId: string read m_strOpponentId write m_strOpponentId;
+
+    property Transmittable: boolean read m_bTransmittable write m_bTransmittable;
+
 {$IFDEF SKYPE}
     property SkypeConnectionError: boolean read m_bSkypeConnectionError;
 {$ENDIF}
@@ -196,6 +206,7 @@ const
   CMD_DELIMITER = '&&'; // TODO: move to implementation
 
   CMD_VERSION = 'ver';
+  CMD_WELCOME = 'wlcm'; // Accept of connection  
   CMD_GOODBYE = 'gdb'; // Refusion of connection
   CMD_TRANSMITTING = 'trnsm';
 
@@ -252,7 +263,7 @@ const
   CMD_REPEAT_COMMAND = 'rptcmd';
   CMD_POSITION = 'pos';
 //  CMD_VERSION = 'ver';
-  CMD_WELCOME = 'wlcm'; // Accept of connection
+//  CMD_WELCOME = 'wlcm'; // Accept of connection
 //  CMD_GOODBYE = 'gdb'; // Refusion of connection
   // существует с 2007.5
   CMD_NO_SETTINGS = 'noset'; // If global settings are absent then request from partner's client
@@ -354,11 +365,11 @@ begin
       if extra_exit and (Word(d1) = VK_ESCAPE) then
         begin
 {$IFDEF GAME_LOG}
-          if ChessBoard.Mode = mGame then
-		        begin
-              WriteToGameLog('*');
-              FlushGameLog;
-		        end;
+          if (ChessBoard.Mode = mGame) then
+          begin
+            FWriteToGameLog('*');
+            FlushGameLog;
+          end;
 {$ENDIF}
           Release;
         end;
@@ -383,12 +394,12 @@ begin
         RSendData(PString(d1)^);
 {$IFDEF GAME_LOG}
         if (ChessBoard.PositionColor = fcBlack) or (not move_done) then
-          begin
-            WriteToGameLog(' ' + IntToStr(ChessBoard.NMoveDone) + '.');
-            if ChessBoard.PositionColor = fcWhite then
-              WriteToGameLog(' ...');
-          end;
-        WriteToGameLog(' ' + PString(d1)^);
+        begin
+          FWriteToGameLog(' ' + IntToStr(ChessBoard.NMoveDone) + '.');
+          if (ChessBoard.PositionColor = fcWhite) then
+            FWriteToGameLog(' ...');
+        end;
+        FWriteToGameLog(' ' + PString(d1)^);
 {$ENDIF}
         move_done := TRUE;
         TakebackGame.Enabled := TRUE;
@@ -399,9 +410,11 @@ begin
       begin
         FExitGameMode;
 {$IFDEF GAME_LOG}
-        WriteToGameLog('#');
-        if PositionColor = fcWhite then WriteToGameLog(#13#10 + '0 - 1')
-          else WriteToGameLog(#13#10 + '1 - 0');
+        FWriteToGameLog('#');
+        if (PositionColor = fcWhite) then
+          FWriteToGameLog(#13#10 + '0 - 1')
+        else
+          FWriteToGameLog(#13#10 + '1 - 0');
         FlushGameLog;
 {$ENDIF}
         with TLocalizer.Instance do
@@ -432,7 +445,7 @@ begin
     begin
       FExitGameMode;
 {$IFDEF GAME_LOG}
-      WriteToGameLog('=' + #13#10 + '1/2 - 1/2');
+      FWriteToGameLog('=' + #13#10 + '1/2 - 1/2');
       FlushGameLog;
 {$ENDIF}
       m_Dialogs.MessageDlg(TLocalizer.Instance.GetMessage(4), mtCustom, [mbOK], mfNone); // It's stalemate. No one wins.
@@ -556,7 +569,7 @@ begin
         mGame:
         begin
 {$IFDEF GAME_LOG}
-          WriteToGameLog('*');
+          FWriteToGameLog('*');
           FlushGameLog;
 {$ENDIF}
           m_Dialogs.MessageDlg(TLocalizer.Instance.GetMessage(6), mtWarning,
@@ -570,7 +583,7 @@ begin
 {$IFDEF GAME_LOG}
       if ChessBoard.Mode = mGame then
       begin
-        WriteToGameLog('*');
+        FWriteToGameLog('*');
         FlushGameLog;
       end;
 {$ENDIF}
@@ -771,7 +784,7 @@ begin
           _PlayerColor := fcWhite;
           ChessBoard.Caption := RGetGameName;
         end;
-        if (not SetCommonSettings(TRUE)) then
+        if (not FReadCommonSettings(TRUE)) then
           RSendData(CMD_NO_SETTINGS);
       end
       else
@@ -783,7 +796,7 @@ begin
           _PlayerColor := fcBlack;
           ChessBoard.Caption := RGetGameName;
         end;
-        SetCommonSettings(FALSE);
+        FReadCommonSettings(FALSE);
       end; // if CompareStr
     end
     else if (sl = CMD_POSITION) then
@@ -793,11 +806,11 @@ begin
     end
     else if (sl = CMD_NO_SETTINGS) then
     begin
-      SetCommonSettings(TRUE);
+      FReadCommonSettings(TRUE);
     end
     else if (sl = CMD_TRANSMITTING) then
     begin
-      m_Dialogs.MessageDlg('Game transmition is not supported by this client!', mtCustom, [mbOK], mfMsgLeave);
+      m_Dialogs.MessageDlg('Game transmition is not supported by this client!', mtCustom, [mbOK], mfMsgLeave); // TODO: localize
     end;
 
   mGame:
@@ -816,9 +829,9 @@ begin
       FExitGameMode;
 {$IFDEF GAME_LOG}
       if (_PlayerColor = fcWhite) then
-        WriteToGameLog(#13#10 + 'Black resigns' + #13#10 + '1 - 0')
+        FWriteToGameLog(#13#10 + 'Black resigns' + #13#10 + '1 - 0')
       else
-        WriteToGameLog(#13#10 + 'White resigns' + #13#10 + '0 - 1');
+        FWriteToGameLog(#13#10 + 'White resigns' + #13#10 + '0 - 1');
       FlushGameLog;
 {$ENDIF}
       m_Dialogs.MessageDlg(TLocalizer.Instance.GetMessage(12),
@@ -829,7 +842,7 @@ begin
     begin
       FExitGameMode;
 {$IFDEF GAME_LOG}
-      WriteToGameLog('*');
+      FWriteToGameLog('*');
       FlushGameLog;
 {$ENDIF}
       m_Dialogs.MessageDlg(TLocalizer.Instance.GetMessage(13), mtCustom,
@@ -844,7 +857,7 @@ begin
     begin
       FExitGameMode;
 {$IFDEF GAME_LOG}
-      WriteToGameLog('=' + #13#10 + '1/2 - 1/2');
+      FWriteToGameLog('=' + #13#10 + '1/2 - 1/2');
       FlushGameLog;
 {$ENDIF}
       m_Dialogs.MessageDlg(TLocalizer.Instance.GetMessage(15), mtCustom, [mbOK], mfNone); // The game is drawn.
@@ -874,9 +887,9 @@ begin
             FExitGameMode;
 {$IFDEF GAME_LOG}
             if (_PlayerColor = fcWhite) then
-              WriteToGameLog(#13#10 + 'White forfeits on time')
+              FWriteToGameLog(#13#10 + 'White forfeits on time')
             else
-              WriteToGameLog(#13#10 + 'Black forfeits on time');
+              FWriteToGameLog(#13#10 + 'Black forfeits on time');
             FlushGameLog;
 {$ENDIF}
             m_Dialogs.MessageDlg(TLocalizer.Instance.GetMessage(17), mtCustom, [mbOK], mfNone); // You forfeited on time.
@@ -891,9 +904,9 @@ begin
       FExitGameMode;
 {$IFDEF GAME_LOG}
       if (_PlayerColor = fcWhite) then
-        WriteToGameLog(#13#10 + 'Black forfeits on time')
+        FWriteToGameLog(#13#10 + 'Black forfeits on time')
       else
-        WriteToGameLog(#13#10 + 'White forfeits on time');
+        FWriteToGameLog(#13#10 + 'White forfeits on time');
       FlushGameLog;
 {$ENDIF}
       m_Dialogs.MessageDlg(TLocalizer.Instance.GetMessage(18), mtCustom,
@@ -963,7 +976,7 @@ begin
       FBuildAdjournedStr;
       TakebackGame.Enabled:= (ChessBoard.NMoveDone > 0);
 {$IFDEF GAME_LOG}
-      WriteToGameLog(' <takeback>');
+      FWriteToGameLog(' <takeback>');
 {$ENDIF}
       ChessBoard.SwitchClock(ChessBoard.PositionColor);
     end
@@ -986,11 +999,11 @@ begin
 {$IFDEF GAME_LOG}
           if ((PositionColor = fcBlack) or (not move_done)) then
           begin
-            WriteToGameLog(' ' + IntToStr(NMoveDone) + '.');
+            FWriteToGameLog(' ' + IntToStr(NMoveDone) + '.');
             if (PositionColor = fcWhite) then
-              WriteToGameLog(' ...');
+              FWriteToGameLog(' ...');
           end;
-          WriteToGameLog(' ' + sl);
+          FWriteToGameLog(' ' + sl);
 {$ENDIF}
           move_done := TRUE;
           TakebackGame.Enabled := TRUE;
@@ -1006,7 +1019,11 @@ begin
   TLocalizer.Instance.DeleteSubscriber(self);
 
   if (m_bConnectionOccured) then
-    WriteSettings;
+  begin
+    FWritePrivateSettings;
+    if (not Transmittable) then
+      FWriteCommonSettings;
+  end;
 
   m_ExtBaseList.Free;
 
@@ -1281,7 +1298,7 @@ begin
 {$IFDEF GAME_LOG}
         if ChessBoard.Mode = mGame then
         begin
-          WriteToGameLog('*');
+          FWriteToGameLog('*');
           FlushGameLog;
         end;
 {$ENDIF}
@@ -1314,7 +1331,7 @@ begin
           RSendData(CMD_ABORT_ACCEPTED);
           FExitGameMode;
 {$IFDEF GAME_LOG}
-          WriteToGameLog('*');
+          FWriteToGameLog('*');
           FlushGameLog;
 {$ENDIF}
           m_Dialogs.MessageDlg(TLocalizer.Instance.GetMessage(13), mtCustom,
@@ -1334,9 +1351,9 @@ begin
           ChessBoard.WriteGameToBase(grLost);
 {$IFDEF GAME_LOG}
           if (_PlayerColor = fcWhite) then
-            WriteToGameLog(#13#10 + 'White resigns' + #13#10 + '0 - 1')
+            FWriteToGameLog(#13#10 + 'White resigns' + #13#10 + '0 - 1')
           else
-            WriteToGameLog(#13#10 + 'Black resigns' + #13#10 + '1 - 0');
+            FWriteToGameLog(#13#10 + 'Black resigns' + #13#10 + '1 - 0');
           FlushGameLog;
 {$ENDIF}
         end;
@@ -1354,7 +1371,7 @@ begin
           RSendData(CMD_DRAW_ACCEPTED);
           FExitGameMode;
 {$IFDEF GAME_LOG}
-            WriteToGameLog('=' + #13#10 + '1/2 - 1/2');
+            FWriteToGameLog('=' + #13#10 + '1/2 - 1/2');
             FlushGameLog;
 {$ENDIF}
           m_Dialogs.MessageDlg(TLocalizer.Instance.GetMessage(15), mtCustom, [mbOK], mfNone);
@@ -1374,7 +1391,7 @@ begin
           FBuildAdjournedStr;
           TakebackGame.Enabled:= (ChessBoard.NMoveDone > 0);
 {$IFDEF GAME_LOG}
-          WriteToGameLog(' <takeback>');
+          FWriteToGameLog(' <takeback>');
 {$ENDIF}
           ChessBoard.SwitchClock(ChessBoard.PositionColor);
         end
@@ -1533,71 +1550,71 @@ begin
   gameLog := '';
 
   LongTimeFormat:= HOUR_TIME_FORMAT;
-  WriteToGameLog('[' + DateTimeToStr(Now) + ']' + #13#10);
+  FWriteToGameLog('[' + DateTimeToStr(Now) + ']' + #13#10);
 
-  WriteToGameLog(RGetGameName);
+  FWriteToGameLog(RGetGameName);
 
   if not (you_unlimited and opponent_unlimited) then
   begin
-    WriteToGameLog(' (');
+    FWriteToGameLog(' (');
     case _PlayerColor of
       fcWhite:
       begin
         if (not you_unlimited) then
         begin
-          WriteToGameLog(IntToStr(you_time));
+          FWriteToGameLog(IntToStr(you_time));
           if (you_inc > 0) then
-            WriteToGameLog('.' + IntToStr(you_inc));
+            FWriteToGameLog('.' + IntToStr(you_inc));
         end
         else
-          WriteToGameLog('inf');
+          FWriteToGameLog('inf');
 
-        WriteToGameLog(':');
+        FWriteToGameLog(':');
 
         if (not opponent_unlimited) then
         begin
-          WriteToGameLog(IntToStr(opponent_time));
+          FWriteToGameLog(IntToStr(opponent_time));
           if (opponent_inc > 0) then
-            WriteToGameLog('.' + IntToStr(opponent_inc));
+            FWriteToGameLog('.' + IntToStr(opponent_inc));
         end
         else
-          WriteToGameLog('inf');
+          FWriteToGameLog('inf');
       end;
 
       fcBlack:
       begin
         if (not opponent_unlimited) then
         begin
-          WriteToGameLog(IntToStr(opponent_time));
+          FWriteToGameLog(IntToStr(opponent_time));
           if (opponent_inc > 0) then
-            WriteToGameLog('.' + IntToStr(opponent_inc));
+            FWriteToGameLog('.' + IntToStr(opponent_inc));
         end
         else
-          WriteToGameLog('inf');
+          FWriteToGameLog('inf');
 
-        WriteToGameLog(':');
+        FWriteToGameLog(':');
 
         if (not you_unlimited) then
         begin
-          WriteToGameLog(IntToStr(you_time));
+          FWriteToGameLog(IntToStr(you_time));
           if (you_inc > 0) then
-            WriteToGameLog('.' + IntToStr(you_inc));
+            FWriteToGameLog('.' + IntToStr(you_inc));
         end
         else
-          WriteToGameLog('inf');
+          FWriteToGameLog('inf');
       end;
     end;
-    WriteToGameLog(')');
+    FWriteToGameLog(')');
   end;
-  WriteToGameLog(#13#10);
+  FWriteToGameLog(#13#10);
 
   s := ChessBoard.GetPosition;
   if (s <> INITIAL_CHESS_POSITION) then
-    WriteToGameLog(s + #13#10);
+    FWriteToGameLog(s + #13#10);
 end;
 
 
-procedure TManager.WriteToGameLog(const s: string);
+procedure TManager.FWriteToGameLog(const s: string);
 begin
   gameLog := gameLog + s;
 end;
@@ -1653,7 +1670,7 @@ begin
 end;
 
 
-procedure TManager.RSetPrivateSettings;
+procedure TManager.RReadPrivateSettings;
 var
   iniFile: TTntIniFile;
   initialClockTime: string;
@@ -1685,7 +1702,7 @@ begin
 end;
 
 
-function TManager.SetCommonSettings(setToOpponent: boolean): boolean;
+function TManager.FReadCommonSettings(setToOpponent: boolean): boolean;
 var
   iniFile: TTntIniFile;
   commonSectionName: string;
@@ -1785,14 +1802,13 @@ begin
 end;
 
 
-procedure TManager.WriteSettings;
+procedure TManager.FWritePrivateSettings;
 var
   iniFile: TTntIniFile;
-  commonSectionName: string;
 begin
+  // Write private settings
   iniFile := TTntIniFile.Create(Chess4NetPath + INI_FILE_NAME);
   try
-    // Запись личных настроек
     iniFile.WriteInteger(PRIVATE_SECTION_NAME, ANIMATION_KEY_NAME, Ord(ChessBoard.animation));
     iniFile.WriteBool(PRIVATE_SECTION_NAME, HILIGHT_LAST_MOVE_KEY_NAME, ChessBoard.LastMoveHilighted);
     iniFile.WriteBool(PRIVATE_SECTION_NAME, FLASH_ON_MOVE_NAME, ChessBoard.FlashOnMove);
@@ -1804,18 +1820,30 @@ begin
     if (m_bDontShowCredits) then
       iniFile.WriteBool(PRIVATE_SECTION_NAME, DONT_SHOW_CREDITS, m_bDontShowCredits);
 {$ENDIF}
-    // Запись общих настроек
-    commonSectionName := COMMON_SECTION_PREFIX + ' ' + OpponentId;
-    iniFile.WriteInteger(commonSectionName, PLAYER_COLOR_KEY_NAME, Ord(_PlayerColor));
-    iniFile.WriteString(commonSectionName, CLOCK_KEY_NAME, ClockToStr);
-    iniFile.WriteBool(commonSectionName, TRAINING_MODE_KEY_NAME, ChessBoard.pTrainingMode);
-    iniFile.WriteString(commonSectionName, EXTERNAL_BASE_NAME_KEY_NAME, m_strExtBaseName);
-    iniFile.WriteBool(commonSectionName, USE_USER_BASE_KEY_NAME, ChessBoard.pUseUserBase);
-    iniFile.WriteBool(commonSectionName, ALLOW_TAKEBACKS_KEY_NAME, you_takebacks);
-    iniFile.WriteBool(commonSectionName, CAN_PAUSE_GAME_KEY_NAME, can_pause_game);
-    iniFile.WriteBool(commonSectionName, CAN_ADJOURN_GAME_KEY_NAME, can_adjourn_game);
-    iniFile.WriteBool(commonSectionName, AUTO_FLAG_KEY_NAME, ChessBoard.AutoFlag);
-    iniFile.WriteString(commonSectionName, ADJOURNED_KEY_NAME, AdjournedStr);
+  finally
+    iniFile.Free;
+  end;
+end;
+
+
+procedure TManager.FWriteCommonSettings;
+var
+  iniFile: TTntIniFile;
+  strCommonSectionName: string;
+begin
+  iniFile := TTntIniFile.Create(Chess4NetPath + INI_FILE_NAME);
+  try
+    strCommonSectionName := COMMON_SECTION_PREFIX + ' ' + OpponentId;
+    iniFile.WriteInteger(strCommonSectionName, PLAYER_COLOR_KEY_NAME, Ord(_PlayerColor));
+    iniFile.WriteString(strCommonSectionName, CLOCK_KEY_NAME, ClockToStr);
+    iniFile.WriteBool(strCommonSectionName, TRAINING_MODE_KEY_NAME, ChessBoard.pTrainingMode);
+    iniFile.WriteString(strCommonSectionName, EXTERNAL_BASE_NAME_KEY_NAME, m_strExtBaseName);
+    iniFile.WriteBool(strCommonSectionName, USE_USER_BASE_KEY_NAME, ChessBoard.pUseUserBase);
+    iniFile.WriteBool(strCommonSectionName, ALLOW_TAKEBACKS_KEY_NAME, you_takebacks);
+    iniFile.WriteBool(strCommonSectionName, CAN_PAUSE_GAME_KEY_NAME, can_pause_game);
+    iniFile.WriteBool(strCommonSectionName, CAN_ADJOURN_GAME_KEY_NAME, can_adjourn_game);
+    iniFile.WriteBool(strCommonSectionName, AUTO_FLAG_KEY_NAME, ChessBoard.AutoFlag);
+    iniFile.WriteString(strCommonSectionName, ADJOURNED_KEY_NAME, AdjournedStr);
 
   finally
     iniFile.Free;
@@ -1909,7 +1937,7 @@ begin
   ChessBoard.StopClock;
   ChessBoard.Mode := mView;
 {$IFDEF GAME_LOG}
-  WriteToGameLog('*');
+  FWriteToGameLog('*');
   FlushGameLog;
 {$ENDIF}
   m_Dialogs.MessageDlg(TLocalizer.Instance.GetMessage(27), mtCustom, [mbOK], mfNone); // The game is adjourned.
@@ -2117,8 +2145,8 @@ begin
     RLocalize;
 
     RSetChessBoardToView;
-    RSetPrivateSettings;
-        
+    RReadPrivateSettings;
+
 {$IFDEF AND_RQ}
     Connector := TConnector.Create(RQ_GetChatUIN, ConnectorHandler);
 {$ENDIF}

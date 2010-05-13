@@ -57,7 +57,7 @@ type
     procedure ROnDestroy; override;
 
     procedure ConnectorHandler(e: TConnectorEvent; d1: pointer = nil; d2: pointer = nil); override;
-    procedure RSetOpponentClientVersion(lwVersion: LongWord); override;    
+    procedure RSetOpponentClientVersion(lwVersion: LongWord); override;
 
   public
     constructor Create(Connector: TConnector); reintroduce;
@@ -73,6 +73,7 @@ type
 
     procedure FAddTransmitter(ATransmitter: TTransmittingManagerMI);
     function FRemoveTransmitter(ATransmitter: TTransmittingManagerMI): boolean;
+    procedure FSetGameContextToTransmitter(ATransmitter: TTransmittingManagerMI);
 
   protected
     procedure Start;
@@ -80,12 +81,14 @@ type
     procedure ROnDestroy; override;
     procedure ConnectorHandler(e: TConnectorEvent; d1: pointer = nil; d2: pointer = nil); override;
     procedure RSetConnectionOccured; override;
+    procedure RHandleConnectorDataCommand(sl: string); override;
   end;
 
   ETransmittingManagerMI = class(Exception);
-  TTransmittingManagerMI = class(TManagerMI, IMirandaPlugin)
+  TTransmittingManagerMI = class(TManagerMI, IMirandaPlugin) // TODO: move to separate hierarchy
   private
-    m_GamingManager: TGamingManagerMI;  
+    m_GamingManager: TGamingManagerMI;
+    m_bReady: boolean; // ready for transmition
   protected
     procedure Start;
     procedure ROnCreate; override;
@@ -93,6 +96,7 @@ type
 
     procedure ConnectorHandler(e: TConnectorEvent; d1: pointer = nil; d2: pointer = nil); override;
     procedure RHandleConnectorDataCommand(sl: string); override;
+//    procedure RWriteSettings; override; // no need because m_bConnectionOccured is always FALSE
 
   public
     constructor Create(Connector: TConnector; GamingManager: TGamingManagerMI); reintroduce;
@@ -171,6 +175,15 @@ begin
 end;
 
 
+procedure TGamingManagerMI.FSetGameContextToTransmitter(ATransmitter: TTransmittingManagerMI);
+begin
+  if (not (Assigned(ATransmitter) and ATransmitter.m_bReady)) then
+    exit;
+
+  ShowMessage('TODO: TGamingManagerMI.FSetGameContextToTransmitter');
+end;
+
+
 procedure TGamingManagerMI.Start;
 begin
   if (Assigned(ChessBoard)) then
@@ -188,7 +201,7 @@ begin
   RCreateChessBoardAndDialogs;
   RSetChessBoardToView;
 
-  RSetPrivateSettings;
+  RReadPrivateSettings;
 
   RShowConnectingForm;
 end;
@@ -272,6 +285,37 @@ begin
   iIndex := g_lstGamingManagers.IndexOf(self);
   if (iIndex < 0) then
     g_lstGamingManagers.Add(self);
+end;
+
+
+procedure TGamingManagerMI.RHandleConnectorDataCommand(sl: string);
+var
+  strCmdSaved, sr: string;
+begin
+  strCmdSaved := sl;
+
+  RSplitStr(sl, sl, sr);
+
+  if (sl = CMD_TRANSMITTING) then
+  begin
+    Transmittable := TRUE;
+    exit;
+  end;
+
+  if (not Transmittable) then
+  begin
+    inherited RHandleConnectorDataCommand(strCmdSaved);
+    exit;
+  end;
+
+  if (sl = CMD_WELCOME) then
+  begin
+    if (Assigned(ChessBoard)) then
+      ChessBoard.InitPosition;
+    RSetConnectionOccured;
+  end
+  else
+    inherited RHandleConnectorDataCommand(strCmdSaved);
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -607,6 +651,12 @@ begin
   else if (sl = CMD_GOODBYE) then
   begin
     Stop;  
+  end
+  else if (sl = CMD_WELCOME) then
+  begin
+    RSendData(CMD_WELCOME);
+    m_bReady := TRUE;
+    m_GamingManager.FSetGameContextToTransmitter(self);     
   end;
 
   // TODO:
@@ -695,6 +745,7 @@ begin
   if (lwVersion >= 200901) then
     Connector.MultiSession := TRUE;
 end;
+
 
 initialization
 
