@@ -48,6 +48,9 @@ uses
   //
   LocalizerUnit, TransmitGameSelectionUnit, GlobalsLocalUnit;
 
+const
+  CMD_GAME_CONTEXT = 'gmctxt';
+
 type
   TManagerMI = class(TManager, IMirandaPlugin) // abstract
   protected
@@ -179,6 +182,13 @@ procedure TGamingManagerMI.FSetGameContextToTransmitter(ATransmitter: TTransmitt
 begin
   if (not (Assigned(ATransmitter) and ATransmitter.m_bReady)) then
     exit;
+
+  ATransmitter.RSendData(CMD_NICK_ID + ' ' + PlayerNickId + ' ' + OpponentNickId + ' ' + OpponentNick);
+  ATransmitter.RSendData(CMD_GAME_CONTEXT + ' ' + RGetGameContextStr);
+{
+  if (ChessBoard.Mode = mGame) then
+    ATransmitter.RSendData(); // TODO:
+}
 
   ShowMessage('TODO: TGamingManagerMI.FSetGameContextToTransmitter');
 end;
@@ -313,6 +323,26 @@ begin
     if (Assigned(ChessBoard)) then
       ChessBoard.InitPosition;
     RSetConnectionOccured;
+  end
+  else if (sl = CMD_NICK_ID) then
+  begin
+    // sr ::= <PlayerNickId><OpponentNickId><OpponentNick>
+    PlayerNick := OpponentNick; // change for transmittion
+
+    RSplitStr(sl, sl, sr);
+    PlayerNickId := sl;
+
+    RSplitStr(sl, sl, sr);
+    OpponentNickId := sl;
+
+    RSplitStr(sl, sl, sr);
+    OpponentNick := sl;
+
+    ChessBoard.Caption := RGetGameName;
+  end
+  else if (sl = CMD_GAME_CONTEXT) then
+  begin
+    RSetGameContext(sr); 
   end
   else
     inherited RHandleConnectorDataCommand(strCmdSaved);
@@ -597,9 +627,9 @@ end;
 
 procedure TTransmittingManagerMI.ROnCreate;
 begin
-  PlayerNick := m_GamingManager.PlayerNick;
-  OpponentNick := m_GamingManager.OpponentNick;
-  OpponentId := m_GamingManager.OpponentId;
+//  PlayerNick := m_GamingManager.PlayerNick;
+//  OpponentNick := m_GamingManager.OpponentNick;
+//  OpponentId := m_GamingManager.OpponentId;
 end;
 
 

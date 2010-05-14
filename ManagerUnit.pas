@@ -97,9 +97,12 @@ type
     you_takebacks, opponent_takebacks: boolean;
     can_pause_game, can_adjourn_game, move_done: boolean;
 
-    m_strPlayerNick, m_strOpponentNick: string;
-    m_strOpponentId: string;
+    m_strPlayerNick: string;
     m_strPlayerNickId: string;
+
+    m_strOpponentNick: string;
+    m_strOpponentId: string;
+    m_strOverridedOpponentNickId: string;
 
     extra_exit: boolean;
     m_bConnectionOccured: boolean;
@@ -107,7 +110,7 @@ type
     m_bTransmittable: boolean;
 
 {$IFDEF GAME_LOG}
-    // для лога игры
+    // for game log
     gameLog: string;
     procedure InitGameLog;
     procedure FWriteToGameLog(const s: string);
@@ -130,6 +133,7 @@ type
     procedure ContinueGame;
     procedure FAdjournGame;
     procedure FExitGameMode;
+
     procedure FBuildAdjournedStr;
     procedure FStartAdjournedGame;
 
@@ -142,8 +146,6 @@ type
 {$ENDIF}
 
     property AdjournedStr: string read m_strAdjourned write m_strAdjourned;
-    property PlayerNickId: string read m_strPlayerNickId;
-    property OpponentNickId: string read FGetOpponentNickId;
     property _PlayerColor: TFigureColor read FGetPlayerColor write FSetPlayerColor;
 
   protected
@@ -173,14 +175,19 @@ type
     procedure RSetConnectionOccured; virtual;
     function RGetGameName: string;
 
+    function RGetGameContextStr: string;
+    procedure RSetGameContext(const strValue: string);
+
     procedure RReleaseWithConnectorGracefully;    
 
     property Connector: TConnector read m_Connector write m_Connector;
     property ChessBoard: TPosBaseChessBoard read m_ChessBoard write m_ChessBoard;
 
     property PlayerNick: string read m_strPlayerNick write m_strPlayerNick;
+    property PlayerNickId: string read m_strPlayerNickId write m_strPlayerNickId;
     property OpponentNick: string read m_strOpponentNick write m_strOpponentNick;
     property OpponentId: string read m_strOpponentId write m_strOpponentId;
+    property OpponentNickId: string read FGetOpponentNickId write m_strOverridedOpponentNickId;    
 
     property Transmittable: boolean read m_bTransmittable write m_bTransmittable;
 
@@ -209,6 +216,7 @@ const
   CMD_WELCOME = 'wlcm'; // Accept of connection  
   CMD_GOODBYE = 'gdb'; // Refusion of connection
   CMD_TRANSMITTING = 'trnsm';
+  CMD_NICK_ID = 'nkid';
 
 implementation
 
@@ -245,7 +253,7 @@ const
   CMD_START_GAME = 'strt';
   CMD_GAME_OPTIONS = 'gmopt'; // Doesn't exist from 2007.5
   CMD_CHANGE_COLOR = 'chclr';
-  CMD_NICK_ID = 'nkid';
+//  CMD_NICK_ID = 'nkid';
   CMD_RESIGN = 'res';
   CMD_ABORT = 'abrt';
   CMD_ABORT_ACCEPTED = 'abrtacc';
@@ -708,9 +716,9 @@ begin
           ChangeColor;
         SetClock;
         ResetMoveList;
-        Mode := mGame;
         move_done:= FALSE;
         TakebackGame.Enabled := FALSE;
+        Mode := mGame;
         SwitchClock(PositionColor);
 {$IFDEF GAME_LOG}
         InitGameLog;
@@ -718,7 +726,7 @@ begin
       end
     else if (sl = CMD_START_ADJOURNED_GAME) then
     begin
-      if ChessBoard.Mode <> mGame then
+      if (ChessBoard.Mode <> mGame) then
         FStartAdjournedGame;
     end
     else if (sl = CMD_ALLOW_TAKEBACKS) then
@@ -761,7 +769,7 @@ begin
     begin
       if ((AdjournedStr = '') or (CompareStr(PlayerNickId, OpponentNickId) > 0)) then
       begin
-        if pos('&w&', sr) > 0 then
+        if (pos('&w&', sr) > 0) then
           sr := StringReplace(sr, '&w&', '&b&', []) // White -> Black
         else
           sr := StringReplace(sr, '&b&', '&w&', []); // Black -> White
@@ -1079,7 +1087,7 @@ end;
 
 procedure TManager.ChangeColorConnectedClick(Sender: TObject);
 begin
-  if ChessBoard.Mode = mGame then
+  if (ChessBoard.Mode = mGame) then
     exit;
   ChangeColor;
   RSendData(CMD_CHANGE_COLOR);
@@ -1547,6 +1555,9 @@ procedure TManager.InitGameLog;
 var
   s: string;
 begin
+  if ((not m_bConnectionOccured) or m_bTransmittable) then
+    exit; 
+
   gameLog := '';
 
   LongTimeFormat:= HOUR_TIME_FORMAT;
@@ -1616,6 +1627,9 @@ end;
 
 procedure TManager.FWriteToGameLog(const s: string);
 begin
+  if ((not m_bConnectionOccured) or m_bTransmittable) then
+    exit; 
+
   gameLog := gameLog + s;
 end;
 
@@ -1624,7 +1638,10 @@ procedure TManager.FlushGameLog;
 var
   gameLogFile: TextFile;
 begin
-  if not move_done then
+  if ((not m_bConnectionOccured) or m_bTransmittable) then
+    exit; 
+
+  if (not move_done) then
     exit;
 
   AssignFile(gameLogFile, Chess4NetPath + 'Chess4Net_GAMELOG.txt');
@@ -1855,11 +1872,11 @@ function TManager.ClockToStr: string;
 var
   s: string;
 begin
-  if you_unlimited then
+  if (you_unlimited) then
     s := 'u'
   else
     s := IntToStr(you_time) + ' ' + IntToStr(you_inc);
-  if opponent_unlimited then
+  if (opponent_unlimited) then
     s := s + ' u'
   else
     s := s + ' ' + IntToStr(opponent_time) + ' ' + IntToStr(opponent_inc);
@@ -1870,23 +1887,23 @@ end;
 
 procedure TManager.ChangeColor;
 begin
-   with ChessBoard do
-   begin
-     if (_PlayerColor = fcWhite) then
-     begin
-       StartStandartGameConnected.Enabled := FALSE;
-       StartPPRandomGameConnected.Enabled := FALSE;
-       _PlayerColor := fcBlack;
-     end
-     else // fcBlack
-     begin
-       StartStandartGameConnected.Enabled := TRUE;
-       StartPPRandomGameConnected.Enabled := TRUE;
-       _PlayerColor := fcWhite;
-     end;
-     ChessBoard.Caption := RGetGameName;
-     SetClock;
-   end
+  with ChessBoard do
+  begin
+    if (_PlayerColor = fcWhite) then
+    begin
+      StartStandartGameConnected.Enabled := FALSE;
+      StartPPRandomGameConnected.Enabled := FALSE;
+      _PlayerColor := fcBlack;
+    end
+    else // fcBlack
+    begin
+      StartStandartGameConnected.Enabled := TRUE;
+      StartPPRandomGameConnected.Enabled := TRUE;
+      _PlayerColor := fcWhite;
+    end;
+    ChessBoard.Caption := RGetGameName;
+    SetClock;
+  end;
 end;
 
 
@@ -1921,7 +1938,7 @@ end;
 
 procedure TManager.StartAdjournedGameConnectedClick(Sender: TObject);
 begin
-  if AdjournedStr <> '' then
+  if (AdjournedStr <> '') then
   begin
     RSendData(CMD_START_ADJOURNED_GAME);
     FStartAdjournedGame;
@@ -1947,42 +1964,69 @@ procedure TManager.FExitGameMode;
 begin
   ChessBoard.StopClock;
   ChessBoard.Mode := mView;
-  if move_done then
+  if (move_done) then
     AdjournedStr := '';
 end;
 
 
-procedure TManager.FBuildAdjournedStr;
+function TManager.RGetGameContextStr: string;
 var
   str: string;
 begin
-  // AdjournedStr ::= <position>&<this player's color>&<time control>&<current time>
+  // Result ::= <position>&<this player's color>&<time control>&<current time>
   with ChessBoard do
-    begin
-      // <position>
-      str := ChessBoard.GetPosition + '&';
-      // <this player's color>
-      str := str + IfThen((_PlayerColor = fcWhite), 'w', 'b') + '&';
-      // <time control>
-      str := str + ClockToStr + '&';
-      // <current time>
-      LongTimeFormat := HOUR_TIME_FORMAT;
-      str := str + TimeToStr(Time[fcWhite]) + ' ' + TimeToStr(Time[fcBlack]);
-    end;
-  AdjournedStr := str;  
+  begin
+    // <position>
+    str := ChessBoard.GetPosition + '&';
+    // <this player's color>
+    str := str + IfThen((_PlayerColor = fcWhite), 'w', 'b') + '&';
+    // <time control>
+    str := str + ClockToStr + '&';
+    // <current time>
+    LongTimeFormat := HOUR_TIME_FORMAT;
+    str := str + TimeToStr(Time[fcWhite]) + ' ' + TimeToStr(Time[fcBlack]);
+  end;
+
+  Result := str;
 end;
 
+
+procedure TManager.FBuildAdjournedStr;
+begin
+  AdjournedStr := RGetGameContextStr;
+end;
+
+
 procedure TManager.FStartAdjournedGame;
+begin
+  if (AdjournedStr = '') then
+    exit;
+
+  RSetGameContext(AdjournedStr);
+
+  with ChessBoard do
+  begin
+    ResetMoveList;
+    move_done:= FALSE;
+    TakebackGame.Enabled := FALSE;
+    Mode := mGame;
+    SwitchClock(PositionColor);
+  end;
+end;
+
+
+procedure TManager.RSetGameContext(const strValue: string);
 var
-  l: integer;
   str: string;
+  l: integer;
   strPosition, strPlayerColor, strTimeControl, strCurrentTime: string;
 begin
-  if AdjournedStr = '' then
+  if (strValue = '') then
     exit;
-  str := AdjournedStr;
 
-  // AdjournedStr ::= <position>&<this player's color>&<time control>&<current time>
+  // strValue ::= <position>&<this player's color>&<time control>&<current time>
+
+  str := strValue;  
 
   l := pos('&', str);
   strPosition := LeftStr(str, l - 1);
@@ -2009,13 +2053,6 @@ begin
     LongTimeFormat := HOUR_TIME_FORMAT;
     Time[fcWhite] := StrToTime(str);
     Time[fcBlack] := StrToTime(strCurrentTime);
-
-    ResetMoveList;
-
-    move_done:= FALSE;
-    TakebackGame.Enabled := FALSE;
-    Mode := mGame;
-    SwitchClock(PositionColor);
   end;
 end;
 
@@ -2050,7 +2087,10 @@ end;
 
 function TManager.FGetOpponentNickId: string;
 begin
-  Result := OpponentNick + OpponentId;
+  if ((not m_bTransmittable) or (m_strOverridedOpponentNickId = '')) then
+    Result := OpponentNick + OpponentId
+  else
+    Result := m_strOverridedOpponentNickId;
 end;
 
 
@@ -2160,7 +2200,7 @@ begin
 
     RCreateAndPopulateExtBaseList;
 
-    // инициализация ников
+    // nicks initialisation
 {$IFDEF AND_RQ}
     PlayerNick := RQ_GetDisplayedName(RQ_GetCurrentUser);
     OpponentNick := RQ_GetDisplayedName(RQ_GetChatUIN);
@@ -2171,8 +2211,6 @@ begin
     OpponentNick := GetContactNick(wAccName, iProtoDllHandle);
     OpponentId := wAccName;
 {$ENDIF}
-//    OpponentNickId := OpponentNick + OpponentId;
-//    connectionOccured := FALSE;
 {$IFDEF TRILLIAN}
     PlayerNick := trillianOwnerNick;
     OpponentNick := contactlistEntry.name;
