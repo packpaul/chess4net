@@ -32,6 +32,7 @@ type
     // системное сообщение
     _systemDataList: TStringList;
     m_lwId: Longword;
+    m_LastSendTime: TDateTime;
 
 {$IFDEF DEBUG_LOG}
     _logFile: Text;
@@ -132,6 +133,7 @@ const
 
   OWNER_ID = 0;
 
+(*
 function TConnector.FSendMessage(const vMessage: string): boolean;
 const
   LAST_SEND_TIME: TDateTime = 0.0;
@@ -139,14 +141,34 @@ var
   _now: TDateTime;
 begin
   _now := Now;
-  if MilliSecondsBetween(_now, LAST_SEND_TIME) < MIN_TIME_BETWEEN_MSG then
+  if (MilliSecondsBetween(_now, LAST_SEND_TIME) < MIN_TIME_BETWEEN_MSG) then
     Result := FALSE
   else
-    begin
-      LAST_SEND_TIME := _now;
-      CallContactService(_hContact, PSS_MESSAGE, 0, LPARAM(PChar(vMessage)));
-      Result := TRUE;
-    end;
+  begin
+    LAST_SEND_TIME := _now;
+    CallContactService(_hContact, PSS_MESSAGE, 0, LPARAM(PChar(vMessage)));
+    Result := TRUE;
+  end;
+end;
+*)
+
+// PP: Let's hope Miranda IM can messages to different contacts at the same time
+
+function TConnector.FSendMessage(const vMessage: string): boolean;
+// const
+//  LAST_SEND_TIME: TDateTime = 0.0;
+var
+  _now: TDateTime;
+begin
+  _now := Now;
+  if (MilliSecondsBetween(_now, m_LastSendTime) < MIN_TIME_BETWEEN_MSG) then
+    Result := FALSE
+  else
+  begin
+    m_LastSendTime := _now;
+    CallContactService(_hContact, PSS_MESSAGE, 0, LPARAM(PChar(vMessage)));
+    Result := TRUE;
+  end;
 end;
 
 
@@ -409,12 +431,14 @@ begin
      (LeftStr(d, length(CMD_CLOSE)) = CMD_CLOSE) or
      (LeftStr(d, length(CMD_CONTACT_LIST_ID)) = CMD_CONTACT_LIST_ID) or
      (pos(DATA_SEPARATOR, d) > 0) then
-    exit
+  begin
+    exit;
+  end
   else
-    begin
-      _msg_buf := _msg_buf + d + DATA_SEPARATOR;
-      _sendTimer.Enabled := TRUE; // Отослать сообщение с некоторой оттяжкой -> всё одним пакетом
-    end;
+  begin
+    _msg_buf := _msg_buf + d + DATA_SEPARATOR;
+    _sendTimer.Enabled := TRUE; // Отослать сообщение с некоторой оттяжкой -> всё одним пакетом
+  end;
   Result := TRUE;  
 end;
 
@@ -639,30 +663,30 @@ begin
   if (_systemDataList.Count > 0) then
     exit; // System data goes first
 
-  if _msg_sending = '' then
+  if (_msg_sending = '') then
+  begin
+    _sendTimer.Enabled := FALSE;
+    if (_msg_buf <> '') then
     begin
-      _sendTimer.Enabled := FALSE;
-      if _msg_buf <> '' then
-        begin
-          _unformated_msg_sending := _msg_buf;
-          _msg_sending := FFormatMsg(_msg_buf);
-          _msg_buf := '';
+      _unformated_msg_sending := _msg_buf;
+      _msg_sending := FFormatMsg(_msg_buf);
+      _msg_buf := '';
 
-          _sendTimer.Enabled := (not FSendMessage(_msg_sending));
-        end;
-    end
-  else
-    begin
-{$IFDEF DEBUG_LOG}
-      WriteToLog('resend: ' + _msg_sending);
-{$ENDIF}
-      inc(RESEND_COUNT);
-      if RESEND_COUNT = MAX_RESEND_TRYS then
-        begin
-          RESEND_COUNT := 0;
-          FSendMessage(_msg_sending);
-        end;
+      _sendTimer.Enabled := (not FSendMessage(_msg_sending));
     end;
+  end
+  else
+  begin
+{$IFDEF DEBUG_LOG}
+    WriteToLog('resend: ' + _msg_sending);
+{$ENDIF}
+    inc(RESEND_COUNT);
+    if (RESEND_COUNT = MAX_RESEND_TRYS) then
+    begin
+      RESEND_COUNT := 0;
+      FSendMessage(_msg_sending);
+    end;
+  end;
 end;
 
 

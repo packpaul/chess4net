@@ -85,6 +85,7 @@ type
     procedure ConnectorHandler(e: TConnectorEvent; d1: pointer = nil; d2: pointer = nil); override;
     procedure RSetConnectionOccured; override;
     procedure RHandleConnectorDataCommand(sl: string); override;
+    procedure RRetransmit(const strCmd: string); override;
   end;
 
   ETransmittingManagerMI = class(Exception);
@@ -185,12 +186,6 @@ begin
 
   ATransmitter.RSendData(CMD_NICK_ID + ' ' + PlayerNickId + ' ' + OpponentNickId + ' ' + OpponentNick);
   ATransmitter.RSendData(CMD_GAME_CONTEXT + ' ' + RGetGameContextStr);
-{
-  if (ChessBoard.Mode = mGame) then
-    ATransmitter.RSendData(); // TODO:
-}
-
-  ShowMessage('TODO: TGamingManagerMI.FSetGameContextToTransmitter');
 end;
 
 
@@ -298,6 +293,23 @@ begin
 end;
 
 
+procedure TGamingManagerMI.RRetransmit(const strCmd: string);
+var
+  i: integer;
+  ATransmitter: TTransmittingManagerMI;
+begin
+  if (Transmittable or (not Assigned(m_lstTransmittingManagers))) then
+    exit;
+
+  for i := 0 to m_lstTransmittingManagers.Count - 1 do
+  begin
+    ATransmitter := m_lstTransmittingManagers[i];
+    if (Assigned(ATransmitter) and (ATransmitter.m_bReady)) then
+      ATransmitter.RSendData(strCmd);
+  end;
+end;
+
+
 procedure TGamingManagerMI.RHandleConnectorDataCommand(sl: string);
 var
   strCmdSaved, sr: string;
@@ -329,20 +341,20 @@ begin
     // sr ::= <PlayerNickId><OpponentNickId><OpponentNick>
     PlayerNick := OpponentNick; // change for transmittion
 
-    RSplitStr(sl, sl, sr);
+    RSplitStr(sr, sl, sr);
     PlayerNickId := sl;
 
-    RSplitStr(sl, sl, sr);
+    RSplitStr(sr, sl, sr);
     OpponentNickId := sl;
 
-    RSplitStr(sl, sl, sr);
+    RSplitStr(sr, sl, sr);
     OpponentNick := sl;
 
     ChessBoard.Caption := RGetGameName;
   end
   else if (sl = CMD_GAME_CONTEXT) then
   begin
-    RSetGameContext(sr); 
+    RSetGameContext(sr);
   end
   else
     inherited RHandleConnectorDataCommand(strCmdSaved);

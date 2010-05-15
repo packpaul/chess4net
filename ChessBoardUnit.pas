@@ -120,6 +120,8 @@ type
     m_iWhitePanelInitialWidth, m_iBlackPanelInitialWidth: integer;
     m_TimeFont: TFont;
 
+    m_bViewGaming: boolean;
+
 {$IFDEF THREADED_CHESSCLOCK}
     TimeLabelThread: TTimeLabelThread; // нить используется для борьбы с лагом в Миранде
 {$ENDIF}
@@ -207,6 +209,7 @@ type
     property StayOnTop: boolean read GetStayOnTop write SetStayOnTop;
     property AutoFlag: boolean read auto_flag write SetAutoFlag;
     property animation: TAnimation read m_animation write m_animation;
+    property ViewGaming: boolean read m_bViewGaming write m_bViewGaming;
   end;
 
 implementation
@@ -473,17 +476,15 @@ procedure TChessBoard.PBoxBoardDragDrop(Sender, Source: TObject; X,
 var
   i, j: Integer;
 begin
-  WhatSquare(Point(X,Y), i, j);
-  case Mode of
-    mGame:
+  WhatSquare(Point(X, Y), i, j);
+  if (Mode = mGame) then
+  begin
+    if (RDoMove(i, j)) then
     begin
-      if (RDoMove(i, j)) then
-      begin
-        SwitchClock(PositionColor);
-        dragged_moved:= TRUE;
-      end;
+      SwitchClock(PositionColor);
+      dragged_moved:= TRUE;
     end;
-  end; // case
+  end; // if
 end;
 
 
@@ -574,13 +575,17 @@ var
   i, j: Integer;
   f: TFigure;
 begin
-  WhatSquare(Point(X,Y), i,j);
+  WhatSquare(Point(X, Y), i, j);
   if (not ((i in [1..8]) and (j in [1..8]))) then
     exit;
+
   f := Position.board[i,j];
+
   case Mode of
     mGame:
     begin
+      if (ViewGaming) then
+        exit;
       if (Button <> mbLeft) or (Position.color <> player_color) or
          (((Position.color <> fcWhite) or (f >= ES)) and
           ((Position.color <> fcBlack) or (f <= ES))) then
@@ -590,13 +595,13 @@ begin
     exit;
   end;
 
-  if anim_step < anim_step_num then
+  if (anim_step < anim_step_num) then
     begin
       anim_step:= anim_step_num;
       AnimateTimerTimer(nil);
     end;
 
-  if (i = m_i0) and (j = m_j0) then
+  if ((i = m_i0) and (j = m_j0)) then
     hilighted := (hilighted xor TRUE)
   else
     hilighted:= TRUE;
@@ -622,20 +627,27 @@ var
   i,j: Integer;
 begin
   WhatSquare(Point(X,Y), i,j);
-  if not ((i in [1..8]) and (j in [1..8])) then
-    begin
-      PBoxBoard.Cursor:= crDefault;
-      exit;
-    end;
-  f:= Position.board[i,j];
+  if (not ((i in [1..8]) and (j in [1..8]))) then
+  begin
+    PBoxBoard.Cursor:= crDefault;
+    exit;
+  end;
+
+  f := Position.board[i,j];
+
   case Mode of
     mGame:
+    begin
+      if (ViewGaming) then
+        exit;
+         
       if (player_color = Position.color) and
          (((Position.color = fcWhite) and (f < ES)) or
           ((Position.color = fcBlack) and (f > ES))) then
         PBoxBoard.Cursor:= crHandPoint
       else
         PBoxBoard.Cursor:= crDefault;
+    end;    
 
     else
       PBoxBoard.Cursor:= crDefault;
@@ -837,27 +849,29 @@ begin
   RDrawBoard;
   HilightLastMove;
   if (mode_var <> mGame) then
-    begin
-      WhiteFlagButton.Visible := FALSE;
-      BlackFlagButton.Visible := FALSE;
-    end;
+  begin
+    WhiteFlagButton.Visible := FALSE;
+    BlackFlagButton.Visible := FALSE;
+  end;
 end;
 
 
 procedure TChessBoard.SetTime(color: TFigureColor; const tm: TDateTime);
 begin
-  if not Unlimited[color] then
+  if (not Unlimited[color]) then
+  begin
+    if ((not auto_flag) and (not ViewGaming)) then
     begin
-      if not auto_flag then
-        case color of
-          fcWhite:
-            WhiteFlagButton.Visible := ((player_color = fcBlack) and (tm = 0.0));
-          fcBlack:
-            BlackFlagButton.Visible := ((player_color = fcWhite) and (tm = 0.0));
-        end;
-      player_time[color]:= tm;
-      ShowTime(color);
+      case color of
+        fcWhite:
+          WhiteFlagButton.Visible := ((player_color = fcBlack) and (tm = 0.0));
+        fcBlack:
+          BlackFlagButton.Visible := ((player_color = fcWhite) and (tm = 0.0));
+      end;
     end;
+    player_time[color]:= tm;
+    ShowTime(color);
+  end;
 end;
 
 
@@ -880,14 +894,16 @@ begin
     begin
       player_time[clock_color] := 0.0;
       ShowTime(clock_color);
-      if (not auto_flag) and (player_color <> clock_color) then
+      if ((not auto_flag) and (player_color <> clock_color) and (not ViewGaming)) then
+      begin
         case clock_color of
           fcWhite:
             WhiteFlagButton.Visible := TRUE;
           fcBlack:
             BlackFlagButton.Visible := TRUE;
         end;
-      if (player_color <> clock_color) and Assigned(Handler) and (Mode = mGame) and (auto_flag) then
+      end;
+      if ((player_color <> clock_color) and Assigned(Handler) and (Mode = mGame) and (auto_flag)) then
         Handler(cbeTimeOut, self);
       GameTimer.Enabled := FALSE;
     end;
