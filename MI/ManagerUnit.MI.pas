@@ -46,10 +46,7 @@ implementation
 uses
   Types, StrUtils, Classes, Dialogs, Controls,
   //
-  LocalizerUnit, TransmitGameSelectionUnit, GlobalsLocalUnit;
-
-const
-  CMD_GAME_CONTEXT = 'gmctxt';
+  LocalizerUnit, TransmitGameSelectionUnit, GlobalsLocalUnit, ChessBoardUnit;
 
 type
   TManagerMI = class(TManager, IMirandaPlugin) // abstract
@@ -77,6 +74,7 @@ type
     procedure FAddTransmitter(ATransmitter: TTransmittingManagerMI);
     function FRemoveTransmitter(ATransmitter: TTransmittingManagerMI): boolean;
     procedure FSetGameContextToTransmitter(ATransmitter: TTransmittingManagerMI);
+    function FContainsContactIDInTransmitters(iContactID: integer): boolean;
 
   protected
     procedure Start;
@@ -186,6 +184,29 @@ begin
 
   ATransmitter.RSendData(CMD_NICK_ID + ' ' + PlayerNickId + ' ' + OpponentNickId + ' ' + OpponentNick);
   ATransmitter.RSendData(CMD_GAME_CONTEXT + ' ' + RGetGameContextStr);
+
+  if (ChessBoard.Mode = mGame) then
+    ATransmitter.RSendData(CMD_CONTINUE_GAME);
+end;
+
+
+function TGamingManagerMI.FContainsContactIDInTransmitters(iContactID: integer): boolean;
+var
+  i: integer;
+  ATransmitter: TTransmittingManagerMI;
+begin
+  Result := FALSE;
+  if (not Assigned(m_lstTransmittingManagers)) then
+    exit;
+  for i := 0 to m_lstTransmittingManagers.Count - 1 do
+  begin
+    ATransmitter := m_lstTransmittingManagers[i];
+    if (Assigned(ATransmitter) and (ATransmitter.Connector.ContactID = iContactID)) then
+    begin
+      Result := TRUE;
+      exit;
+    end;
+  end;
 end;
 
 
@@ -407,13 +428,12 @@ begin
   for i := 0 to g_lstGamingManagers.Count - 1 do
   begin
     GM := g_lstGamingManagers[i];
-    if (Assigned(GM)) then
-    begin
-      Result := (m_Connector.ContactID <> GM.Connector.ContactID);
-      if (Result) then
-        exit;
-    end;
-  end;
+    Result := (Assigned(GM) and (not GM.Transmittable) and
+               (m_Connector.ContactID <> GM.Connector.ContactID) and
+               (not GM.FContainsContactIDInTransmitters(m_Connector.ContactID)));
+    if (Result) then
+      exit;
+  end; // for
 end;
 
 
@@ -482,7 +502,9 @@ begin
     for i := 0 to g_lstGamingManagers.Count - 1 do
     begin
       GM := g_lstGamingManagers[i];
-      if (Assigned(GM) and (m_Connector.ContactID <> GM.Connector.ContactID)) then
+      if (Assigned(GM) and (not GM.Transmittable) and
+          (m_Connector.ContactID <> GM.Connector.ContactID) and
+          (not GM.FContainsContactIDInTransmitters(m_Connector.ContactID))) then
         strlGames.AddObject(GM.RGetGameName, GM);
     end;
 

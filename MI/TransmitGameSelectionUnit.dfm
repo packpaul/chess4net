@@ -13,7 +13,6 @@ object TransmitGameSelectionForm: TTransmitGameSelectionForm
   Font.Name = 'Microsoft Sans Serif'
   Font.Style = []
   OldCreateOrder = False
-  OnClose = FormClose
   OnCreate = FormCreate
   PixelsPerInch = 96
   TextHeight = 13

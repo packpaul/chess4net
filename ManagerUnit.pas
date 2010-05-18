@@ -221,6 +221,8 @@ const
   CMD_GOODBYE = 'gdb'; // Refusion of connection
   CMD_TRANSMITTING = 'trnsm';
   CMD_NICK_ID = 'nkid';
+  CMD_CONTINUE_GAME = 'cont';
+  CMD_GAME_CONTEXT = 'gmctxt';
 
 implementation
 
@@ -287,7 +289,7 @@ const
   CMD_PAUSE_GAME = 'paus';
   CMD_PAUSE_GAME_YES = 'pausyes';
   CMD_PAUSE_GAME_NO = 'pausno';
-  CMD_CONTINUE_GAME = 'cont';
+//  CMD_CONTINUE_GAME = 'cont';
   // Существует с 2008.1
   CMD_CAN_ADJOURN_GAME = 'canadj';
   CMD_SET_ADJOURNED = 'setadj'; // Setting of adj. position and timing
@@ -474,6 +476,9 @@ begin
     end;
 
     cbeClockSwitched:
+    begin
+      if (Transmittable) then
+        exit;
       with ChessBoard do
       begin
         if (move_done and (ClockColor = PositionColor)) then
@@ -486,11 +491,8 @@ begin
             if ((not Unlimited[_PlayerColor]) or (m_lwOpponentClientVersion < 200706)) then
             begin
               strSwitchClockCmd := CMD_SWITCH_CLOCK + ' ' + s;
-              if (not Transmittable) then
-              begin
-                RSendData(strSwitchClockCmd);
-                RRetransmit(strSwitchClockCmd);
-              end;
+              RSendData(strSwitchClockCmd);
+              RRetransmit(strSwitchClockCmd);
             end;
           end
           else
@@ -502,6 +504,7 @@ begin
           end;
         end;
       end; { with }
+    end;
 
     cbeTimeOut:
     begin
@@ -778,13 +781,22 @@ begin
         InitGameLog;
 {$ENDIF}
       end;
-      RRetransmit(CMD_START_GAME);      
+      RRetransmit(strSavedCmd);
     end
     else if (sl = CMD_START_ADJOURNED_GAME) then
     begin
-      if (ChessBoard.Mode <> mGame) then
-        FStartAdjournedGame;
+      FStartAdjournedGame;
+      RRetransmit(CMD_GAME_CONTEXT + ' ' + RGetGameContextStr);
+      RRetransmit(CMD_CONTINUE_GAME);
     end
+    else if (sl = CMD_CONTINUE_GAME) then
+    begin
+      if (Transmittable) then
+      begin
+        ChessBoard.Mode := mGame;
+        ContinueGame;
+      end;
+    end    
     else if (sl = CMD_ALLOW_TAKEBACKS) then
     begin
       RSplitStr(sr, sl, sr);
@@ -836,7 +848,7 @@ begin
     else if (sl = CMD_CHANGE_COLOR) then
     begin
       ChangeColor;
-      RRetransmit(CMD_CHANGE_COLOR);
+      RRetransmit(strSavedCmd);
     end
     else if (sl = CMD_NICK_ID) then
     begin
@@ -946,10 +958,20 @@ begin
         RSplitStr(sr, sl, sr);
         ms := RightStr(sl, length(sl) - LastDelimiter(':.', sl));
         sl := LeftStr(sl, length(sl) - length(ms) - 1);
-        if (_PlayerColor = fcWhite) then
-          Time[fcBlack] := StrToTime(sl) + EncodeTime(0, 0, 0, StrToInt(ms))
+        if (Transmittable) then
+        begin
+          if (PositionColor = fcWhite) then
+            Time[fcBlack] := StrToTime(sl) + EncodeTime(0, 0, 0, StrToInt(ms))
+          else
+            Time[fcWhite] := StrToTime(sl) + EncodeTime(0, 0, 0, StrToInt(ms));
+        end
         else
-          Time[fcWhite] := StrToTime(sl) + EncodeTime(0, 0, 0, StrToInt(ms));
+        begin
+          if (_PlayerColor = fcWhite) then
+            Time[fcBlack] := StrToTime(sl) + EncodeTime(0, 0, 0, StrToInt(ms))
+          else
+            Time[fcWhite] := StrToTime(sl) + EncodeTime(0, 0, 0, StrToInt(ms));
+        end;
       end; // with
       RRetransmit(strSavedCmd);
     end
@@ -990,7 +1012,7 @@ begin
         [mbOK], mfNone); // Your opponent forfeited on time.
       ChessBoard.WriteGameToBase(grWinTime);
 
-      RRetransmit(CMD_FLAG_YES); 
+      RRetransmit(strSavedCmd); 
     end
     else if (sl = CMD_FLAG_NO) then
       with ChessBoard do
@@ -1044,6 +1066,7 @@ begin
     else if (sl = CMD_ADJOURN_GAME_YES) then
     begin
       FAdjournGame;
+      RRetransmit(strSavedCmd);
     end
     else if (sl = CMD_ADJOURN_GAME_NO) then
     begin
@@ -1529,6 +1552,7 @@ begin
         if modRes = mrYes then
         begin
           RSendData(CMD_ADJOURN_GAME_YES);
+          RRetransmit(CMD_ADJOURN_GAME_YES);
           FAdjournGame;
         end
         else
@@ -2063,6 +2087,8 @@ begin
   begin
     RSendData(CMD_START_ADJOURNED_GAME);
     FStartAdjournedGame;
+    RRetransmit(CMD_GAME_CONTEXT + ' ' + RGetGameContextStr);
+    RRetransmit(CMD_CONTINUE_GAME);
   end;
 end;
 

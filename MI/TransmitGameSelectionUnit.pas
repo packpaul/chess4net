@@ -13,7 +13,6 @@ type
     CancelButton: TTntButton;
     TransmitGameListBox: TTntListBox;
     procedure FormCreate(Sender: TObject);
-    procedure FormClose(Sender: TObject; var Action: TCloseAction);
   private
     procedure FLocalize;
 
@@ -75,13 +74,6 @@ begin
     Result := TransmitGameListBox.Items.Objects[iIndex]
   else
     Result := nil;
-end;
-
-
-procedure TTransmitGameSelectionForm.FormClose(Sender: TObject;
-  var Action: TCloseAction);
-begin
-  ModalResult := CancelButton.ModalResult;
 end;
 
 end.
