@@ -94,7 +94,7 @@ var
   pluginInstance: IMirandaPlugin;
 begin
   Connector := nil;
-  pluginInstance := nil;
+  Pointer(pluginInstance) := nil;
   try
     Connector := TConnector.Create(wParam);
     pluginInstance := gCreatePluginInstance(Connector);
@@ -110,7 +110,7 @@ begin
     if (Assigned(pluginInstance)) then
     begin
       pluginInstance.Stop;
-      pluginInstance := nil;
+      Pointer(pluginInstance) := nil;
     end;
     Result := -1;
   end;
