@@ -137,6 +137,7 @@ begin
   begin
     Plugin := g_Plugins[i] as IMirandaPlugin;
     Plugin.Stop;
+    Pointer(Plugin) := nil;
     dec(i);
   end;
   FreeAndNil(g_Plugins);
@@ -445,7 +446,7 @@ begin
 
   try
     m_Manager.Start;
-    m_Manager := nil; // non-ref counted
+    Pointer(m_Manager) := nil;
   except
     if (m_bOwnExceptionHandler) then
       FHandleStartException
@@ -472,7 +473,7 @@ begin
 
   try
     m_Manager.Start;
-    m_Manager := nil; // non-ref counted
+    Pointer(m_Manager) := nil;
   except
     if (m_bOwnExceptionHandler) then
       FHandleStartException
@@ -539,7 +540,7 @@ begin
   if (Assigned(m_Manager)) then
   begin
     m_Manager.Stop;
-    m_Manager := nil;
+    Pointer(m_Manager) := nil;
   end;
   Free;
 end;

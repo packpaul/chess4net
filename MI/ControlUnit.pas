@@ -100,6 +100,7 @@ begin
     pluginInstance := gCreatePluginInstance(Connector);
     Connector.SetPlugin(pluginInstance);
     pluginInstance.Start;
+    Pointer(pluginInstance) := nil;
     Result := 0;
   except
     if (Assigned(gErrorDuringPluginStart)) then
