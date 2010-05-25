@@ -70,6 +70,7 @@ type
 
   public
     procedure Show; virtual;
+    procedure Close; virtual;
 
     property Handle: hWnd read GetHandle;
     property Enabled: boolean read GetEnabled_ write SetEnabled_;
@@ -190,6 +191,12 @@ end;
 procedure TModalForm.Show;
 begin
   inherited Show;
+end;
+
+
+procedure TModalForm.Close;
+begin
+  inherited Close;
 end;
 
 
@@ -377,7 +384,7 @@ begin
   begin
     Dlg := frmList[i];
     if (Dlg.GetModalID = mfNone) then
-      UnsetShowing(Dlg);
+      Dlg.Close; 
     dec(i);
   end;
 end;

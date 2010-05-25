@@ -27,6 +27,7 @@ type
     function GetModalID: TModalFormID; override;
   public
     procedure Show; override;
+    procedure Close; override;
     function ShowModal: integer; reintroduce;
     procedure SetFocus; override;
     constructor Create(frmOwner: TForm; const wstrMsg: WideString;
@@ -107,6 +108,12 @@ end;
 procedure TDialogForm.Show;
 begin
   msgDlg.Show;
+end;
+
+
+procedure TDialogForm.Close;
+begin
+  msgDlg.Close;
 end;
 
 

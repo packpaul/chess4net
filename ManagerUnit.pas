@@ -2064,8 +2064,11 @@ end;
 procedure TManager.PauseGame;
 begin
   ChessBoard.StopClock;
-  m_ContinueForm := (m_Dialogs.CreateDialog(TContinueForm) as TContinueForm);
-  m_ContinueForm.Show;
+  if (not Transmittable) then
+  begin
+    m_ContinueForm := (m_Dialogs.CreateDialog(TContinueForm) as TContinueForm);
+    m_ContinueForm.Show;
+  end;
 end;
 
 
