@@ -23,10 +23,10 @@ type
     ConnectingHandler: TConnectingHandler;
     shuted: boolean;
     procedure FLocalize;
-
+  protected
+    function GetModalID : TModalFormID; override;
   public
     procedure Shut;
-    class function GetModalID : TModalFormID; override;
     constructor Create(Owner: TForm; h: TConnectingHandler = nil); reintroduce; overload;
 //    constructor Create(dlgOwner: TDialogs; h: TConnectingHandler); reintroduce; overload;
   end;
@@ -85,7 +85,7 @@ begin
   Close;
 end;
 
-class function TConnectingForm.GetModalID: TModalFormID;
+function TConnectingForm.GetModalID: TModalFormID;
 begin
   Result := mfConnecting;
 end;

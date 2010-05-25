@@ -22,9 +22,10 @@ type
     ContinueHandler: TContinueHandler;
     shuted: boolean;
     procedure FLocalize;
+  protected
+    function GetModalID: TModalFormID; override;  
   public
     procedure Shut;
-    class function GetModalID : TModalFormID; override;
     constructor Create(Owner: TForm; h: TContinueHandler = nil); reintroduce; overload;
 //    constructor Create(dlgOwner: TDialogs; h: TContinueHandler); reintroduce; overload;
   end;
@@ -85,7 +86,7 @@ begin
 end;
 
 
-class function TContinueForm.GetModalID: TModalFormID;
+function TContinueForm.GetModalID: TModalFormID;
 begin
   Result := mfContinue;
 end;

@@ -12,7 +12,7 @@ type
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure ButtonClick(Sender: TObject);
   private
-    modID: TModalFormID;
+    m_ModID: TModalFormID;
     msgDlg: TForm;
     function GetCaption: TCaption;
     procedure SetCaption(capt: TCaption);
@@ -24,6 +24,7 @@ type
     procedure SetLeft_(x: integer); override;
     function GetTop_: integer; override;
     procedure SetTop_(y: integer); override;
+    function GetModalID: TModalFormID; override;
   public
     procedure Show; override;
     function ShowModal: integer; reintroduce;
@@ -51,7 +52,7 @@ var
 begin
   inherited CreateNew(frmOwner);
 
-  self.modID := modID;
+  m_ModID := modID;
   RHandler := msgDlgHandler;
 
   msgDlg := MessageDialogUnit.CreateMessageDialog(frmOwner, wstrMsg, DlgType, Buttons);
@@ -93,11 +94,11 @@ end;
 procedure TDialogForm.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
   if Assigned(dlgOwner) then
-    dlgOwner.UnsetShowing(modID, self);
+    dlgOwner.UnsetShowing(self);
   if (fsModal in msgDlg.FormState) then
     exit;
   if (Assigned(RHandler)) then
-    RHandler(TModalForm(msgDlg), modID);
+    RHandler(TModalForm(msgDlg), GetModalID);
 //  Action := caFree;
   Release;
 end;
@@ -182,6 +183,12 @@ end;
 procedure TDialogForm.SetTop_(y: integer);
 begin
   msgDlg.Top := y;
+end;
+
+
+function TDialogForm.GetModalID: TModalFormID;
+begin
+  Result := m_ModID;
 end;
 
 end.

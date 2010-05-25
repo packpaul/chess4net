@@ -49,9 +49,8 @@ type
     procedure FormCreate(Sender: TObject);
   private
     procedure FLocalize;
-
-  public
-    class function GetModalID: TModalFormID; override;
+  protected
+    function GetModalID: TModalFormID; override;
   end;
 
 implementation
@@ -138,7 +137,7 @@ begin
 end;
 
 
-class function TGameOptionsForm.GetModalID : TModalFormID;
+function TGameOptionsForm.GetModalID: TModalFormID;
 begin
   Result := mfGameOptions;
 end;

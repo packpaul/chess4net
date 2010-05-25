@@ -18,9 +18,9 @@ type
     procedure FLocalize;
     procedure FUpdateGUI;
     function FSelectedContactIndex: integer;
-
+  protected
+    function GetModalID: TModalFormID; override;
   public
-    class function GetModalID: TModalFormID; override;
     procedure Init(const AContacts: TTntStrings);
     property SelectedContactIndex: integer read FSelectedContactIndex;
   end;
@@ -32,7 +32,7 @@ implementation
 uses
   LocalizerUnit;
 
-class function TSelectSkypeContactForm.GetModalID : TModalFormID;
+function TSelectSkypeContactForm.GetModalID: TModalFormID;
 begin
   Result := mfSelectSkypeContact;
 end;

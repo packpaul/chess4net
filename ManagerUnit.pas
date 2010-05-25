@@ -73,7 +73,7 @@ type
     m_ContinueForm: TContinueForm;
     m_Connector: TConnector;
     m_ChessBoard: TPosBaseChessBoard;
-    m_Dialogs: TDialogs;    
+    m_Dialogs: TDialogs;
 
     m_ExtBaseList: TStringList;
     m_strExtBaseName: string;
@@ -395,8 +395,6 @@ begin
     cbeMenu:
       if (not m_Dialogs.Showing) then
       begin
-
-
         if ((ChessBoard.Mode = mView) or Transmittable) then
         begin
           if (Connector.connected) then
@@ -765,6 +763,8 @@ begin
     begin
       with ChessBoard do
       begin
+        if (Transmittable) then
+          m_Dialogs.CloseNoneDialogs;
         // Starting from 2007.6 only white can start the game
         if ((m_lwOpponentClientVersion >= 200706) and (_PlayerColor = fcWhite) and
             (not Transmittable)) then
@@ -793,10 +793,11 @@ begin
     begin
       if (Transmittable) then
       begin
+        m_Dialogs.CloseNoneDialogs;
         ChessBoard.Mode := mGame;
         ContinueGame;
       end;
-    end    
+    end
     else if (sl = CMD_ALLOW_TAKEBACKS) then
     begin
       RSplitStr(sr, sl, sr);
@@ -1012,7 +1013,7 @@ begin
         [mbOK], mfNone); // Your opponent forfeited on time.
       ChessBoard.WriteGameToBase(grWinTime);
 
-      RRetransmit(strSavedCmd); 
+      RRetransmit(strSavedCmd);
     end
     else if (sl = CMD_FLAG_NO) then
       with ChessBoard do
@@ -1045,6 +1046,8 @@ begin
     begin
       if (Assigned(m_ContinueForm)) then
         m_ContinueForm.Shut;
+      if (Transmittable) then
+        m_Dialogs.CloseNoneDialogs;
       ContinueGame;
       RRetransmit(strSavedCmd); 
     end

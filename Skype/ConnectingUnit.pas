@@ -27,10 +27,10 @@ type
     m_bShowSkypeAcceptLogo: boolean;
     procedure FLocalize;
     procedure FSetShowSkypeAcceptLogo(bValue: boolean);
-
+  protected
+    function GetModalID: TModalFormID; override;
   public
     procedure Shut;
-    class function GetModalID : TModalFormID; override;
     constructor Create(Owner: TForm; h: TConnectingHandler = nil); reintroduce; overload;
 //    constructor Create(dlgOwner: TDialogs; h: TConnectingHandler); reintroduce; overload;
     property ShowSkypeAcceptLogo: boolean read m_bShowSkypeAcceptLogo write FSetShowSkypeAcceptLogo;
@@ -93,7 +93,7 @@ begin
   Close;
 end;
 
-class function TConnectingForm.GetModalID: TModalFormID;
+function TConnectingForm.GetModalID: TModalFormID;
 begin
   Result := mfConnecting;
 end;

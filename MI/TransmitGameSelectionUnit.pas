@@ -15,9 +15,9 @@ type
     procedure FormCreate(Sender: TObject);
   private
     procedure FLocalize;
-
+  protected
+    function GetModalID: TModalFormID; override;
   public
-    class function GetModalID: TModalFormID; override;
     procedure SetGames(Games: TStrings);
     function GetSelected: TObject;
   end;
@@ -51,7 +51,7 @@ begin
 end;
 
 
-class function TTransmitGameSelectionForm.GetModalID: TModalFormID;
+function TTransmitGameSelectionForm.GetModalID: TModalFormID;
 begin
   Result := mfTransmitGame;
 end;

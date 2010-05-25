@@ -33,7 +33,7 @@ begin
     RLocalize;
 
     RSetChessBoardToView;
-    RSetPrivateSettings;
+    RReadPrivateSettings;
         
     Connector := TConnector.Create(ConnectorHandler);
 

@@ -29,15 +29,15 @@ type
   private
     procedure ILocalizable.Localize = FLocalize;
     procedure FLocalize;
-  public
-    class function GetModalID : TModalFormID; override;
+  protected
+    function GetModalID: TModalFormID; override;  
   end;
 
 implementation
 
 {$R *.dfm}
 
-class function TLookFeelOptionsForm. GetModalID: TModalFormID;
+function TLookFeelOptionsForm. GetModalID: TModalFormID;
 begin
   Result := mfLookFeel;
 end;
