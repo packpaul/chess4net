@@ -439,16 +439,30 @@ begin
         FlushGameLog;
 {$ENDIF}
         with TLocalizer.Instance do
-          if (PositionColor = fcWhite) then
+        begin
+          if (Transmittable) then
           begin
-            wstrMsg1 := GetMessage(0); // White is checkmated. You win.
-            wstrMsg2 := GetMessage(1); // White is checkmated. You loose.
+            if (PositionColor = fcWhite) then
+              wstrMsg1 := 'White is checkmated.' // TODO: localize
+            else
+              wstrMsg1 := 'Black is checkmated.'; // TODO: localize
+            wstrMsg2 := wstrMsg1;
           end
-          else
+          else // not Transmittable
           begin
-            wstrMsg1 := GetMessage(2); // Black is checkmated. You win.
-            wstrMsg2 := GetMessage(3); // Black is checkmated. You loose.
+            if (PositionColor = fcWhite) then
+            begin
+              wstrMsg1 := GetMessage(0); // White is checkmated. You win.
+              wstrMsg2 := GetMessage(1); // White is checkmated. You loose.
+            end
+            else
+            begin
+              wstrMsg1 := GetMessage(2); // Black is checkmated. You win.
+              wstrMsg2 := GetMessage(3); // Black is checkmated. You loose.
+            end;
           end;
+        end; // with
+
         if ((_PlayerColor <> fcWhite) and (PositionColor = fcWhite)) or
            ((_PlayerColor <> fcBlack) and (PositionColor = fcBlack)) then
         begin
@@ -469,7 +483,11 @@ begin
       FWriteToGameLog('=' + #13#10 + '1/2 - 1/2');
       FlushGameLog;
 {$ENDIF}
-      m_Dialogs.MessageDlg(TLocalizer.Instance.GetMessage(4), mtCustom, [mbOK], mfNone); // It's stalemate. No one wins.
+      if (Transmittable) then
+        wstrMsg1 := 'Stalemate.' // TODO: localize
+      else
+        wstrMsg1 := TLocalizer.Instance.GetMessage(4); // It's stalemate. No one wins.
+      m_Dialogs.MessageDlg(wstrMsg1, mtCustom, [mbOK], mfNone);
       ChessBoard.WriteGameToBase(grDraw);
     end;
 
@@ -720,6 +738,7 @@ var
   sr: string;
   ms: string;
   strSavedCmd: string;
+  wstrMsg: WideString;
 begin
   strSavedCmd := sl;
 
@@ -914,8 +933,17 @@ begin
         FWriteToGameLog(#13#10 + 'White resigns' + #13#10 + '0 - 1');
       FlushGameLog;
 {$ENDIF}
-      m_Dialogs.MessageDlg(TLocalizer.Instance.GetMessage(12),
-                         mtCustom, [mbOK], mfNone); // I resign. You win this game. Congratulations!
+      if (Transmittable) then
+      begin
+        if (_PlayerColor = fcWhite) then
+          wstrMsg := 'Black resigns.' // TODO: localize
+        else
+          wstrMsg := 'White resigns.'  // TODO: localize
+      end
+      else
+        wstrMsg := TLocalizer.Instance.GetMessage(12); // I resign. You win this game. Congratulations!
+
+      m_Dialogs.MessageDlg(wstrMsg, mtCustom, [mbOK], mfNone);
       ChessBoard.WriteGameToBase(grWin);
 
       RRetransmit(strSavedCmd);
@@ -1009,8 +1037,17 @@ begin
         FWriteToGameLog(#13#10 + 'White forfeits on time');
       FlushGameLog;
 {$ENDIF}
-      m_Dialogs.MessageDlg(TLocalizer.Instance.GetMessage(18), mtCustom,
-        [mbOK], mfNone); // Your opponent forfeited on time.
+      if (Transmittable) then
+      begin
+        if (_PlayerColor = fcWhite) then
+          wstrMsg := 'Black forfeits on time.' // TODO: localize
+        else
+          wstrMsg := 'White forfeits on time.'; // TODO: localize
+      end
+      else
+        wstrMsg := TLocalizer.Instance.GetMessage(18); // Your opponent forfeited on time.
+
+      m_Dialogs.MessageDlg(wstrMsg, mtCustom, [mbOK], mfNone);
       ChessBoard.WriteGameToBase(grWinTime);
 
       RRetransmit(strSavedCmd);
