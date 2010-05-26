@@ -64,7 +64,7 @@ begin
   for i := 0 to (msgDlg.ComponentCount - 1) do
   begin
     if (msgDlg.Components[i] is TButton) then
-       (msgDlg.Components[i] as TButton).OnClick := ButtonClick;
+       TButton(msgDlg.Components[i]).OnClick := ButtonClick;
   end;
 end;
 
@@ -78,17 +78,9 @@ begin
 end;
 
 
-
 procedure TDialogForm.FormShow(Sender: TObject);
-var
-  frmOwner: TForm;
 begin
-  frmOwner := (Owner as TForm);
-  if (Assigned(frmOwner)) then
-  begin
-    msgDlg.Left := frmOwner.Left + (frmOwner.Width - msgDlg.Width) div 2;
-    msgDlg.Top := frmOwner.Top + (frmOwner.Height - msgDlg.Height) div 2;
-  end;
+  inherited FormShow(msgDlg);
 end;
 
 

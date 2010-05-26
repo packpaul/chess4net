@@ -46,6 +46,7 @@ type
     property Showing: boolean read GetShowing;
   end;
 
+
   TModalForm = class(TTntForm)
     procedure FormShow(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
@@ -87,9 +88,37 @@ uses
 procedure TModalForm.FormShow(Sender: TObject);
 var
   frmOwner: TForm;
+  selfForm: TForm;  
+
+  procedure NCorrectIfOutOfScreen(var iLeft, iTop: integer);
+  var
+    R: TRect;
+    M: TMonitor;
+  begin
+    if (Assigned(frmOwner)) then
+    begin
+      M := Screen.MonitorFromRect(frmOwner.BoundsRect);
+      R := M.WorkareaRect;
+    end
+    else
+      R := Screen.WorkAreaRect;
+
+    if ((iLeft + selfForm.Width) > R.Right) then
+      iLeft := R.Right - selfForm.Width;
+    if (iLeft < R.Left) then
+      iLeft := R.Left;
+    if ((iTop + selfForm.Height) > R.Bottom) then
+      iTop := R.Bottom - selfForm.Height;
+    if (iTop < R.Top) then
+      iTop := R.Top;
+  end;
+
+var
   iWidth, iHeight: integer;
   iLeft, iTop: integer;
-begin
+begin // TModalForm.FormShow
+  selfForm := Sender as TForm;
+
   if (Assigned(Owner)) then
   begin
     frmOwner := (Owner as TForm);
@@ -105,8 +134,14 @@ begin
     iWidth := Screen.Width;
     iHeight := Screen.Height;
   end;
-  Left := iLeft + (iWidth - self.Width) div 2;
-  Top := iTop + (iHeight - self.Height) div 2;
+
+  iLeft := iLeft + (iWidth - selfForm.Width) div 2;
+  iTop := iTop + (iHeight - selfForm.Height) div 2;
+
+  NCorrectIfOutOfScreen(iLeft, iTop);
+
+  selfForm.Left := iLeft;
+  selfForm.Top := iTop;
 
   if (Assigned(GenFormShow)) then
     GenFormShow(Sender);

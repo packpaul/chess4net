@@ -112,7 +112,7 @@ type
 {$IFDEF GAME_LOG}
     // for game log
     gameLog: string;
-    procedure InitGameLog;
+    procedure FInitGameLog;
     procedure FWriteToGameLog(const s: string);
     procedure FlushGameLog;
 {$ENDIF}
@@ -433,9 +433,9 @@ begin
 {$IFDEF GAME_LOG}
         FWriteToGameLog('#');
         if (PositionColor = fcWhite) then
-          FWriteToGameLog(#13#10 + '0 - 1')
+          FWriteToGameLog(sLineBreak + '0 - 1')
         else
-          FWriteToGameLog(#13#10 + '1 - 0');
+          FWriteToGameLog(sLineBreak + '1 - 0');
         FlushGameLog;
 {$ENDIF}
         with TLocalizer.Instance do
@@ -480,7 +480,7 @@ begin
     begin
       FExitGameMode;
 {$IFDEF GAME_LOG}
-      FWriteToGameLog('=' + #13#10 + '1/2 - 1/2');
+      FWriteToGameLog('=' + sLineBreak + '1/2 - 1/2');
       FlushGameLog;
 {$ENDIF}
       if (Transmittable) then
@@ -798,7 +798,7 @@ begin
         Mode := mGame;
         SwitchClock(PositionColor);
 {$IFDEF GAME_LOG}
-        InitGameLog;
+        FInitGameLog;
 {$ENDIF}
       end;
       RRetransmit(strSavedCmd);
@@ -929,9 +929,9 @@ begin
       FExitGameMode;
 {$IFDEF GAME_LOG}
       if (_PlayerColor = fcWhite) then
-        FWriteToGameLog(#13#10 + 'Black resigns' + #13#10 + '1 - 0')
+        FWriteToGameLog(sLineBreak + 'Black resigns' + sLineBreak + '1 - 0')
       else
-        FWriteToGameLog(#13#10 + 'White resigns' + #13#10 + '0 - 1');
+        FWriteToGameLog(sLineBreak + 'White resigns' + sLineBreak + '0 - 1');
       FlushGameLog;
 {$ENDIF}
       if (Transmittable) then
@@ -970,7 +970,7 @@ begin
     begin
       FExitGameMode;
 {$IFDEF GAME_LOG}
-      FWriteToGameLog('=' + #13#10 + '1/2 - 1/2');
+      FWriteToGameLog('=' + sLineBreak + '1/2 - 1/2');
       FlushGameLog;
 {$ENDIF}
       m_Dialogs.MessageDlg(TLocalizer.Instance.GetMessage(15), mtCustom, [mbOK], mfNone); // The game is drawn.
@@ -1017,9 +1017,9 @@ begin
           FExitGameMode;
 {$IFDEF GAME_LOG}
           if (_PlayerColor = fcWhite) then
-            FWriteToGameLog(#13#10 + 'White forfeits on time')
+            FWriteToGameLog(sLineBreak + 'White forfeits on time')
           else
-            FWriteToGameLog(#13#10 + 'Black forfeits on time');
+            FWriteToGameLog(sLineBreak + 'Black forfeits on time');
           FlushGameLog;
 {$ENDIF}
           m_Dialogs.MessageDlg(TLocalizer.Instance.GetMessage(17), mtCustom, [mbOK], mfNone); // You forfeited on time.
@@ -1034,9 +1034,9 @@ begin
       FExitGameMode;
 {$IFDEF GAME_LOG}
       if (_PlayerColor = fcWhite) then
-        FWriteToGameLog(#13#10 + 'Black forfeits on time')
+        FWriteToGameLog(sLineBreak + 'Black forfeits on time')
       else
-        FWriteToGameLog(#13#10 + 'White forfeits on time');
+        FWriteToGameLog(sLineBreak + 'White forfeits on time');
       FlushGameLog;
 {$ENDIF}
       if (Transmittable) then
@@ -1310,7 +1310,7 @@ begin
       RRetransmit(CMD_START_GAME);
     end;
 {$IFDEF GAME_LOG}
-  InitGameLog;
+  FInitGameLog;
 {$ENDIF}
 end;
 
@@ -1415,7 +1415,7 @@ begin
       RRetransmit(CMD_START_GAME);
     end;
 {$IFDEF GAME_LOG}
-  InitGameLog;
+  FInitGameLog;
 {$ENDIF}
 end;
 
@@ -1534,9 +1534,9 @@ begin
           ChessBoard.WriteGameToBase(grLost);
 {$IFDEF GAME_LOG}
           if (_PlayerColor = fcWhite) then
-            FWriteToGameLog(#13#10 + 'White resigns' + #13#10 + '0 - 1')
+            FWriteToGameLog(sLineBreak + 'White resigns' + sLineBreak + '0 - 1')
           else
-            FWriteToGameLog(#13#10 + 'Black resigns' + #13#10 + '1 - 0');
+            FWriteToGameLog(sLineBreak + 'Black resigns' + sLineBreak + '1 - 0');
           FlushGameLog;
 {$ENDIF}
         end;
@@ -1556,7 +1556,7 @@ begin
           
           FExitGameMode;
 {$IFDEF GAME_LOG}
-            FWriteToGameLog('=' + #13#10 + '1/2 - 1/2');
+            FWriteToGameLog('=' + sLineBreak + '1/2 - 1/2');
             FlushGameLog;
 {$ENDIF}
           m_Dialogs.MessageDlg(TLocalizer.Instance.GetMessage(15), mtCustom, [mbOK], mfNone);
@@ -1737,7 +1737,7 @@ begin
 end;
 
 {$IFDEF GAME_LOG}
-procedure TManager.InitGameLog;
+procedure TManager.FInitGameLog;
 var
   s: string;
 begin
@@ -1747,7 +1747,7 @@ begin
   gameLog := '';
 
   LongTimeFormat:= HOUR_TIME_FORMAT;
-  FWriteToGameLog('[' + DateTimeToStr(Now) + ']' + #13#10);
+  FWriteToGameLog('[' + DateTimeToStr(Now) + ']' + sLineBreak);
 
   FWriteToGameLog(RGetGameName);
 
@@ -1803,11 +1803,11 @@ begin
     end;
     FWriteToGameLog(')');
   end;
-  FWriteToGameLog(#13#10);
+  FWriteToGameLog(sLineBreak);
 
   s := ChessBoard.GetPosition;
   if (s <> INITIAL_CHESS_POSITION) then
-    FWriteToGameLog(s + #13#10);
+    FWriteToGameLog(s + sLineBreak);
 end;
 
 
@@ -1841,7 +1841,7 @@ begin
         writeln(gameLogFile, gameLog);
     end
   else
-    writeln(gameLogFile, #13#10 + gameLog);
+    writeln(gameLogFile, sLineBreak + gameLog);
 
   CloseFile(gameLogFile);
 end;
@@ -2199,11 +2199,14 @@ begin
   with ChessBoard do
   begin
     ResetMoveList;
-    move_done:= FALSE;
+    move_done := TRUE;
     TakebackGame.Enabled := FALSE;
     Mode := mGame;
     SwitchClock(PositionColor);
   end;
+{$IFDEF GAME_LOG}
+  FInitGameLog;
+{$ENDIF}
 end;
 
 
@@ -2254,6 +2257,8 @@ procedure TManager.GamePopupMenuPopup(Sender: TObject);
 begin
   N6.Visible := ((not Transmittable) and
     (AdjournGame.Visible or GamePause.Visible or TakebackGame.Visible));
+  ResignGame.Enabled := move_done;
+  DrawGame.Enabled := (move_done and (_PlayerColor = ChessBoard.PositionColor));
 end;
 
 
