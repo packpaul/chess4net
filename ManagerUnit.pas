@@ -630,6 +630,7 @@ begin
 
       if (Transmittable) then
       begin
+        m_Dialogs.CloseNoneDialogs;
         m_Dialogs.MessageDlg('Broadcaster leaves. Transmition will be closed', mtCustom,
           [mbOK], mfMsgLeave); // TODO: localise
       end;
@@ -901,7 +902,7 @@ begin
     begin
       if (Assigned(ChessBoard)) then
         ChessBoard.SetPosition(sr);
-      RRetransmit(strSavedCmd); 
+      RRetransmit(strSavedCmd);
     end
     else if (sl = CMD_NO_SETTINGS) then
     begin
@@ -935,10 +936,11 @@ begin
 {$ENDIF}
       if (Transmittable) then
       begin
-        if (_PlayerColor = fcWhite) then
-          wstrMsg := 'Black resigns.' // TODO: localize
-        else
+        RSplitStr(sr, sl, sr);
+        if (sl = 'w') then
           wstrMsg := 'White resigns.'  // TODO: localize
+        else // (sl = 'b')
+          wstrMsg := 'Black resigns.'; // TODO: localize
       end
       else
         wstrMsg := TLocalizer.Instance.GetMessage(12); // I resign. You win this game. Congratulations!
@@ -946,7 +948,7 @@ begin
       m_Dialogs.MessageDlg(wstrMsg, mtCustom, [mbOK], mfNone);
       ChessBoard.WriteGameToBase(grWin);
 
-      RRetransmit(strSavedCmd);
+      RRetransmit(CMD_RESIGN + IfThen((_PlayerColor = fcWhite), ' b', ' w'));
     end
     else if (sl = CMD_ABORT_ACCEPTED) then
     begin
@@ -1528,7 +1530,7 @@ begin
         begin
           FExitGameMode;
           RSendData(CMD_RESIGN);
-          RRetransmit(CMD_RESIGN);
+          RRetransmit(CMD_RESIGN + IfThen((_PlayerColor = fcWhite), ' w', ' b'));
           ChessBoard.WriteGameToBase(grLost);
 {$IFDEF GAME_LOG}
           if (_PlayerColor = fcWhite) then
