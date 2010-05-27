@@ -6,9 +6,10 @@ uses
   Forms, TntForms, Dialogs, Classes;
 
 function CreateMessageDialog(AOwner: TComponent; const Msg: WideString; DlgType: TMsgDlgType;
-  Buttons: TMsgDlgButtons): TTntForm; overload;
+  Buttons: TMsgDlgButtons; bStayOnTopIfNoOwner: boolean = FALSE): TTntForm; overload;
 function CreateMessageDialog(AOwner: TComponent; const Msg: WideString;
-  DlgType: TMsgDlgType; Buttons: TMsgDlgButtons; DefaultButton: TMsgDlgBtn): TTntForm; overload;
+  DlgType: TMsgDlgType; Buttons: TMsgDlgButtons; DefaultButton: TMsgDlgBtn;
+  bStayOnTopIfNoOwner: boolean = FALSE): TTntForm; overload;
 
 implementation
 
@@ -23,7 +24,7 @@ type
   private
     Message: TTntLabel;
   public
-    constructor CreateNew(AOwner: TComponent); reintroduce;
+    constructor CreateNew(AOwner: TComponent; bStayOnTop: boolean); reintroduce;
   end;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -51,7 +52,8 @@ var
     mrYesToAll, 0);
 
 function CreateMessageDialog(AOwner: TComponent; const Msg: WideString;
-  DlgType: TMsgDlgType; Buttons: TMsgDlgButtons; DefaultButton: TMsgDlgBtn): TTntForm; overload;
+  DlgType: TMsgDlgType; Buttons: TMsgDlgButtons; DefaultButton: TMsgDlgBtn;
+  bStayOnTopIfNoOwner: boolean = FALSE): TTntForm; overload;
 
   function NGetAveCharSize(Canvas: TCanvas): TPoint;
   var
@@ -106,6 +108,7 @@ const
   mcButtonHeight = 14;
   mcButtonSpacing = 4;
 var
+  bStayOnTop: boolean;
   DialogUnits: TPoint;
   HorzMargin, VertMargin, HorzSpacing, VertSpacing, ButtonWidth,
   ButtonHeight, ButtonSpacing, ButtonCount, ButtonGroupWidth,
@@ -116,7 +119,12 @@ var
   ThisButtonWidth: integer;
   LButton: TTntButton;
 begin { CreateMessageDialog }
-  Result := TMessageForm.CreateNew(AOwner);
+  if (Assigned(AOwner)) then
+    bStayOnTop := (AOwner.InheritsFrom(TForm) and (TForm(AOwner).FormStyle = fsStayOnTOp))
+  else
+    bStayOnTop := bStayOnTopIfNoOwner;
+
+  Result := TMessageForm.CreateNew(AOwner, bStayOnTop);
   with Result do
   begin
     BorderStyle := bsDialog; // By doing this first, it will work on WINE.
@@ -228,7 +236,7 @@ end;
 
 
 function CreateMessageDialog(AOwner: TComponent; const Msg: WideString; DlgType: TMsgDlgType;
-  Buttons: TMsgDlgButtons): TTntForm;
+  Buttons: TMsgDlgButtons; bStayOnTopIfNoOwner: boolean = FALSE): TTntForm;
 var
   DefaultButton: TMsgDlgBtn;
 begin
@@ -238,18 +246,18 @@ begin
     DefaultButton := mbYes
   else
     DefaultButton := mbRetry;
-  Result := CreateMessageDialog(AOwner, Msg, DlgType, Buttons, DefaultButton);
+  Result := CreateMessageDialog(AOwner, Msg, DlgType, Buttons, DefaultButton, bStayOnTopIfNoOwner);
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
 // TMessageForm
 
-constructor TMessageForm.CreateNew(AOwner: TComponent);
+constructor TMessageForm.CreateNew(AOwner: TComponent; bStayOnTop: boolean);
 var
   NonClientMetrics: TNonClientMetrics;
 begin
-  if (Assigned(AOwner) and AOwner.InheritsFrom(TForm)) then
-    FormStyle := TForm(AOwner).FormStyle;
+  if (bStayOnTop) then
+    FormStyle := fsStayOnTop;
   inherited CreateNew(AOwner);
   NonClientMetrics.cbSize := sizeof(NonClientMetrics);
   if SystemParametersInfo(SPI_GETNONCLIENTMETRICS, 0, @NonClientMetrics, 0) then

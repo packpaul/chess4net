@@ -26,10 +26,6 @@ type
     procedure SetTop_(y: integer); override;
     function GetModalID: TModalFormID; override;
   public
-    procedure Show; override;
-    procedure Close; override;
-    function ShowModal: integer; reintroduce;
-    procedure SetFocus; override;
     constructor Create(frmOwner: TForm; const wstrMsg: WideString;
            DlgType: TMsgDlgType; Buttons: TMsgDlgButtons; modID: TModalFormID = mfNone;
            msgDlgHandler: TModalFormHandler = nil); overload;
@@ -37,6 +33,12 @@ type
            DlgType: TMsgDlgType; Buttons: TMsgDlgButtons; modID: TModalFormID;
             msgDlgHandler: TModalFormHandler); overload;
     destructor Destroy; override;
+
+    procedure Show; override;
+    procedure Close; override;
+    function ShowModal: integer; reintroduce;
+    procedure SetFocus; override;
+
     property Caption: TCaption read GetCaption write SetCaption;
   end;
 
@@ -50,13 +52,16 @@ constructor TDialogForm.Create(frmOwner: TForm; const wstrMsg: WideString;
                    modID: TModalFormID; msgDlgHandler: TModalFormHandler);
 var
   i: integer;
+  bStayOnTopIfNoOwner: boolean;
 begin
   inherited CreateNew(frmOwner);
 
   m_ModID := modID;
   RHandler := msgDlgHandler;
 
-  msgDlg := MessageDialogUnit.CreateMessageDialog(frmOwner, wstrMsg, DlgType, Buttons);
+  bStayOnTopIfNoOwner := (Assigned(dlgOwner) and dlgOwner.HasStayOnTopOwners);
+  msgDlg := MessageDialogUnit.CreateMessageDialog(frmOwner, wstrMsg, DlgType, Buttons,
+    bStayOnTopIfNoOwner);
   // msgDlg.FormStyle := frmOwner.FormStyle;
   msgDlg.OnShow := FormShow;
   msgDlg.OnClose := FormClose;
@@ -64,7 +69,7 @@ begin
   for i := 0 to (msgDlg.ComponentCount - 1) do
   begin
     if (msgDlg.Components[i] is TButton) then
-       TButton(msgDlg.Components[i]).OnClick := ButtonClick;
+      TButton(msgDlg.Components[i]).OnClick := ButtonClick;
   end;
 end;
 
@@ -73,8 +78,8 @@ constructor TDialogForm.Create(dlgOwner: TDialogs; const wstrMsg: WideString;
                 DlgType: TMsgDlgType; Buttons: TMsgDlgButtons; modID: TModalFormID;
                 msgDlgHandler: TModalFormHandler);
 begin
-  Create((dlgOwner.Owner as TForm), wstrMsg, DlgType, Buttons, modID, msgDlgHandler);
   self.dlgOwner := dlgOwner;
+  Create((dlgOwner.Owner as TForm), wstrMsg, DlgType, Buttons, modID, msgDlgHandler);
 end;
 
 

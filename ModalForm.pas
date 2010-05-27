@@ -43,6 +43,9 @@ type
     procedure BringToFront;
     procedure MoveForms(dx, dy: integer);
     procedure CloseNoneDialogs;
+
+    class function HasStayOnTopOwners: boolean;
+
     property Showing: boolean read GetShowing;
   end;
 
@@ -84,6 +87,12 @@ implementation
 uses
   SysUtils, StdCtrls, Controls,
   DialogUnit, GlobalsUnit;
+
+var
+  g_lstDialogs: TList = nil;
+
+////////////////////////////////////////////////////////////////////////////////
+// TModalForm
 
 procedure TModalForm.FormShow(Sender: TObject);
 var
@@ -176,6 +185,7 @@ var
 begin
   if (Assigned(Owner)) then
     FormStyle := Owner.FormStyle;
+
   inherited Create(Owner);
   RHandler := modHandler;
 
@@ -258,7 +268,8 @@ begin
   inherited Top := y;
 end;
 
-{-------------------------- TDialogs ------------------------------}
+////////////////////////////////////////////////////////////////////////////////
+// TDialogs
 
 function TDialogs.GetShowing: boolean;
 var
@@ -350,11 +361,17 @@ constructor TDialogs.Create(Owner: TForm; Handler: TModalFormHandler);
 var
   i: TModalFormID;
 begin
+  inherited Create;
+
   self.Owner := Owner;
   self.RHandler := Handler;
   frmList := TList.Create;
   for i := Low(TModalFormID) to High(TModalFormID) do
     IDCount[i] := 0;
+
+  if (not Assigned(g_lstDialogs)) then
+    g_lstDialogs := TList.Create;
+  g_lstDialogs.Add(self);
 end;
 
 
@@ -363,6 +380,12 @@ var
   i: integer;
   ModalForm: TModalForm;
 begin
+  if (Assigned(g_lstDialogs)) then
+  begin
+    g_lstDialogs.Remove(self);
+    FreeAndNil(g_lstDialogs);
+  end;
+
   for i := 0 to frmList.Count - 1 do
   begin
     ModalForm := frmList[i];
@@ -419,9 +442,29 @@ begin
   begin
     Dlg := frmList[i];
     if (Dlg.GetModalID = mfNone) then
-      Dlg.Close; 
+      Dlg.Close;
     dec(i);
   end;
+end;
+
+
+class function TDialogs.HasStayOnTopOwners: boolean;
+var
+  i: integer;
+  Dlgs: TDialogs;
+begin
+  Result := FALSE;
+  if (not Assigned(g_lstDialogs)) then
+    exit;
+
+  for i := 0 to g_lstDialogs.Count - 1 do
+  begin
+    Dlgs := g_lstDialogs[i];
+    Result := (Assigned(Dlgs) and Assigned(Dlgs.Owner) and
+     (Dlgs.Owner.FormStyle = fsStayOnTop));
+    if (Result) then
+      exit;
+  end; // for
 end;
 
 end.
