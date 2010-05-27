@@ -175,7 +175,7 @@ type
     procedure RSendData(const cmd: string = ''); virtual; abstract;
 
     procedure RSetConnectionOccured; virtual;
-    function RGetGameName: string;
+    function RGetGameName: string; virtual;
 
     function RGetGameContextStr: string;
     procedure RSetGameContext(const strValue: string);
@@ -183,6 +183,8 @@ type
     procedure RReleaseWithConnectorGracefully;
 
     procedure RRetransmit(const strCmd: string); virtual;
+
+    procedure RUpdateChessBoardCaption;
 
     property Connector: TConnector read m_Connector write m_Connector;
     property ChessBoard: TPosBaseChessBoard read m_ChessBoard write m_ChessBoard;
@@ -733,6 +735,13 @@ begin
 end;
 
 
+procedure TManager.RUpdateChessBoardCaption;
+begin
+  if (m_bConnectionOccured and Assigned(ChessBoard)) then
+    ChessBoard.Caption := RGetGameName;
+end;
+
+
 procedure TManager.RHandleConnectorDataCommand(sl: string);
 var
   AMode: TMode;
@@ -878,11 +887,7 @@ begin
       begin
         StartStandartGameConnected.Enabled := TRUE;
         StartPPRandomGameConnected.Enabled := TRUE;
-        if (Assigned(ChessBoard)) then
-        begin
-          _PlayerColor := fcWhite;
-          ChessBoard.Caption := RGetGameName;
-        end;
+        _PlayerColor := fcWhite;
         if (not FReadCommonSettings(TRUE)) then
           RSendData(CMD_NO_SETTINGS);
       end
@@ -890,13 +895,11 @@ begin
       begin
         StartStandartGameConnected.Enabled := FALSE;
         StartPPRandomGameConnected.Enabled := FALSE;
-        if (Assigned(ChessBoard)) then
-        begin
-          _PlayerColor := fcBlack;
-          ChessBoard.Caption := RGetGameName;
-        end;
+        _PlayerColor := fcBlack;
         FReadCommonSettings(FALSE);
       end; // if CompareStr
+
+      RUpdateChessBoardCaption;
     end
     else if (sl = CMD_POSITION) then
     begin
@@ -2088,7 +2091,7 @@ begin
       StartPPRandomGameConnected.Enabled := TRUE;
       _PlayerColor := fcWhite;
     end;
-    ChessBoard.Caption := RGetGameName;
+    RUpdateChessBoardCaption;
     SetClock;
   end;
 end;

@@ -75,6 +75,7 @@ type
     function FRemoveTransmitter(ATransmitter: TTransmittingManagerMI): boolean;
     procedure FSetGameContextToTransmitter(ATransmitter: TTransmittingManagerMI);
     function FContainsContactIDInTransmitters(iContactID: integer): boolean;
+    procedure FUpdateChessBoardCaptions;
 
   protected
     procedure Start;
@@ -84,6 +85,7 @@ type
     procedure RSetConnectionOccured; override;
     procedure RHandleConnectorDataCommand(sl: string); override;
     procedure RRetransmit(const strCmd: string); override;
+    function RGetGameName: string; override;
   end;
 
   ETransmittingManagerMI = class(Exception);
@@ -280,6 +282,7 @@ procedure TGamingManagerMI.ROnDestroy;
 
 begin // TGamingManagerMI.ROnDestroy
   NRemoveFromGamings;
+  FUpdateChessBoardCaptions;
   inherited ROnDestroy;
 end;
 
@@ -312,6 +315,24 @@ begin
   iIndex := g_lstGamingManagers.IndexOf(self);
   if (iIndex < 0) then
     g_lstGamingManagers.Add(self);
+
+  FUpdateChessBoardCaptions;
+end;
+
+
+procedure TGamingManagerMI.FUpdateChessBoardCaptions;
+var
+  i: integer;
+  GM: TGamingManagerMI;
+begin
+  if (not Assigned(g_lstGamingManagers)) then
+    exit;
+  for i := 0 to g_lstGamingManagers.Count - 1 do
+  begin
+    GM := g_lstGamingManagers[i];
+    if (Assigned(GM)) then
+      GM.RUpdateChessBoardCaption;
+  end;
 end;
 
 
@@ -329,6 +350,37 @@ begin
     if (Assigned(ATransmitter) and (ATransmitter.m_bReady)) then
       ATransmitter.RSendData(strCmd);
   end;
+end;
+
+
+function TGamingManagerMI.RGetGameName: string;
+var
+  i: integer;
+  iIndex: integer;
+  iWithSameConnectorCount: integer;
+  GM: TGamingManagerMI;
+begin
+  Result := inherited RGetGameName;
+
+  if (not Assigned(g_lstGamingManagers)) then
+    exit;
+
+  iWithSameConnectorCount := 0;
+  iIndex := 0;
+
+  for i := 0 to g_lstGamingManagers.Count - 1 do
+  begin
+    GM := g_lstGamingManagers[i];
+    if (Assigned(GM) and (GM.Connector.ContactID = self.Connector.ContactID)) then
+    begin
+      inc(iWithSameConnectorCount);
+      if (GM = self) then
+        iIndex := iWithSameConnectorCount;
+    end; // if
+  end; // for
+
+  if (iWithSameConnectorCount > 1) then
+    Result := Result + ' (' + IntToStr(iIndex) + ')';
 end;
 
 
