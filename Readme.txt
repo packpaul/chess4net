@@ -7,7 +7,7 @@ URL:    http://chess4net.ru
 Opening
 --------
 
-Chess4Net is a program for playing chess via Internet. It can be used as standalone application (Socket version for Microsoft Windows or Linux) or as plug-in for such instant messengers as Skype, Miranda, QIP Infium, Trillian Pro and &RQ. Two modes of chess game are supported: standart chess and its random counterpart - PP Random Chess. Chess4Net supports sudden death and incremental time controls as well as possibility to give your opponent a time-handicap. If you want to improve your chess skills there is also a support for a training mode.
+Chess4Net is a program for playing chess via Internet. It can be used as standalone application (Socket version for Microsoft Windows or Linux) or as plug-in for such instant messengers as Skype, Miranda, QIP Infium, Trillian Pro and &RQ. Two modes of chess game are supported: standart chess and its random counterpart - PP Random Chess. Chess4Net supports sudden death and incremental time controls as well as possibility to give your opponent a time-handicap. If you want to improve your chess skills there is also a support for a training mode. You can also invite other contacts to watch the games you're playing in real-time.
 
 Middle game
 ------------
@@ -74,11 +74,18 @@ Training mode:
 The training mode can be switched on/off in Game Options menu. The user data base and external data bases are used in training mode only. The User DB will contain all games played by the user in the training mode, and data from it is used to provide prioritized move hints.
 User DB can learn from your games in order to give you best choices. You can also select an external DB to use together with user DB to improve the quality of move hints.
 
+Game transmitting mode:
+
+While you're playing some games you can invite other contacts to gollow up these games in real-time. Therefore you must
+start a new session of Chess4Net for a contact you want the game(s) be transmitted to. A mode selection dialog appears
+asking if game broadcasting has to be started. You must select 'Yes' (if you select 'No' an ordinary game session is created). After that you should select a game for transmition (only if there're several games in progress). After your contact
+connects he/she'll be able to watch the game.
+
 
 Endgame
 --------
 
-Chess4Net is constantly improving and it is up to you what features will be included in the next release. Please send all your wishes and/or complaints to E-mail: packpaul@mail.ru or ICQ: 98750806
+Chess4Net is constantly improving and it is up to you what features will be included in the next release. Please send all your wishes and/or complaints to E-mail: packpaul@mail.ru or ICQ: 98750806 or Skype: packpaul1
 Chess4Net is a software and, like it is peculiar to software, it will never be bug free. Please report all bugs you may find to packpaul@mail.ru but see change log before reporting.
 
 How you can help?
@@ -106,9 +113,14 @@ PP
 Change log
 -----------
 
+Chess4Net 2010.0 (MI)
+[2010-05-28] Game retransmition feature added. Dialog handling improved (stay on top, out of screen etc). Majority of crashes fixed. Games numbering if several ones are played.
+
+
 Chess4Net 2010.1 (Skype)
 [2010-02-07] Released with Credits reminder.
 [2010-03-06] Skype accept help image added.
+
 
 Chess4net 2009.1 (MI)
 [2009-01-01] Localization for English and Russian and possibility to add new languages. Chess board resizing. Possibility to play more than one game simultaneously (multi-sessionality). Flashing window on incomming move.
@@ -125,17 +137,22 @@ Chess4net 2008.1 (Trillian)
 Chess4net 2008.1 (QIP Infium)
 [2008-06-28] Game adjourn feature added.
 
+
 Chess4net 2008.1 (MI)
 [2008-04-19] About dialog and game adjourn feature added.
+
 
 Chess4net 2008.0 (&RQ)
 [2008-02-12] New API version of 9.7.4 is utilized: no history entries are done anymore when plugin messages are transmited. Compatibility with 9.7.3 version is preserved.
 
+
 Chess4net 2008.0 (QIP Infium)
 [2007-12-31] Released; This version has some important restrictions: you will NOT be able to play against Chess4Net clients of other IMs due to the restriction imposed on QIP Infium SDK ver. 1.3.0 (waiting for that to be fixed)
 
+
 Chess4net 2007.6 (Socket - Linux)
 [2007-12-8] Released; code and functionality branched from Chess4net 2007.6 (Socket - Windows)
+
 
 Chess4net 2007.6 (Socket - Windows)
 [2007-10-09] Dialogs' caption changed to 'Chess4Net'. Casual color desynchronization on game start fixed.
@@ -144,6 +161,7 @@ Chess4net 2007.6 (Socket - Windows)
 [2007-11-25] Bugs in game options dialog fixed; auto-flag bugs fixed
 [2007-12-05] Critical bug in logic after en passant capture with double pawn in a position fixed. [!!!PLEASE UPDATE TO CURRENT VERSION!!!]
 [2007-12-07] Switching color disabled after the game has started
+
 
 Chess4net 2007.6 (MI)
 [2007-10-10] Dialogs handling improved.
@@ -154,6 +172,7 @@ Chess4net 2007.6 (MI)
 [2007-12-05] Critical bug in logic after en passant capture with double pawn in a position fixed. [!!!PLEASE UPDATE TO CURRENT VERSION!!!]
 [2007-12-07] Switching color disabled after the game has started
 
+
 Chess4net 2007.6 (Trillian)
 [2007-10-10] Dialogs handling improved.
 [2007-10-11] Casual ñolor desynchronization on game start fixed.
@@ -162,6 +181,7 @@ Chess4net 2007.6 (Trillian)
 [2007-11-25] Bugs in game options dialog fixed; auto-flag bugs fixed
 [2007-12-05] Critical bug in logic after en passant capture with double pawn in a position fixed. [!!!PLEASE UPDATE TO CURRENT VERSION!!!]
 [2007-12-07] Switching color disabled after the game has started
+
 
 Chess4net 2007.6 (&RQ)
 [2007-10-10] Dialogs handling improved.
@@ -172,8 +192,10 @@ Chess4net 2007.6 (&RQ)
 [2007-12-05] Critical bug in logic after en passant capture with double pawn in a position fixed. [!!!PLEASE UPDATE TO CURRENT VERSION!!!]
 [2007-12-07] Switching color disabled after the game has started
 
+
 Chess4net 2007.5 (Socket)
 [2007-08-29] Protocol changed; Takebacks on first move fixed; New behaviour to Game Options dialog introduced; Saving private and public settings introduced (also IP+port, socket state and nick); Display of hint moves after takeback and on start fixed; Amount of entries of training DB restricted up to 30 per game; 'Disconnect' item moved to lower part of pop-up menu.
+
 
 Chess4net 2007.5 (MI)
 [2007-08-22] Protocol changed; Takebacks on first move fixed; New behaviour to Game Options dialog introduced.
@@ -187,12 +209,15 @@ Chess4net 2007.5 (MI)
 [2007-09-13] Wrong clock settings saving when client was forcibly closed.
 [2007-09-26] Modal dialogs with 'Stay On Top' option switched on caused AV error -> fixed.
 
+
 Chess4net 2007.5 (Trillian)
 [2007-09-13] A port of Chess4Net for Trillian has appeared. Some issues are still there: no icon for client menu; it was impossible to suppress Ch4N messages.
 [2007-09-15] HTML untagging for incomming plugin messages done.
 
+
 Chess4net 2007.5 (&RQ)
 [2007-09-17] A port of Chess4Net for &RQ has appeared. There are some issues though: it was impossible to force the outgoing messages be hidden from chat window (lack of API -> PE_MSG_SENT should be fired after the message actually has gone).
+
 
 Chess4Net 2007.4 (Socket)
 [2007-05-23] Training mode added.
@@ -201,15 +226,18 @@ Chess4Net 2007.4 (Socket)
 [2007-06-21] Clock setting to 0.0 after time control is out fixed.
 [2007-07-17] Extra Exit on ESCAPE added; Background of coordinates improved.
 
+
 Chess4Net 2007.4 (MI)
 [2007-05-21] New wellcome message.
 [2007-05-23] Training mode added.
 [2007-05-25] Tending to backward compatibility.
 [2007-07-17] Extra Exit on ESCAPE added; Background of coordinates improved; Click-click synchronization fixed; AV by pawn promotion fixed
 
+
 Chess4Net 2007.3 (Socket)
 [2007-03-31] time display refresh fixed when changing colors.
 [2007-04-01] game log added; 'Equal time for both players' checkbox initialization fixed.
+
 
 Chess4Net 2007.3 (MI)
 [2007-02-15] time incrementation fixed.
@@ -217,6 +245,7 @@ Chess4Net 2007.3 (MI)
 [2007-04-01] 'Equal time for both players' checkbox initialization fixed.
 [2007-04-02] 'Chess4Net' title addedd to pop-up windows; Chess4Net icon added to plugin window and contact menu.
 [2007-04-03] Saving to game log on exit and on connection error fixed.
+
 
 Chess4Net 2007.2 (Socket)
 [2007-02-15] time incrementation fixed.
