@@ -31,25 +31,26 @@ implementation
 {$R *.dfm}
 
 uses
-  GlobalsLocalUnit;
+  GlobalsLocalUnit, ModalForm;
 
 var
   infoForm: TInfoForm = nil;
 
 procedure ShowInfo;
 begin
-  if not Assigned(infoForm) then
-    begin
-//      infoForm := TInfoForm.Create(Application);
-      infoForm := TInfoForm.Create(nil);
+  if (not Assigned(infoForm)) then
+  begin
+    infoForm := TInfoForm.Create(nil);
+    if (TDialogs.HasStayOnTopOwners) then
+      infoForm.FormStyle := fsStayOnTop;
 {$IFDEF SKYPE}
-      infoForm.Icon := Chess4NetIcon;
-      infoForm.Caption := DIALOG_CAPTION;      
+    infoForm.Icon := Chess4NetIcon;
+    infoForm.Caption := DIALOG_CAPTION;      
 {$ELSE} // MI, TRILLIAN, AND_RQ, QIP
-      infoForm.Icon := pluginIcon;
-      infoForm.Caption := PLUGIN_NAME;
+    infoForm.Icon := pluginIcon;
+    infoForm.Caption := PLUGIN_NAME;
 {$ENDIF}
-    end;
+  end;
   if not infoForm.Showing then
     infoForm.Show
   else

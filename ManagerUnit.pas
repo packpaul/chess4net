@@ -216,6 +216,8 @@ type
   end;
 
 const
+  CMD_DELIMITER = '&&'; // CMD_DELIMITER has to be present in arguments 
+
   CMD_VERSION = 'ver';
   CMD_WELCOME = 'wlcm'; // Accept of connection  
   CMD_GOODBYE = 'gdb'; // Refusion of connection
@@ -298,7 +300,7 @@ const
   CMD_ADJOURN_GAME_NO = 'adjno';
   CMD_START_ADJOURNED_GAME = 'strtadj';
 
-  CMD_DELIMITER = '&&'; // CMD_DELIMITER has to be present in arguments
+//  CMD_DELIMITER = '&&'; // CMD_DELIMITER has to be present in arguments
 
   // CMD_CLOSE = 'ext' - IS RESERVED
 
