@@ -216,8 +216,6 @@ type
   end;
 
 const
-  CMD_DELIMITER = '&&'; // TODO: move to implementation
-
   CMD_VERSION = 'ver';
   CMD_WELCOME = 'wlcm'; // Accept of connection  
   CMD_GOODBYE = 'gdb'; // Refusion of connection
@@ -300,7 +298,7 @@ const
   CMD_ADJOURN_GAME_NO = 'adjno';
   CMD_START_ADJOURNED_GAME = 'strtadj';
 
-//  CMD_DELIMITER = '&&'; // CMD_DELIMITER has to be present in arguments
+  CMD_DELIMITER = '&&'; // CMD_DELIMITER has to be present in arguments
 
   // CMD_CLOSE = 'ext' - IS RESERVED
 
@@ -445,9 +443,9 @@ begin
           if (Transmittable) then
           begin
             if (PositionColor = fcWhite) then
-              wstrMsg1 := 'White is checkmated.' // TODO: localize
+              wstrMsg1 := GetMessage(36) // White is checkmated.
             else
-              wstrMsg1 := 'Black is checkmated.'; // TODO: localize
+              wstrMsg1 := GetMessage(37); // Black is checkmated.
             wstrMsg2 := wstrMsg1;
           end
           else // not Transmittable
@@ -486,7 +484,7 @@ begin
       FlushGameLog;
 {$ENDIF}
       if (Transmittable) then
-        wstrMsg1 := 'Stalemate.' // TODO: localize
+        wstrMsg1 := TLocalizer.Instance.GetMessage(35) // Stalemate.
       else
         wstrMsg1 := TLocalizer.Instance.GetMessage(4); // It's stalemate. No one wins.
       m_Dialogs.MessageDlg(wstrMsg1, mtCustom, [mbOK], mfNone);
@@ -633,8 +631,8 @@ begin
       if (Transmittable) then
       begin
         m_Dialogs.CloseNoneDialogs;
-        m_Dialogs.MessageDlg('Broadcaster leaves. Transmition will be closed', mtCustom,
-          [mbOK], mfMsgLeave); // TODO: localise
+        m_Dialogs.MessageDlg(TLocalizer.Instance.GetMessage(34), mtCustom,
+          [mbOK], mfMsgLeave); // Broadcaster leaves. Transmition will be closed.
       end;
 
       case ChessBoard.Mode of
@@ -913,7 +911,8 @@ begin
     end
     else if (sl = CMD_TRANSMITTING) then
     begin
-      m_Dialogs.MessageDlg('Game transmition is not supported by this client!', mtCustom, [mbOK], mfMsgLeave); // TODO: localize
+      m_Dialogs.MessageDlg(TLocalizer.Instance.GetMessage(33),
+        mtCustom, [mbOK], mfMsgLeave); // Game transmition is not supported by this client!
     end;
 
   mGame:
@@ -941,9 +940,9 @@ begin
       begin
         RSplitStr(sr, sl, sr);
         if (sl = 'w') then
-          wstrMsg := 'White resigns.'  // TODO: localize
+          wstrMsg := TLocalizer.Instance.GetMessage(31) // White resigns.
         else // (sl = 'b')
-          wstrMsg := 'Black resigns.'; // TODO: localize
+          wstrMsg := TLocalizer.Instance.GetMessage(32) // Black resigns.
       end
       else
         wstrMsg := TLocalizer.Instance.GetMessage(12); // I resign. You win this game. Congratulations!
@@ -1045,9 +1044,9 @@ begin
       if (Transmittable) then
       begin
         if (_PlayerColor = fcWhite) then
-          wstrMsg := 'Black forfeits on time.' // TODO: localize
+          wstrMsg := TLocalizer.Instance.GetMessage(29) // Black forfeits on time.
         else
-          wstrMsg := 'White forfeits on time.'; // TODO: localize
+          wstrMsg := TLocalizer.Instance.GetMessage(30); // White forfeits on time.
       end
       else
         wstrMsg := TLocalizer.Instance.GetMessage(18); // Your opponent forfeited on time.

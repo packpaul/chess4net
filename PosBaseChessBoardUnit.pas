@@ -434,7 +434,7 @@ begin
     if Assigned(_oExtPosBase) then
       _oExtPosBase.Find(Position^, lstExtMove);
 
-    // TODO: обработка неправильной базы
+    // TODO: Handle wrong DB
 
     ClasterMoves(lstUsrMove);
     ClasterMoves(lstExtMove);

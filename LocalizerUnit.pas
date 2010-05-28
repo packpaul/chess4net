@@ -53,7 +53,7 @@ const
   LOCALIZER_INI_FILE = 'Lang.ini';
 
   // Labels are used to name interface controls s.a. TLabel and the like
-  DEFAULT_LABELS: array[0..66] of WideString =
+  DEFAULT_LABELS: array[0..67] of WideString =
     ('Look & Feel Options', {0}
      'Animate Move:',
      'No',
@@ -120,11 +120,12 @@ const
      'Takeback',
      'If you liked plying Chess4Net give your credits at',
      '&Close',
-     'Don''t show again'
+     'Don''t show again',
+     'Transmit Game'
     );
 
   // Messages are used in message boxes
-  DEFAULT_MESSAGES: array[0..27] of WideString =
+  DEFAULT_MESSAGES: array[0..37] of WideString =
     ('White is checkmated. You win.', {0}
      'White is checkmated. You loose.',
      'Black is checkmated. You win.',
@@ -155,7 +156,17 @@ const
      'Sorry, no takebacks!',
      'Do you really want to resign?',
      'Do you want to exit?',
-     'The game is adjourned.'
+     'The game is adjourned.',
+     'You are currently playing some games. Do you want to start broadcasting?',
+     'Black forfeits on time.',
+     'White forfeits on time.', {30}
+     'White resigns.',
+     'Black resigns.',
+     'Game transmition is not supported by this client!',
+     'Broadcaster leaves. Transmition will be closed.',
+     'Stalemate.',
+     'White is checkmated.',
+     'Black is checkmated.'
     );
 
 var

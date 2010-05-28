@@ -28,6 +28,7 @@ type
     IDCount: array[TModalFormID] of word;
     frmList: TList;
     function GetShowing: boolean;
+    class function FHasStayOnTopOwners: boolean;
   protected
     RHandler: TModalFormHandler;
   public
@@ -44,7 +45,7 @@ type
     procedure MoveForms(dx, dy: integer);
     procedure CloseNoneDialogs;
 
-    class function HasStayOnTopOwners: boolean;
+    class procedure ShowMessage(const wstrMsg: WideString);
 
     property Showing: boolean read GetShowing;
   end;
@@ -342,7 +343,8 @@ var
 begin
   if ((msgDlgID <> mfNone) and (IDCount[msgDlgID] > 0)) then
     exit;
-  DialogForm := TDialogForm.Create(self, wstrMsg, DlgType, Buttons, msgDlgID, RHandler);
+  DialogForm := TDialogForm.Create(self, wstrMsg, DlgType, Buttons, msgDlgID, RHandler,
+    FHasStayOnTopOwners);
   DialogForm.Caption := DIALOG_CAPTION;
   SetShowing(DialogForm);
   DialogForm.Show;
@@ -448,7 +450,7 @@ begin
 end;
 
 
-class function TDialogs.HasStayOnTopOwners: boolean;
+class function TDialogs.FHasStayOnTopOwners: boolean;
 var
   i: integer;
   Dlgs: TDialogs;
@@ -465,6 +467,24 @@ begin
     if (Result) then
       exit;
   end; // for
+end;
+
+
+class procedure TDialogs.ShowMessage(const wstrMsg: WideString);
+var
+  DummyOwner: TForm;
+  DummyHandler: TModalFormHandler;
+begin
+  DummyOwner := nil;
+  DummyHandler := nil;
+
+  with TDialogForm.Create(DummyOwner, wstrMsg, mtCustom, [mbOk], mfNone, DummyHandler,
+    FHasStayOnTopOwners) do
+  try
+    ShowModal;
+  finally
+    Release;
+  end;
 end;
 
 end.

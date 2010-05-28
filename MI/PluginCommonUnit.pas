@@ -16,7 +16,7 @@ implementation
 uses
   Windows, Forms, Dialogs, Graphics, SysUtils, Controls
   // plugin units
-  , GlobalsLocalUnit, ManagerUnit.MI;
+  , GlobalsLocalUnit, ManagerUnit.MI, ModalForm;
 
 function CreatePluginInstance(Connector: TConnector): IMirandaPlugin;
 begin
@@ -49,7 +49,7 @@ end;
 
 procedure ErrorDuringPluginStart;
 begin
-  ShowMessage('ERROR: Cannot start Chess4Net!');
+  TDialogs.ShowMessage('ERROR: Cannot start Chess4Net!');
 end;
 
 end.

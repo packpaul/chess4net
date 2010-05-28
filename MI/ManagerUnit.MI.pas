@@ -458,8 +458,8 @@ procedure TManagerMIFactory.Start;
 begin
   if (FCanStartTransmitting) then
   begin
-    Dialogs.MessageDlg('You are currently playing some games. Do you want to start broadcasting?', // TODO: Localize
-      mtCustom, [mbYes, mbNo], mfTransmitting);
+    Dialogs.MessageDlg(TLocalizer.Instance.GetMessage(28), mtCustom,
+      [mbYes, mbNo], mfTransmitting); // You are currently playing some games. Do you want to start broadcasting?
     m_bOwnExceptionHandler := TRUE;
     exit;
   end;
@@ -775,9 +775,6 @@ begin
     m_bReady := TRUE;
     m_GamingManager.FSetGameContextToTransmitter(self);     
   end;
-
-  // TODO:
-
 end;
 
 

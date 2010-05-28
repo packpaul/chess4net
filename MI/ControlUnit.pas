@@ -95,6 +95,7 @@ var
 begin
   Connector := nil;
   Pointer(pluginInstance) := nil;
+
   try
     Connector := TConnector.Create(wParam);
     pluginInstance := gCreatePluginInstance(Connector);
@@ -126,7 +127,7 @@ begin
     gInitializeControls;
 
   PLUGINLINK := Pointer(link);
-  g_hMenuCommand := pluginLink^.CreateServiceFunction(PChar(PLUGIN_NAME + '/MenuCommand'), @Start); // TODO: It may not work in MI
+  g_hMenuCommand := pluginLink^.CreateServiceFunction(PChar(PLUGIN_NAME + '/MenuCommand'), @Start);
   FillChar(mi, sizeof(mi), 0);
   mi.cbSize := sizeof(mi);
   mi.position := MirandaPluginMenuPosition;

@@ -100,7 +100,7 @@ end;
 
 destructor TPosBase.Destroy;
 begin
-  CloseFile(fPos); // TODO: здесь ошибка при непринудительном закрытии клиента
+  CloseFile(fPos); // TODO: Here occurs an error if client is closed unforced
   CloseFile(fMov);
 end;
 

@@ -1012,7 +1012,7 @@ begin
     else
       Result := evStaleMate;
   end;
-  // TODO: ќценка позиции на возможность технической ничьи
+  // TODO: Evaluate position for possible technical draw
 end;
 
 end.

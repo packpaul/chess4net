@@ -1,7 +1,5 @@
 unit ChessBoardUnit;
 
-// ƒл€ ћиранды следует определить дериктиву {$DEFINE THREADED_CHESSCLOCK}
-
 interface
 
 uses
@@ -305,7 +303,7 @@ end;
 
 procedure TChessBoard.SetFlipped(const f: boolean);
 begin
-  // TODO:
+  // TODO: ???
   _flipped:= f;
   RDrawBoard;
 end;
@@ -888,7 +886,7 @@ begin
       GameTimer.Enabled := FALSE;
       exit;
     end;
-  // ToDo - проверка на читерство
+  // TODO: cheating check
   player_time[clock_color] := player_time[clock_color] - (Now - past_time);
   if player_time[clock_color] <= 0.0 then
     begin
@@ -1084,7 +1082,7 @@ begin
   if (not ChessRulesEngine.TakeBack) then
     exit;
   ROnAfterSetPosition;
-  // TODO: анимаци€
+  // TODO: animation
   RDrawBoard;
 end;
 
@@ -1175,7 +1173,7 @@ end;
 
 procedure TChessBoard.WMMoving(var Msg: TWMMoving);
 begin
-  // TODO: возможна обработка выхода формы за пределы экрана.
+  // TODO: it's possible to handle if form is outside of the screen
   if Assigned(Handler) then
     Handler(cbeFormMoving, Pointer(Msg.DragRect.Left - Left), Pointer(Msg.DragRect.Top - Top));
   inherited;

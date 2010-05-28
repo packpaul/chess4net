@@ -42,9 +42,7 @@ procedure TTransmitGameSelectionForm.FLocalize;
 begin
   with TLocalizer.Instance do
   begin
-    // TODO:
-
-    // Caption := GetLabel(24);
+    Caption := GetLabel(67);
     OkButton.Caption := GetLabel(11);
     CancelButton.Caption := GetLabel(12);
   end;
