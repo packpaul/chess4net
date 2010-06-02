@@ -186,7 +186,7 @@ end;
 
 function TMainForm.FGetHandleID: integer;
 begin
-  Result := StrToIntDef(HandleIdEdit.Text, 0);
+  Result := StrToIntDef(Trim(HandleIdEdit.Text), 0);
 end;
 
 
