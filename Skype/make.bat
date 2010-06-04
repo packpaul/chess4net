@@ -16,3 +16,4 @@ COPY ..\Build\*.* ..\bin\Chess4Net_Skype\
 COPY ..\Lang.ini ..\bin\Chess4Net_Skype\
 COPY ..\Readme.txt ..\bin\Chess4Net_Skype\
 COPY ..\Readme_RU.txt ..\bin\Chess4Net_Skype\
+COPY .\Chess4net.ini ..\bin\Chess4Net_Skype\
