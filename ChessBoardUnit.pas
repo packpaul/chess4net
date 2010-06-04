@@ -158,6 +158,11 @@ type
 
     function FGetPositionsList: TList;
 
+    function FGetChessSet: integer;
+    procedure FSetChessSet(iValue: integer);
+
+    procedure FInvalidateGraphics;
+
     procedure FOnAfterMoveDone;
 
     property ChessRulesEngine: TChessRulesEngine read m_ChessRulesEngine;
@@ -208,6 +213,8 @@ type
     property AutoFlag: boolean read auto_flag write SetAutoFlag;
     property animation: TAnimation read m_animation write m_animation;
     property ViewGaming: boolean read m_bViewGaming write m_bViewGaming;
+
+    property ChessSet: integer read FGetChessSet write FSetChessSet;
   end;
 
 implementation
@@ -1266,7 +1273,7 @@ begin
 end;
 
 
-procedure TChessBoard.FormResize(Sender: TObject);
+procedure TChessBoard.FInvalidateGraphics;
 var
   _fig: TFigure;
 begin
@@ -1299,6 +1306,12 @@ begin
   end;
 
   RDrawBoard;
+end;
+
+
+procedure TChessBoard.FormResize(Sender: TObject);
+begin
+  FInvalidateGraphics;
 end;
 
 
@@ -1378,6 +1391,21 @@ begin
   end;
 
   TimePanelResize(nil);  
+end;
+
+
+function TChessBoard.FGetChessSet: integer;
+begin
+  Result := m_BitmapRes.ChessSet;
+end;
+
+
+procedure TChessBoard.FSetChessSet(iValue: integer);
+begin
+  if (m_BitmapRes.ChessSet = iValue) then
+    exit;
+  m_BitmapRes.ChessSet := iValue;
+  FInvalidateGraphics;
 end;
 
 initialization

@@ -307,6 +307,7 @@ const
   // INI-file
   PRIVATE_SECTION_NAME = 'Private';
   COMMON_SECTION_PREFIX = 'Common';
+  CHESS_SET_KEY_NAME = 'ChessSet';
   ANIMATION_KEY_NAME = 'Animation';
   HILIGHT_LAST_MOVE_KEY_NAME = 'HilightLastMove';
   FLASH_ON_MOVE_NAME = 'FlashOnMove';
@@ -1358,6 +1359,7 @@ begin
 
     Left:= (Screen.Width - Width) div 2;
     Top:= (Screen.Height - Height) div 2;
+
     Show;
   end;
 end;
@@ -1892,6 +1894,7 @@ begin
   // —читывание личных настроек из INI-файла
   iniFile := TTntIniFile.Create(Chess4NetPath + INI_FILE_NAME);
   try
+    ChessBoard.ChessSet := iniFile.ReadInteger(PRIVATE_SECTION_NAME, CHESS_SET_KEY_NAME, 1);
     ChessBoard.animation := TAnimation(iniFile.ReadInteger(PRIVATE_SECTION_NAME, ANIMATION_KEY_NAME, Ord(aQuick)));
     ChessBoard.LastMoveHilighted := iniFile.ReadBool(PRIVATE_SECTION_NAME, HILIGHT_LAST_MOVE_KEY_NAME, FALSE);
     ChessBoard.FlashOnMove := iniFile.ReadBool(PRIVATE_SECTION_NAME, FLASH_ON_MOVE_NAME, FALSE);
@@ -2017,6 +2020,7 @@ begin
   // Write private settings
   iniFile := TTntIniFile.Create(Chess4NetPath + INI_FILE_NAME);
   try
+    iniFile.WriteInteger(PRIVATE_SECTION_NAME, CHESS_SET_KEY_NAME, ChessBoard.ChessSet);
     iniFile.WriteInteger(PRIVATE_SECTION_NAME, ANIMATION_KEY_NAME, Ord(ChessBoard.animation));
     iniFile.WriteBool(PRIVATE_SECTION_NAME, HILIGHT_LAST_MOVE_KEY_NAME, ChessBoard.LastMoveHilighted);
     iniFile.WriteBool(PRIVATE_SECTION_NAME, FLASH_ON_MOVE_NAME, ChessBoard.FlashOnMove);

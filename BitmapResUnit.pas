@@ -14,7 +14,10 @@ type
     m_ResSet: TBitmap;
     m_iSetNumber: integer;
     m_iSquareSize: integer;
+    m_iChessSet: integer;
     procedure FCalculateClientBoardSizes(InitialSize: TSize);
+    function FGetResPostfix: string;
+    procedure FSetChessSet(iValue: integer);
   public
     constructor Create(const ClientBoardSize: TSize);
     destructor Destroy; override;
@@ -23,11 +26,13 @@ type
     procedure CreateFigureBitmap(const Figure: TFigure; out Bitmap: TBitmap);
     function GetOptimalBoardSize(ClientSize: TSize): TSize;
     property SquareSize: integer read m_iSquareSize;
+    property ChessSet: integer read m_iChessSet write FSetChessSet;
   end;
 
 implementation
 
 {$R ChessSet_PNG.RES}
+{$R ChessSet_PNG_2.RES}
 
 uses
   SysUtils, Classes, Math, pngimage;
@@ -39,7 +44,8 @@ const
 
 var
   g_BitmapResInstance: TBitmapRes = nil;
-  arrClientBoardSizes: array[1..7] of TSize;
+//  arrClientBoardSizes: array[1..7] of TSize;
+  arrClientBoardSizes: array[4..7] of TSize;
   bClientBoardSizesCalculated: boolean = FALSE;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -47,6 +53,7 @@ var
 
 constructor TBitmapRes.Create(const ClientBoardSize: TSize);
 begin
+  m_iChessSet := 1;
   if (not bClientBoardSizesCalculated) then
     FCalculateClientBoardSizes(ClientBoardSize);
 end;
@@ -77,7 +84,8 @@ begin
   with Bitmap do
   try
     Png := TPngObject.Create;
-    Png.LoadFromResourceName(HInstance, 'BOARD' + IntToStr(m_iSetNumber));
+    Png.LoadFromResourceName(HInstance, 'BOARD' + IntToStr(m_iSetNumber) +
+      FGetResPostfix);
     ResBoard := TBitmap.Create;
     ResBoard.Assign(Png);
 
@@ -89,7 +97,8 @@ begin
 
     // Load appropriate set
     FreeAndNil(m_ResSet);
-    Png.LoadFromResourceName(HInstance, 'SET' + IntToStr(m_iSetNumber));
+    Png.LoadFromResourceName(HInstance, 'SET' + IntToStr(m_iSetNumber) +
+      FGetResPostfix);
     m_ResSet := TBitmap.Create;
     m_ResSet.Assign(Png);
 
@@ -157,7 +166,7 @@ begin
   try
     for i := Low(arrClientBoardSizes) to High(arrClientBoardSizes) do
     begin
-      strResName := 'BOARD' + IntToStr(i);
+      strResName := 'BOARD' + IntToStr(i) + FGetResPostfix;
       LoadFromResourceName(HInstance, strResName);
       arrClientBoardSizes[i] := Size(Width, Height);
     end;
@@ -188,6 +197,24 @@ begin
   end;
 
   bClientBoardSizesCalculated := TRUE;
+end;
+
+
+function TBitmapRes.FGetResPostfix: string;
+begin
+  if (m_iChessSet > 1) then
+    Result := '_' + IntToStr(m_iChessSet)
+  else
+    Result := '';
+end;
+
+
+procedure TBitmapRes.FSetChessSet(iValue: integer);
+begin
+  if (iValue in [1..2]) then
+    m_iChessSet := iValue
+  else
+    m_iChessSet := 1;
 end;
 
 end.
