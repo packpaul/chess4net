@@ -1224,6 +1224,8 @@ begin
     StayOnTopBox.Checked := StayOnTop;
     ExtraExitBox.Checked := extra_exit;
   end;
+  lookFeelOptionsForm.ChessSet := ChessBoard.ChessSet;
+
   lookFeelOptionsForm.Show;
 end;
 
@@ -1696,6 +1698,7 @@ begin
         StayOnTop := StayOnTopBox.Checked;
         extra_exit := ExtraExitBox.Checked;
       end;
+      ChessBoard.ChessSet := (modSender as TLookFeelOptionsForm).ChessSet;
     end;
 
     mfContinue:

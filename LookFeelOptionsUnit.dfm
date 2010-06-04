@@ -4,8 +4,8 @@ object LookFeelOptionsForm: TLookFeelOptionsForm
   BorderIcons = [biSystemMenu]
   BorderStyle = bsDialog
   Caption = 'Look & Feel Options'
-  ClientHeight = 217
-  ClientWidth = 321
+  ClientHeight = 246
+  ClientWidth = 340
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -27,27 +27,37 @@ object LookFeelOptionsForm: TLookFeelOptionsForm
   end
   object GUILangLabel: TTntLabel
     Left = 8
-    Top = 187
+    Top = 219
     Width = 97
     Height = 13
     AutoSize = False
     Caption = 'GUI Language:'
   end
+  object ChessSetLabel: TTntLabel
+    Left = 8
+    Top = 187
+    Width = 105
+    Height = 13
+    AutoSize = False
+    Caption = 'Chess set:'
+  end
   object OkButton: TTntButton
-    Left = 240
+    Left = 257
     Top = 8
     Width = 75
     Height = 25
+    Anchors = [akTop, akRight]
     Caption = '&OK'
     Default = True
     ModalResult = 1
     TabOrder = 2
   end
   object CancelButton: TTntButton
-    Left = 240
+    Left = 257
     Top = 40
     Width = 75
     Height = 25
+    Anchors = [akTop, akRight]
     Cancel = True
     Caption = '&Cancel'
     ModalResult = 2
@@ -71,18 +81,18 @@ object LookFeelOptionsForm: TLookFeelOptionsForm
   object BoxPanel: TPanel
     Left = 8
     Top = 40
-    Width = 217
+    Width = 241
     Height = 129
     BevelInner = bvRaised
     BevelOuter = bvLowered
     TabOrder = 1
     DesignSize = (
-      217
+      241
       129)
     object HilightLastMoveBox: TTntCheckBox
       Left = 8
       Top = 8
-      Width = 201
+      Width = 225
       Height = 17
       Anchors = [akLeft, akTop, akRight]
       Caption = 'Highlight Last Move'
@@ -91,7 +101,7 @@ object LookFeelOptionsForm: TLookFeelOptionsForm
     object CoordinatesBox: TTntCheckBox
       Left = 8
       Top = 56
-      Width = 201
+      Width = 225
       Height = 17
       Anchors = [akLeft, akTop, akRight]
       Caption = 'Show Coordinates'
@@ -100,7 +110,7 @@ object LookFeelOptionsForm: TLookFeelOptionsForm
     object StayOnTopBox: TTntCheckBox
       Left = 8
       Top = 80
-      Width = 201
+      Width = 225
       Height = 17
       Anchors = [akLeft, akTop, akRight]
       Caption = 'Stay Always on Top'
@@ -109,7 +119,7 @@ object LookFeelOptionsForm: TLookFeelOptionsForm
     object ExtraExitBox: TTntCheckBox
       Left = 8
       Top = 104
-      Width = 201
+      Width = 225
       Height = 17
       Anchors = [akLeft, akTop, akRight]
       Caption = 'Extra Exit on ESC'
@@ -118,7 +128,7 @@ object LookFeelOptionsForm: TLookFeelOptionsForm
     object FlashIncomingMoveBox: TTntCheckBox
       Left = 8
       Top = 32
-      Width = 201
+      Width = 225
       Height = 17
       Anchors = [akLeft, akTop, akRight]
       Caption = 'Flash on incoming move'
@@ -127,6 +137,20 @@ object LookFeelOptionsForm: TLookFeelOptionsForm
   end
   object GUILangComboBox: TTntComboBox
     Left = 120
+    Top = 216
+    Width = 129
+    Height = 21
+    Style = csDropDownList
+    ItemHeight = 13
+    ItemIndex = 0
+    TabOrder = 5
+    Text = 'English'
+    OnChange = GUILangComboBoxChange
+    Items.Strings = (
+      'English')
+  end
+  object ChessSetComboBox: TTntComboBox
+    Left = 120
     Top = 184
     Width = 129
     Height = 21
@@ -134,9 +158,10 @@ object LookFeelOptionsForm: TLookFeelOptionsForm
     ItemHeight = 13
     ItemIndex = 0
     TabOrder = 4
-    Text = 'English'
+    Text = 'Classical set'
     OnChange = GUILangComboBoxChange
     Items.Strings = (
-      'English')
+      'Classical set'
+      'Cveti set')
   end
 end
