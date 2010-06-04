@@ -114,7 +114,7 @@ Change log
 -----------
 
 Chess4Net 2010.1 (Skype [Cveti])
-[2010-05-04] Cveti chess set added with selection of it in Look & Feel options, Russian language set as default.
+[2010-06-04] Cveti chess set added with selection of it in Look & Feel options, Russian language set as default.
 
 
 Chess4Net 2010.0 (MI)
