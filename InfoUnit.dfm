@@ -2,8 +2,8 @@ object InfoForm: TInfoForm
   Left = 489
   Top = 506
   BorderStyle = bsDialog
-  ClientHeight = 166
-  ClientWidth = 233
+  ClientHeight = 187
+  ClientWidth = 241
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -17,7 +17,7 @@ object InfoForm: TInfoForm
   PixelsPerInch = 96
   TextHeight = 13
   object PluginNameLabel: TLabel
-    Left = 0
+    Left = 4
     Top = 8
     Width = 233
     Height = 17
@@ -27,16 +27,16 @@ object InfoForm: TInfoForm
     WordWrap = True
   end
   object PlayingViaLabel: TLabel
-    Left = 0
+    Left = 4
     Top = 27
     Width = 233
     Height = 13
     Alignment = taCenter
     AutoSize = False
-    Caption = 'Plugin for playing chess via <Messenger name>'
+    Caption = 'Plugin for playing chess over <Messenger name>'
   end
   object Label2: TLabel
-    Left = 0
+    Left = 4
     Top = 46
     Width = 233
     Height = 13
@@ -45,32 +45,32 @@ object InfoForm: TInfoForm
     Caption = 'Written by Pavel Perminov'
   end
   object Label3: TLabel
-    Left = 0
+    Left = 4
     Top = 65
     Width = 233
     Height = 13
     Alignment = taCenter
     AutoSize = False
-    Caption = #169' 2007-2010 no rights reserved'
+    Caption = #169' 2007-2010 All rights reserved'
   end
   object Label4: TLabel
-    Left = 38
+    Left = 42
     Top = 84
-    Width = 25
+    Width = 31
     Height = 13
     AutoSize = False
-    Caption = 'URL:'
+    Caption = 'URLs:'
   end
   object Label5: TLabel
-    Left = 38
-    Top = 104
+    Left = 42
+    Top = 122
     Width = 32
     Height = 13
     AutoSize = False
     Caption = 'E-Mail:'
   end
   object URLLabel: TLabel
-    Left = 73
+    Left = 77
     Top = 84
     Width = 65
     Height = 13
@@ -85,8 +85,8 @@ object InfoForm: TInfoForm
     OnClick = URLLabelClick
   end
   object EMailLabel: TLabel
-    Left = 73
-    Top = 104
+    Left = 77
+    Top = 122
     Width = 41
     Height = 13
     Cursor = crHandPoint
@@ -99,11 +99,27 @@ object InfoForm: TInfoForm
     ParentFont = False
     OnClick = EMailLabelClick
   end
+  object URL2Label: TLabel
+    Left = 77
+    Top = 103
+    Width = 71
+    Height = 13
+    Cursor = crHandPoint
+    Caption = 'http://<URL2>'
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clBlue
+    Font.Height = -11
+    Font.Name = 'MS Sans Serif'
+    Font.Style = [fsUnderline]
+    ParentFont = False
+    OnClick = URLLabelClick
+  end
   object OkButton: TButton
-    Left = 80
-    Top = 128
+    Left = 84
+    Top = 148
     Width = 75
     Height = 25
+    Anchors = [akLeft, akBottom]
     Cancel = True
     Caption = '&OK'
     Default = True

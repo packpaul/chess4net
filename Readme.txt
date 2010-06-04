@@ -1,8 +1,8 @@
-Chess4Net
-(c) 2007-2010 No rights reserved
+Chess4Net, Cveti chess release
+(c) 2007-2010 All rights reserved
 E-Mail: packpaul@mail.ru
-URL:    http://chess4net.ru
-==============================
+URLs:   http://chess4net.ru, http://cvetichess.ru
+===================================================
 
 Opening
 --------
@@ -112,6 +112,10 @@ PP
 
 Change log
 -----------
+
+Chess4Net 2010.1 (Skype [Cveti])
+[2010-05-04] Cveti chess set added with selection of it in Look & Feel options, Russian language set as default.
+
 
 Chess4Net 2010.0 (MI)
 [2010-05-28] Game retransmition feature added. Dialog handling improved (stay on top, out of screen etc). Majority of crashes fixed. Games numbering if several ones are played.

@@ -17,6 +17,7 @@ type
     Label5: TLabel;
     URLLabel: TLabel;
     EMailLabel: TLabel;
+    URL2Label: TLabel;
     procedure OkButtonClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure EMailLabelClick(Sender: TObject);
@@ -64,15 +65,16 @@ end;
 
 procedure TInfoForm.FormCreate(Sender: TObject);
 begin
-  PlayingViaLabel.Caption := PLUGIN_PLAYING_VIA; 
+  PlayingViaLabel.Caption := PLUGIN_PLAYING_OVER; 
   PluginNameLabel.Caption := PLUGIN_INFO_NAME;
   URLLabel.Caption := PLUGIN_URL;
+  URL2Label.Caption := CVETI_URL;
   EMailLabel.Caption := PLUGIN_EMAIL;
 end;
 
 procedure TInfoForm.URLLabelClick(Sender: TObject);
 begin
-  ShellExecute(Handle, nil, PChar(URLLabel.Caption), nil, nil, SW_SHOWNORMAL);
+  ShellExecute(Handle, nil, PChar((Sender as TLabel).Caption), nil, nil, SW_SHOWNORMAL);
 end;
 
 procedure TInfoForm.EMailLabelClick(Sender: TObject);

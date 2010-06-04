@@ -14,6 +14,7 @@ type
     Label1: TLabel;
     URLLabel: TLabel;
     cbDontShowAgain: TTntCheckBox;
+    URL2Label: TLabel;
     procedure CloseButtonClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure URLLabelClick(Sender: TObject);
@@ -44,6 +45,7 @@ procedure TCreditsForm.FormCreate(Sender: TObject);
 begin
   Caption := DIALOG_CAPTION;
   URLLabel.Caption := PLUGIN_URL;
+  URL2Label.Caption := CVETI_URL;
   FLocalize;
 end;
 
@@ -61,7 +63,7 @@ end;
 
 procedure TCreditsForm.URLLabelClick(Sender: TObject);
 begin
-  ShellExecute(Handle, nil, PChar(URLLabel.Caption), nil, nil, SW_SHOWNORMAL);
+  ShellExecute(Handle, nil, PChar((Sender as TLabel).Caption), nil, nil, SW_SHOWNORMAL);
   CloseButton.Click;
 end;
 

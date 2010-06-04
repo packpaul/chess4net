@@ -2,7 +2,7 @@ object CreditsForm: TCreditsForm
   Left = 546
   Top = 357
   BorderStyle = bsDialog
-  ClientHeight = 118
+  ClientHeight = 129
   ClientWidth = 427
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -58,15 +58,15 @@ object CreditsForm: TCreditsForm
   object Label1: TLabel
     Left = 64
     Top = 36
-    Width = 25
+    Width = 33
     Height = 13
     AutoSize = False
-    Caption = 'URL:'
+    Caption = 'URLs:'
   end
   object URLLabel: TLabel
-    Left = 97
+    Left = 100
     Top = 36
-    Width = 328
+    Width = 65
     Height = 13
     Cursor = crHandPoint
     Caption = 'http://<URL>'
@@ -78,11 +78,27 @@ object CreditsForm: TCreditsForm
     ParentFont = False
     OnClick = URLLabelClick
   end
+  object URL2Label: TLabel
+    Left = 100
+    Top = 52
+    Width = 71
+    Height = 13
+    Cursor = crHandPoint
+    Caption = 'http://<URL2>'
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clBlue
+    Font.Height = -11
+    Font.Name = 'MS Sans Serif'
+    Font.Style = [fsUnderline]
+    ParentFont = False
+    OnClick = URLLabelClick
+  end
   object CloseButton: TTntButton
     Left = 171
-    Top = 64
+    Top = 75
     Width = 75
     Height = 25
+    Anchors = [akLeft, akBottom]
     Cancel = True
     Caption = '&Close'
     Default = True
@@ -92,9 +108,10 @@ object CreditsForm: TCreditsForm
   end
   object cbDontShowAgain: TTntCheckBox
     Left = 8
-    Top = 95
+    Top = 106
     Width = 369
     Height = 17
+    Anchors = [akLeft, akBottom]
     Caption = 'Don'#39't show it again'
     TabOrder = 1
   end
