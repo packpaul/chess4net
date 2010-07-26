@@ -14,19 +14,35 @@ type
     estimate: LongWord;
   end;
 
-  TFieldNode = packed record
+  TFieldNode = packed object
+  public
     bField: byte;
-    bNextNode: byte; // сл. узел
-    wNextNode: word;
-    bNextValue: byte; // сл. значение данных
-    wNextValue: word;
+  private
+    m_btNextNode: byte; // сл. узел
+    m_wNextNode: word;
+    m_btNextValue: byte; // сл. значение данных
+    m_wNextValue: word;
+    function FGetNextNodePos: LongWord;
+    procedure FSetNextNodePos(lwValue: LongWord);
+    function FGetNextValuePos: LongWord;
+    procedure FSetNextValuePos(lwValue: LongWord);
+  public
+    property NextNodePos: LongWord read FGetNextNodePos write FSetNextNodePos;
+    property NextValuePos: LongWord read FGetNextValuePos write FSetNextValuePos;
   end;
 
-  TMoveNode = packed record
+  TMoveNode = packed object
+  public
     wMove: word;
     estimate: LongWord;
-    bNextValue: byte; // сл. значение данных
-    wNextValue: word;
+  private
+    m_btNextValue: byte; // сл. значение данных
+    m_wNextValue: word;
+    function FGetNextValuePos: LongWord;
+    procedure FSetNextValuePos(lwValue: LongWord);
+  public
+    procedure EmptyNode;
+    property NextValuePos: LongWord read FGetNextValuePos write FSetNextValuePos;
   end;
 
   TReestimate = procedure(moveEsts: TList; nRec: integer);
@@ -56,8 +72,6 @@ type
 const
   POS_FILE_EXT = 'pos';
   MOV_FILE_EXT = 'mov';
-  EMPTY_MOVE_NODE: TMoveNode =
-    (wMove: 0; estimate: 0; bNextValue: 0; wNextValue: 0);
 
   FIELD_SEQ: array[1..64] of TCoord = // 13617 kb
     ((i: 1; j: 1), (i: 1; j: 2), (i: 1; j: 3), (i: 1; j: 4),
@@ -76,6 +90,9 @@ const
      (i: 4; j: 5), (i: 4; j: 6), (i: 4; j: 7), (i: 4; j: 8),
      (i: 5; j: 1), (i: 5; j: 2), (i: 5; j: 3), (i: 5; j: 4),
      (i: 5; j: 5), (i: 5; j: 6), (i: 5; j: 7), (i: 5; j: 8));
+
+////////////////////////////////////////////////////////////////////////////////
+// TPosBase
 
 constructor TPosBase.Create(fileNameNoExt: string; Reestimate: TReestimate = nil);
 begin
@@ -141,39 +158,36 @@ var
   begin
     // Добавление узлов позиции
     if r >= 0 then
-      begin
-        nr := FileSize(fPos);
-        fn.bNextValue := nr and $FF;
-        fn.wNextValue := nr shr 8;
-        Seek(fPos, r);
-        write(fPos, fn);
-        Seek(fPos, nr);
-      end
+    begin
+      nr := FileSize(fPos);
+      fn.NextValuePos := nr;
+      Seek(fPos, r);
+      write(fPos, fn);
+      Seek(fPos, nr);
+    end
     else
       nr := 0;
     for l := k to 66 do // 65 - доп. инф, 66 - цвет.
+    begin
+      if l = 66 then
       begin
-        if l = 66 then
-          begin
-            fn.bField := ord(posMove.pos.color);
-            nr := FileSize(fMov);
-          end
-        else
-          begin
-            if l <= 64 then
-              fn.bField := ord(posMove.pos.board[FIELD_SEQ[l].i, FIELD_SEQ[l].j])
-            else // l = 65
-              fn.bField := addInf;
-            inc(nr);
-          end;
-        fn.bNextNode := nr and $FF;
-        fn.wNextNode := nr shr 8;
-        fn.bNextValue := 0;
-        fn.wNextValue := 0;
-        write(fPos, fn);
+        fn.bField := ord(posMove.pos.color);
+        nr := FileSize(fMov);
+      end
+      else
+      begin
+        if l <= 64 then
+          fn.bField := ord(posMove.pos.board[FIELD_SEQ[l].i, FIELD_SEQ[l].j])
+        else // l = 65
+          fn.bField := addInf;
+        inc(nr);
       end;
+      fn.NextNodePos := nr;
+      fn.NextValuePos := 0;
+      write(fPos, fn);
+    end;
     // формирование записи хода
-    mn := EMPTY_MOVE_NODE;
+    mn.EmptyNode;
     mn.wMove := EncodeMove(posMove.move);
     if Assigned(Reestimate) then
     begin
@@ -213,7 +227,7 @@ begin
             ((k = 66) and (fn.bField <> ord(posMove.pos.color))) do
         begin
           pr := r;
-          r := (fn.wNextValue shl 8) or fn.bNextValue;
+          r := fn.NextValuePos;
           if r = 0 then
             begin
               AddPosNodes(k, pr);
@@ -223,7 +237,7 @@ begin
           read(fPos, fn);
         end; { while }
       // значение в цепочке найдено
-      r := (fn.wNextNode shl 8) or fn.bNextNode;
+      r := fn.NextNodePos;
     end;
 
   moveCount := 0;
@@ -245,19 +259,18 @@ begin
         estList.Add(Pointer(mn.estimate));
 
       inc(moveCount);
-      r := (mn.wNextValue shl 8) or mn.bNextValue;
+      r := mn.NextValuePos;
     until r = 0;
 
     if moveSet < 0 then // хода нет в списке, добавляем
       begin
         // связывание нового узла с текущим узлом
         r := FileSize(fMov);
-        mn.bNextValue := r and $FF;
-        mn.wNextValue := r shr 8;
+        mn.NextValuePos := r;
         Seek(fMov, pr);
         write(fMov, mn);
         // Добавление нового узла ходов
-        mn := EMPTY_MOVE_NODE;
+        mn.EmptyNode;
         mn.wMove := enc_mv;
         Seek(fMov, r);
         write(fMov, mn);
@@ -280,7 +293,7 @@ begin
                   Seek(fMov, rm);
                   write(fMov, mn);
                 end;
-              rm := (mn.wNextValue shl 8) or mn.bNextValue;
+              rm := mn.NextValuePos;
             end;
         end;
   finally
@@ -328,12 +341,12 @@ begin
 here:
       Seek(fPos, r);
       read(fPos, fn);
-      r := (fn.wNextNode shl 8) or fn.bNextNode;
+      r := fn.NextNodePos;
       while ((k <= 64) and (fn.bField <> ord(pos.board[FIELD_SEQ[k].i, FIELD_SEQ[k].j]))) or
             ((k = 65) and (fn.bField <> EncodeAddInf(pos))) or
             ((k = 66) and (fn.bField <> ord(pos.color))) do
         begin
-          r := (fn.wNextValue shl 8) or fn.bNextValue;
+          r := fn.NextValuePos;
           if r = 0 then
             exit
           else
@@ -355,8 +368,58 @@ here:
     pme^.estimate := mn.estimate;
     moveEsts.Add(pme);
 
-    r := (mn.wNextValue shl 8) or mn.bNextValue;
+    r := mn.NextValuePos;
   until r = 0;
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TFieldNode
+
+function TFieldNode.FGetNextNodePos: LongWord;
+begin
+  Result := (m_wNextNode shl 8) or m_btNextNode;
+end;
+
+
+procedure TFieldNode.FSetNextNodePos(lwValue: LongWord);
+begin
+  m_btNextNode := lwValue and $FF;
+  m_wNextNode := lwValue shr 8;
+end;
+
+
+function TFieldNode.FGetNextValuePos: LongWord;
+begin
+  Result := (m_wNextValue shl 8) or m_btNextValue;
+end;
+
+
+procedure TFieldNode.FSetNextValuePos(lwValue: LongWord);
+begin
+  m_btNextValue := lwValue and $FF;
+  m_wNextValue := lwValue shr 8;
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TMoveNode
+
+
+function TMoveNode.FGetNextValuePos: LongWord;
+begin
+  Result := (m_wNextValue shl 8) or m_btNextValue;
+end;
+
+
+procedure TMoveNode.FSetNextValuePos(lwValue: LongWord);
+begin
+  m_btNextValue := lwValue and $FF;
+  m_wNextValue := lwValue shr 8;
+end;
+
+
+procedure TMoveNode.EmptyNode;
+begin
+  FillChar(self, SizeOf(self), 0);
 end;
 
 end.
