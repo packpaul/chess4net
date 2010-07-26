@@ -64,7 +64,7 @@ end;
 
 procedure TInfoForm.FormCreate(Sender: TObject);
 begin
-  PlayingViaLabel.Caption := PLUGIN_PLAYING_VIA; 
+  PlayingViaLabel.Caption := PLUGIN_PLAYING_OVER; 
   PluginNameLabel.Caption := PLUGIN_INFO_NAME;
   URLLabel.Caption := PLUGIN_URL;
   EMailLabel.Caption := PLUGIN_EMAIL;

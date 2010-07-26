@@ -27,7 +27,7 @@ const
   PLUGIN_WRONG_PROTOCOL = 'Chess4Net may not be functioning properly with protocols other than ICQ.' + #13#10 +
                           'Continue anyway?';
 
-  PLUGIN_PLAYING_VIA = 'Plugin for playing chess via QIP Infium';                          
+  PLUGIN_PLAYING_OVER = 'Plugin for playing chess over QIP Infium';                          
   PLUGIN_INFO_NAME = 'Chess4Net 2009.1';
   PLUGIN_URL = 'http://chess4net.ru';
   PLUGIN_EMAIL = 'packpaul@mail.ru';

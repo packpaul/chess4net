@@ -14,7 +14,7 @@ const
 
   DIALOG_CAPTION = CHESS4NET;
 
-  PLUGIN_PLAYING_VIA = 'Plugin for playing chess via Skype';
+  PLUGIN_PLAYING_OVER = 'Plugin for playing chess over Skype';
 
   PLUGIN_INFO_NAME = 'Chess4Net 2010.1.1';
   PLUGIN_URL = 'http://chess4net.ru';
