@@ -18,7 +18,6 @@ const
 
   PLUGIN_INFO_NAME = 'Chess4Net 2010.1.2 [Cveti]';
   PLUGIN_URL = 'http://chess4net.ru';
-  CVETI_URL = 'http://cvetichess.ru';
   PLUGIN_EMAIL = 'packpaul@mail.ru';
 
   SKYPE_APP_NAME = 'Chess4Net_Skype';
