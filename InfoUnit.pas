@@ -32,7 +32,7 @@ implementation
 {$R *.dfm}
 
 uses
-  GlobalsLocalUnit, ModalForm;
+  GlobalsUnit, GlobalsLocalUnit, ModalForm;
 
 var
   infoForm: TInfoForm = nil;

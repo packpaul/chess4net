@@ -30,7 +30,7 @@ implementation
 {$R *.dfm}
 
 uses
-  GlobalsLocalUnit, LocalizerUnit;
+  GlobalsUnit, GlobalsLocalUnit, LocalizerUnit;
 
 ////////////////////////////////////////////////////////////////////////////////
 // TCreditsForm

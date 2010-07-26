@@ -17,7 +17,7 @@ const
 
   PLUGIN_NAME = CHESS4NET;
   PLUGIN_VERSION = CHESS4NET_VERSION;
-  PLUGIN_PLAYING_VIA = 'Plugin for playing chess via Miranda';
+  PLUGIN_PLAYING_OVER = 'Plugin for playing chess over Miranda';
   PLUGIN_INFO_NAME = 'Chess4Net 2010.0.1';
   PLUGIN_URL = 'http://chess4net.ru';
   PLUGIN_EMAIL = 'packpaul@mail.ru';

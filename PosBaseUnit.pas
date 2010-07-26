@@ -3,7 +3,9 @@ unit PosBaseUnit;
 interface
 
 uses
-  ChessBoardHeaderUnit, ChessRulesEngine, ChessBoardUnit, Classes;
+  Classes,
+  //
+  ChessRulesEngine;
 
 type
   PMoveEst = ^TMoveEst;

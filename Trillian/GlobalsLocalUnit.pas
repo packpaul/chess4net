@@ -19,7 +19,7 @@ const
   GUID = CHESS4NET;
   PLUGIN_MENU_NAME = CHESS4NET;
   START_PLUGIN_ALIAS = '/CHESS4NET';
-  PLUGIN_PLAYING_VIA = 'Plugin for playing chess via Trillian';
+  PLUGIN_PLAYING_OVER = 'Plugin for playing chess over Trillian';
   PLUGIN_INFO_NAME = 'Chess4Net 2009.1.0';
   PLUGIN_URL = 'http://chess4net.ru';
   PLUGIN_EMAIL = 'packpaul@mail.ru';
