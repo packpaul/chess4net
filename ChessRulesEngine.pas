@@ -53,7 +53,7 @@ type
     function FGetLastMove: PMoveAbs;
     procedure FDelPosList; // Удаляет текущую позицию из списка
 
-    function FDoMove(i, j: integer; prom_fig: TFigureName = K): boolean; overload;
+    function FDoMove(i, j: integer; prom_fig: TFigureName = K): boolean;
 
     class function FFieldUnderAttack(const pos: TChessPosition; i0,j0: integer): boolean; // TODO: -> private ?
     class function FCheckCheck(const pos: TChessPosition): boolean;
@@ -273,7 +273,8 @@ begin
     with DELTA_MOVE[f], chp do
       begin
         if (dx[l] = 0) and (dy[l] = 0) then break; // Все ходы просмотрены
-        ti:= i0; tj:= j0;
+        ti := i0;
+        tj := j0;
         case f of
           P:
             begin
@@ -467,12 +468,16 @@ end;
 
 function TChessRulesEngine.DoMove(move_str: string): boolean;
 label
-  l1, l2;
+  l1;
 var
   l: byte;
   f, prom_f: TFigureName;
-  i, j, ti,tj: integer;
+  i, j: integer;
+  ti, tj: integer;
+  saved_i, saved_j: integer;
 begin
+  Result := FALSE;
+
   // Проверка на рокировку
   if (move_str = '0-0') then
   begin
@@ -501,118 +506,153 @@ begin
     'R': prom_f := R;
     'B': prom_f := B;
     'N': prom_f := N;
-    else goto l1;
+  else
+    inc(l);
   end;
-  dec(l);
-l1:
-  if move_str[l] in ['1'..'8'] then
-    begin
-      j:= StrToInt(move_str[l]);
-      dec(l);
-    end;
-  if move_str[l] in ['a'..'h'] then
-    begin
-      i:= ord(move_str[l]) - ord('a') + 1;
-      dec(l);
-    end;
-  if (l > 0) and (move_str[l] in ['1'..'8']) then
-    begin
-      j0 := StrToInt(move_str[l]);
-      dec(l);
-    end;
-  if (l > 0) and (move_str[l] in ['a'..'h']) then
-    begin
-      i0 := ord(move_str[l]) - ord('a') + 1;
-      dec(l);
-    end;
 
-  if l = 0 then f:= P
-    else
-      case move_str[l] of
-        'K': f:= K;
-        'Q': f:= Q;
-        'R': f:= R;
-        'B': f:= B;
-        'N': f:= N;
-      end;
+  dec(l);
+
+  if move_str[l] in ['1'..'8'] then
+  begin
+    j := StrToInt(move_str[l]);
+    dec(l);
+  end;
+  if move_str[l] in ['a'..'h'] then
+  begin
+    i := ord(move_str[l]) - ord('a') + 1;
+    dec(l);
+  end;
+  if (l > 0) and (move_str[l] in ['1'..'8']) then
+  begin
+    j0 := StrToInt(move_str[l]);
+    dec(l);
+  end;
+  if (l > 0) and (move_str[l] in ['a'..'h']) then
+  begin
+    i0 := ord(move_str[l]) - ord('a') + 1;
+    dec(l);
+  end;
+
+  if (l = 0) then
+    f := P
+  else
+  begin
+    case move_str[l] of
+      'K': f:= K;
+      'Q': f:= Q;
+      'R': f:= R;
+      'B': f:= B;
+      'N': f:= N;
+    end;
+  end;
 
   with Position^ do
-    begin
-      fig := TFigure(ord(f) + ord(Position.color) * ord(BK));
+  begin
+    fig := TFigure(ord(f) + ord(Position.color) * ord(BK));
 
-      case f of
-        K..N: // Ход Кр - К
+    case f of
+      K..N: // Ход Кр - К
+      begin
+        if ((i0 > 0) and (j0 > 0)) then
+        begin
+          Result := FDoMove(i, j, prom_f);
+          exit;
+        end;
+
+        for l := 1 to 8 do
+        begin
+          with DELTA_MOVE[f] do
           begin
-            for l:= 1 to 8 do
-              with DELTA_MOVE[f] do
-                begin
-                  if (dx[l] = 0) and (dy[l] = 0) then break; // Все ходы просмотрены
-                  ti:= i; tj:= j;
-                  repeat
-                    ti:= ti + dx[l]; tj:= tj + dy[l];
-                    if not ((ti in [1..8]) and (tj in [1..8])) or
-                       ((board[ti,tj] <> ES) and (board[ti,tj] <> fig)) then break;
+            if (dx[l] = 0) and (dy[l] = 0) then break; // Все ходы просмотрены
+            ti:= i;
+            tj:= j;
+            repeat
+              ti:= ti + dx[l];
+              tj:= tj + dy[l];
+              if not ((ti in [1..8]) and (tj in [1..8])) or
+                 ((board[ti,tj] <> ES) and (board[ti,tj] <> fig)) then
+                break;
 
-                    if ((i0 = 0) or (i0 = ti)) and ((j0 = 0) or (j0 = tj)) and
-                       (board[ti,tj] = fig) then
-                      begin // Ходящая фигура найдена
-                        i0 := ti;
-                        j0 := tj;
-                        goto l2;
-                      end;
-                  until (f = K) or (f = N); // Если Кр или К, то выход
+              if ((i0 = 0) or (i0 = ti)) and ((j0 = 0) or (j0 = tj)) and
+                 (board[ti, tj] = fig) then
+                begin // Ходящая фигура найдена
+                  saved_i := i0;
+                  saved_j := j0;
+
+                  i0 := ti;
+                  j0 := tj;
+                  Result := FDoMove(i, j, prom_f);
+                  if (Result) then
+                    exit;
+
+                  i0 := saved_i;
+                  j0 := saved_j;
                 end;
-          end;
-        P:    // Ход пешкой
+            until (f = K) or (f = N); // Если Кр или К, то выход
+          end; // with
+        end; // for
+      end; // K..N
+
+      P:    // Ход пешкой
+      begin
+        if (i0 <> 0) and (i0 <> i) then // взятие пешкой
+        begin
+          for l := 2 to 7 do
           begin
-            if (i0 <> 0) and (i0 <> i) then // взятие пешкой
+            if (board[i0, l] = fig) and ((j0 = 0) or (j0 = l)) then
+            begin
+              if color = fcWhite then
               begin
-                for l:= 2 to 7 do
-                  if (board[i0, l] = fig) and ((j0 = 0) or (j0 = l)) then
-                    if color = fcWhite then
-                      begin
-                        if ((board[i,l+1] > ES) or
-                            ((l = 5) and (en_passant = i))) and
-                           ((j = 0) or (j = l+1)) and (abs(i - i0) = 1) then
-                          begin
-                            j0 := l;
-                            j := l + 1;
-                            goto l2;
-                          end;
-                      end
-                    else // color = fcBlack
-                      if ((board[i,l-1] < ES) or
-                          ((l = 4) and (en_passant = i))) and
-                         ((j = 0) or (j = l-1)) and (abs(i - i0) = 1) then
-                        begin
-                          j0 := l;
-                          j := l-1;
-                          goto l2;
-                        end;
+                if ((board[i, l + 1] > ES) or
+                    ((l = 5) and (en_passant = i))) and
+                   ((j = 0) or (j = l+1)) and (abs(i - i0) = 1) then
+                begin
+                  j0 := l;
+                  j := l + 1;
+                  Result := FDoMove(i, j, prom_f);
+                  if (Result) then
+                    exit;
+                end;
               end
-            else  // Ход прямо
+              else // color = fcBlack
+              if ((board[i,l - 1] < ES) or
+                  ((l = 4) and (en_passant = i))) and
+                 ((j = 0) or (j = l-1)) and (abs(i - i0) = 1) then
               begin
-                i0 := i;
-                if color = fcWhite then
-                  begin
-                    if board[i, j - 1] = fig then
-                      j0 := j - 1
-                    else if (j = 4) and (board[i, 3] = ES) and
-                            (board[i,2] = fig) then
-                      j0 := 2;
-                  end
-                else // color = fcBlack
-                  if board[i,j+1] = fig then
-                    j0 := j + 1
-                  else if (j = 5) and (board[i,6] = ES) and
-                          (board[i, 7] = fig) then
-                    j0 := 7;
+                j0 := l;
+                j := l - 1;
+                Result := FDoMove(i, j, prom_f);
+                if (Result) then
+                  exit;
               end;
+            end; // if
+          end; // for
+        end
+        else  // Ход прямо
+        begin
+          i0 := i;
+          if color = fcWhite then
+          begin
+            if board[i, j - 1] = fig then
+              j0 := j - 1
+            else if (j = 4) and (board[i, 3] = ES) and
+                    (board[i,2] = fig) then
+              j0 := 2;
+          end
+          else // color = fcBlack
+          begin
+            if (board[i, j + 1] = fig) then
+              j0 := j + 1
+            else if (j = 5) and (board[i,6] = ES) and (board[i, 7] = fig) then
+              j0 := 7;
           end;
-      end;
-    end;
-l2:
-  Result := FDoMove(i, j, prom_f);
+
+          Result := FDoMove(i, j, prom_f);
+        end; // if
+      end; // P:
+
+    end;  // case
+  end;
 end;
 
 
