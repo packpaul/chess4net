@@ -102,14 +102,16 @@ begin
   genOpening := opening;
   useStatPrunning := statPrunning;
   useNumPlys := numPlys;
-  if chngest then
-    begin
-      useUniquePos := uniquePos;
-      PosBase := TPosBase.Create(basename, Reestimate);
-    end
+
+  if (chngest) then
+  begin
+    useUniquePos := uniquePos;
+    PosBase := TPosBase.Create(basename, Reestimate);
+  end
   else
     PosBase := TPosBase.Create(basename);
-  if refBaseName <> '' then
+
+  if (refBaseName <> '') then
     RefPosBase := TPosBase.Create(refBaseName);
 
   ss := '';

@@ -14,44 +14,37 @@ type
     estimate: LongWord;
   end;
 
-  TFieldNode = packed object
-  public
-    bField: byte;
-  private
-    m_btNextNode: byte; // сл. узел
-    m_wNextNode: word;
-    m_btNextValue: byte; // сл. значение данных
-    m_wNextValue: word;
-    function FGetNextNodePos: LongWord;
-    procedure FSetNextNodePos(lwValue: LongWord);
-    function FGetNextValuePos: LongWord;
-    procedure FSetNextValuePos(lwValue: LongWord);
-  public
-    property NextNodePos: LongWord read FGetNextNodePos write FSetNextNodePos;
-    property NextValuePos: LongWord read FGetNextValuePos write FSetNextValuePos;
-  end;
-
-  TMoveNode = packed object
-  public
-    wMove: word;
-    estimate: LongWord;
-  private
-    m_btNextValue: byte; // сл. значение данных
-    m_wNextValue: word;
-    function FGetNextValuePos: LongWord;
-    procedure FSetNextValuePos(lwValue: LongWord);
-  public
-    procedure EmptyNode;
-    property NextValuePos: LongWord read FGetNextValuePos write FSetNextValuePos;
-  end;
-
   TReestimate = procedure(moveEsts: TList; nRec: integer);
+
+  TPosBaseStream = class
+  private
+    m_iRecordSize: integer;
+    m_iHeaderSize: integer;
+    m_InnerStream: TStream;
+    constructor Create(const strFileName: string; RecordSize: integer);
+    function FGetSize: integer;
+  public
+    destructor Destroy; override;
+    procedure Seek(lwRecordOffset: LongWord);
+    procedure SeekEnd;
+    procedure Write(const Buffer); overload;
+    procedure Write(const Buffer; Count: integer); overload;
+    procedure Read(var Buffer); overload;
+    procedure Read(var Buffer; Count: integer); overload;
+    property Size: integer read FGetSize;
+    property HeaderSize: integer read m_iHeaderSize write m_iHeaderSize;
+  end;
 
   TPosBase = class
   private
-    fPos: file of TFieldNode;
-    fMov: file of TMoveNode;
-    Reestimate: TReestimate;
+    m_iDBVersion: Integer;
+    fPos: TPosBaseStream;
+    fMov: TPosBaseStream;
+    FReestimate: TReestimate;
+    procedure FCreateStreams(const strPosFileName, strMovFileName: string);
+    procedure FDestroyStreams;
+    procedure FSetDBVersion;
+    function FCheckDBVersion: Boolean;
   public
     procedure Add(const posMove: TPosMove); // добавление позиции и хода в базу
     function Find(const pos: TChessPosition; moveEsts: TList = nil): boolean;
@@ -65,13 +58,46 @@ uses
   SysUtils;
 
 type
+  TFieldNode = packed object
+  public
+    btField: byte;
+  private
+    m_btNextNode: byte; // сл. узел
+    m_wNextNode: word;
+    m_btNextValue: byte; // сл. значение данных
+    m_wNextValue: word;
+    function FGetNextNode: LongWord;
+    procedure FSetNextNode(lwValue: LongWord);
+    function FGetNextValue: LongWord;
+    procedure FSetNextValue(lwValue: LongWord);
+  public
+    property NextNode: LongWord read FGetNextNode write FSetNextNode;
+    property NextValue: LongWord read FGetNextValue write FSetNextValue;
+  end;
+
+  TMoveNode = packed object
+  public
+    wMove: word;
+    estimate: LongWord;
+  private
+    m_btNextValue: byte; // сл. значение данных
+    m_wNextValue: word;
+    function FGetNextValuePos: LongWord;
+    procedure FSetNextValuePos(lwValue: LongWord);
+  public
+    procedure EmptyNode;
+    property NextValue: LongWord read FGetNextValuePos write FSetNextValuePos;
+  end;
+
   TCoord = record
-    i,j: integer;
+    i, j: integer;
   end;
 
 const
   POS_FILE_EXT = 'pos';
   MOV_FILE_EXT = 'mov';
+
+  DB_VERSION = 1;
 
   FIELD_SEQ: array[1..64] of TCoord = // 13617 kb
     ((i: 1; j: 1), (i: 1; j: 2), (i: 1; j: 3), (i: 1; j: 4),
@@ -96,31 +122,73 @@ const
 
 constructor TPosBase.Create(fileNameNoExt: string; Reestimate: TReestimate = nil);
 begin
-  AssignFile(fPos, fileNameNoExt + '.' + POS_FILE_EXT);
-{$I-}
-  Reset(fPos);
-{$I+}
-  if IOResult <> 0 then
-    Rewrite(fPos);
+  inherited Create;
 
-  AssignFile(fMov, fileNameNoExt + '.' + MOV_FILE_EXT);    
-{$I-}
-  Reset(fMov);
-{$I+}
-  try
-    if IOResult <> 0 then
-      Rewrite(fMov);
-  except
-    Close(fPos);
-    raise;
-  end;
-  self.Reestimate := Reestimate;
+  self.FReestimate := Reestimate;
+
+  FCreateStreams(fileNameNoExt + '.' + POS_FILE_EXT,
+    fileNameNoExt + '.' + MOV_FILE_EXT);
+  FSetDBVersion;
 end;
+
 
 destructor TPosBase.Destroy;
 begin
-  CloseFile(fPos); // TODO: Here occurs an error if client is closed unforced
-  CloseFile(fMov);
+  FDestroyStreams;
+  inherited;
+end;
+
+
+procedure TPosBase.FSetDBVersion;
+var
+  btData: byte;
+  wVersion: word;
+begin
+  m_iDBVersion := DB_VERSION; // default version
+
+  fPos.HeaderSize := 0;
+  if (fPos.Size > 0) then
+  begin
+    fPos.Seek(0);
+    fPos.Read(btData, SizeOf(btData));
+    if (btData <> $FF) then
+    begin
+      m_iDBVersion := 0;
+      exit;
+    end;
+
+    fPos.Read(wVersion, SizeOf(wVersion));
+    m_iDBVersion := wVersion;
+  end
+  else
+  begin
+    btData := $FF;
+    wVersion := m_iDBVersion;
+    fPos.Write(btData, SizeOf(btData));
+    fPos.Write(wVersion, SizeOf(wVersion));
+  end;
+
+  fPos.HeaderSize := SizeOf(byte) + SizeOf(word);
+end;
+
+
+function TPosBase.FCheckDBVersion: Boolean;
+begin
+  Result := (m_iDBVersion <= DB_VERSION);
+end;
+
+
+procedure TPosBase.FCreateStreams(const strPosFileName, strMovFileName: string);
+begin
+  fPos := TPosBaseStream.Create(strPosFileName, SizeOf(TFieldNode));
+  fMov := TPosBaseStream.Create(strMovFileName, SizeOf(TMoveNode));
+end;
+
+
+procedure TPosBase.FDestroyStreams;
+begin
+  fMov.Free;
+  fPos.Free;
 end;
 
 
@@ -159,11 +227,11 @@ var
     // Добавление узлов позиции
     if r >= 0 then
     begin
-      nr := FileSize(fPos);
-      fn.NextValuePos := nr;
-      Seek(fPos, r);
-      write(fPos, fn);
-      Seek(fPos, nr);
+      nr := fPos.Size;
+      fn.NextValue := nr;
+      fPos.Seek(r);
+      fPos.Write(fn);
+      fPos.Seek(nr);
     end
     else
       nr := 0;
@@ -171,37 +239,37 @@ var
     begin
       if l = 66 then
       begin
-        fn.bField := ord(posMove.pos.color);
-        nr := FileSize(fMov);
+        fn.btField := ord(posMove.pos.color);
+        nr := fMov.Size;
       end
       else
       begin
         if l <= 64 then
-          fn.bField := ord(posMove.pos.board[FIELD_SEQ[l].i, FIELD_SEQ[l].j])
+          fn.btField := ord(posMove.pos.board[FIELD_SEQ[l].i, FIELD_SEQ[l].j])
         else // l = 65
-          fn.bField := addInf;
+          fn.btField := addInf;
         inc(nr);
       end;
-      fn.NextNodePos := nr;
-      fn.NextValuePos := 0;
-      write(fPos, fn);
+      fn.NextNode := nr;
+      fn.NextValue := 0;
+      fPos.Write(fn);
     end;
     // формирование записи хода
     mn.EmptyNode;
     mn.wMove := EncodeMove(posMove.move);
-    if Assigned(Reestimate) then
+    if Assigned(FReestimate) then
     begin
       estList := TList.Create;
       try
         estList.Add(Pointer(mn.estimate));
-        Reestimate(estList, 0);
+        FReestimate(estList, 0);
         mn.estimate := LongWord(estList[0]);
       finally
         estList.Free;
       end;  
     end;
-    Seek(fMov, FileSize(fMov));
-    write(fMov, mn);
+    fMov.SeekEnd;
+    fMov.Write(mn);
   end;
 
 var
@@ -211,34 +279,38 @@ var
   enc_mv: word;
   estList: TList;
 begin
+  if (not FCheckDBVersion) then
+    exit;
+
   addInf := EncodeAddInf(posMove.pos);
-  if FileSize(fPos) = 0 then
-    begin
-      AddPosNodes(1);
-      exit;
-    end;
+  if (fPos.Size = 0) then
+  begin
+    AddPosNodes(1);
+    exit;
+  end;
   r := 0;
   for k := 1 to 66 do // 65 - доп. инф, 66 - цвет.
+  begin
+    fPos.Seek(r);
+    fPos.Read(fn);
+
+    while ((k <= 64) and (fn.btField <> ord(posMove.pos.board[FIELD_SEQ[k].i, FIELD_SEQ[k].j]))) or
+          ((k = 65) and (fn.btField <> addInf)) or
+          ((k = 66) and (fn.btField <> ord(posMove.pos.color))) do
     begin
-      Seek(fPos, r);
-      read(fPos, fn);
-      while ((k <= 64) and (fn.bField <> ord(posMove.pos.board[FIELD_SEQ[k].i, FIELD_SEQ[k].j]))) or
-            ((k = 65) and (fn.bField <> addInf)) or
-            ((k = 66) and (fn.bField <> ord(posMove.pos.color))) do
-        begin
-          pr := r;
-          r := fn.NextValuePos;
-          if r = 0 then
-            begin
-              AddPosNodes(k, pr);
-              exit;
-            end;
-          Seek(fPos, r);
-          read(fPos, fn);
-        end; { while }
-      // значение в цепочке найдено
-      r := fn.NextNodePos;
-    end;
+      pr := r;
+      r := fn.NextValue;
+      if (r = 0) then
+      begin
+        AddPosNodes(k, pr);
+        exit;
+      end;
+      fPos.Seek(r);
+      fPos.Read(fn);
+    end; { while }
+    // значение в цепочке найдено
+    r := fn.NextNode;
+  end;
 
   moveCount := 0;
   moveSet := -1;
@@ -248,54 +320,56 @@ begin
     enc_mv := EncodeMove(posMove.move);
     repeat
       pr := r;
-      Seek(fMov, r);
-      read(fMov, mn);
+      fMov.Seek(r);
+      fMov.Read(mn);
 
       mv := mn.wMove;
       if mv = enc_mv then
         moveSet := moveCount;
 
-      if Assigned(Reestimate) then
+      if Assigned(FReestimate) then
         estList.Add(Pointer(mn.estimate));
 
       inc(moveCount);
-      r := mn.NextValuePos;
+      r := mn.NextValue;
     until r = 0;
 
     if moveSet < 0 then // хода нет в списке, добавляем
       begin
         // связывание нового узла с текущим узлом
-        r := FileSize(fMov);
-        mn.NextValuePos := r;
-        Seek(fMov, pr);
-        write(fMov, mn);
+        r := fMov.Size;
+        mn.NextValue := r;
+        fMov.Seek(pr);
+        fMov.Write(mn);
+
         // Добавление нового узла ходов
         mn.EmptyNode;
         mn.wMove := enc_mv;
-        Seek(fMov, r);
-        write(fMov, mn);
+        fMov.Seek(r);
+        fMov.Write(mn);
 
-        if Assigned(Reestimate) then
+        if Assigned(FReestimate) then
           estList.Add(Pointer(mn.estimate));
         moveSet := moveCount;
       end;
 
-      if Assigned(Reestimate) then
+      if Assigned(FReestimate) then
+      begin
+        FReestimate(estList, moveSet);
+        for k := 0 to estList.Count - 1 do
         begin
-          Reestimate(estList, moveSet);
-          for k := 0 to estList.Count - 1 do
-            begin
-              Seek(fMov, rm);
-              read(fMov, mn);
-              if mn.estimate <> LongWord(estList[k]) then
-                begin
-                  mn.estimate := LongWord(estList[k]);
-                  Seek(fMov, rm);
-                  write(fMov, mn);
-                end;
-              rm := mn.NextValuePos;
-            end;
+          fMov.Seek(rm);
+          fMov.Read(mn);
+          if (mn.estimate <> LongWord(estList[k])) then
+          begin
+            mn.estimate := LongWord(estList[k]);
+            fMov.Seek(rm);
+            fMov.Write(mn);
+          end;
+          rm := mn.NextValue;
         end;
+      end;
+      
   finally
     estList.Free;
   end;  
@@ -329,30 +403,36 @@ label
   here;
 begin
   Result := FALSE;
+
+  if (not FCheckDBVersion) then
+    exit;
+
   for k := 0 to moveEsts.Count - 1 do
     dispose(moveEsts[k]);
+
   moveEsts.Clear;
-  if FileSize(fPos) = 0 then
+  if (fPos.Size = 0) then
     exit;
 
   r := 0;
   for k := 1 to 66 do // 65 - доп. инф, 66 - цвет.
-    begin
+  begin
 here:
-      Seek(fPos, r);
-      read(fPos, fn);
-      r := fn.NextNodePos;
-      while ((k <= 64) and (fn.bField <> ord(pos.board[FIELD_SEQ[k].i, FIELD_SEQ[k].j]))) or
-            ((k = 65) and (fn.bField <> EncodeAddInf(pos))) or
-            ((k = 66) and (fn.bField <> ord(pos.color))) do
-        begin
-          r := fn.NextValuePos;
-          if r = 0 then
-            exit
-          else
-            goto here;
-        end; { while }
-    end; { for }
+    fPos.Seek(r);
+    fPos.Read(fn);
+
+    r := fn.NextNode;
+    while ((k <= 64) and (fn.btField <> ord(pos.board[FIELD_SEQ[k].i, FIELD_SEQ[k].j]))) or
+          ((k = 65) and (fn.btField <> EncodeAddInf(pos))) or
+          ((k = 66) and (fn.btField <> ord(pos.color))) do
+      begin
+        r := fn.NextValue;
+        if r = 0 then
+          exit
+        else
+          goto here;
+      end; { while }
+  end; { for }
 
   Result := TRUE;
   if not Assigned(moveEsts) then
@@ -360,41 +440,42 @@ here:
 
   // Заполнение списка ходов
   repeat
-    Seek(fMov, r);
-    read(fMov, mn);
+    fMov.Seek(r);
+    fMov.Read(mn);
 
     new(pme);
     pme^.move := DecodeMove(mn.wMove);
     pme^.estimate := mn.estimate;
     moveEsts.Add(pme);
 
-    r := mn.NextValuePos;
-  until r = 0;
+    r := mn.NextValue;
+  until (r = 0);
+  
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
 // TFieldNode
 
-function TFieldNode.FGetNextNodePos: LongWord;
+function TFieldNode.FGetNextNode: LongWord;
 begin
   Result := (m_wNextNode shl 8) or m_btNextNode;
 end;
 
 
-procedure TFieldNode.FSetNextNodePos(lwValue: LongWord);
+procedure TFieldNode.FSetNextNode(lwValue: LongWord);
 begin
   m_btNextNode := lwValue and $FF;
   m_wNextNode := lwValue shr 8;
 end;
 
 
-function TFieldNode.FGetNextValuePos: LongWord;
+function TFieldNode.FGetNextValue: LongWord;
 begin
   Result := (m_wNextValue shl 8) or m_btNextValue;
 end;
 
 
-procedure TFieldNode.FSetNextValuePos(lwValue: LongWord);
+procedure TFieldNode.FSetNextValue(lwValue: LongWord);
 begin
   m_btNextValue := lwValue and $FF;
   m_wNextValue := lwValue shr 8;
@@ -420,6 +501,76 @@ end;
 procedure TMoveNode.EmptyNode;
 begin
   FillChar(self, SizeOf(self), 0);
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TPosBaseStream
+
+constructor TPosBaseStream.Create(const strFileName: string; RecordSize: integer);
+var
+  FileHandle: Integer;
+begin
+  inherited Create;
+
+  m_iRecordSize := RecordSize;
+
+  if (not FileExists(strFileName)) then
+  begin
+    FileHandle := FileCreate(strFileName);
+    FileClose(FileHandle);
+  end;
+
+  m_InnerStream := TFileStream.Create(strFileName, fmOpenReadWrite,
+    fmShareDenyWrite);
+end;
+
+
+destructor TPosBaseStream.Destroy;
+begin
+  m_InnerStream.Free;
+  inherited;
+end;
+
+
+function TPosBaseStream.FGetSize: integer;
+begin
+  Result := (m_InnerStream.Size - m_iHeaderSize) div m_iRecordSize;
+end;
+
+
+procedure TPosBaseStream.Seek(lwRecordOffset: LongWord);
+begin
+  m_InnerStream.Seek(m_iHeaderSize + lwRecordOffset * m_iRecordSize, soFromBeginning);
+end;
+
+
+procedure TPosBaseStream.SeekEnd;
+begin
+  m_InnerStream.Seek(0, soFromEnd);
+end;
+
+
+procedure TPosBaseStream.Write(const Buffer);
+begin
+  m_InnerStream.WriteBuffer(Buffer, m_iRecordSize);
+end;
+
+
+procedure TPosBaseStream.Write(const Buffer; Count: integer);
+begin
+  m_InnerStream.WriteBuffer(Buffer, Count);
+end;
+
+
+procedure TPosBaseStream.Read(var Buffer);
+begin
+  m_InnerStream.ReadBuffer(Buffer, m_iRecordSize);
+end;
+
+
+procedure TPosBaseStream.Read(var Buffer; Count: integer);
+begin
+  m_InnerStream.ReadBuffer(Buffer, Count);
 end;
 
 end.
