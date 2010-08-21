@@ -24,7 +24,7 @@ begin
   writeln('-C', #9, 'include compulsory <number of plys> plys into the base.');
   writeln('-O', #9, 'generate only opening lines.');
   writeln('-X', #9, 'generate extended opening lines.');
-  writeln('-S', #9, 'use in opening lines statical estimation for prunning.');
+  writeln('-S', #9, 'use in opening lines statistical estimation for prunning.');
   writeln('-R', #9, 'use <referenced base> as a base for references.');
 end;
 
@@ -41,7 +41,7 @@ var
   variants: boolean = FALSE;
   chngest: boolean = FALSE;
   uniquePos: boolean = FALSE;
-  color: TFigureColors = [fcWhite, fcWhite];
+  color: TFigureColors = [fcWhite, fcBlack];
   player_name: string = '';
   opening: TOpening = openNo;
   statPrunning: boolean = FALSE;
