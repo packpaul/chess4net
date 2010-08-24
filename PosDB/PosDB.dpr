@@ -13,7 +13,7 @@ begin
   writeln;
   writeln('Builds DB for Chess4Net.');
   writeln;
-  writeln('PosDB [-V] [-E -U] [-P <name>] [-W|B] [-C <number of plys>] [-O|-X -S] [-R <referenced base>] <input PGN file> [<base>]');
+  writeln('PosDB [-V] [-E -U] [-P <name>] [-W|B] [-C <number of plys>] [-O|-X[+] -S] [-R <referenced base>] <input PGN file> [<base>]');
   writeln;
   writeln('-V', #9, 'proceed also variants.');
   writeln('-E', #9, 'change estimation for moves.');
@@ -24,6 +24,7 @@ begin
   writeln('-C', #9, 'include compulsory <number of plys> plys into the base.');
   writeln('-O', #9, 'generate only opening lines.');
   writeln('-X', #9, 'generate extended opening lines.');
+  writeln('-X+', #9, 'generate extended opening lines with simple positions.');
   writeln('-S', #9, 'use in opening lines statistical estimation for prunning.');
   writeln('-R', #9, 'use <referenced base> as a base for references.');
 end;
@@ -106,6 +107,12 @@ begin
         begin
           if opening = openNo then
             opening := openExtended;
+        end
+    else
+      if UpperCase(ParamStr(i)) = '-X+' then
+        begin
+          if opening = openNo then
+            opening := openExtendedPlus;
         end
     else
       if UpperCase(ParamStr(i)) = '-S' then

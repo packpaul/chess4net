@@ -9,7 +9,7 @@ uses
 
 type
   TFigureColors = set of TFigureColor;
-  TOpening = (openNo, openNormal, openExtended);
+  TOpening = (openNo, openNormal, openExtended, openExtendedPlus);
 
   TPGNProcessor = class
   private
@@ -165,12 +165,14 @@ var
   moveEsts: TList;
   lastInvalidMove: boolean;
   addPos: boolean;
+  addSimplePosMove: boolean;
+  SimplePosMove: TPosMove;
 
   procedure NProceedInner(var str: string);
 
     procedure NProcessExtendedOpeningLine(const posMove: TPosMove);
     var
-      p_posMove: PPosMove;    
+      p_posMove: PPosMove;
     begin
       if (addPos) then
       begin
@@ -180,12 +182,18 @@ var
           PosBase.Add(PPosMove(posMoveStack.Peek)^);
           Dispose(posMoveStack.Pop);
         end;
+        addSimplePosMove := FALSE;
       end
       else
       begin
-        new(p_posMove);
+        New(p_posMove);
         p_posMove^ := posMove;
         posMoveStack.Push(p_posMove);
+        if ((genOpening = openExtendedPlus) and (not addSimplePosMove)) then
+        begin
+          addSimplePosMove := TRUE;
+          SimplePosMove := posMove;
+        end;
       end;
     end;
 
@@ -299,7 +307,7 @@ var
         Assert(FALSE);
       end; // if (not incVariants)
 
-      new(movePly);
+      New(movePly);
       movePly.move := bkpMove;
       movePly.ply := n_ply;
       movePly.addPos := addPos;
@@ -364,12 +372,13 @@ var
       end;
 
       n := movePly.posMoveCount;
-      while (n < posMoveStack.Count) do // удаление стека подварианта
-        dispose(posMoveStack.Pop);
+      while (n < posMoveStack.Count) do // Deletion of subline stack
+        Dispose(posMoveStack.Pop);
 
       bkpMove := movePly.move;
 
-      dispose(movePly);
+      movePly.move := '';
+      Dispose(movePly);
     end; // \NTakeBackLine
 
   var
@@ -457,7 +466,7 @@ var
           if (addPos) then
             PosBase.Add(posMove);
 
-          if (genOpening = openExtended) then
+          if (genOpening in [openExtended, openExtendedPlus]) then
             NProcessExtendedOpeningLine(posMove);
 
         end; { if posMove.pos.color ... }
@@ -500,13 +509,17 @@ begin // TPGNProcessor.FProceedGameStr
     bkpMove := '';
     lastInvalidMove := TRUE;
     addPos := TRUE;
+    addSimplePosMove := FALSE;
 
     str := strGame;
     repeat
       NProceedInner(str);
     until (str = '');
 
-    Assert(movePlyStack.Count = 0);    
+    if (addSimplePosMove) then
+      PosBase.Add(SimplePosMove);
+
+    Assert(movePlyStack.Count = 0);
 
   finally
     for i := 0 to moveEsts.Count - 1 do
@@ -514,7 +527,7 @@ begin // TPGNProcessor.FProceedGameStr
     moveEsts.Free;
 
     while (posMoveStack.Count > 0) do
-      dispose(posMoveStack.Pop);
+      Dispose(posMoveStack.Pop);
     posMoveStack.Free;
 
     movePlyStack.Free;
@@ -528,11 +541,13 @@ var
 begin
   // Re-estimation is done here:
   // Re-estimation for a DB with GMs games
-  est := (LongWord(moveEsts[nRec]) + 1);
+  est := LongWord(moveEsts[nRec]);
+  if ((est and $FFFF) < $FFFF) then
+    est := est + 1;
   // For statistical estimation: if position in bounds of one game comes more than one time -> don't change estimation
   if (useUniquePos) then
   begin
-    if (est shr 16) >= n_game then // exclude repitition of "position + moves" in one game
+    if ((est shr 16) >= n_game) then // exclude repitition of "position + moves" in one game
       exit;
     est := (n_game shl 16) or (est and $FFFF);
   end

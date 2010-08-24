@@ -29,6 +29,7 @@ PosDB [-V] [-E -U] [-P <name>] [-W|B] [-C <number of plys>] [-O|-X -S] [-R <refe
 -C	include compulsory <number of plys> plys into the base.
 -O	generate only opening lines.
 -X	generate extended opening lines.
+-X+ generate extended opening lines with simple positions.
 -S	use in opening lines statistical estimation for prunning.
 -R	use <referenced base> as a base for references.
 
@@ -58,11 +59,13 @@ Bxe3 15. Nxe3 (15. Nxe7+ $2 Kh8 16. Nxd5 Bf3)
 -S - use statistical prunning in -O or -X generation mode. If given only positions that come more than two times in the reference base are added.
 -O - use normal opening lines generation.
 -X - use extended opening lines generation.
+-X+ - use extended opening lines generation. Also simple positions are added at the end of lines (works only in main lines).
 
-  Concider 1. e4[2] e5[2] 2. Nf3[1] Nc6[2] be the reference base (in brackets amount of times the position comes in the base is indicated).
-  Let 1. e4 Nc6 2. Nf3 e5 be used for base generation.
+  Concider 1. e4[2] e5[2] 2. Nf3[1] Nc6[2] 3. d4[1] be the reference base (in brackets amount of times the position comes in the base is indicated).
+  Let 1. e4 Nc6 2. Nf3 e5 3. d4 be used for base generation.
   -O -R -S will produce 1. e4 Nc6 only
   -X -R -S will produce 1. e4 Nc6 2. Nf3 e5 since e5 has [2] in the reference base Nf3 is added as a linking move too.
+  -X+ -R -S will produce 1. e4 Nc6 2. Nf3 e5 3. d4 since d4 will be appended as a simple position.
 
 
 
