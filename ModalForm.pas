@@ -385,14 +385,17 @@ begin
   if (Assigned(g_lstDialogs)) then
   begin
     g_lstDialogs.Remove(self);
-    FreeAndNil(g_lstDialogs);
+    if (g_lstDialogs.Count = 0) then
+      FreeAndNil(g_lstDialogs);
   end;
 
   for i := 0 to frmList.Count - 1 do
   begin
     ModalForm := frmList[i];
     ModalForm.RHandler := nil;
-    ModalForm.Release;
+    ModalForm.dlgOwner := nil;
+//    ModalForm.Release;
+    ModalForm.Free;
   end;
 
   inherited;
