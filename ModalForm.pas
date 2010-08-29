@@ -61,7 +61,6 @@ type
   protected
     RHandler: TModalFormHandler;
     dlgOwner: TDialogs;
-    constructor Create(Owner: TForm; modHandler: TModalFormHandler = nil); reintroduce; overload; virtual;
     constructor Create(dlgOwner: TDialogs; modHandler: TModalFormHandler); reintroduce; overload; virtual;
     function GetHandle: hWnd; virtual;
     function GetEnabled_: boolean; virtual;
@@ -74,6 +73,8 @@ type
     function GetModalID: TModalFormID; virtual;
 
   public
+    constructor Create(Owner: TForm; modHandler: TModalFormHandler = nil); reintroduce; overload; virtual;
+
     procedure Show; virtual;
     procedure Close; virtual;
 
@@ -385,14 +386,17 @@ begin
   if (Assigned(g_lstDialogs)) then
   begin
     g_lstDialogs.Remove(self);
-    FreeAndNil(g_lstDialogs);
+    if (g_lstDialogs.Count = 0) then
+      FreeAndNil(g_lstDialogs);
   end;
 
   for i := 0 to frmList.Count - 1 do
   begin
     ModalForm := frmList[i];
     ModalForm.RHandler := nil;
-    ModalForm.Release;
+    ModalForm.dlgOwner := nil;
+//    ModalForm.Release;
+    ModalForm.Free;
   end;
 
   inherited;
