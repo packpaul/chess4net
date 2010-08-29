@@ -61,7 +61,6 @@ type
   protected
     RHandler: TModalFormHandler;
     dlgOwner: TDialogs;
-    constructor Create(Owner: TForm; modHandler: TModalFormHandler = nil); reintroduce; overload; virtual;
     constructor Create(dlgOwner: TDialogs; modHandler: TModalFormHandler); reintroduce; overload; virtual;
     function GetHandle: hWnd; virtual;
     function GetEnabled_: boolean; virtual;
@@ -74,6 +73,8 @@ type
     function GetModalID: TModalFormID; virtual;
 
   public
+    constructor Create(Owner: TForm; modHandler: TModalFormHandler = nil); reintroduce; overload; virtual;
+
     procedure Show; virtual;
     procedure Close; virtual;
 
