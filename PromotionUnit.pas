@@ -39,45 +39,78 @@ const
 // TPromotionForm 
 
 procedure TPromotionForm.FormShow(Sender: TObject);
+
+  procedure NCorrectIfOutOfScreen(var iLeft, iTop: integer);
+  var
+    R: TRect;
+    M: TMonitor;
+    frmOwner: TForm;
+  begin
+    if (Assigned(Owner)) then
+      frmOwner := (Owner as TForm)
+    else
+      frmOwner := nil;
+    if (Assigned(frmOwner)) then
+    begin
+      M := Screen.MonitorFromRect(frmOwner.BoundsRect);
+      R := M.WorkareaRect;
+    end
+    else
+      R := Screen.WorkAreaRect;
+
+    if ((iLeft + self.Width) > R.Right) then
+      iLeft := R.Right - self.Width;
+    if (iLeft < R.Left) then
+      iLeft := R.Left;
+    if ((iTop + self.Height) > R.Bottom) then
+      iTop := R.Bottom - self.Height;
+    if (iTop < R.Top) then
+      iTop := R.Top;
+  end;
+
 var
   k: byte;
-begin
+  iLeft, iTop: integer;
+begin // TPromotionForm.FormShow
   if (m_iSquareSize <> m_BitmapRes.SquareSize) then
     FLoadFigures;
 
   // Установить окно в пределах курсора
-  Left := Mouse.CursorPos.X - m_iSquareSize div 2;
-  Top := Mouse.CursorPos.Y - m_iSquareSize div 2;
-  if (Left + Width > Screen.Width) then
-    Left := Screen.Width - Width;
+  iLeft := Mouse.CursorPos.X - m_iSquareSize div 2;
+  iTop := Mouse.CursorPos.Y - m_iSquareSize div 2;
+
+  NCorrectIfOutOfScreen(iLeft, iTop);
+
+  Left := iLeft;
+  Top := iTop;
 
   with PromFigImage.Canvas do
-    begin
-      Brush.Color:= Color;
-      FillRect(Rect(0,0, Width, PromFigImage.Height));
+  begin
+    Brush.Color:= Color;
+    FillRect(Rect(0,0, Width, PromFigImage.Height));
 
-      Brush.Color:= clWhite;
-      for k := 0 to 3 do
-        FillRect(Rect((m_iSquareSize + INDENT_SIZE) * k, 0,
-          (m_iSquareSize + INDENT_SIZE) * k + m_iSquareSize - 1, m_iSquareSize - 1));
+    Brush.Color:= clWhite;
+    for k := 0 to 3 do
+      FillRect(Rect((m_iSquareSize + INDENT_SIZE) * k, 0,
+        (m_iSquareSize + INDENT_SIZE) * k + m_iSquareSize - 1, m_iSquareSize - 1));
 
-      case m_fig_color of
-        fcWhite:
-          begin
-            Draw(0, 0, m_bmFigure[WQ]);
-            Draw(m_iSquareSize + 2, 0, m_bmFigure[WR]);
-            Draw(2 * (m_iSquareSize + INDENT_SIZE), 0, m_bmFigure[WB]);
-            Draw(3 * (m_iSquareSize + INDENT_SIZE), 0, m_bmFigure[WN]);
-          end;
-        fcBlack:
-          begin
-            Draw(0, 0, m_bmFigure[BQ]);
-            Draw(m_iSquareSize + INDENT_SIZE, 0, m_bmFigure[BR]);
-            Draw(2 * (m_iSquareSize + INDENT_SIZE), 0, m_bmFigure[BB]);
-            Draw(3 * (m_iSquareSize + INDENT_SIZE), 0, m_bmFigure[BN]);
-          end;
-      end;
+    case m_fig_color of
+      fcWhite:
+        begin
+          Draw(0, 0, m_bmFigure[WQ]);
+          Draw(m_iSquareSize + 2, 0, m_bmFigure[WR]);
+          Draw(2 * (m_iSquareSize + INDENT_SIZE), 0, m_bmFigure[WB]);
+          Draw(3 * (m_iSquareSize + INDENT_SIZE), 0, m_bmFigure[WN]);
+        end;
+      fcBlack:
+        begin
+          Draw(0, 0, m_bmFigure[BQ]);
+          Draw(m_iSquareSize + INDENT_SIZE, 0, m_bmFigure[BR]);
+          Draw(2 * (m_iSquareSize + INDENT_SIZE), 0, m_bmFigure[BB]);
+          Draw(3 * (m_iSquareSize + INDENT_SIZE), 0, m_bmFigure[BN]);
+        end;
     end;
+  end;
 end;
 
 
