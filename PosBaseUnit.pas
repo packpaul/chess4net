@@ -25,7 +25,8 @@ type
     function FGetSize: integer;
   public
     destructor Destroy; override;
-    procedure Seek(lwRecordOffset: LongWord);
+    procedure SeekHeader;
+    procedure SeekRec(lwRecordNumber: LongWord);
     procedure SeekEnd;
     procedure Write(const Buffer); overload;
     procedure Write(const Buffer; Count: integer); overload;
@@ -47,7 +48,8 @@ type
     function FCheckDBVersion: Boolean;
   public
     procedure Add(const posMove: TPosMove); // добавление позиции и хода в базу
-    function Find(const pos: TChessPosition; moveEsts: TList = nil): boolean;
+    function Find(const pos: TChessPosition): boolean; overload;
+    function Find(const pos: TChessPosition; var moveEsts: TList): boolean; overload;
     constructor Create(fileNameNoExt: string; Reestimate: TReestimate = nil);
     destructor Destroy; override;
   end;
@@ -146,17 +148,16 @@ var
 begin
   m_iDBVersion := DB_VERSION; // default version
 
-  fPos.HeaderSize := 0;
   if (fPos.Size > 0) then
   begin
-    fPos.Seek(0);
+    fPos.SeekHeader;
     fPos.Read(btData, SizeOf(btData));
     if (btData <> $FF) then
     begin
       m_iDBVersion := 0;
+      fPos.HeaderSize := 0;
       exit;
     end;
-
     fPos.Read(wVersion, SizeOf(wVersion));
     m_iDBVersion := wVersion;
   end
@@ -229,9 +230,9 @@ var
     begin
       nr := fPos.Size;
       fn.NextValue := nr;
-      fPos.Seek(r);
+      fPos.SeekRec(r);
       fPos.Write(fn);
-      fPos.Seek(nr);
+      fPos.SeekRec(nr);
     end
     else
       nr := 0;
@@ -257,6 +258,7 @@ var
     // формирование записи хода
     mn.EmptyNode;
     mn.wMove := EncodeMove(posMove.move);
+
     if Assigned(FReestimate) then
     begin
       estList := TList.Create;
@@ -266,7 +268,8 @@ var
         mn.estimate := LongWord(estList[0]);
       finally
         estList.Free;
-      end;  
+      end;
+
     end;
     fMov.SeekEnd;
     fMov.Write(mn);
@@ -291,7 +294,7 @@ begin
   r := 0;
   for k := 1 to 66 do // 65 - доп. инф, 66 - цвет.
   begin
-    fPos.Seek(r);
+    fPos.SeekRec(r);
     fPos.Read(fn);
 
     while ((k <= 64) and (fn.btField <> ord(posMove.pos.board[FIELD_SEQ[k].i, FIELD_SEQ[k].j]))) or
@@ -305,7 +308,7 @@ begin
         AddPosNodes(k, pr);
         exit;
       end;
-      fPos.Seek(r);
+      fPos.SeekRec(r);
       fPos.Read(fn);
     end; { while }
     // значение в цепочке найдено
@@ -320,7 +323,7 @@ begin
     enc_mv := EncodeMove(posMove.move);
     repeat
       pr := r;
-      fMov.Seek(r);
+      fMov.SeekRec(r);
       fMov.Read(mn);
 
       mv := mn.wMove;
@@ -339,13 +342,13 @@ begin
         // связывание нового узла с текущим узлом
         r := fMov.Size;
         mn.NextValue := r;
-        fMov.Seek(pr);
+        fMov.SeekRec(pr);
         fMov.Write(mn);
 
         // Добавление нового узла ходов
         mn.EmptyNode;
         mn.wMove := enc_mv;
-        fMov.Seek(r);
+        fMov.SeekRec(r);
         fMov.Write(mn);
 
         if Assigned(FReestimate) then
@@ -358,12 +361,12 @@ begin
         FReestimate(estList, moveSet);
         for k := 0 to estList.Count - 1 do
         begin
-          fMov.Seek(rm);
+          fMov.SeekRec(rm);
           fMov.Read(mn);
           if (mn.estimate <> LongWord(estList[k])) then
           begin
             mn.estimate := LongWord(estList[k]);
-            fMov.Seek(rm);
+            fMov.SeekRec(rm);
             fMov.Write(mn);
           end;
           rm := mn.NextValue;
@@ -376,7 +379,16 @@ begin
 end;
 
 
-function TPosBase.Find(const pos: TChessPosition; moveEsts: TList = nil): boolean;
+function TPosBase.Find(const pos: TChessPosition): boolean;
+var
+  lstDummy: TList;
+begin
+  lstDummy := nil;
+  Result := Find(pos, lstDummy);
+end;
+
+
+function TPosBase.Find(const pos: TChessPosition; var moveEsts: TList): boolean;
 
   function DecodeMove(enc_move: word): TMoveAbs;
   begin
@@ -401,16 +413,19 @@ var
   pme: PMoveEst;
 label
   here;
-begin
+begin // TPosBase.Find
   Result := FALSE;
 
   if (not FCheckDBVersion) then
     exit;
 
-  for k := 0 to moveEsts.Count - 1 do
-    dispose(moveEsts[k]);
+  if (Assigned(moveEsts)) then
+  begin
+    for k := 0 to moveEsts.Count - 1 do
+      Dispose(moveEsts[k]);
+    moveEsts.Clear;
+  end;
 
-  moveEsts.Clear;
   if (fPos.Size = 0) then
     exit;
 
@@ -418,29 +433,29 @@ begin
   for k := 1 to 66 do // 65 - доп. инф, 66 - цвет.
   begin
 here:
-    fPos.Seek(r);
+    fPos.SeekRec(r);
     fPos.Read(fn);
 
     r := fn.NextNode;
     while ((k <= 64) and (fn.btField <> ord(pos.board[FIELD_SEQ[k].i, FIELD_SEQ[k].j]))) or
           ((k = 65) and (fn.btField <> EncodeAddInf(pos))) or
           ((k = 66) and (fn.btField <> ord(pos.color))) do
-      begin
-        r := fn.NextValue;
-        if r = 0 then
-          exit
-        else
-          goto here;
-      end; { while }
+    begin
+      r := fn.NextValue;
+      if r = 0 then
+        exit
+      else
+        goto here;
+    end; { while }
   end; { for }
 
   Result := TRUE;
-  if not Assigned(moveEsts) then
+  if (not Assigned(moveEsts)) then
     exit;
 
-  // Заполнение списка ходов
+  // Filling the moves list
   repeat
-    fMov.Seek(r);
+    fMov.SeekRec(r);
     fMov.Read(mn);
 
     new(pme);
@@ -538,9 +553,15 @@ begin
 end;
 
 
-procedure TPosBaseStream.Seek(lwRecordOffset: LongWord);
+procedure TPosBaseStream.SeekHeader;
 begin
-  m_InnerStream.Seek(m_iHeaderSize + lwRecordOffset * m_iRecordSize, soFromBeginning);
+  m_InnerStream.Seek(0, soFromBeginning);
+end;
+
+
+procedure TPosBaseStream.SeekRec(lwRecordNumber: LongWord);
+begin
+  m_InnerStream.Seek(m_iHeaderSize + lwRecordNumber * m_iRecordSize, soFromBeginning);
 end;
 
 
