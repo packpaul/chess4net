@@ -46,7 +46,8 @@ implementation
 uses
   Types, StrUtils, Classes, Dialogs, Controls,
   //
-  LocalizerUnit, TransmitGameSelectionUnit, GlobalsLocalUnit, ChessBoardUnit;
+  LocalizerUnit, TransmitGameSelectionUnit, GlobalsLocalUnit, ChessBoardUnit,
+  GameChessBoardUnit;
 
 type
   TManagerMI = class(TManager, IMirandaPlugin) // abstract

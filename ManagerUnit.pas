@@ -5,13 +5,13 @@ unit ManagerUnit;
 interface
 
 uses
-  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms,
   Menus, TntMenus, ActnList, TntActnList, ExtCtrls,
 {$IFDEF TRILLIAN}
   plugin,
 {$ENDIF}
   // Chess4Net Units
-  ChessBoardHeaderUnit, ChessRulesEngine, ChessBoardUnit, PosBaseChessBoardUnit,
+  ChessBoardHeaderUnit, ChessRulesEngine, ChessBoardUnit, GameChessBoardUnit,
   ConnectorUnit, ConnectingUnit, GameOptionsUnit,
   ModalForm, DialogUnit, ContinueUnit, LocalizerUnit;
 
@@ -72,7 +72,7 @@ type
     m_ConnectingForm: TConnectingForm;
     m_ContinueForm: TContinueForm;
     m_Connector: TConnector;
-    m_ChessBoard: TPosBaseChessBoard;
+    m_ChessBoard: TGameChessBoard;
     m_Dialogs: TDialogs;
 
     m_ExtBaseList: TStringList;
@@ -90,7 +90,7 @@ type
     m_bDontShowCredits: boolean;
 {$ENDIF}
     m_lwOpponentClientVersion: LongWord;
-    // для ChessBoard
+    // It's for ChessBoard
     you_unlimited, opponent_unlimited: boolean;
     you_time, opponent_time,
     you_inc, opponent_inc: word;
@@ -116,8 +116,8 @@ type
     procedure FWriteToGameLog(const s: string);
     procedure FlushGameLog;
 {$ENDIF}
-    procedure ChessBoardHandler(e: TChessBoardEvent;
-                                d1: pointer = nil; d2: pointer = nil);
+    procedure ChessBoardHandler(e: TGameChessBoardEvent;
+      d1: pointer = nil; d2: pointer = nil);
     procedure SetClock; overload;
     procedure SetClock(var sr: string); overload;
     procedure DialogFormHandler(modSender: TModalForm; msgDlgID: TModalFormID);
@@ -187,7 +187,7 @@ type
     procedure RUpdateChessBoardCaption;
 
     property Connector: TConnector read m_Connector write m_Connector;
-    property ChessBoard: TPosBaseChessBoard read m_ChessBoard write m_ChessBoard;
+    property ChessBoard: TGameChessBoard read m_ChessBoard write m_ChessBoard;
 
     property PlayerNick: string read m_strPlayerNick write m_strPlayerNick;
     property PlayerNickId: string read m_strPlayerNickId write m_strPlayerNickId;
@@ -351,8 +351,8 @@ type
 
 procedure TManager.RCreateChessBoardAndDialogs;
 begin
-//  m_ChessBoard := TPosBaseChessBoard.Create(self, ChessBoardHandler, Chess4NetPath + USR_BASE_NAME);
-  m_ChessBoard := TPosBaseChessBoard.Create(nil, ChessBoardHandler, Chess4NetPath + USR_BASE_NAME);
+//  m_ChessBoard := TGameChessBoard.Create(self, ChessBoardHandler, Chess4NetPath + USR_BASE_NAME);
+  m_ChessBoard := TGameChessBoard.Create(nil, ChessBoardHandler, Chess4NetPath + USR_BASE_NAME);
   m_Dialogs := TDialogs.Create(ChessBoard, DialogFormHandler);
 end;
 
@@ -370,7 +370,7 @@ begin
 end;
 
 
-procedure TManager.ChessBoardHandler(e: TChessBoardEvent;
+procedure TManager.ChessBoardHandler(e: TGameChessBoardEvent;
                             d1: pointer = nil; d2: pointer = nil);
 var
   s: string;

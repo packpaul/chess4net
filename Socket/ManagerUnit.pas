@@ -5,10 +5,10 @@ unit ManagerUnit;
 interface
 
 uses
-  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms,
   TntForms, Dialogs, TntDialogs, Menus, ActnList, ExtCtrls,
   // Chess4Net Units
-  ChessBoardHeaderUnit, ChessBoardUnit, PosBaseChessBoardUnit,
+  ChessBoardHeaderUnit, ChessBoardUnit, GameChessBoardUnit,
   ConnectorUnit, ConnectingUnit, ContinueUnit;
 
 type
@@ -63,7 +63,7 @@ type
     procedure TakebackGameClick(Sender: TObject);
     procedure GamePauseClick(Sender: TObject);
   private
-    ChessBoard: TPosBaseChessBoard;
+    ChessBoard: TGameChessBoard;
     Connector: TConnector;
     ConnectingForm: TConnectingForm;
     ContinueForm: TContinueForm;
@@ -88,7 +88,7 @@ type
     procedure WriteToGameLog(const s: string);
     procedure FlushGameLog;
 {$ENDIF}
-    procedure ChessBoardHandler(e: TChessBoardEvent; d1: pointer = nil; d2: pointer = nil);
+    procedure ChessBoardHandler(e: TGameChessBoardEvent; d1: pointer = nil; d2: pointer = nil);
     procedure ConnectorHandler(e: TConnectorEvent; d1: pointer = nil; d2: pointer = nil);
     procedure ContinueHandler;
     procedure ConnectionAbort;
@@ -194,7 +194,7 @@ const
 
 procedure TManager.FormCreate(Sender: TObject);
 begin
-  ChessBoard := TPosBaseChessBoard.Create(self, ChessBoardHandler, USR_BASE_NAME);
+  ChessBoard := TGameChessBoard.Create(self, ChessBoardHandler, USR_BASE_NAME);
   Connector := TConnector.Create(self, ConnectorHandler);
 
   ExtBaseList := TStringList.Create;
@@ -217,8 +217,8 @@ begin
 end;
 
 
-procedure TManager.ChessBoardHandler(e: TChessBoardEvent;
-                            d1: pointer = nil; d2: pointer = nil);
+procedure TManager.ChessBoardHandler(e: TGameChessBoardEvent;
+  d1: pointer = nil; d2: pointer = nil);
 var
   s: string;
 begin
