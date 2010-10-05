@@ -5,7 +5,9 @@ interface
 uses
   Classes, SysUtils,
   //
-  skypeapi;
+  skypeapi,
+  //
+  SkypeAPI_Command, ExtCtrls;
 
 type
   TAttachmentStatus = (apiAttachUnknown = -1, apiAttachSuccess = 0,
@@ -84,11 +86,21 @@ type
   ESkype = class(Exception);
 
   TSkype = class(TDataModule, ISkype)
+    FinishAttachmentTimer: TTimer;
     procedure DataModuleCreate(Sender: TObject);
+    procedure DataModuleDestroy(Sender: TObject);
+    procedure FinishAttachmentTimerTimer(Sender: TObject);
   private
     m_SkypeAPI: TSkypeAPI;
     m_AttachmentStatus: TAttachmentStatus;
     m_iProtocol: integer;
+
+    m_Command: TCommand;
+
+    m_Applications: TInterfaceList;
+    m_Users: TInterfaceList;
+
+    m_Client: IClient;
 
     FOnMessageStatus: TOnMessageStatus;
     FOnAttachmentStatus: TOnAttachmentStatus;
@@ -108,15 +120,22 @@ type
     procedure FDoApplicationDatagram(ASender: TObject; const pApp: IApplication;
       const pStream: IApplicationStream; const Text: WideString);
 
-    procedure FLog(const wstrLogMsg: WideString);
-    function FSendCommand(const wstrCommand: WideString; bBlocking: boolean): boolean;
+    procedure FFinishAttachment;
 
   public
-    constructor Create(const strFriendlyName: string);
+    constructor Create(const strFriendlyName: string); reintroduce;
     destructor Destroy; override;
+
+    class function Instance: TSkype;
 
     procedure Attach(Protocol: Integer; Wait: Boolean);
     function SendMessage(const Username: WideString; const Text: WideString): IChatMessage;
+
+    procedure Log(const wstrLogMsg: WideString);
+    procedure SendCommand(const wstrCommand: WideString); overload;
+    function SendCommand(ACommand: TCommand): boolean; overload;
+
+    function GetUserByName(const wstrName: WideString): IUser;
 
     property Application[const Name: WideString]: IApplication read GetApplication;
     property Client: IClient read GetClient;
@@ -133,31 +152,86 @@ type
 implementation
 
 uses
-  SkypeAPI_Command;
+  Forms,
+  //
+  MainFormUnit,
+  //
+  SkypeAPI_Client, SkypeAPI_Application;
 
 {$R *.dfm}
+
+type
+  TProtocolCommand = class(TCommand)
+  private
+    m_iRequestedProtocol: integer;
+    m_iReturnedProtocol: integer;
+  protected
+    function RGetCommand: WideString; override;
+    function RProcessResponse(const wstrCommand: WideString): boolean; override;    
+  public
+    constructor Create(iRequestedProtocol: integer);
+    property Protocol: integer read m_iReturnedProtocol;
+  end;
+
+const
+  CMD_PROTOCOL: WideString = 'PROTOCOL';
 
 ////////////////////////////////////////////////////////////////////////////////
 // TSkype
 
+var
+  g_SkypeInstance: TSkype = nil;
+
 constructor TSkype.Create(const strFriendlyName: string);
 begin
+  if (Assigned(g_SkypeInstance)) then
+    raise ESkype.Create('TSkype instance already exists!');
+
   m_SkypeAPI := TSkypeAPI.Create(strFriendlyName);
+
   inherited Create(nil);
+
+  g_SkypeInstance := self;
 end;
 
 
 destructor TSkype.Destroy;
 begin
+  g_SkypeInstance := nil;
+
   m_SkypeAPI.Free;
+
   inherited;
 end;
 
 
+class function TSkype.Instance: TSkype;
+begin
+  Result := g_SkypeInstance;
+end;
+
+
 function TSkype.GetApplication(const Name: WideString): IApplication;
+var
+  i: integer;
 begin
   Result := nil;
-  // TODO:
+
+  if (not Assigned(m_Applications)) then
+    m_Applications := TInterfaceList.Create;
+
+  for i := 0 to m_Applications.Count - 1 do
+  begin
+    Result := IApplication(m_Applications[i]);
+    if (Result.Name = Name) then
+      exit;
+  end;
+
+  if (not Assigned(Result)) then
+  begin
+    Result := TApplication.Create(Name);
+    m_Applications.Add(Result);
+  end;
 end;
 
 
@@ -170,8 +244,10 @@ end;
 
 function TSkype.GetClient: IClient;
 begin
-  Result := nil;
-  // TODO:
+  if (not Assigned(m_Client)) then
+    m_Client := TClient.Create;
+
+  Result := m_Client;
 end;
 
 
@@ -200,8 +276,6 @@ end;
 
 
 procedure TSkype.FOnSkypeAPIAttachementStatus(ASender: TObject; Status: skypeapi.TAttachmentStatus);
-var
-  iRequestedProtocol: integer; 
 begin
   ASender := ASender; // To avoid warning
 
@@ -210,33 +284,31 @@ begin
   case Status  of
     asAttachSuccess:
     begin
-      FLog('** Attach success');
-      iRequestedProtocol := m_iProtocol;
-      FSendCommand(TCommand.Protocol(999), TRUE); // ???
-      if (iRequestedProtocol >= m_iProtocol) then
-        m_AttachmentStatus := apiAttachSuccess
-      else
-        m_AttachmentStatus := apiAttachNotAvailable;
+      if (not FinishAttachmentTimer.Enabled) then
+        FinishAttachmentTimer.Enabled := TRUE;
+      exit;
     end;
 
     asAttachPendingAuthorization:
-      FLog('** Attach pending');
+      Log('** Attach pending');
 
     asAttachRefused:
     begin
-      FLog('** Attach refused');
+      Log('** Attach refused');
       m_AttachmentStatus := apiAttachRefused;
     end;
 
     asAttachNotAvailable:
     begin
-      FLog('** Attach unavailable');
+      Log('** Attach unavailable');
       m_AttachmentStatus := apiAttachNotAvailable;
     end;
 
     asAttachAvailable:
-      FLog('** Attach available');
+      Log('** Attach available');
   end;
+
+  FinishAttachmentTimer.Enabled := FALSE;
 
   FDoAttachmentStatus(self, m_AttachmentStatus);
 end;
@@ -244,21 +316,69 @@ end;
 
 procedure TSkype.FOnSkypeAPICommandReceived(ASender: TObject; const wstrCommand: WideString);
 begin
-  // TODO:
+  Log(WideString('->') + wstrCommand);
+
+  if (Assigned(m_Command) and (not m_Command.HasResponse)) then
+  begin
+    m_Command.ProcessResponse(wstrCommand);
+    if (m_Command.HasResponse) then
+      Log('Command processed: ' + m_Command.ClassName)
+    else
+      ; // TODO: accumulate commands to a queue
+    exit;
+  end;
+
+  // TODO: delegate commands
 end;
 
 
-function TSkype.FSendCommand(const wstrCommand: WideString; bBlocking: boolean): boolean;
+procedure TSkype.SendCommand(const wstrCommand: WideString);
 begin
-  if (not bBlocking) then
-    raise ESkype.Create('Non-blocking commands sending not supported!');
-  FLog(WideString('<-') + wstrCommand);
+  Log(WideString('<-') + wstrCommand);
   m_SkypeAPI.SendCommand(wstrCommand);
 end;
 
 
-procedure TSkype.FLog(const wstrLogMsg: WideString);
+function TSkype.SendCommand(ACommand: TCommand): boolean;
+const
+  COMMAND_TIMEOUT = 5000;
+var
+  iTimeOutTimer: integer;
 begin
+  Result := FALSE;
+
+  if (Assigned(m_Command)) then
+    exit;
+
+  m_Command := ACommand;
+  try
+    Log('Processing command: ' + m_Command.ClassName);
+    SendCommand(m_Command.Command);
+
+    iTimeOutTimer := COMMAND_TIMEOUT;
+
+    while ((not ACommand.HasResponse)) do
+    begin
+      if ((iTimeOutTimer <= 0) or (csDestroying in ComponentState)) then
+        exit;
+        
+      Forms.Application.ProcessMessages;
+      Sleep(1);
+
+      dec(iTimeOutTimer);
+    end;
+
+  finally
+    m_Command := nil;
+  end;
+
+  Result := TRUE;
+end;
+
+
+procedure TSkype.Log(const wstrLogMsg: WideString);
+begin
+  MainForm.Log(wstrLogMsg); 
   // TODO: Output to log
 end;
 
@@ -288,10 +408,87 @@ end;
 procedure TSkype.DataModuleCreate(Sender: TObject);
 begin
   m_AttachmentStatus := apiAttachUnknown;
-  
-  m_SkypeAPI.OnAttachmentStatus := FOnSkypeAPIAttachementStatus;  
+
+  m_SkypeAPI.OnAttachmentStatus := FOnSkypeAPIAttachementStatus;
   m_SkypeAPI.OnCommandReceived := FOnSkypeAPICommandReceived;
 end;
 
+////////////////////////////////////////////////////////////////////////////////
+// TProtocolCommand
+
+constructor TProtocolCommand.Create(iRequestedProtocol: integer);
+begin
+  inherited Create;
+  m_iRequestedProtocol := iRequestedProtocol;
+end;
+
+
+function TProtocolCommand.RGetCommand: WideString;
+begin
+  Result := CMD_PROTOCOL + ' ' + IntToStr(m_iRequestedProtocol);
+end;
+
+
+function TProtocolCommand.RProcessResponse(const wstrCommand: WideString): boolean;
+var
+  wstrHead, wstrBody: WideString;
+begin
+  Result := FALSE;
+
+  Assert(not HasResponse);
+
+  TProtocolCommand.RSplitCommandToHeadAndBody(wstrCommand, wstrHead, wstrBody);
+
+  if (wstrHead <> CMD_PROTOCOL) then
+    exit;
+
+  m_iReturnedProtocol := StrToInt(wstrBody);
+
+  Result := TRUE;
+end;
+
+
+procedure TSkype.DataModuleDestroy(Sender: TObject);
+begin
+  while (Assigned(m_Command)) do
+    Sleep(1); // Wait until all blocking commands are accomplished
+  m_Applications.Free;
+  m_Users.Free;
+end;
+
+
+procedure TSkype.FinishAttachmentTimerTimer(Sender: TObject);
+begin
+  FinishAttachmentTimer.Enabled := FALSE;
+  FFinishAttachment;
+end;
+
+
+procedure TSkype.FFinishAttachment;
+var
+  CommandProtocol: TProtocolCommand;
+begin
+  CommandProtocol := TProtocolCommand.Create(999);
+  try
+    m_AttachmentStatus := apiAttachNotAvailable;
+    if (not SendCommand(CommandProtocol)) then
+      exit;
+    if (CommandProtocol.Protocol >= m_iProtocol) then
+    begin
+      m_AttachmentStatus := apiAttachSuccess;
+      Log('** Attach success');
+    end;
+    FDoAttachmentStatus(self, m_AttachmentStatus);    
+  finally
+    CommandProtocol.Free;
+  end;
+end;
+
+
+function TSkype.GetUserByName(const wstrName: WideString): IUser;
+begin
+  Result := nil;
+end;
+
 end.
 

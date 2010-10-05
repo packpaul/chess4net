@@ -65,6 +65,9 @@ uses
 {$ENDIF}
   ;
 
+type
+  TSkypeAPIClass = class of TSkypeAPI;
+
 { TSkypeAPI }
 
 constructor TSkypeAPI.RCreate;
@@ -74,14 +77,18 @@ begin
 end;
 
 class function TSkypeAPI.Create(const AFriendlyName: string): TSkypeAPI;
+var
+  SkypeAPIClass: TSkypeAPIClass;
 begin
   Result := nil;
 
 {$IFDEF WIN}
-  Result := TSkypeAPIWin.RCreate;
+  SkypeAPIClass := TSkypeAPIWin;
+  Result := SkypeAPIClass.RCreate;
 {$ENDIF}
 {$IFDEF X}
-  Result := TSkypeAPIX.RCreate;
+  SkypeAPIClass := TSkypeAPIX;
+  Result := SkypeAPIClass.RCreate;
   TSkypeAPIX(Result).FriendlyName := AFriendlyName;
 {$ENDIF}
 end;
