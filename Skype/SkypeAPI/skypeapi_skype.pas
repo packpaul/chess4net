@@ -3,11 +3,11 @@ unit SkypeAPI_Skype;
 interface
 
 uses
-  Classes, SysUtils,
+  Classes, SysUtils, ExtCtrls, Contnrs, 
   //
   skypeapi,
   //
-  SkypeAPI_Command, ExtCtrls;
+  SkypeAPI_Command;
 
 type
   TAttachmentStatus = (apiAttachUnknown = -1, apiAttachSuccess = 0,
@@ -96,6 +96,7 @@ type
     m_iProtocol: integer;
 
     m_Command: TCommand;
+    m_Listeners: TObjectList;
 
     m_Applications: TInterfaceList;
     m_Users: TInterfaceList;
@@ -105,6 +106,8 @@ type
     FOnMessageStatus: TOnMessageStatus;
     FOnAttachmentStatus: TOnAttachmentStatus;
     FOnApplicationDatagram: TOnApplicationDatagram;
+
+    procedure FSetOnMessageStatus(Value: TOnMessageStatus);
 
     function GetApplication(const Name: WideString): IApplication;
     function GetClient: IClient;
@@ -135,14 +138,14 @@ type
     procedure SendCommand(const wstrCommand: WideString); overload;
     function SendCommand(ACommand: TCommand): boolean; overload;
 
-    function GetUserByName(const wstrName: WideString): IUser;
+    function GetUserByHandle(const wstrHandle: WideString): IUser;
 
     property Application[const Name: WideString]: IApplication read GetApplication;
     property Client: IClient read GetClient;
     property CurrentUser: IUser read GetCurrentUser;
     property CurrentUserHandle: WideString read GetCurrentUserHandle;
 
-    property OnMessageStatus: TOnMessageStatus read FOnMessageStatus write FOnMessageStatus;
+    property OnMessageStatus: TOnMessageStatus read FOnMessageStatus write FSetOnMessageStatus;
     property OnAttachmentStatus: TOnAttachmentStatus read FOnAttachmentStatus
                                                      write FOnAttachmentStatus;
     property OnApplicationDatagram: TOnApplicationDatagram read FOnApplicationDatagram
@@ -156,7 +159,7 @@ uses
   //
   MainFormUnit,
   //
-  SkypeAPI_Client, SkypeAPI_Application;
+  SkypeAPI_Client, SkypeAPI_Application, SkypeAPI_User, SkypeAPI_ChatMessage;
 
 {$R *.dfm}
 
@@ -238,7 +241,7 @@ end;
 function TSkype.SendMessage(const Username: WideString; const Text: WideString): IChatMessage;
 begin
   Result := nil;
-  // TODO:
+  // TODO: keep till final versions not implemented!
 end;
 
 
@@ -315,8 +318,16 @@ end;
 
 
 procedure TSkype.FOnSkypeAPICommandReceived(ASender: TObject; const wstrCommand: WideString);
+var
+  i: integer;
 begin
   Log(WideString('->') + wstrCommand);
+
+  for i := 0 to m_Listeners.Count - 1 do
+  begin
+    if ((m_Listeners[i] as TListener).ProcessCommand(wstrCommand)) then
+      exit;
+  end;
 
   if (Assigned(m_Command) and (not m_Command.HasResponse)) then
   begin
@@ -363,6 +374,9 @@ begin
         exit;
         
       Forms.Application.ProcessMessages;
+      if (ACommand.HasResponse) then
+        break;
+        
       Sleep(1);
 
       dec(iTimeOutTimer);
@@ -408,11 +422,91 @@ end;
 procedure TSkype.DataModuleCreate(Sender: TObject);
 begin
   m_AttachmentStatus := apiAttachUnknown;
+  m_Listeners := TObjectList.Create;
 
   m_SkypeAPI.OnAttachmentStatus := FOnSkypeAPIAttachementStatus;
   m_SkypeAPI.OnCommandReceived := FOnSkypeAPICommandReceived;
 end;
 
+procedure TSkype.DataModuleDestroy(Sender: TObject);
+begin
+  while (Assigned(m_Command)) do
+    Sleep(1); // Wait until all blocking commands are accomplished
+  m_Listeners.Free;
+  m_Applications.Free;
+  m_Users.Free;
+end;
+
+
+procedure TSkype.FinishAttachmentTimerTimer(Sender: TObject);
+begin
+  FinishAttachmentTimer.Enabled := FALSE;
+  FFinishAttachment;
+end;
+
+
+procedure TSkype.FFinishAttachment;
+var
+  Command: TProtocolCommand;
+begin
+  Command := TProtocolCommand.Create(999);
+  try
+    m_AttachmentStatus := apiAttachNotAvailable;
+    if (not SendCommand(Command)) then
+      exit;
+    if (Command.Protocol >= m_iProtocol) then
+    begin
+      m_AttachmentStatus := apiAttachSuccess;
+      Log('** Attach success');
+    end;
+    FDoAttachmentStatus(self, m_AttachmentStatus);    
+  finally
+    Command.Free;
+  end;
+end;
+
+
+function TSkype.GetUserByHandle(const wstrHandle: WideString): IUser;
+var
+  i: integer;
+begin
+  // It is supposed that a user with a handle wstrHandle is a real user
+
+  Result := nil;
+
+  if (wstrHandle = '') then
+    exit;
+
+  if (not Assigned(m_Users)) then
+    m_Users := TInterfaceList.Create;
+
+  for i := 0 to m_Users.Count - 1 do
+  begin
+    Result := IUser(m_Users[i]);
+    if (Result.Handle = wstrHandle) then
+      exit;
+  end;
+
+  Result := TUser.Create(wstrHandle);
+  m_Users.Add(Result);
+end;
+
+
+procedure TSkype.FSetOnMessageStatus(Value: TOnMessageStatus);
+var
+  iIndex: integer;
+begin
+  if (Assigned(FOnMessageStatus)) then
+  begin
+    iIndex := m_Listeners.FindInstanceOf(TChatMessageReceivedListener);
+    if (iIndex >= 0) then
+      m_Listeners.Delete(iIndex);
+  end;
+
+  FOnMessageStatus := Value;
+  m_Listeners.Add(TChatMessageReceivedListener.Create);
+end;
+
 ////////////////////////////////////////////////////////////////////////////////
 // TProtocolCommand
 
@@ -433,9 +527,9 @@ function TProtocolCommand.RProcessResponse(const wstrCommand: WideString): boole
 var
   wstrHead, wstrBody: WideString;
 begin
-  Result := FALSE;
-
   Assert(not HasResponse);
+
+  Result := FALSE;
 
   TProtocolCommand.RSplitCommandToHeadAndBody(wstrCommand, wstrHead, wstrBody);
 
@@ -447,48 +541,5 @@ begin
   Result := TRUE;
 end;
 
-
-procedure TSkype.DataModuleDestroy(Sender: TObject);
-begin
-  while (Assigned(m_Command)) do
-    Sleep(1); // Wait until all blocking commands are accomplished
-  m_Applications.Free;
-  m_Users.Free;
-end;
-
-
-procedure TSkype.FinishAttachmentTimerTimer(Sender: TObject);
-begin
-  FinishAttachmentTimer.Enabled := FALSE;
-  FFinishAttachment;
-end;
-
-
-procedure TSkype.FFinishAttachment;
-var
-  CommandProtocol: TProtocolCommand;
-begin
-  CommandProtocol := TProtocolCommand.Create(999);
-  try
-    m_AttachmentStatus := apiAttachNotAvailable;
-    if (not SendCommand(CommandProtocol)) then
-      exit;
-    if (CommandProtocol.Protocol >= m_iProtocol) then
-    begin
-      m_AttachmentStatus := apiAttachSuccess;
-      Log('** Attach success');
-    end;
-    FDoAttachmentStatus(self, m_AttachmentStatus);    
-  finally
-    CommandProtocol.Free;
-  end;
-end;
-
-
-function TSkype.GetUserByName(const wstrName: WideString): IUser;
-begin
-  Result := nil;
-end;
-
 end.
 

@@ -39,29 +39,60 @@ uses
   SkypeAPI_User, SkypeAPI_Command;
 
 type
-  TAppCreateCommand = class(TCommand)
+  TAppCommand = class(TCommand)
   private
     m_Application: TApplication;
   protected
-    function RGetCommand: WideString; override;
-    function RProcessResponse(const wstrCommand: WideString): boolean; override;
+    property Application: TApplication read m_Application;
   public
     constructor Create(AApplication: TApplication);
   end;
 
-  TAppDeleteCommand = class(TCommand)
+
+  TAppCreateCommand = class(TAppCommand)
+  protected
+    function RGetCommand: WideString; override;
+    function RProcessResponse(const wstrCommand: WideString): boolean; override;
+  end;
+
+
+  TAppDeleteCommand = class(TAppCommand)
+  protected
+    function RGetCommand: WideString; override;
+    function RProcessResponse(const wstrCommand: WideString): boolean; override;
+  end;
+
+
+  TAppConnectableUsersCommand = class(TAppCommand)
   private
-    m_Application: TApplication;
+    m_Users: IUserCollection;
+    procedure FBuildUserCollection(wstrUserHandles: WideString);
   protected
     function RGetCommand: WideString; override;
     function RProcessResponse(const wstrCommand: WideString): boolean; override;
   public
-    constructor Create(AApplication: TApplication);
+    procedure GetUsers(out Users: IUserCollection);
+  end;
+
+
+  TAppConnectingUsersCommand = class(TAppCommand)
+  private
+    m_Users: IUserCollection;
+    procedure FBuildUserCollection(wstrUserHandles: WideString);
+  protected
+    function RGetCommand: WideString; override;
+    function RProcessResponse(const wstrCommand: WideString): boolean; override;
+  public
+    procedure GetUsers(out Users: IUserCollection);
   end;
 
 const
+  CMD_APPLICATION: WideString = 'APPLICATION';
   CMD_CREATE_APPLIATION: WideString = 'CREATE APPLICATION';
   CMD_DELETE_APPLIATION: WideString = 'DELETE APPLICATION';
+  CMD_GET_APPLICATION: WideString = 'GET APPLICATION';
+  CMD_CONNECTABLE: WideString = 'CONNECTABLE';
+  CMD_CONNECTING: WideString = 'CONNECTING';
 
 ////////////////////////////////////////////////////////////////////////////////
 // TApplication
@@ -81,26 +112,34 @@ end;
 
 procedure TApplication._Create;
 var
-  AppCreateCommand: TAppCreateCommand;
+  Command: TAppCreateCommand;
 begin
-  AppCreateCommand := TAppCreateCommand.Create(self);
+  if (m_bCreated) then
+    exit;
+
+  Command := TAppCreateCommand.Create(self);
   try
-    TSkype.Instance.SendCommand(AppCreateCommand);
+    if (TSkype.Instance.SendCommand(Command)) then
+      m_bCreated := TRUE;
   finally
-    AppCreateCommand.Free;
+    Command.Free;
   end;
 end;
 
 
 procedure TApplication.Delete;
 var
-  AppDeleteCommand: TAppDeleteCommand;
+  Command: TAppDeleteCommand;
 begin
-  AppDeleteCommand := TAppDeleteCommand.Create(self);
+  if (not m_bCreated) then
+    exit;
+
+  Command := TAppDeleteCommand.Create(self);
   try
-    TSkype.Instance.SendCommand(AppDeleteCommand);
+    if (TSkype.Instance.SendCommand(Command)) then
+      m_bCreated := FALSE;
   finally
-    AppDeleteCommand.Free;
+    Command.Free;
   end;
 end;
 
@@ -125,16 +164,34 @@ end;
 
 
 function TApplication.GetConnectableUsers: IUserCollection;
+var
+  Command: TAppConnectableUsersCommand;
 begin
-  Result := TUserCollection.Create;
-  // TODO:
+  Result := nil;
+
+  Command := TAppConnectableUsersCommand.Create(self);
+  try
+    if (TSkype.Instance.SendCommand(Command)) then
+      Command.GetUsers(Result); 
+  finally
+    Command.Free;
+  end;
 end;
 
 
 function TApplication.GetConnectingUsers: IUserCollection;
+var
+  Command: TAppConnectingUsersCommand;
 begin
-  Result := TUserCollection.Create;
-  // TODO:  
+  Result := nil;
+
+  Command := TAppConnectingUsersCommand.Create(self);
+  try
+    if (TSkype.Instance.SendCommand(Command)) then
+      Command.GetUsers(Result); 
+  finally
+    Command.Free;
+  end;
 end;
 
 
@@ -144,26 +201,28 @@ begin
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
-// TAppCreateCommand
+// TAppCommand
 
-constructor TAppCreateCommand.Create(AApplication: TApplication);
+constructor TAppCommand.Create(AApplication: TApplication);
 begin
   inherited Create;
   m_Application := AApplication;
 end;
 
+////////////////////////////////////////////////////////////////////////////////
+// TAppCreateCommand
 
 function TAppCreateCommand.RGetCommand: WideString;
 begin
-  Result := CMD_CREATE_APPLIATION + ' ' + m_Application.Name;
+  Result := CMD_CREATE_APPLIATION + ' ' + Application.Name;
 end;
 
 
 function TAppCreateCommand.RProcessResponse(const wstrCommand: WideString): boolean;
 begin
+  Assert(not HasResponse);
+  
   Result := SameText(Command, wstrCommand);
-  if (Result) then
-    m_Application.m_bCreated := TRUE;
 {
   Other responses:
   ERROR 536 CREATE: no object or type given
@@ -176,31 +235,154 @@ begin
 ////////////////////////////////////////////////////////////////////////////////
 // TAppDeleteCommand
 
-constructor TAppDeleteCommand.Create(AApplication: TApplication);
-begin
-  inherited Create;
-  m_Application := AApplication;
-end;
-
-
 function TAppDeleteCommand.RGetCommand: WideString;
 begin
-  Result := CMD_DELETE_APPLIATION + ' ' + m_Application.Name;
+  Result := CMD_DELETE_APPLIATION + ' ' + Application.Name;
 end;
 
 
 function TAppDeleteCommand.RProcessResponse(const wstrCommand: WideString): boolean;
 begin
+  Assert(not HasResponse);
+
   Result := SameText(Command, wstrCommand);
-  if (Result) then
-    m_Application.m_bCreated := FALSE;
 {
-  Other responses:
+  Other responses:
   ERROR 538 DELETE: no object or type given
   ERROR 539 DELETE: Unknown object type given
   ERROR 542 DELETE APPLICATION : missing or invalid application name
   ERROR 541 APPLICATION: operation failed
 }
 end;
-
+
+////////////////////////////////////////////////////////////////////////////////
+// TAppConnectableUsersCommand
+
+function TAppConnectableUsersCommand.RGetCommand: WideString;
+begin
+  Result := CMD_GET_APPLICATION + ' ' + Application.Name + ' ' + CMD_CONNECTABLE;
+end;
+
+
+function TAppConnectableUsersCommand.RProcessResponse(const wstrCommand: WideString): boolean;
+var
+  wstrHead, wstrBody: WideString;
+  wstrAppName: WideString;
+begin
+  Assert(not HasResponse);
+
+  Result := FALSE;
+
+  TAppConnectableUsersCommand.RSplitCommandToHeadAndBody(wstrCommand, wstrHead, wstrBody);
+  if (wstrHead <> CMD_APPLICATION) then
+    exit;
+
+  wstrAppName := TAppConnectableUsersCommand.RNextToken(wstrBody, wstrBody);
+  if (wstrAppName <> Application.Name) then
+    exit;
+
+  TAppConnectableUsersCommand.RSplitCommandToHeadAndBody(wstrBody, wstrHead, wstrBody);
+  if (wstrHead <> CMD_CONNECTABLE) then
+    exit;
+
+  FBuildUserCollection(wstrBody);
+
+  Result := TRUE;
+end;
+
+
+procedure TAppConnectableUsersCommand.FBuildUserCollection(wstrUserHandles: WideString);
+var
+  wstrHandle: WideString;
+  User: IUser;
+  Users: TUserCollection;
+begin
+  Assert(not Assigned(m_Users));
+
+  Users := TUserCollection.Create;
+
+  wstrHandle := TAppConnectableUsersCommand.RNextToken(wstrUserHandles, wstrUserHandles);
+  while (wstrHandle <> '') do
+  begin
+    User := TSkype.Instance.GetUserByHandle(wstrHandle);
+    if (Assigned(User)) then
+      Users.Add(User);
+    wstrHandle := TAppConnectableUsersCommand.RNextToken(wstrUserHandles, wstrUserHandles);
+  end;
+
+  m_Users := Users;
+end;
+
+
+procedure TAppConnectableUsersCommand.GetUsers(out Users: IUserCollection);
+begin
+  Users := m_Users;
+  m_Users := nil;
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TAppConnectingUsersCommand
+
+function TAppConnectingUsersCommand.RGetCommand: WideString;
+begin
+  Result := CMD_GET_APPLICATION + ' ' + Application.Name + ' ' + CMD_CONNECTING;
+end;
+
+
+function TAppConnectingUsersCommand.RProcessResponse(const wstrCommand: WideString): boolean;
+var
+  wstrHead, wstrBody: WideString;
+  wstrAppName: WideString;
+begin
+  Assert(not HasResponse);
+
+  Result := FALSE;
+
+  TAppConnectableUsersCommand.RSplitCommandToHeadAndBody(wstrCommand, wstrHead, wstrBody);
+  if (wstrHead <> CMD_APPLICATION) then
+    exit;
+
+  wstrAppName := TAppConnectableUsersCommand.RNextToken(wstrBody, wstrBody);
+  if (wstrAppName <> Application.Name) then
+    exit;
+
+  TAppConnectableUsersCommand.RSplitCommandToHeadAndBody(wstrBody, wstrHead, wstrBody);
+  if (wstrHead <> CMD_CONNECTING) then
+    exit;
+
+  FBuildUserCollection(wstrBody);
+
+  Result := TRUE;
+end;
+
+
+procedure TAppConnectingUsersCommand.FBuildUserCollection(wstrUserHandles: WideString);
+var
+  wstrHandle: WideString;
+  User: IUser;
+  Users: TUserCollection;
+begin
+  Assert(not Assigned(m_Users));
+
+  Users := TUserCollection.Create;
+
+  wstrHandle := TAppConnectableUsersCommand.RNextToken(wstrUserHandles, wstrUserHandles);
+  while (wstrHandle <> '') do
+  begin
+    User := TSkype.Instance.GetUserByHandle(wstrHandle);
+    if (Assigned(User)) then
+      Users.Add(User);
+    wstrHandle := TAppConnectableUsersCommand.RNextToken(wstrUserHandles, wstrUserHandles);
+  end;
+
+  m_Users := Users;
+end;
+
+
+procedure TAppConnectingUsersCommand.GetUsers(out Users: IUserCollection);
+begin
+  Users := m_Users;
+  m_Users := nil;
+end;
+
 end.
