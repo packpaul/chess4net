@@ -172,7 +172,9 @@ begin
   Command := TAppConnectableUsersCommand.Create(self);
   try
     if (TSkype.Instance.SendCommand(Command)) then
-      Command.GetUsers(Result); 
+      Command.GetUsers(Result)
+    else
+      Result := TUserCollection.Create; // Empty collection 
   finally
     Command.Free;
   end;
@@ -188,7 +190,9 @@ begin
   Command := TAppConnectingUsersCommand.Create(self);
   try
     if (TSkype.Instance.SendCommand(Command)) then
-      Command.GetUsers(Result); 
+      Command.GetUsers(Result)
+    else
+      Result := TUserCollection.Create; // Empty collection
   finally
     Command.Free;
   end;
@@ -273,15 +277,15 @@ begin
 
   Result := FALSE;
 
-  TAppConnectableUsersCommand.RSplitCommandToHeadAndBody(wstrCommand, wstrHead, wstrBody);
+  RSplitCommandToHeadAndBody(wstrCommand, wstrHead, wstrBody);
   if (wstrHead <> CMD_APPLICATION) then
     exit;
 
-  wstrAppName := TAppConnectableUsersCommand.RNextToken(wstrBody, wstrBody);
+  wstrAppName := RNextToken(wstrBody, wstrBody);
   if (wstrAppName <> Application.Name) then
     exit;
 
-  TAppConnectableUsersCommand.RSplitCommandToHeadAndBody(wstrBody, wstrHead, wstrBody);
+  RSplitCommandToHeadAndBody(wstrBody, wstrHead, wstrBody);
   if (wstrHead <> CMD_CONNECTABLE) then
     exit;
 
@@ -301,13 +305,13 @@ begin
 
   Users := TUserCollection.Create;
 
-  wstrHandle := TAppConnectableUsersCommand.RNextToken(wstrUserHandles, wstrUserHandles);
+  wstrHandle := RNextToken(wstrUserHandles, wstrUserHandles);
   while (wstrHandle <> '') do
   begin
     User := TSkype.Instance.GetUserByHandle(wstrHandle);
     if (Assigned(User)) then
       Users.Add(User);
-    wstrHandle := TAppConnectableUsersCommand.RNextToken(wstrUserHandles, wstrUserHandles);
+    wstrHandle := RNextToken(wstrUserHandles, wstrUserHandles);
   end;
 
   m_Users := Users;
@@ -338,15 +342,15 @@ begin
 
   Result := FALSE;
 
-  TAppConnectableUsersCommand.RSplitCommandToHeadAndBody(wstrCommand, wstrHead, wstrBody);
+  RSplitCommandToHeadAndBody(wstrCommand, wstrHead, wstrBody);
   if (wstrHead <> CMD_APPLICATION) then
     exit;
 
-  wstrAppName := TAppConnectableUsersCommand.RNextToken(wstrBody, wstrBody);
+  wstrAppName := RNextToken(wstrBody, wstrBody);
   if (wstrAppName <> Application.Name) then
     exit;
 
-  TAppConnectableUsersCommand.RSplitCommandToHeadAndBody(wstrBody, wstrHead, wstrBody);
+  RSplitCommandToHeadAndBody(wstrBody, wstrHead, wstrBody);
   if (wstrHead <> CMD_CONNECTING) then
     exit;
 
@@ -366,13 +370,13 @@ begin
 
   Users := TUserCollection.Create;
 
-  wstrHandle := TAppConnectableUsersCommand.RNextToken(wstrUserHandles, wstrUserHandles);
+  wstrHandle := RNextToken(wstrUserHandles, wstrUserHandles);
   while (wstrHandle <> '') do
   begin
     User := TSkype.Instance.GetUserByHandle(wstrHandle);
     if (Assigned(User)) then
       Users.Add(User);
-    wstrHandle := TAppConnectableUsersCommand.RNextToken(wstrUserHandles, wstrUserHandles);
+    wstrHandle := RNextToken(wstrUserHandles, wstrUserHandles);
   end;
 
   m_Users := Users;

@@ -163,19 +163,19 @@ begin
 
   Result := FALSE;
 
-  TUserDisplayNameCommand.RSplitCommandToHeadAndBody(wstrCommand, wstrHead, wstrBody);
+  RSplitCommandToHeadAndBody(wstrCommand, wstrHead, wstrBody);
   if (wstrHead <> CMD_USER) then
     exit;
 
-  wstrUserHandle := TUserDisplayNameCommand.RNextToken(wstrBody, wstrBody);
+  wstrUserHandle := RNextToken(wstrBody, wstrBody);
   if (wstrUserHandle <> User.Handle) then
     exit;
 
-  TUserDisplayNameCommand.RSplitCommandToHeadAndBody(wstrBody, wstrHead, wstrBody);
+  RSplitCommandToHeadAndBody(wstrBody, wstrHead, wstrBody);
   if (wstrHead <> CMD_DISPLAY_NAME) then
     exit;
 
-  m_wstrDisplayName := Trim(wstrBody);
+  m_wstrDisplayName := wstrBody;
 
   Result := TRUE;
 end;
@@ -198,19 +198,19 @@ begin
 
   Result := FALSE;
 
-  TUserDisplayNameCommand.RSplitCommandToHeadAndBody(wstrCommand, wstrHead, wstrBody);
+  RSplitCommandToHeadAndBody(wstrCommand, wstrHead, wstrBody);
   if (wstrHead <> CMD_USER) then
     exit;
 
-  wstrUserHandle := TUserDisplayNameCommand.RNextToken(wstrBody, wstrBody);
+  wstrUserHandle := RNextToken(wstrBody, wstrBody);
   if (wstrUserHandle <> User.Handle) then
     exit;
 
-  TUserDisplayNameCommand.RSplitCommandToHeadAndBody(wstrBody, wstrHead, wstrBody);
+  RSplitCommandToHeadAndBody(wstrBody, wstrHead, wstrBody);
   if (wstrHead <> CMD_FULL_NAME) then
     exit;
 
-  m_wstrFullName := Trim(wstrBody);
+  m_wstrFullName := wstrBody;
 
   Result := TRUE;
 end;

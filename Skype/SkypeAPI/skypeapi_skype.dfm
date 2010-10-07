@@ -4,12 +4,19 @@ object Skype: TSkype
   OnDestroy = DataModuleDestroy
   Left = 670
   Top = 380
-  Height = 150
-  Width = 215
+  Height = 170
+  Width = 200
   object FinishAttachmentTimer: TTimer
     Enabled = False
     OnTimer = FinishAttachmentTimerTimer
-    Left = 48
+    Left = 72
     Top = 16
+  end
+  object PendingSkypeAPICommandsTimer: TTimer
+    Enabled = False
+    Interval = 1
+    OnTimer = PendingSkypeAPICommandsTimerTimer
+    Left = 72
+    Top = 72
   end
 end

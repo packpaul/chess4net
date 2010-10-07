@@ -2,6 +2,9 @@ unit SkypeAPI_Command;
 
 interface
 
+uses
+  ExtCtrls;
+
 type
   TCommandBase = class
   protected
@@ -26,9 +29,16 @@ type
   TListener = class(TCommandBase) // non-blocking command
   private
     m_bProcessingCommandFlag: boolean;
+    m_NotifyTimer: TTimer;
+    procedure FCreateNotifyTimer;
+    procedure FDestroyNotifyTimer;
+    procedure FOnNotifyTimerTimer(Sender: TObject);
   protected
-    function RProcessCommand(const wstrCommand: WideString): boolean; virtual; abstract;  
+    function RProcessCommand(const wstrCommand: WideString): boolean; virtual; abstract;
+    procedure RDoNotify; virtual; abstract;
   public
+    constructor Create;
+    destructor Destroy; override;
     function ProcessCommand(const wstrCommand: WideString): boolean;
   end;
 
@@ -43,7 +53,7 @@ uses
 class procedure TCommandBase.RSplitCommandToHeadAndBody(const wstrCommand: WideString;
   var wstrHead, wstrBody: WideString);
 begin
-  wstrHead := UpperCase(TCommandBase.RNextToken(wstrCommand, wstrBody));
+  wstrHead := UpperCase(RNextToken(wstrCommand, wstrBody));
   wstrBody := TrimLeft(wstrBody);
 end;
 
@@ -58,7 +68,7 @@ begin
   if (iPos > 0) then
   begin
     Result := Copy(wstr, 1, Pred(iPos));
-    wstrTail := Copy(wstr, iPos, MaxInt);
+    wstrTail := Copy(wstr, Succ(iPos), MaxInt);
   end
   else
   begin
@@ -78,6 +88,20 @@ end;
 ////////////////////////////////////////////////////////////////////////////////
 // TListener
 
+constructor TListener.Create;
+begin
+  inherited Create;
+  FCreateNotifyTimer;
+end;
+
+
+destructor TListener.Destroy;
+begin
+  FDestroyNotifyTimer;
+  inherited;
+end;
+
+
 function TListener.ProcessCommand(const wstrCommand: WideString): boolean;
 begin
   Result := FALSE;
@@ -88,9 +112,37 @@ begin
   m_bProcessingCommandFlag := TRUE;
   try
     Result := RProcessCommand(wstrCommand);
-  finally
+    if (Result) then
+      m_NotifyTimer.Enabled := TRUE
+    else
+      m_bProcessingCommandFlag := FALSE;
+  except
     m_bProcessingCommandFlag := FALSE;
+    raise;
   end;
+end;
+
+
+procedure TListener.FCreateNotifyTimer;
+begin
+  m_NotifyTimer := TTimer.Create(nil);
+  m_NotifyTimer.Enabled := FALSE;
+  m_NotifyTimer.Interval := 1;
+  m_NotifyTimer.OnTimer := FOnNotifyTimerTimer;
+end;
+
+
+procedure TListener.FOnNotifyTimerTimer(Sender: TObject);
+begin
+  m_NotifyTimer.Enabled := FALSE;
+  m_bProcessingCommandFlag := FALSE;
+  RDoNotify;
+end;
+
+
+procedure TListener.FDestroyNotifyTimer;
+begin
+  FreeAndNil(m_NotifyTimer);
 end;
 
 end.

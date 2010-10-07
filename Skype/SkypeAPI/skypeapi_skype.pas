@@ -12,7 +12,7 @@ uses
 type
   TAttachmentStatus = (apiAttachUnknown = -1, apiAttachSuccess = 0,
     apiAttachRefused = 2, apiAttachNotAvailable = 3, apiAttachAvailable = 4);
-  TChatMessageStatus = (cmsUnknown = -1, cmsReceived = 2);
+  TChatMessageStatus = (cmsUnknown = -1, cmsSending = 0, cmsSent = 1, cmsReceived = 2);
 
   IUser = interface
     function GetHandle: WideString;
@@ -87,9 +87,11 @@ type
 
   TSkype = class(TDataModule, ISkype)
     FinishAttachmentTimer: TTimer;
+    PendingSkypeAPICommandsTimer: TTimer;
     procedure DataModuleCreate(Sender: TObject);
     procedure DataModuleDestroy(Sender: TObject);
     procedure FinishAttachmentTimerTimer(Sender: TObject);
+    procedure PendingSkypeAPICommandsTimerTimer(Sender: TObject);
   private
     m_SkypeAPI: TSkypeAPI;
     m_AttachmentStatus: TAttachmentStatus;
@@ -97,6 +99,7 @@ type
 
     m_Command: TCommand;
     m_Listeners: TObjectList;
+    m_PendingSkypeAPICommands: TStringList;
 
     m_Applications: TInterfaceList;
     m_Users: TInterfaceList;
@@ -117,13 +120,14 @@ type
     procedure FOnSkypeAPIAttachementStatus(ASender: TObject; Status: skypeapi.TAttachmentStatus);
     procedure FOnSkypeAPICommandReceived(ASender: TObject; const wstrCommand: WideString);
 
-    procedure FDoMessageStatus(ASender: TObject; const pMessage: IChatMessage;
-      Status: TChatMessageStatus);
     procedure FDoAttachmentStatus(ASender: TObject; Status: TAttachmentStatus);
     procedure FDoApplicationDatagram(ASender: TObject; const pApp: IApplication;
       const pStream: IApplicationStream; const Text: WideString);
 
     procedure FFinishAttachment;
+
+    procedure FProcessPendingSkypeAPICommandsForListeners;
+    procedure FProcessSkypeAPICommandForListeners(const wstrCommand: WideString);
 
   public
     constructor Create(const strFriendlyName: string); reintroduce;
@@ -139,6 +143,9 @@ type
     function SendCommand(ACommand: TCommand): boolean; overload;
 
     function GetUserByHandle(const wstrHandle: WideString): IUser;
+
+    procedure DoMessageStatus(const pMessage: IChatMessage;
+      Status: TChatMessageStatus);
 
     property Application[const Name: WideString]: IApplication read GetApplication;
     property Client: IClient read GetClient;
@@ -230,11 +237,8 @@ begin
       exit;
   end;
 
-  if (not Assigned(Result)) then
-  begin
-    Result := TApplication.Create(Name);
-    m_Applications.Add(Result);
-  end;
+  Result := TApplication.Create(Name);
+  m_Applications.Add(Result);
 end;
 
 
@@ -318,28 +322,52 @@ end;
 
 
 procedure TSkype.FOnSkypeAPICommandReceived(ASender: TObject; const wstrCommand: WideString);
-var
-  i: integer;
 begin
   Log(WideString('->') + wstrCommand);
 
+  if (Assigned(m_Command)) then
+  begin
+    if (not m_Command.HasResponse) then
+    begin
+      m_Command.ProcessResponse(wstrCommand);
+      if (m_Command.HasResponse) then
+        Log('Command processed: ' + m_Command.ClassName)
+      else
+        m_PendingSkypeAPICommands.Add(UTF8Encode(wstrCommand));
+    end;
+  end
+  else
+  begin
+    FProcessPendingSkypeAPICommandsForListeners;
+    FProcessSkypeAPICommandForListeners(wstrCommand);
+  end;
+end;
+
+
+procedure TSkype.FProcessPendingSkypeAPICommandsForListeners;
+var
+  wstrCommand: WideString;
+begin
+  while (m_PendingSkypeAPICommands.Count > 0) do
+  begin
+    wstrCommand := UTF8Decode(m_PendingSkypeAPICommands[0]);
+    m_PendingSkypeAPICommands.Delete(0);
+    FProcessSkypeAPICommandForListeners(wstrCommand);
+  end;
+end;
+
+
+procedure TSkype.FProcessSkypeAPICommandForListeners(const wstrCommand: WideString);
+var
+  i: integer;
+  Listener: TListener;
+begin
   for i := 0 to m_Listeners.Count - 1 do
   begin
-    if ((m_Listeners[i] as TListener).ProcessCommand(wstrCommand)) then
-      exit;
+    Listener := m_Listeners[i] as TListener;
+    if (Listener.ProcessCommand(wstrCommand)) then
+      Log('Command processed: ' + Listener.ClassName);
   end;
-
-  if (Assigned(m_Command) and (not m_Command.HasResponse)) then
-  begin
-    m_Command.ProcessResponse(wstrCommand);
-    if (m_Command.HasResponse) then
-      Log('Command processed: ' + m_Command.ClassName)
-    else
-      ; // TODO: accumulate commands to a queue
-    exit;
-  end;
-
-  // TODO: delegate commands
 end;
 
 
@@ -386,7 +414,18 @@ begin
     m_Command := nil;
   end;
 
+  PendingSkypeAPICommandsTimer.Enabled := TRUE;
+
   Result := TRUE;
+end;
+
+
+procedure TSkype.PendingSkypeAPICommandsTimerTimer(Sender: TObject);
+begin
+  PendingSkypeAPICommandsTimer.Enabled := FALSE;
+  if (Assigned(m_Command)) then
+    exit;
+  FProcessPendingSkypeAPICommandsForListeners;
 end;
 
 
@@ -397,11 +436,11 @@ begin
 end;
 
 
-procedure TSkype.FDoMessageStatus(ASender: TObject; const pMessage: IChatMessage;
+procedure TSkype.DoMessageStatus(const pMessage: IChatMessage;
   Status: TChatMessageStatus);
 begin
   if (Assigned(FOnMessageStatus)) then
-    FOnMessageStatus(ASender, pMessage, Status);
+    FOnMessageStatus(self, pMessage, Status);
 end;
 
 
@@ -423,6 +462,7 @@ procedure TSkype.DataModuleCreate(Sender: TObject);
 begin
   m_AttachmentStatus := apiAttachUnknown;
   m_Listeners := TObjectList.Create;
+  m_PendingSkypeAPICommands := TStringList.Create;
 
   m_SkypeAPI.OnAttachmentStatus := FOnSkypeAPIAttachementStatus;
   m_SkypeAPI.OnCommandReceived := FOnSkypeAPICommandReceived;
@@ -432,6 +472,7 @@ procedure TSkype.DataModuleDestroy(Sender: TObject);
 begin
   while (Assigned(m_Command)) do
     Sleep(1); // Wait until all blocking commands are accomplished
+  m_PendingSkypeAPICommands.Free;
   m_Listeners.Free;
   m_Applications.Free;
   m_Users.Free;
@@ -498,13 +539,13 @@ end;
 begin
   if (Assigned(FOnMessageStatus)) then
   begin
-    iIndex := m_Listeners.FindInstanceOf(TChatMessageReceivedListener);
+    iIndex := m_Listeners.FindInstanceOf(TChatMessageStatusListener, TRUE);
     if (iIndex >= 0) then
       m_Listeners.Delete(iIndex);
   end;
 
   FOnMessageStatus := Value;
-  m_Listeners.Add(TChatMessageReceivedListener.Create);
+  m_Listeners.Add(TChatMessageStatusListener.Create);
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -531,7 +572,7 @@ begin
 
   Result := FALSE;
 
-  TProtocolCommand.RSplitCommandToHeadAndBody(wstrCommand, wstrHead, wstrBody);
+  RSplitCommandToHeadAndBody(wstrCommand, wstrHead, wstrBody);
 
   if (wstrHead <> CMD_PROTOCOL) then
     exit;
