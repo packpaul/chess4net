@@ -3,7 +3,7 @@ unit SkypeAPI_Skype;
 interface
 
 uses
-  Classes, SysUtils, ExtCtrls, Contnrs, 
+  Classes, SysUtils, ExtCtrls,
   //
   skypeapi,
   //
@@ -98,7 +98,8 @@ type
     m_iProtocol: integer;
 
     m_Command: TCommand;
-    m_Listeners: TObjectList;
+    m_ListenersManager: TListenersManager;
+    m_ChatMessageStatusListener: TListener;
     m_PendingSkypeAPICommands: TStringList;
 
     m_Applications: TInterfaceList;
@@ -127,7 +128,6 @@ type
     procedure FFinishAttachment;
 
     procedure FProcessPendingSkypeAPICommandsForListeners;
-    procedure FProcessSkypeAPICommandForListeners(const wstrCommand: WideString);
 
   public
     constructor Create(const strFriendlyName: string); reintroduce;
@@ -339,7 +339,7 @@ begin
   else
   begin
     FProcessPendingSkypeAPICommandsForListeners;
-    FProcessSkypeAPICommandForListeners(wstrCommand);
+    m_ListenersManager.ProcessCommand(wstrCommand);
   end;
 end;
 
@@ -352,21 +352,7 @@ begin
   begin
     wstrCommand := UTF8Decode(m_PendingSkypeAPICommands[0]);
     m_PendingSkypeAPICommands.Delete(0);
-    FProcessSkypeAPICommandForListeners(wstrCommand);
-  end;
-end;
-
-
-procedure TSkype.FProcessSkypeAPICommandForListeners(const wstrCommand: WideString);
-var
-  i: integer;
-  Listener: TListener;
-begin
-  for i := 0 to m_Listeners.Count - 1 do
-  begin
-    Listener := m_Listeners[i] as TListener;
-    if (Listener.ProcessCommand(wstrCommand)) then
-      Log('Command processed: ' + Listener.ClassName);
+    m_ListenersManager.ProcessCommand(wstrCommand);
   end;
 end;
 
@@ -387,7 +373,10 @@ begin
   Result := FALSE;
 
   if (Assigned(m_Command)) then
+  begin
+    Log('Unable to process command: ' + m_Command.ClassName);
     exit;
+  end;
 
   m_Command := ACommand;
   try
@@ -461,7 +450,7 @@ end;
 procedure TSkype.DataModuleCreate(Sender: TObject);
 begin
   m_AttachmentStatus := apiAttachUnknown;
-  m_Listeners := TObjectList.Create;
+  m_ListenersManager := TListenersManager.Create;
   m_PendingSkypeAPICommands := TStringList.Create;
 
   m_SkypeAPI.OnAttachmentStatus := FOnSkypeAPIAttachementStatus;
@@ -473,7 +462,7 @@ begin
   while (Assigned(m_Command)) do
     Sleep(1); // Wait until all blocking commands are accomplished
   m_PendingSkypeAPICommands.Free;
-  m_Listeners.Free;
+  m_ListenersManager.Free;
   m_Applications.Free;
   m_Users.Free;
 end;
@@ -534,18 +523,12 @@ end;
 
 
 procedure TSkype.FSetOnMessageStatus(Value: TOnMessageStatus);
-var
-  iIndex: integer;
 begin
   if (Assigned(FOnMessageStatus)) then
-  begin
-    iIndex := m_Listeners.FindInstanceOf(TChatMessageStatusListener, TRUE);
-    if (iIndex >= 0) then
-      m_Listeners.Delete(iIndex);
-  end;
+    m_ListenersManager.DestroyListener(m_ChatMessageStatusListener);
 
   FOnMessageStatus := Value;
-  m_Listeners.Add(TChatMessageStatusListener.Create);
+  m_ChatMessageStatusListener := m_ListenersManager.CreateListener(TChatMessageStatusListener);
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
