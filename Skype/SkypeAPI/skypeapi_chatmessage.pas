@@ -32,6 +32,11 @@ type
     procedure RDoNotify; override;
   end;
 
+const
+  CMD_CHATMESSAGE: WideString = 'CHATMESSAGE';
+  CMD_STATUS: WideString = 'STATUS';
+  CMD_SENDING: WideString = 'SENDING';
+
 implementation
 
 uses
@@ -68,14 +73,11 @@ type
   end;
 
 const
-  CMD_CHATMESSAGE = 'CHATMESSAGE';
-  CMD_STATUS = 'STATUS';
-  CMD_SENDING = 'SENDING';
-  CMD_SENT = 'SENT';
-  CMD_RECEIVED = 'RECEIVED';
-  CMD_GET_CHATMESSAGE = 'GET CHATMESSAGE';
-  CMD_FROM_HANDLE = 'FROM_HANDLE';
-  CMD_BODY = 'BODY';
+  CMD_SENT: WideString = 'SENT';
+  CMD_RECEIVED: WideString = 'RECEIVED';
+  CMD_GET_CHATMESSAGE: WideString = 'GET CHATMESSAGE';
+  CMD_FROM_HANDLE: WideString = 'FROM_HANDLE';
+  CMD_BODY: WideString = 'BODY';
 
 ////////////////////////////////////////////////////////////////////////////////
 // TChatMessage

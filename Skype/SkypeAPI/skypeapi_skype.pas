@@ -64,6 +64,12 @@ type
     property IsRunning: Boolean read GetIsRunning;
   end;
 
+  IChat = interface
+    function Get_Name: WideString;
+    function SendMessage(const MessageText: WideString): IChatMessage;
+    property Name: WideString read Get_Name;
+  end;
+
   ISkype = interface
     procedure Attach(Protocol: Integer; Wait: Boolean);
     function GetApplication(const Name: WideString): IApplication;
@@ -98,6 +104,7 @@ type
 
     m_Applications: TInterfaceList;
     m_Users: TInterfaceList;
+    m_Chats: TInterfaceList;
 
     m_Client: IClient;
 
@@ -148,6 +155,7 @@ type
     function SendCommand(ACommand: TCommand): boolean; overload;
 
     function GetUserByHandle(const wstrHandle: WideString): IUser;
+    function GetChatWithUser(const wstrUserName: WideString): IChat;
 
     procedure DoMessageStatus(const pMessage: IChatMessage;
       Status: TChatMessageStatus);
@@ -171,7 +179,8 @@ uses
   //
   MainFormUnit,
   //
-  SkypeAPI_Client, SkypeAPI_Application, SkypeAPI_User, SkypeAPI_ChatMessage;
+  SkypeAPI_Client, SkypeAPI_Application, SkypeAPI_User, SkypeAPI_ChatMessage,
+  SkypeAPI_Chat;
 
 type
   TProtocolCommand = class(TCommand)
@@ -225,6 +234,7 @@ begin
   m_PendingSkypeAPICommands.Free;
   m_ListenersManager.Free;
   m_Applications.Free;
+  m_Chats.Free;
   m_Users.Free;
 
   FDestroyPendingSkypeAPICommandsTimer;
@@ -266,9 +276,15 @@ end;
 
 
 function TSkype.SendMessage(const Username: WideString; const Text: WideString): IChatMessage;
+var
+  Chat: IChat;
 begin
   Result := nil;
-  // TODO: keep till final versions not implemented!
+
+  exit; // TODO: keep till final versions not implemented!
+
+  Chat := GetChatWithUser(Username);
+  Result := Chat.SendMessage(Text);
 end;
 
 
@@ -525,6 +541,32 @@ begin
 end;
 
 
+function TSkype.GetChatWithUser(const wstrUserName: WideString): IChat;
+var
+  strUserName: string;
+  i: integer;
+begin
+  Result := nil;
+
+  strUserName := LowerCase(Trim(wstrUserName));
+  if (strUserName = '') then
+    exit;
+
+  if (not Assigned(m_Chats)) then
+    m_Chats := TInterfaceList.Create;
+
+  for i := 0 to m_Chats.Count - 1 do
+  begin
+    Result := IChat(m_Chats[i]);
+    if (TChat(Result).UserName = strUserName) then
+      exit;
+  end;
+
+  Result := TChat.Create(strUserName);
+  m_Chats.Add(Result);
+end;
+
+
 procedure TSkype.FSetOnMessageStatus(Value: TOnMessageStatus);
 begin
   if (Assigned(FOnMessageStatus)) then
@@ -588,9 +630,6 @@ begin
   Assert(not HasResponse);
 
   Result := FALSE;
-
-  wstrHead := '';
-  wstrBody := '';
 
   RSplitCommandToHeadAndBody(wstrCommand, wstrHead, wstrBody);
 
