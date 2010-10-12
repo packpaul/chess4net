@@ -159,7 +159,8 @@ begin
     if (bRes) then
     begin
       Result := lpcrTrue;
-      TSkype.Instance.Log('Listener command processing: ' + ClassName)
+//      TSkype.Instance.Log(Format('Listener command processing (%s), %d: %s',
+//        [ClassName, lwCMDID, wstrCommand]))
     end
     else
       m_bProcessingCommandFlag := FALSE;
@@ -182,8 +183,9 @@ begin
   RDoNotify;
 
   m_bProcessingCommandFlag := FALSE;
-  
-  TSkype.Instance.Log('Listener command processed: ' + ClassName)
+
+//  TSkype.Instance.Log(Format('Listener command processed (%s), <=%d',
+//    [ClassName, m_lwLastAnalyzedCmdID]));
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -236,9 +238,9 @@ begin
   begin
     Listener := m_Listeners[i] as TListener;
     Res := Listener.FProcessCommand(wstrCommand, m_lwCmdCounter);
-    if (Res = lpcrTrue) then
-      m_NotifyTimer.Enabled := TRUE
-    else if (Res = lpcrPending) then
+    if (Res in [lpcrTrue, lpcrPending]) then
+      m_NotifyTimer.Enabled := TRUE;
+    if (Res = lpcrPending) then
       bAddToPending := TRUE;
   end;
 
@@ -261,6 +263,9 @@ begin
   end;
 
   FProcessPendingCommands;
+
+  if (m_PendingCommands.Count > 0) then
+    m_NotifyTimer.Enabled := TRUE;
 end;
 
 
@@ -280,12 +285,12 @@ procedure TListenersManager.FProcessPendingCommands;
       wstrCommand := UTF8Decode(m_PendingCommands[0]);
       lwCmdID := LongWord(m_PendingCommands.Objects[0]);
 
-      bDeleteCommand := FALSE;
+      bDeleteCommand := TRUE;
       for j := 0 to m_Listeners.Count - 1 do
       begin
         Listener := m_Listeners[j] as TListener;
         if (Listener.FProcessCommand(wstrCommand, lwCmdID) = lpcrPending) then
-          bDeleteCommand := TRUE;
+          bDeleteCommand := FALSE;
       end;
 
       if (bDeleteCommand) then

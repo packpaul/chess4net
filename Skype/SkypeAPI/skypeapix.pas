@@ -325,12 +325,12 @@ var
 begin
   while (not Terminated) do
   begin
-    Sleep(1);
     while (XPending(FSkypeAPIX.FDisplay) > 0) do
     begin
       XNextEvent(FSkypeAPIX.FDisplay, @Event);
       FProcessEvent(@Event);
     end;
+    Sleep(0);
   end;
 end;
 
@@ -360,7 +360,7 @@ procedure TSkypeAPIXEventThread.FProcessClientMessageEvent(const XClientEvent: T
       Result[Succ(i)] := char(XClientEvent.data.b[i]);
       inc(i);
     end;
-    Result := TrimRight(Result);
+    Result := LeftStr(Result, i);
   end;
 
 var

@@ -85,13 +85,7 @@ type
 
   ESkype = class(Exception);
 
-  TSkype = class(TDataModule, ISkype)
-    FinishAttachmentTimer: TTimer;
-    PendingSkypeAPICommandsTimer: TTimer;
-    procedure DataModuleCreate(Sender: TObject);
-    procedure DataModuleDestroy(Sender: TObject);
-    procedure FinishAttachmentTimerTimer(Sender: TObject);
-    procedure PendingSkypeAPICommandsTimerTimer(Sender: TObject);
+  TSkype = class(TInterfacedObject, ISkype)
   private
     m_SkypeAPI: TSkypeAPI;
     m_AttachmentStatus: TAttachmentStatus;
@@ -107,6 +101,9 @@ type
 
     m_Client: IClient;
 
+    m_FinishAttachmentTimer: TTimer;
+    m_PendingSkypeAPICommandsTimer: TTimer;
+
     FOnMessageStatus: TOnMessageStatus;
     FOnAttachmentStatus: TOnAttachmentStatus;
     FOnApplicationDatagram: TOnApplicationDatagram;
@@ -117,6 +114,14 @@ type
     function GetClient: IClient;
     function GetCurrentUser: IUser;
     function GetCurrentUserHandle: WideString;
+
+    procedure FCreateFinishAttachmentTimer;
+    procedure FDestroyFinishAttachmentTimer;
+    procedure FCreatePendingSkypeAPICommandsTimer;
+    procedure FDestroyPendingSkypeAPICommandsTimer;
+
+    procedure FOnFinishAttachmentTimer(Sender: TObject);
+    procedure FOnPendingSkypeAPICommandsTimer(Sender: TObject);
 
     procedure FOnSkypeAPIAttachementStatus(ASender: TObject; Status: skypeapi.TAttachmentStatus);
     procedure FOnSkypeAPICommandReceived(ASender: TObject; const wstrCommand: WideString);
@@ -168,8 +173,6 @@ uses
   //
   SkypeAPI_Client, SkypeAPI_Application, SkypeAPI_User, SkypeAPI_ChatMessage;
 
-{$R *.dfm}
-
 type
   TProtocolCommand = class(TCommand)
   private
@@ -199,14 +202,34 @@ begin
 
   m_SkypeAPI := TSkypeAPI.Create(strFriendlyName);
 
-  inherited Create(nil);
+  inherited Create;
 
   g_SkypeInstance := self;
+
+  FCreateFinishAttachmentTimer;
+  FCreatePendingSkypeAPICommandsTimer;
+
+  m_AttachmentStatus := apiAttachUnknown;
+  m_ListenersManager := TListenersManager.Create;
+  m_PendingSkypeAPICommands := TStringList.Create;
+
+  m_SkypeAPI.OnAttachmentStatus := FOnSkypeAPIAttachementStatus;
+  m_SkypeAPI.OnCommandReceived := FOnSkypeAPICommandReceived;
 end;
 
 
 destructor TSkype.Destroy;
 begin
+  // TODO: Take care if we're in SendCommand()
+
+  m_PendingSkypeAPICommands.Free;
+  m_ListenersManager.Free;
+  m_Applications.Free;
+  m_Users.Free;
+
+  FDestroyPendingSkypeAPICommandsTimer;
+  FDestroyFinishAttachmentTimer;
+
   g_SkypeInstance := nil;
 
   m_SkypeAPI.Free;
@@ -291,8 +314,8 @@ begin
   case Status  of
     asAttachSuccess:
     begin
-      if (not FinishAttachmentTimer.Enabled) then
-        FinishAttachmentTimer.Enabled := TRUE;
+      if (not m_FinishAttachmentTimer.Enabled) then
+        m_FinishAttachmentTimer.Enabled := TRUE;
       exit;
     end;
 
@@ -315,7 +338,7 @@ begin
       Log('** Attach available');
   end;
 
-  FinishAttachmentTimer.Enabled := FALSE;
+  m_FinishAttachmentTimer.Enabled := FALSE;
 
   FDoAttachmentStatus(self, m_AttachmentStatus);
 end;
@@ -387,10 +410,11 @@ begin
 
     while ((not ACommand.HasResponse)) do
     begin
-      if ((iTimeOutTimer <= 0) or (csDestroying in ComponentState)) then
+      if (iTimeOutTimer <= 0) then
         exit;
         
       Forms.Application.ProcessMessages;
+
       if (ACommand.HasResponse) then
         break;
         
@@ -403,15 +427,15 @@ begin
     m_Command := nil;
   end;
 
-  PendingSkypeAPICommandsTimer.Enabled := TRUE;
+  m_PendingSkypeAPICommandsTimer.Enabled := TRUE;
 
   Result := TRUE;
 end;
 
 
-procedure TSkype.PendingSkypeAPICommandsTimerTimer(Sender: TObject);
+procedure TSkype.FOnPendingSkypeAPICommandsTimer(Sender: TObject);
 begin
-  PendingSkypeAPICommandsTimer.Enabled := FALSE;
+  m_PendingSkypeAPICommandsTimer.Enabled := FALSE;
   if (Assigned(m_Command)) then
     exit;
   FProcessPendingSkypeAPICommandsForListeners;
@@ -447,30 +471,9 @@ begin
     FOnApplicationDatagram(ASender, pApp, pStream, Text);
 end;
 
-procedure TSkype.DataModuleCreate(Sender: TObject);
+procedure TSkype.FOnFinishAttachmentTimer(Sender: TObject);
 begin
-  m_AttachmentStatus := apiAttachUnknown;
-  m_ListenersManager := TListenersManager.Create;
-  m_PendingSkypeAPICommands := TStringList.Create;
-
-  m_SkypeAPI.OnAttachmentStatus := FOnSkypeAPIAttachementStatus;
-  m_SkypeAPI.OnCommandReceived := FOnSkypeAPICommandReceived;
-end;
-
-procedure TSkype.DataModuleDestroy(Sender: TObject);
-begin
-  while (Assigned(m_Command)) do
-    Sleep(1); // Wait until all blocking commands are accomplished
-  m_PendingSkypeAPICommands.Free;
-  m_ListenersManager.Free;
-  m_Applications.Free;
-  m_Users.Free;
-end;
-
-
-procedure TSkype.FinishAttachmentTimerTimer(Sender: TObject);
-begin
-  FinishAttachmentTimer.Enabled := FALSE;
+  m_FinishAttachmentTimer.Enabled := FALSE;
   FFinishAttachment;
 end;
 
@@ -493,25 +496,25 @@ begin
   finally
     Command.Free;
   end;
-end;
+end;
 
 
-function TSkype.GetUserByHandle(const wstrHandle: WideString): IUser;
-var
-  i: integer;
-begin
-  // It is supposed that a user with a handle wstrHandle is a real user
+function TSkype.GetUserByHandle(const wstrHandle: WideString): IUser;
+var
+  i: integer;
+begin
+  // It is supposed that a user with a handle wstrHandle is a real user
 
-  Result := nil;
+  Result := nil;
 
-  if (wstrHandle = '') then
-    exit;
-
+  if (wstrHandle = '') then
+    exit;
+
   if (not Assigned(m_Users)) then
     m_Users := TInterfaceList.Create;
 
-  for i := 0 to m_Users.Count - 1 do
-  begin
+  for i := 0 to m_Users.Count - 1 do
+  begin
     Result := IUser(m_Users[i]);
     if (Result.Handle = wstrHandle) then
       exit;
@@ -522,15 +525,46 @@ begin
 end;
 
 
-procedure TSkype.FSetOnMessageStatus(Value: TOnMessageStatus);
-begin
-  if (Assigned(FOnMessageStatus)) then
-    m_ListenersManager.DestroyListener(m_ChatMessageStatusListener);
+procedure TSkype.FSetOnMessageStatus(Value: TOnMessageStatus);
+begin
+  if (Assigned(FOnMessageStatus)) then
+    m_ListenersManager.DestroyListener(m_ChatMessageStatusListener);
 
-  FOnMessageStatus := Value;
-  m_ChatMessageStatusListener := m_ListenersManager.CreateListener(TChatMessageStatusListener);
-end;
-
+  FOnMessageStatus := Value;
+  m_ChatMessageStatusListener := m_ListenersManager.CreateListener(TChatMessageStatusListener);
+end;
+
+
+procedure TSkype.FCreateFinishAttachmentTimer;
+begin
+  if (not Assigned(m_FinishAttachmentTimer)) then
+    m_FinishAttachmentTimer := TTimer.Create(nil);
+  m_FinishAttachmentTimer.Enabled := FALSE;
+  m_FinishAttachmentTimer.Interval := 1000;
+  m_FinishAttachmentTimer.OnTimer := FOnFinishAttachmentTimer;
+end;
+
+
+procedure TSkype.FDestroyFinishAttachmentTimer;
+begin
+  FreeAndNil(m_FinishAttachmentTimer);
+end;
+
+
+procedure TSkype.FCreatePendingSkypeAPICommandsTimer;
+begin
+  if (not Assigned(m_PendingSkypeAPICommandsTimer)) then
+    m_PendingSkypeAPICommandsTimer := TTimer.Create(nil);
+  m_PendingSkypeAPICommandsTimer.Enabled := FALSE;
+  m_PendingSkypeAPICommandsTimer.Interval := 1;
+  m_FinishAttachmentTimer.OnTimer := FOnFinishAttachmentTimer;
+end;
+
+
+procedure TSkype.FDestroyPendingSkypeAPICommandsTimer;
+begin
+end;
+
 ////////////////////////////////////////////////////////////////////////////////
 // TProtocolCommand
 
@@ -554,6 +588,9 @@ begin
   Assert(not HasResponse);
 
   Result := FALSE;
+
+  wstrHead := '';
+  wstrBody := '';
 
   RSplitCommandToHeadAndBody(wstrCommand, wstrHead, wstrBody);
 
