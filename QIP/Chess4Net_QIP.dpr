@@ -22,6 +22,7 @@ uses
   GameOptionsUnit in '..\GameOptionsUnit.pas' {GameOptionsForm},
   ChessBoardHeaderUnit in '..\ChessBoardHeaderUnit.pas',
   ChessBoardUnit in '..\ChessBoardUnit.pas' {ChessBoard},
+  PosBaseChessBoardUnit in '..\PosBaseChessBoardUnit.pas',  
   GameChessBoardUnit in '..\GameChessBoardUnit.pas' {GameChessBoard},
   PromotionUnit in '..\PromotionUnit.pas' {PromotionForm},
   LookFeelOptionsUnit in '..\LookFeelOptionsUnit.pas' {OptionsForm},

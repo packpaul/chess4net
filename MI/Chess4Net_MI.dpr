@@ -19,6 +19,7 @@ uses
   BitmapResUnit in '..\BitmapResUnit.pas',
   ChessBoardHeaderUnit in '..\ChessBoardHeaderUnit.pas',
   ChessBoardUnit in '..\ChessBoardUnit.pas' {ChessBoard},
+  PosBaseChessBoardUnit in '..\PosBaseChessBoardUnit.pas',
   GameChessBoardUnit in '..\GameChessBoardUnit.pas' {GameChessBoard},
   ConnectingUnit in '..\ConnectingUnit.pas' {ConnectingForm},
   ConnectorUnit in 'ConnectorUnit.pas',

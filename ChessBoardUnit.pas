@@ -11,7 +11,6 @@ type
   TMode = (mView, mGame); // Board mode
 
   TAnimation = (aNo, aSlow, aQuick);
-  TGameResult = (grWin, grWinTime, grDraw, grLost, grLostTime);
 
   TChessBoardEvent = (cbeMate, cbeStaleMate, cbeMoved, cbeMenu);
   TChessBoardHandler = procedure(e: TChessBoardEvent;

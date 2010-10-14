@@ -6,7 +6,8 @@ uses
   ExtCtrls, TntStdCtrls, Buttons, Controls, StdCtrls, Classes, Forms, TntForms,
   Graphics, Messages,
   // Chess4net
-  ChessBoardHeaderUnit, ChessBoardUnit, ChessRulesEngine, LocalizerUnit;
+  ChessBoardHeaderUnit, ChessBoardUnit, PosBaseChessBoardUnit, ChessRulesEngine,
+  LocalizerUnit;
 
 type
   TGameChessBoardEvent =
@@ -57,7 +58,7 @@ type
     procedure TimePanelResize(Sender: TObject);
 
   private
-    m_ChessBoard: TChessBoard;
+    m_ChessBoard: TPosBaseChessBoard;
 
     FHandler: TGameChessBoardHandler;
 
@@ -146,7 +147,7 @@ type
     procedure Shut;
 
     procedure WriteGameToBase(vGameResult: TGameResult);
-    procedure SetExternalBase(const vsExtPosBaseName: string);
+    procedure SetExternalBase(const strExtPosBaseName: string);
     procedure UnsetExternalBase;
 
     property Unlimited[color: TFigureColor]: boolean read FGetUnlimited write FSetUnlimited;
@@ -291,7 +292,7 @@ constructor TGameChessBoard.Create(Owner: TComponent;
   AHandler: TGameChessBoardHandler = nil; const strPosBaseName: string = '');
 begin
   FHandler := AHandler;
-  m_ChessBoard := TChessBoard.Create(self, FChessBoardHandler, strPosBaseName);
+  m_ChessBoard := TPosBaseChessBoard.Create(self, FChessBoardHandler, strPosBaseName);
   inherited Create(Owner);
 end;
 
@@ -707,45 +708,43 @@ end;
 
 procedure TGameChessBoard.WriteGameToBase(vGameResult: TGameResult);
 begin
-  // TODO:
+  m_ChessBoard.WriteGameToBase(vGameResult);
 end;
 
 
-procedure TGameChessBoard.SetExternalBase(const vsExtPosBaseName: string);
+procedure TGameChessBoard.SetExternalBase(const strExtPosBaseName: string);
 begin
-  // TODO:
+  m_ChessBoard.SetExternalBase(strExtPosBaseName);
 end;
 
 
 procedure TGameChessBoard.UnsetExternalBase;
 begin
-  // TODO:
+  m_ChessBoard.UnsetExternalBase;
 end;
 
 
 function TGameChessBoard.FGetTrainingMode: boolean;
 begin
-  Result := FALSE;
-  // TODO:
+  Result := m_ChessBoard.pTrainingMode;
 end;
 
 
 procedure TGameChessBoard.FSetTrainingMode(bValue: boolean);
 begin
-  // TODO:
+  m_ChessBoard.pTrainingMode := bValue;
 end;
 
 
 function TGameChessBoard.FGetUseUserBase: boolean;
 begin
-  Result := FALSE;
-  // TODO:
+  Result := m_ChessBoard.pUseUserBase;
 end;
 
 
 procedure TGameChessBoard.FSetUseUserBase(bValue: boolean);
 begin
-  // TODO:
+  m_ChessBoard.pUseUserBase := bValue;
 end;
 
 
