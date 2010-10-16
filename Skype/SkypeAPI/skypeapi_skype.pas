@@ -5,7 +5,7 @@ interface
 uses
   Classes, SysUtils, ExtCtrls,
   //
-  skypeapi,
+  SkypeAPI,
   //
   SkypeAPI_Command;
 
@@ -133,9 +133,7 @@ type
     procedure FOnSkypeAPIAttachementStatus(ASender: TObject; Status: skypeapi.TAttachmentStatus);
     procedure FOnSkypeAPICommandReceived(ASender: TObject; const wstrCommand: WideString);
 
-    procedure FDoAttachmentStatus(ASender: TObject; Status: TAttachmentStatus);
-    procedure FDoApplicationDatagram(ASender: TObject; const pApp: IApplication;
-      const pStream: IApplicationStream; const Text: WideString);
+    procedure FDoAttachmentStatus(Status: TAttachmentStatus);
 
     procedure FFinishAttachment;
 
@@ -159,11 +157,15 @@ type
 
     procedure DoMessageStatus(const pMessage: IChatMessage;
       Status: TChatMessageStatus);
+    procedure DoApplicationDatagram(const pApp: IApplication;
+      const pStream: IApplicationStream; const Text: WideString);
 
     property Application[const Name: WideString]: IApplication read GetApplication;
     property Client: IClient read GetClient;
     property CurrentUser: IUser read GetCurrentUser;
     property CurrentUserHandle: WideString read GetCurrentUserHandle;
+
+    property ListenersManager: TListenersManager read m_ListenersManager;
 
     property OnMessageStatus: TOnMessageStatus read FOnMessageStatus write FSetOnMessageStatus;
     property OnAttachmentStatus: TOnAttachmentStatus read FOnAttachmentStatus
@@ -323,8 +325,6 @@ end;
 
 procedure TSkype.FOnSkypeAPIAttachementStatus(ASender: TObject; Status: skypeapi.TAttachmentStatus);
 begin
-  ASender := ASender; // To avoid warning
-
   m_AttachmentStatus := apiAttachAvailable;
 
   case Status  of
@@ -356,7 +356,7 @@ begin
 
   m_FinishAttachmentTimer.Enabled := FALSE;
 
-  FDoAttachmentStatus(self, m_AttachmentStatus);
+  FDoAttachmentStatus(m_AttachmentStatus);
 end;
 
 
@@ -473,19 +473,20 @@ begin
 end;
 
 
-procedure TSkype.FDoAttachmentStatus(ASender: TObject; Status: TAttachmentStatus);
+procedure TSkype.FDoAttachmentStatus(Status: TAttachmentStatus);
 begin
   if (Assigned(FOnAttachmentStatus)) then
-    FOnAttachmentStatus(ASender, Status);
+    FOnAttachmentStatus(self, Status);
 end;
 
 
-procedure TSkype.FDoApplicationDatagram(ASender: TObject; const pApp: IApplication;
+procedure TSkype.DoApplicationDatagram(const pApp: IApplication;
   const pStream: IApplicationStream; const Text: WideString);
 begin
   if (Assigned(FOnApplicationDatagram)) then
-    FOnApplicationDatagram(ASender, pApp, pStream, Text);
+    FOnApplicationDatagram(self, pApp, pStream, Text);
 end;
+
 
 procedure TSkype.FOnFinishAttachmentTimer(Sender: TObject);
 begin
@@ -508,7 +509,7 @@ begin
       m_AttachmentStatus := apiAttachSuccess;
       Log('** Attach success');
     end;
-    FDoAttachmentStatus(self, m_AttachmentStatus);    
+    FDoAttachmentStatus(m_AttachmentStatus);    
   finally
     Command.Free;
   end;
@@ -599,12 +600,13 @@ begin
     m_PendingSkypeAPICommandsTimer := TTimer.Create(nil);
   m_PendingSkypeAPICommandsTimer.Enabled := FALSE;
   m_PendingSkypeAPICommandsTimer.Interval := 1;
-  m_FinishAttachmentTimer.OnTimer := FOnFinishAttachmentTimer;
+  m_PendingSkypeAPICommandsTimer.OnTimer := FOnPendingSkypeAPICommandsTimer;
 end;
 
 
 procedure TSkype.FDestroyPendingSkypeAPICommandsTimer;
 begin
+  FreeAndNil(m_PendingSkypeAPICommandsTimer);
 end;
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -9,7 +9,7 @@ type
   TCommandBase = class
   protected
     class procedure RSplitCommandToHeadAndBody(const wstrCommand: WideString;
-      var wstrHead, wstrBody: WideString);
+      var wstrHead, wstrBody: WideString; iTokensInHead: integer = 1);
     class function RNextToken(wstr: WideString; var wstrTail: WideString): WideString;
   end;
   
@@ -34,13 +34,16 @@ type
   private
     m_bProcessingCommandFlag: boolean;
     m_lwLastAnalyzedCmdID: LongWord;
+    m_bPendingForDestructionFlag: boolean;
     function FProcessCommand(const wstrCommand: WideString; lwCmdID: LongWord): TListenerProcessCommandResult;
     procedure FProcessNotification;
+    property PendingForDestructionFlag: boolean read m_bPendingForDestructionFlag
+                                                write m_bPendingForDestructionFlag;
   protected
     constructor RCreate; virtual;
     function RParseCommand(const wstrCommand: WideString): boolean; virtual; abstract;
     function RProcessCommand(const wstrCommand: WideString): boolean; virtual; abstract;
-    procedure RDoNotify; virtual; abstract;
+    procedure RDoNotify; virtual;
   public
     constructor Create;
     destructor Destroy; override;
@@ -54,10 +57,12 @@ type
     m_NotifyTimer: TTimer;
     m_lwCmdCounter: LongWord;
     m_PendingCommands: TStringList;
+    m_bListenersDestructionBlocked: boolean;
     procedure FCreateNotifyTimer;
     procedure FDestroyNotifyTimer;
     procedure FOnNotifyTimerTimer(Sender: TObject);
     procedure FProcessPendingCommands;
+    procedure FDestroyPendingForDestructionListeners;
   public
     constructor Create;
     destructor Destroy; override;
@@ -75,9 +80,21 @@ uses
 // TCommandBase
 
 class procedure TCommandBase.RSplitCommandToHeadAndBody(const wstrCommand: WideString;
-  var wstrHead, wstrBody: WideString);
+  var wstrHead, wstrBody: WideString; iTokensInHead: integer = 1);
+var
+  i: integer;
+  wstr: WideString;  
 begin
+  Assert(iTokensInHead >= 1);
+
   wstrHead := UpperCase(RNextToken(wstrCommand, wstrBody));
+  for i := 2 to iTokensInHead do
+  begin
+    wstr := UpperCase(RNextToken(wstrBody, wstrBody));
+    if (wstr <> '') then
+      wstrHead := wstrHead + ' ' + wstr;
+  end;
+
   wstrBody := TrimLeft(wstrBody);
 end;
 
@@ -136,6 +153,9 @@ var
 begin
   Result := lpcrFalse;
 
+  if (m_bPendingForDestructionFlag) then
+    exit;
+
   if (lwCmdID <= m_lwLastAnalyzedCmdID) then
     exit;
 
@@ -180,12 +200,20 @@ begin
   if (not m_bProcessingCommandFlag) then
     exit;
 
+  if (m_bPendingForDestructionFlag) then
+    exit;
+
   RDoNotify;
 
   m_bProcessingCommandFlag := FALSE;
 
 //  TSkype.Instance.Log(Format('Listener command processed (%s), <=%d',
 //    [ClassName, m_lwLastAnalyzedCmdID]));
+end;
+
+
+procedure TListener.RDoNotify;
+begin
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -218,8 +246,31 @@ end;
 
 procedure TListenersManager.DestroyListener(var AListener: TListener);
 begin
-  if (m_Listeners.Remove(AListener) >= 0) then
-    AListener := nil;
+  if (not m_bListenersDestructionBlocked) then
+  begin
+    if (m_Listeners.Remove(AListener) >= 0) then
+      AListener := nil;
+  end
+  else
+  begin
+    if (m_Listeners.IndexOf(AListener) >= 0) then
+    begin
+      AListener.PendingForDestructionFlag := TRUE;
+      AListener := nil;
+    end;
+  end;
+end;
+
+
+procedure TListenersManager.FDestroyPendingForDestructionListeners;
+var
+  i: integer;
+begin
+  for i := m_Listeners.Count - 1 downto 0 do
+  begin
+    if ((m_Listeners[i] as TListener).PendingForDestructionFlag) then
+      m_Listeners.Delete(i);
+  end;
 end;
 
 
@@ -232,20 +283,27 @@ var
 begin
   inc(m_lwCmdCounter);
 
-  bAddToPending := FALSE;  
+  bAddToPending := FALSE;
 
-  for i := 0 to m_Listeners.Count - 1 do
-  begin
-    Listener := m_Listeners[i] as TListener;
-    Res := Listener.FProcessCommand(wstrCommand, m_lwCmdCounter);
-    if (Res in [lpcrTrue, lpcrPending]) then
-      m_NotifyTimer.Enabled := TRUE;
-    if (Res = lpcrPending) then
-      bAddToPending := TRUE;
+  m_bListenersDestructionBlocked := TRUE;
+  try
+    for i := 0 to m_Listeners.Count - 1 do
+    begin
+      Listener := m_Listeners[i] as TListener;
+      Res := Listener.FProcessCommand(wstrCommand, m_lwCmdCounter);
+      if (Res in [lpcrTrue, lpcrPending]) then
+        m_NotifyTimer.Enabled := TRUE;
+      if (Res = lpcrPending) then
+        bAddToPending := TRUE;
+    end;
+  finally
+    m_bListenersDestructionBlocked := FALSE;  
   end;
 
   if (bAddToPending) then
     m_PendingCommands.AddObject(UTF8Encode(wstrCommand), Pointer(m_lwCmdCounter));
+
+  FDestroyPendingForDestructionListeners;
 end;
 
 
@@ -256,15 +314,20 @@ var
 begin
   m_NotifyTimer.Enabled := FALSE;
 
-  for i := 0 to m_Listeners.Count - 1 do
-  begin
-    Listener := m_Listeners[i] as TListener;
-    Listener.FProcessNotification;
+  m_bListenersDestructionBlocked := TRUE;
+  try
+    for i := 0 to m_Listeners.Count - 1 do
+    begin
+      Listener := m_Listeners[i] as TListener;
+      Listener.FProcessNotification;
+    end;
+  finally
+    m_bListenersDestructionBlocked := FALSE;
   end;
 
   FProcessPendingCommands;
 
-  if (m_PendingCommands.Count > 0) then
+  if (m_PendingCommands.Count > 0) then // ??? PP: I think this can it be removed?
     m_NotifyTimer.Enabled := TRUE;
 end;
 
@@ -286,11 +349,17 @@ procedure TListenersManager.FProcessPendingCommands;
       lwCmdID := LongWord(m_PendingCommands.Objects[0]);
 
       bDeleteCommand := TRUE;
-      for j := 0 to m_Listeners.Count - 1 do
-      begin
-        Listener := m_Listeners[j] as TListener;
-        if (Listener.FProcessCommand(wstrCommand, lwCmdID) = lpcrPending) then
-          bDeleteCommand := FALSE;
+
+      m_bListenersDestructionBlocked := TRUE;
+      try
+        for j := 0 to m_Listeners.Count - 1 do
+        begin
+          Listener := m_Listeners[j] as TListener;
+          if (Listener.FProcessCommand(wstrCommand, lwCmdID) = lpcrPending) then
+            bDeleteCommand := FALSE;
+        end;
+      finally
+        m_bListenersDestructionBlocked := FALSE;      
       end;
 
       if (bDeleteCommand) then
