@@ -203,9 +203,8 @@ begin
   if (m_bPendingForDestructionFlag) then
     exit;
 
-  RDoNotify;
-
   m_bProcessingCommandFlag := FALSE;
+  RDoNotify;
 
 //  TSkype.Instance.Log(Format('Listener command processed (%s), <=%d',
 //    [ClassName, m_lwLastAnalyzedCmdID]));

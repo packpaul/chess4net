@@ -3,10 +3,10 @@ unit SkypeAPI_Chat;
 interface
 
 uses
-  SkypeAPI_Skype;
+  SkypeAPI_Skype, SkypeAPI_Object;
 
 type
-  TChat = class(TInterfacedObject, IChat)
+  TChat = class(TObjectInterfacedObject, IChat)
   private
     m_wstrName: WideString;
     m_strUserName: string;

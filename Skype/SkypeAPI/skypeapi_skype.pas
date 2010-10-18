@@ -7,7 +7,7 @@ uses
   //
   SkypeAPI,
   //
-  SkypeAPI_Command;
+  SkypeAPI_Object, SkypeAPI_Command;
 
 type
   TAttachmentStatus = (apiAttachUnknown = -1, apiAttachSuccess = 0,
@@ -37,10 +37,10 @@ type
     property Body: WideString read GetBody;
   end;
 
-  IApplicationStream = interface
+  IApplicationStream = interface(IObject)
   end;
 
-  IApplicationStreamCollection = interface
+  IApplicationStreamCollection = interface(IObject)
   end;
 
   IApplication = interface
@@ -64,7 +64,7 @@ type
     property IsRunning: Boolean read GetIsRunning;
   end;
 
-  IChat = interface
+  IChat = interface(IObject)
     function Get_Name: WideString;
     function SendMessage(const MessageText: WideString): IChatMessage;
     property Name: WideString read Get_Name;
@@ -96,6 +96,8 @@ type
     m_SkypeAPI: TSkypeAPI;
     m_AttachmentStatus: TAttachmentStatus;
     m_iProtocol: integer;
+
+    m_wstrCurrentUserHandle: WideString;
 
     m_Command: TCommand;
     m_ListenersManager: TListenersManager;
@@ -191,14 +193,27 @@ type
     m_iReturnedProtocol: integer;
   protected
     function RGetCommand: WideString; override;
-    function RProcessResponse(const wstrCommand: WideString): boolean; override;    
+    function RProcessResponse(const wstrCommand: WideString): boolean; override;
   public
     constructor Create(iRequestedProtocol: integer);
     property Protocol: integer read m_iReturnedProtocol;
   end;
 
+
+  TCurrentUserHandleCommand = class(TCommand)
+  private
+    m_wstrCurrentUserHandle: WideString;
+  protected
+    function RGetCommand: WideString; override;
+    function RProcessResponse(const wstrCommand: WideString): boolean; override;
+  public
+    property CurrentUserHandle: WideString read m_wstrCurrentUserHandle;
+  end;
+
 const
   CMD_PROTOCOL: WideString = 'PROTOCOL';
+  CMD_GET_CURRENTUSERHANDLE = 'GET CURRENTUSERHANDLE';
+  CMD_CURRENTUSERHANDLE = 'CURRENTUSERHANDLE';
 
 ////////////////////////////////////////////////////////////////////////////////
 // TSkype
@@ -301,15 +316,26 @@ end;
 
 function TSkype.GetCurrentUser: IUser;
 begin
-  Result := nil;
-  // TODO:
+  Result := GetUserByHandle(CurrentUserHandle);
 end;
 
 
 function TSkype.GetCurrentUserHandle: WideString;
+var
+  Command: TCurrentUserHandleCommand;
 begin
-  Result := '';
-  // TODO:
+  if (m_wstrCurrentUserHandle = '') then
+  begin
+    Command := TCurrentUserHandleCommand.Create;
+    try
+      if (SendCommand(Command)) then
+        m_wstrCurrentUserHandle := Command.CurrentUserHandle;
+    finally
+      Command.Free;
+    end;
+  end;
+
+  Result := m_wstrCurrentUserHandle;
 end;
 
 
@@ -559,7 +585,7 @@ begin
   for i := 0 to m_Chats.Count - 1 do
   begin
     Result := IChat(m_Chats[i]);
-    if (TChat(Result).UserName = strUserName) then
+    if ((Result._Object as TChat).UserName = strUserName) then
       exit;
   end;
 
@@ -641,6 +667,33 @@ begin
   m_iReturnedProtocol := StrToInt(wstrBody);
 
   Result := TRUE;
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TCurrentUserHandleCommand
+
+function TCurrentUserHandleCommand.RGetCommand: WideString;
+begin
+  Result := CMD_GET_CURRENTUSERHANDLE;
+end;
+
+
+function TCurrentUserHandleCommand.RProcessResponse(const wstrCommand: WideString): boolean;
+var
+  wstrHead, wstrBody: WideString;
+begin
+  Assert(not HasResponse);
+
+  Result := FALSE;
+
+  RSplitCommandToHeadAndBody(wstrCommand, wstrHead, wstrBody);
+
+  if (wstrHead <> CMD_CURRENTUSERHANDLE) then
+    exit;
+
+  m_wstrCurrentUserHandle := RNextToken(wstrBody, wstrBody);   
+
+  Result := (m_wstrCurrentUserHandle <> '');
 end;
 
 end.

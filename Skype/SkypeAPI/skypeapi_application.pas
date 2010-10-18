@@ -5,13 +5,13 @@ interface
 uses
   Classes, SysUtils,
   //
-  SkypeAPI_Skype, SkypeAPI_Command;
+  SkypeAPI_Object, SkypeAPI_Skype, SkypeAPI_Command;
 
 type
   TApplication = class;
   
 
-  TApplicationStream = class(TInterfaceList, IApplicationStream)
+  TApplicationStream = class(TObjectInterfacedObject, IApplicationStream)
   private
     m_wstrHandle: WideString;
     m_Application: TApplication;
@@ -25,12 +25,13 @@ type
   end;
 
 
-  TApplicationStreamCollection = class(TInterfaceList, IApplicationStreamCollection)
+  TApplicationStreamCollection = class(TObjectInterfaceList, IApplicationStreamCollection)
   private
     function FGetCount: integer;
     procedure Add(const Stream: IApplicationStream);
     function FGetItem(iIndex: integer): IApplicationStream;
   public
+    destructor Destroy; override;
     property Count: integer read FGetCount;
     property Item[iIndex: Integer]: IApplicationStream read FGetItem; default;
   end;
@@ -270,8 +271,8 @@ begin
 
   Command := TAppConnectCommand.Create(self, strUserName);
   try
-    if (TSkype.Instance.SendCommand(Command)) then
-      ;
+    if (not TSkype.Instance.SendCommand(Command)) then
+      exit;
   finally
     Command.Free;
   end;
@@ -309,10 +310,10 @@ var
   i: integer;
   Command: TAppSendDatagramCommand;
 begin
-  Streams := TApplicationStreamCollection(pStreams);
+  Streams := pStreams._Object as TApplicationStreamCollection;
   for i := 0 to Streams.Count - 1 do
   begin
-    Stream := TApplicationStream(Streams[i]);
+    Stream := Streams[i]._Object as TApplicationStream;
     Command := TAppSendDatagramCommand.Create(self, Stream, Text);
     try
       if (TSkype.Instance.SendCommand(Command)) then
@@ -574,7 +575,8 @@ end;
 
 function TAppConnectCommand.RGetCommand: WideString;
 begin
-  Result := CMD_ALTER_APPLICATION + m_Application.Name + ' ' + CMD_CONNECT + ' ' + m_wstrUserName;
+  Result := CMD_ALTER_APPLICATION + ' ' + m_Application.Name + ' ' +
+    CMD_CONNECT + ' ' + m_wstrUserName;
 end;
 
 
@@ -600,7 +602,7 @@ begin
     exit;
 
   wstrUserName := RNextToken(wstrBody, wstrBody);
-  if (wstrAppName <> m_wstrUserName) then
+  if (wstrUserName <> m_wstrUserName) then
     exit;
 
   Result := TRUE;
@@ -611,20 +613,20 @@ end;
 
 constructor TAppConnectingAndStreamsListener.RCreate;
 begin
-  inherited Create;
+  inherited RCreate;
   m_State := sConnectionEstablishing;  
 end;
-
 
 function TAppConnectingAndStreamsListener.RParseCommand(const wstrCommand: WideString): boolean;
 begin
   Result := FALSE;
 
   case m_State of
-    sConnectionEstablishing:
+    sConnectionEstablishing, sConnectionEstablished:
+    begin
       Result := FConnectionEstablishingParseCommand(wstrCommand);
-    sConnectionEstablished:
-      Result := FConnectionEstablishedParseCommand(wstrCommand);
+      Result := (Result or FConnectionEstablishedParseCommand(wstrCommand));
+    end;
     sMonitoringStreams:
       Result := FMonitoringStreamsParseCommand(wstrCommand);
   end;
@@ -714,17 +716,22 @@ end;
 
 function TAppConnectingAndStreamsListener.RProcessCommand(const wstrCommand: WideString): boolean;
 begin
-  Result := RParseCommand(wstrCommand);
-
-  if (not Result) then
-    exit;
+  Result := FALSE;
 
   case m_State of
-    sConnectionEstablishing:
-      m_State := sConnectionEstablished;
+    sConnectionEstablishing, sConnectionEstablished:
+    begin
+      Result := FConnectionEstablishingParseCommand(wstrCommand);
+      if (Result) then
+      begin
+        m_State := sConnectionEstablished;
+        exit;
+      end;
 
-    sConnectionEstablished:
-      m_State := sMonitoringStreams;
+      Result := FConnectionEstablishedParseCommand(wstrCommand);
+      if (Result) then
+        m_State := sMonitoringStreams;
+    end;
 
     sMonitoringStreams:
       FMonitoringStreamsProcessCommand;
@@ -752,12 +759,12 @@ begin
       strHandle := RNextToken(wstr, wstr);
     end;
 
-    Streams := TApplicationStreamCollection(Application.Streams);
+    Streams := Application.Streams._Object as TApplicationStreamCollection;
 
     i := Streams.Count - 1;
     while (i >= 0) do
     begin
-      Stream := TApplicationStream(Streams[i]);
+      Stream := Streams[i]._Object as TApplicationStream;
       if (Find(Stream.Handle, iIndex)) then
         Streams.Delete(i)
       else
@@ -813,6 +820,12 @@ end;
 
 ////////////////////////////////////////////////////////////////////////////////
 // TApplicationStreamCollection
+
+destructor TApplicationStreamCollection.Destroy;
+begin
+  inherited;
+end;
+
 
 function TApplicationStreamCollection.FGetCount: Integer;
 begin
