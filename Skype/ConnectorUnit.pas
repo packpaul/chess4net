@@ -7,7 +7,11 @@ uses
 {$IFDEF TESTING}
   , SkypeTS_TLB
 {$ELSE}
+  {$IFDEF SKYPE_API}
+  , SkypeAPI_Skype
+  {$ELSE SKYPE4COM}
   , SKYPE4COMLib_TLB
+  {$ENDIF}
 {$ENDIF}
   ;
 
@@ -252,9 +256,14 @@ begin
   g_handler := h;
 
   try
-    g_Skype := TSkype.Create(nil);
 {$IFDEF TESTING}
     g_Skype.Connect;
+{$ELSE}
+  {$IFDEF SKYPE_API}
+    g_Skype := TSkype.Create(SKYPE_APP_NAME);
+  {$ELSE}
+    g_Skype := TSkype.Create(nil);
+  {$ENDIF}
 {$ENDIF}
   except
     g_handler(ceSkypeError);
@@ -510,7 +519,7 @@ begin
   if (not ((sUserConnecting in m_SkypeStates) or FIsUserConnected)) then
   begin
     Include(m_SkypeStates, sUserConnecting);
-    SkypeApplication.Connect(m_wstrContactHandle, FALSE);
+    SkypeApplication.Connect(m_wstrContactHandle, TRUE);
     userConnectingTimer.Enabled := TRUE;
 //    Log('Connecting user started.');
   end;  
@@ -544,9 +553,10 @@ procedure TConnector.userConnectingTimerTimer(Sender: TObject);
 var
   i: integer;
 begin
+  userConnectingTimer.Enabled := FALSE;
+
   if (FIsUserConnected) then
   begin
-    userConnectingTimer.Enabled := FALSE;
     Exclude(m_SkypeStates, sUserConnecting);
     Include(m_SkypeStates, sUserConnected);
 
@@ -561,13 +571,24 @@ begin
         FFilterMsg(m_wstrlInBuffer[i]);
       FreeAndNil(m_wstrlInBuffer);
     end;
-  end;
+  end
+  else
+    userConnectingTimer.Enabled := TRUE;
 end;
 
+
 procedure TConnector.DataModuleDestroy(Sender: TObject);
+var
+  App: IApplication;
 begin
   m_wstrlInBuffer.Free;
-  SkypeApplication.Delete;
+
+  App := SkypeApplication;
+  App.Delete;
+  App := nil;
+
+  m_ConnectableUserCollection := nil;
+
 {$IFDEF TESTING}
   Skype.Disconnect;
 {$ENDIF}

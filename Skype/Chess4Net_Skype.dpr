@@ -7,7 +7,11 @@ program Chess4Net_Skype;
 {$IFDEF TESTING}
   , SkypeTS_TLB in 'SkypeTS_TLB.pas'
 {$ELSE}
+  {$IFDEF SKYPE_API}
+  , SkypeAPI_Skype in '.\SkypeAPI\skypeapi_skype.pas'
+  {$ELSE SKYPE4COM}
   , SKYPE4COMLib_TLB in '.\Skype4COM\SKYPE4COMLib_TLB.pas'
+  {$ENDIF}
 {$ENDIF}
 *)
 
@@ -44,7 +48,11 @@ uses
 {$IFDEF TESTING}
   , SkypeTS_TLB in 'SkypeTS_TLB.pas'
 {$ELSE}
+  {$IFDEF SKYPE_API}
+  , SkypeAPI_Skype in '.\SkypeAPI\skypeapi_skype.pas'
+  {$ELSE SKYPE4COM}
   , SKYPE4COMLib_TLB in '.\Skype4COM\SKYPE4COMLib_TLB.pas'
+  {$ENDIF}
 {$ENDIF}
   ;
 

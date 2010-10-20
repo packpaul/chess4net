@@ -181,8 +181,6 @@ implementation
 uses
   Forms,
   //
-  MainFormUnit,
-  //
   SkypeAPI_Client, SkypeAPI_Application, SkypeAPI_User, SkypeAPI_ChatMessage,
   SkypeAPI_Chat;
 
@@ -297,10 +295,6 @@ function TSkype.SendMessage(const Username: WideString; const Text: WideString):
 var
   Chat: IChat;
 begin
-  Result := nil;
-
-  exit;
-
   Chat := GetChatWithUser(Username);
   Result := Chat.SendMessage(Text);
 end;
@@ -487,7 +481,6 @@ end;
 
 procedure TSkype.Log(const wstrLogMsg: WideString);
 begin
-  MainForm.Log(wstrLogMsg); 
   // TODO: Output to log
 end;
 
