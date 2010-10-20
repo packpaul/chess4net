@@ -249,10 +249,11 @@ begin
   // TODO: Take care if we're in SendCommand()
 
   m_PendingSkypeAPICommands.Free;
-  m_ListenersManager.Free;
   m_Applications.Free;
   m_Chats.Free;
   m_Users.Free;
+
+  m_ListenersManager.Free;
 
   FDestroyPendingSkypeAPICommandsTimer;
   FDestroyFinishAttachmentTimer;
@@ -298,7 +299,7 @@ var
 begin
   Result := nil;
 
-  exit; // TODO: keep till final versions not implemented!
+  exit;
 
   Chat := GetChatWithUser(Username);
   Result := Chat.SendMessage(Text);

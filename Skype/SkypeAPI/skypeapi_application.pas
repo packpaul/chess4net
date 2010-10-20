@@ -44,11 +44,13 @@ type
     m_wstrName: WideString;
     m_bCreated: boolean;
     m_Streams: IApplicationStreamCollection;
+    m_StreamsListener: TListener;
 
     function GetStreams: IApplicationStreamCollection;
     function GetConnectableUsers: IUserCollection;
     function GetConnectingUsers: IUserCollection;
     function GetName: WideString;
+    function FHasStreamsForUserName(const wstrUserName: WideString): boolean;
   public
     constructor Create(const wstrName: WideString);
     destructor Destroy; override;
@@ -132,22 +134,15 @@ type
   end;
 
 
-  TAppConnectingAndStreamsListener = class(TListener)
+  TAppConnectingListener = class(TListener)
   private
-    m_State: (sConnectionEstablishing, sConnectionEstablished, sMonitoringStreams);
+    m_State: (sConnectionEstablishing, sConnectionEstablished);
 
     m_wstrUserName: WideString;
     m_Application: TApplication;
 
-    m_bStreamAquiredFlag: boolean;
-
-    m_wstrParsedStreamHandle: WideString;
-
     function FConnectionEstablishingParseCommand(const wstrCommand: WideString): boolean;
     function FConnectionEstablishedParseCommand(const wstrCommand: WideString): boolean;
-    function FMonitoringStreamsParseCommand(const wstrCommand: WideString): boolean;
-
-    procedure FMonitoringStreamsProcessCommand;
 
   protected
     constructor RCreate; override;
@@ -157,7 +152,18 @@ type
   public
     property UserName: WideString read m_wstrUserName write m_wstrUserName;
     property Application: TApplication read m_Application write m_Application;
-    property StreamAquiredFlag: boolean read m_bStreamAquiredFlag;
+  end;
+
+
+  TAppStreamsListener = class(TListener)
+  private
+    m_wstrParsedStreamHandle: WideString;
+    m_Application: TApplication;      
+  protected
+    function RParseCommand(const wstrCommand: WideString): boolean; override;
+    function RProcessCommand(const wstrCommand: WideString): boolean; override;
+  public
+    property Application: TApplication read m_Application write m_Application;  
   end;
 
 
@@ -215,6 +221,8 @@ end;
 
 destructor TApplication.Destroy;
 begin
+  TSkype.Instance.ListenersManager.DestroyListener(m_StreamsListener);
+  m_Streams := nil;
   inherited;
 end;
 
@@ -229,7 +237,12 @@ begin
   Command := TAppCreateCommand.Create(self);
   try
     if (TSkype.Instance.SendCommand(Command)) then
+    begin
       m_bCreated := TRUE;
+      m_StreamsListener := TSkype.Instance.ListenersManager.CreateListener(
+        TAppStreamsListener);
+      (m_StreamsListener as TAppStreamsListener).Application := self;
+    end;
   finally
     Command.Free;
   end;
@@ -246,7 +259,10 @@ begin
   Command := TAppDeleteCommand.Create(self);
   try
     if (TSkype.Instance.SendCommand(Command)) then
+    begin
       m_bCreated := FALSE;
+      TSkype.Instance.ListenersManager.DestroyListener(m_StreamsListener);
+    end;
   finally
     Command.Free;
   end;
@@ -259,7 +275,7 @@ const
 var
   strUserName: string;
   Command: TAppConnectCommand;
-  Listener: TAppConnectingAndStreamsListener;
+//  Listener: TAppConnectingListener;
   iTimeOutTimer: integer;
 begin
   if (not m_bCreated) then
@@ -276,18 +292,18 @@ begin
   finally
     Command.Free;
   end;
-
+{
   Listener := TSkype.Instance.ListenersManager.CreateListener(
-    TAppConnectingAndStreamsListener) as TAppConnectingAndStreamsListener;
+    TAppConnectingListener) as TAppConnectingListener;
   Listener.UserName := strUserName;
   Listener.Application := self;
-
+}
   if (not WaitConnected) then
     exit;
 
   iTimeOutTimer := WAIT_CONNECTED_TIMEOUT;
 
-  while ((not Listener.StreamAquiredFlag)) do
+  while (not FHasStreamsForUserName(strUserName)) do
   begin
     if (iTimeOutTimer <= 0) then
     begin
@@ -297,8 +313,30 @@ begin
 
     Forms.Application.ProcessMessages;
     Sleep(1);
-    
+
     dec(iTimeOutTimer);
+  end;
+end;
+
+
+function TApplication.FHasStreamsForUserName(const wstrUserName: WideString): boolean;
+var
+  wstrStreamHandlePrefix: WideString;
+  Streams: TApplicationStreamCollection;
+  Stream: TApplicationStream;
+  i: integer;
+begin
+  Result := FALSE;
+
+  wstrStreamHandlePrefix := wstrUserName + ':';
+
+  Streams := m_Streams._Object as TApplicationStreamCollection;
+  for i := 0 to Streams.Count - 1 do
+  begin
+    Stream := Streams[i]._Object as TApplicationStream;
+    Result := (Pos(wstrStreamHandlePrefix, Stream.Handle) = 1);
+    if (Result) then
+      exit;
   end;
 end;
 
@@ -609,15 +647,15 @@ begin
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
-// TAppConnectingAndStreamsListener
+// TAppConnectingListener
 
-constructor TAppConnectingAndStreamsListener.RCreate;
+constructor TAppConnectingListener.RCreate;
 begin
   inherited RCreate;
   m_State := sConnectionEstablishing;  
 end;
 
-function TAppConnectingAndStreamsListener.RParseCommand(const wstrCommand: WideString): boolean;
+function TAppConnectingListener.RParseCommand(const wstrCommand: WideString): boolean;
 begin
   Result := FALSE;
 
@@ -627,13 +665,11 @@ begin
       Result := FConnectionEstablishingParseCommand(wstrCommand);
       Result := (Result or FConnectionEstablishedParseCommand(wstrCommand));
     end;
-    sMonitoringStreams:
-      Result := FMonitoringStreamsParseCommand(wstrCommand);
   end;
 end;
 
 
-function TAppConnectingAndStreamsListener.FConnectionEstablishingParseCommand(
+function TAppConnectingListener.FConnectionEstablishingParseCommand(
   const wstrCommand: WideString): boolean;
 var
   wstrHead, wstrBody: WideString;
@@ -661,7 +697,7 @@ begin
 end;
 
 
-function TAppConnectingAndStreamsListener.FConnectionEstablishedParseCommand(
+function TAppConnectingListener.FConnectionEstablishedParseCommand(
   const wstrCommand: WideString): boolean;
 var
   wstrHead, wstrBody: WideString;
@@ -688,33 +724,9 @@ begin
 end;
 
 
-function TAppConnectingAndStreamsListener.FMonitoringStreamsParseCommand(
-  const wstrCommand: WideString): boolean;
+function TAppConnectingListener.RProcessCommand(const wstrCommand: WideString): boolean;
 var
-  wstrHead, wstrBody: WideString;
-  wstrAppName: WideString;
-begin
-  Result := FALSE;
-
-  RSplitCommandToHeadAndBody(wstrCommand, wstrHead, wstrBody);
-  if (wstrHead <> CMD_APPLICATION) then
-    exit;
-
-  wstrAppName := RNextToken(wstrBody, wstrBody);
-  if (wstrAppName <> Application.Name) then
-    exit;
-
-  RSplitCommandToHeadAndBody(wstrBody, wstrHead, wstrBody);
-  if (wstrHead <> CMD_STREAMS) then
-    exit;
-
-  m_wstrParsedStreamHandle := RNextToken(wstrBody, wstrBody);
-
-  Result := TRUE;
-end;
-
-
-function TAppConnectingAndStreamsListener.RProcessCommand(const wstrCommand: WideString): boolean;
+  DummyListener: TListener;
 begin
   Result := FALSE;
 
@@ -730,61 +742,13 @@ begin
 
       Result := FConnectionEstablishedParseCommand(wstrCommand);
       if (Result) then
-        m_State := sMonitoringStreams;
-    end;
-
-    sMonitoringStreams:
-      FMonitoringStreamsProcessCommand;
-  end;
-
-end;
-
-
-procedure TAppConnectingAndStreamsListener.FMonitoringStreamsProcessCommand;
-var
-  wstr: WideString;
-  strHandle: string;
-  Streams: TApplicationStreamCollection;
-  i: integer;
-  Stream: TApplicationStream;
-  iIndex: integer;
-  DummyListener: TListener;
-begin
-  with TStringList.Create do
-  try
-    strHandle := RNextToken(m_wstrParsedStreamHandle, wstr);
-    while (strHandle <> '') do
-    begin
-      Add(strHandle);
-      strHandle := RNextToken(wstr, wstr);
-    end;
-
-    Streams := Application.Streams._Object as TApplicationStreamCollection;
-
-    i := Streams.Count - 1;
-    while (i >= 0) do
-    begin
-      Stream := Streams[i]._Object as TApplicationStream;
-      if (Find(Stream.Handle, iIndex)) then
-        Streams.Delete(i)
-      else
       begin
-        strHandle := Strings[i];
-        Streams.Add(TApplicationStream.Create(m_Application, strHandle));
-        m_bStreamAquiredFlag := TRUE;
+        DummyListener := self;
+        TSkype.Instance.ListenersManager.DestroyListener(DummyListener);
       end;
-      dec(i);
     end;
-
-  finally
-    Free;
   end;
 
-  if (Streams.Count = 0) then
-  begin
-    DummyListener := self;
-    TSkype.Instance.ListenersManager.DestroyListener(DummyListener);
-  end;
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -810,6 +774,11 @@ procedure TApplicationStream.FCreateListeners;
 begin
   m_DatagramListener := TSkype.Instance.ListenersManager.CreateListener(
     TAppStreamDatagramListener);
+  with (m_DatagramListener as TAppStreamDatagramListener) do
+  begin
+    Application := self.m_Application;
+    Stream := self;
+  end;
 end;
 
 
@@ -935,7 +904,80 @@ end;
 
 procedure TAppStreamDatagramListener.RDoNotify;
 begin
-  TSkype.Instance.DoApplicationDatagram(m_Application, m_Stream, m_wstrText); 
+  TSkype.Instance.DoApplicationDatagram(m_Application, m_Stream, m_wstrText);
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TAppStreamsListener
+
+function TAppStreamsListener.RParseCommand(const wstrCommand: WideString): boolean;
+var
+  wstrHead, wstrBody: WideString;
+  wstrAppName: WideString;
+begin
+  Result := FALSE;
+
+  RSplitCommandToHeadAndBody(wstrCommand, wstrHead, wstrBody);
+  if (wstrHead <> CMD_APPLICATION) then
+    exit;
+
+  wstrAppName := RNextToken(wstrBody, wstrBody);
+  if (wstrAppName <> Application.Name) then
+    exit;
+
+  RSplitCommandToHeadAndBody(wstrBody, wstrHead, wstrBody);
+  if (wstrHead <> CMD_STREAMS) then
+    exit;
+
+  m_wstrParsedStreamHandle := RNextToken(wstrBody, wstrBody);
+
+  Result := TRUE;
+end;
+
+
+function TAppStreamsListener.RProcessCommand(const wstrCommand: WideString): boolean;
+var
+  wstr: WideString;
+  strHandle: string;
+  Streams: TApplicationStreamCollection;
+  i: integer;
+  Stream: TApplicationStream;
+  iIndex: integer;
+begin
+  Result := RParseCommand(wstrCommand);
+  if (not Result) then
+    exit; 
+
+  with TStringList.Create do
+  try
+    strHandle := RNextToken(m_wstrParsedStreamHandle, wstr);
+    while (strHandle <> '') do
+    begin
+      Add(strHandle);
+      strHandle := RNextToken(wstr, wstr);
+    end;
+
+    Streams := m_Application.Streams._Object as TApplicationStreamCollection;
+
+    for i := Streams.Count - 1 downto 0 do
+    begin
+      Stream := Streams[i]._Object as TApplicationStream;
+      if (Find(Stream.Handle, iIndex)) then
+      begin
+        Streams.Delete(i);
+        Delete(iIndex);
+      end;
+    end;
+
+    for i := 0 to Count - 1 do
+    begin
+      strHandle := Strings[i];
+      Streams.Add(TApplicationStream.Create(m_Application, strHandle));
+    end;
+
+  finally
+    Free;
+  end;
 end;
 
 end.

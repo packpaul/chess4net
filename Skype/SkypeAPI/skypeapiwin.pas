@@ -3,7 +3,7 @@ unit SkypeAPIWin;
 interface
 
 uses
-  Windows, Classes, Messages,
+  Windows, Classes, Messages, SysUtils,
   {$IFDEF FPC}
     ClassesWin,
   {$ENDIF}
@@ -18,8 +18,11 @@ type
     FMsgAttach: LongWord;
     FMsgDiscover: LongWord;
     FSkypeWindowHandle: HWND;
+    FReceivedCommandsQueue: TStringList;
+    FThread: TThread;
 
     procedure FProcessMessages(var Msg : TMessage);
+    procedure FProcessPendingCommands;
 
   protected
     constructor RCreate; override;
@@ -33,6 +36,16 @@ type
 
 implementation
 
+type
+  TSkypeAPIWinThread = class(TThread)
+  private
+    FSkypeAPIWin: TSkypeAPIWin;
+  protected
+    procedure Execute; override;
+  public
+    constructor Create(const ASkypeAPIWin: TSkypeAPIWin);
+  end;
+
 { TSkypeAPIWin }
 
 constructor TSkypeAPIWin.RCreate;
@@ -45,11 +58,18 @@ begin
 
   // FProcessMessage will handle incoming messages from Skype client
   FHandle := AllocateHWnd(FProcessMessages);
+
+  FReceivedCommandsQueue := TStringList.Create;
+  FThread := TSkypeAPIWinThread.Create(self);
 end;
 
 
 destructor TSkypeAPIWin.Destroy;
 begin
+  FThread.Terminate;
+  FThread := nil;
+  
+  FreeAndNil(FReceivedCommandsQueue);
   if (FHandle <> 0) then
     DeallocateHWnd(FHandle);
   inherited;
@@ -89,7 +109,8 @@ begin
     // lpData field of that record conatins pointer to a null-terminated string.
     // Through typecasting, we will pass that string to our RecvCommand procedure,
     // where further processing can take place.
-    RDoCommandReceived(PChar(PCopyDataStruct(Msg.LParam).lpData));
+
+    FReceivedCommandsQueue.Add(PChar(PCopyDataStruct(Msg.LParam).lpData));
     exit;
   end;
 
@@ -126,6 +147,43 @@ begin
   CopyData.lpData := @(Command[1]);
 
   SendMessage(FSkypeWindowHandle, WM_COPYDATA, FHandle, LPARAM(@CopyData));
+end;
+
+
+procedure TSkypeAPIWin.FProcessPendingCommands;
+var
+  Command: UTF8String;
+begin
+  while (FReceivedCommandsQueue.Count > 0) do
+  begin
+    Command := FReceivedCommandsQueue[0];
+    FReceivedCommandsQueue.Delete(0);
+    RDoCommandReceived(Command); 
+  end;
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TSkypeAPIWinThread
+
+constructor TSkypeAPIWinThread.Create(const ASkypeAPIWin: TSkypeAPIWin);
+begin
+  FSkypeAPIWin := ASkypeAPIWin;
+  inherited Create(TRUE);
+  FreeOnTerminate := TRUE;
+  Resume;
+end;
+
+
+procedure TSkypeAPIWinThread.Execute;
+begin
+  while (not Terminated) do
+  begin
+    while (FSkypeAPIWin.FReceivedCommandsQueue.Count > 0) do
+    begin
+      Synchronize(FSkypeAPIWin.FProcessPendingCommands);
+    end;
+    Sleep(0);
+  end;
 end;
 
 end.

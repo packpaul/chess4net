@@ -228,7 +228,7 @@ begin
   begin
     FEventThread.Terminate;
     if (Wait) then
-      FEventThread.WaitFor;
+      ; //FEventThread.WaitFor;
     FEventThread := nil;
   end;
 end;
