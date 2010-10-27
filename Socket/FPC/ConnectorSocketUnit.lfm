@@ -1,0 +1,27 @@
+object Connector: TConnector
+  OldCreateOrder = False
+  left = 711
+  top = 347
+  Height = 116
+  HorizontalOffset = 553
+  VerticalOffset = 390
+  Width = 110
+  object sendTimer: TTimer
+    Enabled = False
+    Interval = 50
+    OnTimer = sendTimerTimer
+    left = 40
+  end
+  object LTCPComponent: TLTCPComponent
+    Port = 0
+    OnReceive = LTCPComponentReceive
+    OnError = LTCPComponentError
+    OnDisconnect = LTCPComponentDisconnect
+    OnConnect = LTCPComponentConnect
+    OnAccept = LTCPComponentAccept
+    Timeout = 0
+    ReuseAddress = True
+    left = 40
+    top = 56
+  end
+end

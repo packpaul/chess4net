@@ -1,0 +1,47 @@
+{ This is an automatically generated lazarus resource file }
+
+LazarusResources.Add('TManager','FORMDATA',[
+  'TPF0'#8'TManager'#7'Manager'#4'Left'#2's'#6'Height'#3'V'#2#3'Top'#2's'#5'Wid'
+  +'th'#3'('#4#18'HorzScrollBar.Page'#3#197#0#18'VertScrollBar.Page'#2'D'#11'Bo'
+  +'rderIcons'#11#0#11'BorderStyle'#7#12'bsToolWindow'#7'Caption'#6#7'Manager'
+  +#11'Font.Height'#2#245#9'Font.Name'#6#13'MS Sans Serif'#7'OnClose'#7#9'FormC'
+  +'lose'#8'OnCreate'#7#10'FormCreate'#9'OnDestroy'#7#11'FormDestroy'#8'Positio'
+  +'n'#7#9'poDefault'#10'LCLVersion'#6#8'0.9.28.2'#0#10'TPopupMenu'#13'MainPopu'
+  +'pMenu'#9'AutoPopup'#8#4'left'#2'@'#3'top'#2#8#0#9'TMenuItem'#11'ConnectMain'
+  +#7'Caption'#6#10'Connect...'#7'OnClick'#7#16'ConnectMainClick'#0#0#9'TMenuIt'
+  +'em'#2'N2'#7'Caption'#6#1'-'#0#0#9'TMenuItem'#19'LookFeelOptionsMain'#6'Acti'
+  +'on'#7#13'OptionsAction'#7'Caption'#6#23'Look && Feel Options...'#7'OnClick'
+  +#7#20'OptionsActionExecute'#0#0#9'TMenuItem'#2'N1'#7'Caption'#6#1'-'#0#0#9'T'
+  +'MenuItem'#8'ExitMain'#6'Action'#7#10'ExitAction'#7'OnClick'#7#17'ExitAction'
+  +'Execute'#0#0#0#11'TActionList'#10'ActionList'#4'left'#2'@'#3'top'#3#168#0#0
+  +#7'TAction'#10'ExitAction'#7'Caption'#6#4'Exit'#9'OnExecute'#7#17'ExitAction'
+  +'Execute'#0#0#7'TAction'#13'OptionsAction'#7'Caption'#6#10'Options...'#9'OnE'
+  +'xecute'#7#20'OptionsActionExecute'#0#0#7'TAction'#10'CopyAction'#8'Category'
+  +#6#4'Edit'#7'Caption'#6#4'Copy'#0#0#7'TAction'#11'PasteAction'#8'Category'#6
+  +#4'Edit'#7'Caption'#6#5'Paste'#0#0#0#10'TPopupMenu'#18'ConnectedPopupMenu'#9
+  +'AutoPopup'#8#4'left'#2'@'#3'top'#2'@'#0#9'TMenuItem'#26'StartStandartGameCo'
+  +'nnected'#7'Caption'#6#19'Start Standart Game'#7'OnClick'#7#31'StartStandart'
+  +'GameConnectedClick'#0#0#9'TMenuItem'#26'StartPPRandomGameConnected'#7'Capti'
+  +'on'#6#20'Start PP Random Game'#7'OnClick'#7#31'StartPPRandomGameConnectedCl'
+  +'ick'#0#0#9'TMenuItem'#20'ChangeColorConnected'#7'Caption'#6#12'Change Color'
+  +#7'OnClick'#7#25'ChangeColorConnectedClick'#0#0#9'TMenuItem'#20'GameOptionsC'
+  +'onnected'#7'Caption'#6#15'Game Options...'#7'OnClick'#7#25'GameOptionsConne'
+  +'ctedClick'#0#0#9'TMenuItem'#2'N3'#7'Caption'#6#1'-'#0#0#9'TMenuItem'#24'Loo'
+  +'kFeelOptionsConnected'#6'Action'#7#13'OptionsAction'#7'Caption'#6#23'Look &'
+  +'& Feel Options...'#7'OnClick'#7#20'OptionsActionExecute'#0#0#9'TMenuItem'#9
+  +'MenuItem4'#7'Caption'#6#1'-'#0#0#9'TMenuItem'#19'DisconnectConnected'#7'Cap'
+  +'tion'#6#10'Disconnect'#7'OnClick'#7#24'DisconnectConnectedClick'#0#0#9'TMen'
+  +'uItem'#13'ExitConnected'#6'Action'#7#10'ExitAction'#7'OnClick'#7#17'ExitAct'
+  +'ionExecute'#0#0#0#10'TPopupMenu'#13'GamePopupMenu'#9'AutoPopup'#8#4'left'#2
+  +'@'#3'top'#2'x'#0#9'TMenuItem'#9'AbortGame'#7'Caption'#6#5'Abort'#7'OnClick'
+  +#7#14'AbortGameClick'#0#0#9'TMenuItem'#8'DrawGame'#7'Caption'#6#4'Draw'#7'On'
+  +'Click'#7#13'DrawGameClick'#0#0#9'TMenuItem'#10'ResignGame'#7'Caption'#6#6'R'
+  +'esign'#7'OnClick'#7#15'ResignGameClick'#0#0#9'TMenuItem'#9'GamePause'#7'Cap'
+  +'tion'#6#5'Pause'#7'Visible'#8#7'OnClick'#7#14'GamePauseClick'#0#0#9'TMenuIt'
+  +'em'#12'TakebackGame'#7'Caption'#6#8'Takeback'#7'Visible'#8#7'OnClick'#7#17
+  +'TakebackGameClick'#0#0#9'TMenuItem'#2'N4'#7'Caption'#6#1'-'#0#0#9'TMenuItem'
+  +#19'LookFeelOptionsGame'#6'Action'#7#13'OptionsAction'#7'Caption'#6#23'Look '
+  +'&& Feel Options...'#7'OnClick'#7#20'OptionsActionExecute'#0#0#9'TMenuItem'#2
+  +'N5'#7'Caption'#6#1'-'#0#0#9'TMenuItem'#8'ExitGame'#6'Action'#7#10'ExitActio'
+  +'n'#7'OnClick'#7#17'ExitActionExecute'#0#0#0#0
+]);

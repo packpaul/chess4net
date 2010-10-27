@@ -1,0 +1,144 @@
+object Manager: TManager
+  Left = 115
+  Height = 598
+  Top = 115
+  Width = 1064
+  HorzScrollBar.Page = 197
+  VertScrollBar.Page = 68
+  BorderIcons = []
+  BorderStyle = bsToolWindow
+  Caption = 'Manager'
+  Font.Height = -11
+  Font.Name = 'MS Sans Serif'
+  OnClose = FormClose
+  OnCreate = FormCreate
+  OnDestroy = FormDestroy
+  Position = poDefault
+  LCLVersion = '0.9.28.2'
+  object MainPopupMenu: TPopupMenu
+    AutoPopup = False
+    left = 64
+    top = 8
+    object ConnectMain: TMenuItem
+      Caption = 'Connect...'
+      OnClick = ConnectMainClick
+    end
+    object N2: TMenuItem
+      Caption = '-'
+    end
+    object LookFeelOptionsMain: TMenuItem
+      Action = OptionsAction
+      Caption = 'Look && Feel Options...'
+      OnClick = OptionsActionExecute
+    end
+    object N1: TMenuItem
+      Caption = '-'
+    end
+    object ExitMain: TMenuItem
+      Action = ExitAction
+      OnClick = ExitActionExecute
+    end
+  end
+  object ActionList: TActionList
+    left = 64
+    top = 168
+    object ExitAction: TAction
+      Caption = 'Exit'
+      OnExecute = ExitActionExecute
+    end
+    object OptionsAction: TAction
+      Caption = 'Options...'
+      OnExecute = OptionsActionExecute
+    end
+    object CopyAction: TAction
+      Category = 'Edit'
+      Caption = 'Copy'
+    end
+    object PasteAction: TAction
+      Category = 'Edit'
+      Caption = 'Paste'
+    end
+  end
+  object ConnectedPopupMenu: TPopupMenu
+    AutoPopup = False
+    left = 64
+    top = 64
+    object StartStandartGameConnected: TMenuItem
+      Caption = 'Start Standart Game'
+      OnClick = StartStandartGameConnectedClick
+    end
+    object StartPPRandomGameConnected: TMenuItem
+      Caption = 'Start PP Random Game'
+      OnClick = StartPPRandomGameConnectedClick
+    end
+    object ChangeColorConnected: TMenuItem
+      Caption = 'Change Color'
+      OnClick = ChangeColorConnectedClick
+    end
+    object GameOptionsConnected: TMenuItem
+      Caption = 'Game Options...'
+      OnClick = GameOptionsConnectedClick
+    end
+    object N3: TMenuItem
+      Caption = '-'
+    end
+    object LookFeelOptionsConnected: TMenuItem
+      Action = OptionsAction
+      Caption = 'Look && Feel Options...'
+      OnClick = OptionsActionExecute
+    end
+    object MenuItem4: TMenuItem
+      Caption = '-'
+    end
+    object DisconnectConnected: TMenuItem
+      Caption = 'Disconnect'
+      OnClick = DisconnectConnectedClick
+    end
+    object ExitConnected: TMenuItem
+      Action = ExitAction
+      OnClick = ExitActionExecute
+    end
+  end
+  object GamePopupMenu: TPopupMenu
+    AutoPopup = False
+    left = 64
+    top = 120
+    object AbortGame: TMenuItem
+      Caption = 'Abort'
+      OnClick = AbortGameClick
+    end
+    object DrawGame: TMenuItem
+      Caption = 'Draw'
+      OnClick = DrawGameClick
+    end
+    object ResignGame: TMenuItem
+      Caption = 'Resign'
+      OnClick = ResignGameClick
+    end
+    object GamePause: TMenuItem
+      Caption = 'Pause'
+      Visible = False
+      OnClick = GamePauseClick
+    end
+    object TakebackGame: TMenuItem
+      Caption = 'Takeback'
+      Visible = False
+      OnClick = TakebackGameClick
+    end
+    object N4: TMenuItem
+      Caption = '-'
+    end
+    object LookFeelOptionsGame: TMenuItem
+      Action = OptionsAction
+      Caption = 'Look && Feel Options...'
+      OnClick = OptionsActionExecute
+    end
+    object N5: TMenuItem
+      Caption = '-'
+    end
+    object ExitGame: TMenuItem
+      Action = ExitAction
+      OnClick = ExitActionExecute
+    end
+  end
+end

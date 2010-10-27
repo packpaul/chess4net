@@ -1,0 +1,177 @@
+<?xml version="1.0"?>
+<CONFIG>
+  <ProjectOptions>
+    <PathDelim Value="\"/>
+    <Version Value="7"/>
+    <General>
+      <Flags>
+        <SaveOnlyProjectUnits Value="True"/>
+        <AlwaysBuild Value="False"/>
+        <LRSInOutputDirectory Value="False"/>
+      </Flags>
+      <SessionStorage Value="InIDEConfig"/>
+      <MainUnit Value="0"/>
+      <TargetFileExt Value=".exe"/>
+      <Title Value="Chess4Net"/>
+      <Icon Value="0"/>
+    </General>
+    <VersionInfo>
+      <ProjectVersion Value=""/>
+    </VersionInfo>
+    <PublishOptions>
+      <Version Value="2"/>
+      <IgnoreBinaries Value="False"/>
+      <IncludeFileFilter Value="*.(pas|pp|inc|lfm|lpr|lrs|lpi|lpk|sh|xml)"/>
+      <ExcludeFileFilter Value="*.(bak|ppu|ppw|o|so);*~;backup"/>
+    </PublishOptions>
+    <RunParams>
+      <local>
+        <FormatVersion Value="1"/>
+        <LaunchingApplication PathPlusParams="/usr/X11R6/bin/xterm -T 'Lazarus Run Output' -e $(LazarusDir)/tools/runwait.sh $(TargetCmdLine)"/>
+      </local>
+    </RunParams>
+    <RequiredPackages Count="2">
+      <Item1>
+        <PackageName Value="lnetvisual"/>
+        <MinVersion Minor="5" Release="8" Valid="True"/>
+      </Item1>
+      <Item2>
+        <PackageName Value="LCL"/>
+      </Item2>
+    </RequiredPackages>
+    <Units Count="14">
+      <Unit0>
+        <Filename Value="Chess4Net.lpr"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="Chess4Net"/>
+      </Unit0>
+      <Unit1>
+        <Filename Value="ManagerSocketUnit.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="Manager"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="ManagerSocketUnit"/>
+      </Unit1>
+      <Unit2>
+        <Filename Value="PromotionUnit.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="PromotionForm"/>
+        <HasResources Value="True"/>
+        <UnitName Value="PromotionUnit"/>
+      </Unit2>
+      <Unit3>
+        <Filename Value="ConnectorSocketUnit.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="Connector"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="DataModule"/>
+        <UnitName Value="ConnectorSocketUnit"/>
+      </Unit3>
+      <Unit4>
+        <Filename Value="PosBaseUnit.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="PosBaseUnit"/>
+      </Unit4>
+      <Unit5>
+        <Filename Value="PosBaseChessBoardUnit.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="PosBaseChessBoardUnit"/>
+      </Unit5>
+      <Unit6>
+        <Filename Value="GlobalsSocketUnit.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="GlobalsSocketUnit"/>
+      </Unit6>
+      <Unit7>
+        <Filename Value="GlobalsUnit.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="GlobalsUnit"/>
+      </Unit7>
+      <Unit8>
+        <Filename Value="ModalForm.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="ModalForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="ModalForm"/>
+      </Unit8>
+      <Unit9>
+        <Filename Value="win32\ChessBoardUnit.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="ChessBoard"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="ChessBoardUnit"/>
+      </Unit9>
+      <Unit10>
+        <Filename Value="win32\ConnectionUnit.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="ConnectionForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="ConnectionUnit"/>
+      </Unit10>
+      <Unit11>
+        <Filename Value="win32\GameOptionsUnit.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="GameOptionsForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="GameOptionsUnit"/>
+      </Unit11>
+      <Unit12>
+        <Filename Value="win32\LookFeelOptionsUnit.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="LookFeelOptionsForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="LookFeelOptionsUnit"/>
+      </Unit12>
+      <Unit13>
+        <Filename Value="win32\ContinueUnit.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="ContinueForm"/>
+        <HasResources Value="True"/>
+        <UnitName Value="ContinueUnit"/>
+      </Unit13>
+    </Units>
+  </ProjectOptions>
+  <CompilerOptions>
+    <Version Value="8"/>
+    <PathDelim Value="\"/>
+    <Target>
+      <Filename Value="..\..\bin\Chess4Net"/>
+    </Target>
+    <SearchPaths>
+      <IncludeFiles Value="win32\"/>
+      <OtherUnitFiles Value="win32\"/>
+      <UnitOutputDirectory Value="bin"/>
+    </SearchPaths>
+    <Parsing>
+      <SyntaxOptions>
+        <SyntaxMode Value="Delphi"/>
+        <IncludeAssertionCode Value="True"/>
+      </SyntaxOptions>
+    </Parsing>
+    <CodeGeneration>
+      <SmartLinkUnit Value="True"/>
+      <SmallerCode Value="True"/>
+    </CodeGeneration>
+    <Linking>
+      <Debugging>
+        <UseLineInfoUnit Value="False"/>
+        <StripSymbols Value="True"/>
+      </Debugging>
+      <LinkSmart Value="True"/>
+      <Options>
+        <Win32>
+          <GraphicApplication Value="True"/>
+        </Win32>
+      </Options>
+    </Linking>
+    <Other>
+      <CompilerPath Value="$(CompPath)"/>
+    </Other>
+  </CompilerOptions>
+</CONFIG>

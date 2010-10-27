@@ -1,0 +1,38 @@
+inherited ContinueForm: TContinueForm
+  Left = 422
+  Height = 84
+  Top = 235
+  Width = 248
+  HorzScrollBar.Page = 247
+  VertScrollBar.Page = 83
+  ActiveControl = ContinueButton
+  BorderStyle = bsDialog
+  Font.Height = -11
+  Font.Name = 'MS Sans Serif'
+  OnClose = FormClose
+  OnCreate = FormCreate
+  OnShow = FormShow
+  ShowInTaskBar = stAlways
+  object ContinueLabel: TLabel
+    Left = 16
+    Height = 20
+    Top = 12
+    Width = 223
+    Caption = 'Press button to continue the game.'
+    Color = clNone
+    ParentColor = False
+  end
+  object ContinueButton: TButton
+    Left = 88
+    Height = 25
+    Top = 40
+    Width = 75
+    BorderSpacing.InnerBorder = 4
+    Cancel = True
+    Caption = 'Continue'
+    Default = True
+    ModalResult = 1
+    OnClick = ContinueButtonClick
+    TabOrder = 0
+  end
+end

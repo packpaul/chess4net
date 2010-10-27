@@ -1,0 +1,23 @@
+object PromotionForm: TPromotionForm
+  Cursor = crHandPoint
+  Left = 512
+  Height = 40
+  Top = 288
+  Width = 166
+  HorzScrollBar.Page = 165
+  VertScrollBar.Page = 39
+  AutoSize = True
+  BorderIcons = []
+  BorderStyle = bsNone
+  Caption = 'Promoting Figures'
+  Font.Height = -11
+  Font.Name = 'MS Sans Serif'
+  OnKeyPress = FormKeyPress
+  OnShow = FormShow
+  object PromFigImage: TImage
+    Height = 40
+    Width = 166
+    OnMouseUp = PromFigImageMouseUp
+    Transparent = False
+  end
+end

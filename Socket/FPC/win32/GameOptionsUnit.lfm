@@ -1,0 +1,293 @@
+inherited GameOptionsForm: TGameOptionsForm
+  Left = 936
+  Height = 483
+  Top = 148
+  Width = 364
+  HorzScrollBar.Page = 363
+  VertScrollBar.Page = 482
+  ActiveControl = EqualTimeCheckBox
+  BorderIcons = [biSystemMenu]
+  BorderStyle = bsDialog
+  Caption = 'Game Options'
+  Font.Height = -11
+  Font.Name = 'MS Sans Serif'
+  OnShow = FormShow
+  object OkButton: TButton
+    Left = 280
+    Height = 25
+    Top = 16
+    Width = 75
+    BorderSpacing.InnerBorder = 4
+    Caption = '&OK'
+    Default = True
+    ModalResult = 1
+    TabOrder = 3
+  end
+  object CancelButton: TButton
+    Left = 280
+    Height = 25
+    Top = 48
+    Width = 75
+    BorderSpacing.InnerBorder = 4
+    Cancel = True
+    Caption = '&Cancel'
+    ModalResult = 2
+    TabOrder = 4
+  end
+  object GroupBox1: TGroupBox
+    Left = 8
+    Height = 265
+    Top = 8
+    Width = 257
+    Caption = 'Time Control'
+    TabOrder = 0
+    object EqualTimeCheckBox: TCheckBox
+      Left = 16
+      Height = 13
+      Top = 8
+      Width = 144
+      Caption = 'Equal time for both players'
+      Checked = True
+      OnChange = EqualTimeCheckBoxChange
+      State = cbChecked
+      TabOrder = 0
+    end
+    object YouGroupBox: TGroupBox
+      Left = 32
+      Height = 97
+      Top = 32
+      Width = 193
+      Caption = 'Your time'
+      TabOrder = 1
+      object YouMinLabel: TLabel
+        Left = 16
+        Height = 14
+        Top = 24
+        Width = 88
+        Caption = 'Minutes per game:'
+        Color = clNone
+        ParentColor = False
+      end
+      object YouIncLabel: TLabel
+        Left = 16
+        Height = 14
+        Top = 48
+        Width = 105
+        Caption = 'Increment in seconds:'
+        Color = clNone
+        ParentColor = False
+      end
+      object YouMinEdit: TEdit
+        Left = 128
+        Height = 21
+        Top = 24
+        Width = 41
+        MaxLength = 3
+        OnChange = YouEditChange
+        OnKeyDown = nil
+        TabOrder = 1
+        Text = '5'
+      end
+      object YouIncEdit: TEdit
+        Left = 128
+        Height = 21
+        Top = 48
+        Width = 41
+        OnChange = YouEditChange
+        OnKeyDown = nil
+        TabOrder = 2
+        Text = '0'
+      end
+      object YouUnlimitedCheckBox: TCheckBox
+        Left = 16
+        Height = 13
+        Width = 63
+        Caption = 'Unlimited'
+        OnChange = UnlimitedCheckBoxChange
+        TabOrder = 0
+      end
+      object YouMinUpDown: TUpDown
+        Left = 169
+        Height = 21
+        Top = 24
+        Width = 15
+        Associate = YouMinEdit
+        Min = 1
+        Max = 999
+        Position = 5
+        TabOrder = 3
+      end
+      object YouIncUpDown: TUpDown
+        Left = 169
+        Height = 21
+        Top = 48
+        Width = 15
+        Associate = YouIncEdit
+        Max = 999
+        TabOrder = 4
+      end
+    end
+    object OpponentGroupBox: TGroupBox
+      Left = 32
+      Height = 97
+      Top = 136
+      Width = 193
+      Caption = 'Opponent''s time'
+      TabOrder = 2
+      object OpponentMinLabel: TLabel
+        Left = 16
+        Height = 14
+        Top = 24
+        Width = 88
+        Caption = 'Minutes per game:'
+        Color = clNone
+        ParentColor = False
+      end
+      object OpponentIncLabel: TLabel
+        Left = 16
+        Height = 14
+        Top = 48
+        Width = 105
+        Caption = 'Increment in seconds:'
+        Color = clNone
+        ParentColor = False
+      end
+      object OpponentIncEdit: TEdit
+        Left = 128
+        Height = 21
+        Top = 48
+        Width = 41
+        OnChange = OpponentEditChange
+        OnKeyDown = nil
+        TabOrder = 2
+        Text = '0'
+      end
+      object OpponentMinEdit: TEdit
+        Left = 128
+        Height = 21
+        Top = 24
+        Width = 41
+        MaxLength = 3
+        OnChange = OpponentEditChange
+        OnKeyDown = nil
+        TabOrder = 1
+        Text = '5'
+      end
+      object OpponentUnlimitedCheckBox: TCheckBox
+        Left = 16
+        Height = 13
+        Width = 63
+        Caption = 'Unlimited'
+        OnChange = UnlimitedCheckBoxChange
+        TabOrder = 0
+      end
+      object OpponentMinUpDown: TUpDown
+        Left = 169
+        Height = 21
+        Top = 24
+        Width = 15
+        Associate = OpponentMinEdit
+        Min = 1
+        Max = 999
+        Position = 5
+        TabOrder = 3
+      end
+      object OpponentIncUpDown: TUpDown
+        Left = 169
+        Height = 21
+        Top = 48
+        Width = 16
+        Associate = OpponentIncEdit
+        Max = 999
+        TabOrder = 4
+      end
+    end
+  end
+  object Panel1: TPanel
+    Left = 8
+    Height = 81
+    Top = 392
+    Width = 257
+    BevelInner = bvRaised
+    BevelOuter = bvLowered
+    TabOrder = 2
+    object AutoFlagCheckBox: TCheckBox
+      Left = 8
+      Height = 13
+      Top = 56
+      Width = 65
+      Caption = 'Auto Flag'
+      Checked = True
+      State = cbChecked
+      TabOrder = 2
+    end
+    object TakeBackCheckBox: TCheckBox
+      Left = 8
+      Height = 13
+      Top = 32
+      Width = 169
+      Caption = 'Allow takebacks to your partner'
+      TabOrder = 1
+    end
+    object GamePauseCheckBox: TCheckBox
+      Left = 8
+      Height = 13
+      Top = 8
+      Width = 122
+      Caption = 'Game can be paused'
+      TabOrder = 0
+    end
+  end
+  object GroupBox2: TGroupBox
+    Left = 8
+    Height = 97
+    Top = 280
+    Width = 257
+    Caption = 'Training Mode'
+    TabOrder = 1
+    object ExtBaseLabel: TLabel
+      Left = 16
+      Height = 14
+      Top = 24
+      Width = 68
+      Caption = 'External base:'
+      Color = clNone
+      ParentColor = False
+    end
+    object TrainingEnabledCheckBox: TCheckBox
+      Left = 16
+      Height = 13
+      Width = 59
+      Caption = 'Enabled'
+      OnChange = TrainingEnabledCheckBoxChange
+      TabOrder = 0
+    end
+    object ExtBaseComboBox: TComboBox
+      Left = 104
+      Height = 21
+      Top = 20
+      Width = 137
+      AutoCompleteText = [cbactEndOfLineComplete, cbactSearchAscending]
+      Enabled = False
+      ItemHeight = 13
+      ItemIndex = 0
+      Items.Strings = (
+        '<No>'
+      )
+      MaxLength = 0
+      OnChange = ExtBaseComboBoxChange
+      Style = csDropDownList
+      TabOrder = 1
+      Text = '<No>'
+    end
+    object UsrBaseCheckBox: TCheckBox
+      Left = 104
+      Height = 13
+      Top = 48
+      Width = 88
+      Caption = 'Use user base'
+      Enabled = False
+      TabOrder = 2
+    end
+  end
+end

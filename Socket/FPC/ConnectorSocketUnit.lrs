@@ -1,0 +1,12 @@
+{ This is an automatically generated lazarus resource file }
+
+LazarusResources.Add('TConnector','FORMDATA',[
+  'TPF0'#10'TConnector'#9'Connector'#14'OldCreateOrder'#8#4'left'#3#199#2#3'top'
+  +#3'['#1#6'Height'#2't'#16'HorizontalOffset'#3')'#2#14'VerticalOffset'#3#134#1
+  +#5'Width'#2'n'#0#6'TTimer'#9'sendTimer'#7'Enabled'#8#8'Interval'#2'2'#7'OnTi'
+  +'mer'#7#14'sendTimerTimer'#4'left'#2'('#0#0#14'TLTCPComponent'#13'LTCPCompon'
+  +'ent'#4'Port'#2#0#9'OnReceive'#7#20'LTCPComponentReceive'#7'OnError'#7#18'LT'
+  +'CPComponentError'#12'OnDisconnect'#7#23'LTCPComponentDisconnect'#9'OnConnec'
+  +'t'#7#20'LTCPComponentConnect'#8'OnAccept'#7#19'LTCPComponentAccept'#7'Timeo'
+  +'ut'#2#0#12'ReuseAddress'#9#4'left'#2'('#3'top'#2'8'#0#0#0
+]);
