@@ -105,7 +105,7 @@
         <UnitName Value="ChessBoardUnit"/>
       </Unit9>
       <Unit10>
-        <Filename Value="..\..\FPC\win32\ConnectionUnit.pas"/>
+        <Filename Value="win32\ConnectionUnit.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="ConnectionForm"/>
         <HasResources Value="True"/>
@@ -153,8 +153,8 @@
       <Filename Value="..\..\bin\Chess4Net"/>
     </Target>
     <SearchPaths>
-      <IncludeFiles Value="..\..\FPC\;..\..\FPC\win32\"/>
-      <OtherUnitFiles Value="..\..\FPC\;..\..\FPC\win32\"/>
+      <IncludeFiles Value="..\..\FPC\;..\..\FPC\win32\;win32\"/>
+      <OtherUnitFiles Value="..\..\FPC\;..\..\FPC\win32\;win32\"/>
       <UnitOutputDirectory Value="bin"/>
     </SearchPaths>
     <Parsing>

@@ -232,7 +232,10 @@ begin
       if extra_exit and (Word(d1) = $1b) then // VK_ESCAPE
         Close;
     cbeExit:
-      Close(TRUE);
+    begin
+      if (ChessBoard.Enabled) then
+        Close(TRUE);
+    end;
     cbeMenu:
       begin
         case ChessBoard.Mode of

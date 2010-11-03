@@ -104,7 +104,7 @@
         <UnitName Value="ChessBoardUnit"/>
       </Unit9>
       <Unit10>
-        <Filename Value="../../FPC/gtk2/ConnectionUnit.pas"/>
+        <Filename Value="gtk2/ConnectionUnit.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="ConnectionForm"/>
         <HasResources Value="True"/>
@@ -151,8 +151,8 @@
       <Filename Value="../../bin/Chess4Net"/>
     </Target>
     <SearchPaths>
-      <IncludeFiles Value="../../FPC/;../../FPC/gtk2/"/>
-      <OtherUnitFiles Value="../../FPC/;../../FPC/gtk2/"/>
+      <IncludeFiles Value="../../FPC/;../../FPC/gtk2/;gtk2/"/>
+      <OtherUnitFiles Value="../../FPC/;../../FPC/gtk2/;gtk2/"/>
       <UnitOutputDirectory Value="bin"/>
       <LCLWidgetType Value="gtk2"/>
     </SearchPaths>
