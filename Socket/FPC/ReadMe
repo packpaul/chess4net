@@ -5,6 +5,6 @@ For compilation the following versions of FPC/Lazarus are to be used:
 FPC Version: 2.2.4
 Lazarus version: 0.9.28.2 beta (SVN Revision 22279)
 
-DEPENDANCIES:
+DEPENDENCIES:
 
 ..\..\lnet library

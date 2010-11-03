@@ -22,9 +22,10 @@ implementation
 initialization
 {$IFDEF WINDOWS}
 //  Chess4NetPath := ExtractFileDir(Application.ExeName) + DirectorySeparator;
-  Chess4NetPath := '.\';
+  Chess4NetPath := '.' + DirectorySeparator;
 {$ELSE} {$IFDEF UNIX}
-  Chess4NetPath := '~/.Chess4Net/';
+//  Chess4NetPath := '~/.Chess4Net/';
+  Chess4NetPath := '.' + DirectorySeparator;
 {$ELSE}
   Assert(FALSE);
 {$ENDIF} {$ENDIF}

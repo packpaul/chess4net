@@ -7,11 +7,10 @@ unit ManagerSocketUnit;
 interface
 
 uses
-  LCLIntf, { Messages, } SysUtils, Classes, Graphics, Controls, Forms,
-  Dialogs, Menus, ActnList, ExtCtrls,
+  LCLIntf, SysUtils, Classes, Graphics, Controls, Forms,
+  Dialogs, Menus, ActnList, ExtCtrls, LResources,
   // Chess4Net Units
-  ChessBoardUnit, PosBaseChessBoardUnit, ConnectorSocketUnit, ConnectingUnit, ContinueUnit,
-  LResources;
+  ChessBoardUnit, PosBaseChessBoardUnit, ConnectorSocketUnit, ConnectingUnit, ContinueUnit;
 
 type
   TManager = class(TForm)
@@ -82,6 +81,11 @@ type
     extra_exit: boolean;
     opponentClientVersion : LongWord;
     ipDomainPortServer: string;
+
+    m_bServerSelected: boolean;
+    m_strIP: string;
+    m_iPort: integer;
+
 {$IFDEF GAME_LOG}
     // для лога игры
     gameLog: string;
@@ -109,6 +113,8 @@ type
     procedure ChangeColor;
     procedure PauseGame;
     procedure ContinueGame;
+
+    procedure FOnConnectingFormShow(Sender: TObject);
 
   public
     procedure Close(ask: boolean = FALSE);
@@ -343,11 +349,12 @@ begin
   case e of
     ceConnected:
       begin
-        if Assigned(ConnectingForm) then
-          begin
-            ConnectingForm.Shut;
-            ConnectingForm := nil; // освобождается caFree
-          end;
+        if (Assigned(ConnectingForm)) then
+        begin
+          ConnectingForm.Shut;
+          // ConnectingForm.Release; // caFree
+          ConnectingForm := nil;
+        end;
         ChessBoard.Enabled := TRUE;
         SendData(CMD_VERSION + ' ' + IntToStr(CHESS4NET_VERSION));
       end;
@@ -704,10 +711,11 @@ l:
             if sl = CMD_CONTINUE_GAME then
               begin
                 if Assigned(ContinueForm) then
-                  begin
-                    ContinueForm.Shut;
-                    ContinueForm := nil; // освобождается caFree
-                  end;
+                begin
+                  ContinueForm.Shut;
+                  // ContinueForm.Release; // caFree
+                  ContinueForm := nil;
+                end;
                 ChessBoard.Enabled := TRUE;
                 ContinueGame;
               end
@@ -785,7 +793,7 @@ begin
   WritePrivateSettings;
   ExtBaseList.Free;
   Connector.Free;
-  ChessBoard.Free;
+  ChessBoard.Release;
 end;
 
 procedure TManager.ExitActionExecute(Sender: TObject);
@@ -814,7 +822,7 @@ begin
       StayOnTop := StayOnTopBox.Checked;
       extra_exit := ExtraExitBox.Checked;
     finally
-      lookFeelOptionsForm.Free;
+      // lookFeelOptionsForm.Release; // caFree
     end;
 end;
 
@@ -826,49 +834,66 @@ var
   s: string;
   setServer: boolean;
 begin
-  if Assigned(ConnectingForm) then
+  if (Assigned(ConnectingForm)) then
     exit;
+
   ConnectionForm := TConnectionForm.Create(ChessBoard);
   with ConnectionForm, Connector do
-    try
-      NickEdit.Text := player_nick;
-      s := ipDomainPortServer;
-      setServer := (s[length(s)] = 'S');
-      s := LeftStr(s, length(s) - 2);
-      p := pos(':', s);
-      if p >= 1 then
-        begin
-          // TODO: проверка на синтаксис IP
-          IPEdit.Text := LeftStr(s, p - 1);
-          PortEdit.Text := RightStr(s, length(s) - p);
-        end;
-      if setServer then
-        ConnectionForm.ServerRadioButton.Checked := TRUE
-      else
-        ConnectionForm.ClientRadioButton.Checked := TRUE;
-      if ConnectionForm.ShowModal = mrCancel then
-        exit;
-      // mrOk
-      player_nick := NickEdit.Text;
-      ipDomainPortServer := IPEdit.Text + ':' + IntToStr(GetPort);
-      if ConnectionForm.ServerRadioButton.Checked then
-        ipDomainPortServer := ipDomainPortServer + '-S'
-      else
-        ipDomainPortServer := ipDomainPortServer + '-C';
-      if ServerRadioButton.Checked then
-        OpenServer(GetPort)
-      else
-        OpenClient(IPEdit.Text, GetPort);
-    finally
-      ConnectionForm.Free;
-    end;
-  if Connector.State <> [] then
+  try
+    NickEdit.Text := player_nick;
+    s := ipDomainPortServer;
+    setServer := (s[length(s)] = 'S');
+    s := LeftStr(s, length(s) - 2);
+    p := pos(':', s);
+    if (p >= 1) then
     begin
-      ConnectingForm := TConnectingForm.Create(ChessBoard, ConnectionAbort);
-      ChessBoard.Enabled := FALSE;
-      ConnectingForm.Show;
+      // TODO: проверка на синтаксис IP
+      IPEdit.Text := LeftStr(s, p - 1);
+      PortEdit.Text := RightStr(s, length(s) - p);
     end;
+    if setServer then
+      ConnectionForm.ServerRadioButton.Checked := TRUE
+    else
+      ConnectionForm.ClientRadioButton.Checked := TRUE;
+    if ConnectionForm.ShowModal = mrCancel then
+      exit;
+    // mrOk
+    player_nick := NickEdit.Text;
+    ipDomainPortServer := IPEdit.Text + ':' + IntToStr(GetPort);
+    if ConnectionForm.ServerRadioButton.Checked then
+      ipDomainPortServer := ipDomainPortServer + '-S'
+    else
+      ipDomainPortServer := ipDomainPortServer + '-C';
+
+    m_bServerSelected := ServerRadioButton.Checked;
+    m_iPort := GetPort;
+    if (not m_bServerSelected) then
+      m_strIP := IPEdit.Text;
+
+  finally
+    ConnectionForm.Release; // TODO: -> TModalForm
+  end;
+
+  Application.ProcessMessages;
+
+  if (Connector.State = []) then
+  begin
+    ConnectingForm := TConnectingForm.Create(ChessBoard, ConnectionAbort);
+    ConnectingForm.OnShow := FOnConnectingFormShow;
+    ChessBoard.Enabled := FALSE;
+    ConnectingForm.Show;
+  end;
 end;
+
+
+procedure TManager.FOnConnectingFormShow(Sender: TObject);
+begin
+  if (m_bServerSelected) then
+    Connector.OpenServer(m_iPort)
+  else
+    Connector.OpenClient(m_strIP, m_iPort);
+end;
+
 
 procedure TManager.AbortGameClick(Sender: TObject);
 begin
@@ -1017,13 +1042,14 @@ begin
           SendData(CMD_GAME_OPTIONS + ' ' + s);
         end;
     finally
-      GameOptionsForm.Free;
+      // GameOptionsForm.Release; // caFree
     end;  
 end;
 
 procedure TManager.ConnectionAbort;
 begin
-  ConnectingForm := nil; // caFree
+  // ConnectingForm.Release; // caFree
+  ConnectingForm := nil;
   ChessBoard.Enabled := TRUE;
   Connector.Close;
 end;
@@ -1104,24 +1130,25 @@ var
   x, y: integer;
 begin
   with CreateMessageDialog(Msg, DlgType, Buttons) do
-    begin
-      Position := poDesigned;
+  try
+    Position := poDesigned;
 {$IFDEF LCLgtk2}
-      with Constraints do
-        begin
-          MinWidth := Width;
-          MaxWidth := Width;
-          MinHeight := Height;
-          MaxHeight := Height;
-        end;
+    with Constraints do
+      begin
+        MinWidth := Width;
+        MaxWidth := Width + 1;
+        MinHeight := Height;
+        MaxHeight := Height + 1;
+      end;
 {$ENDIF}
-      Caption := DIALOG_CAPTION;
-      FormStyle := ChessBoard.FormStyle;
-      Left := ChessBoard.Left + (ChessBoard.Width - Width) div 2;
-      Top := ChessBoard.Top + (ChessBoard.Height - Height) div 2;
-      Result := ShowModal;
-      Free;
-    end;
+    Caption := DIALOG_CAPTION;
+    FormStyle := ChessBoard.FormStyle;
+    Left := ChessBoard.Left + (ChessBoard.Width - Width) div 2;
+    Top := ChessBoard.Top + (ChessBoard.Height - Height) div 2;
+    Result := ShowModal;
+  finally
+    Release;
+  end;
 end;
 
 
@@ -1511,7 +1538,8 @@ end;
 
 procedure TManager.ContinueHandler;
 begin
-  ContinueForm := nil; // caFree
+  // ContinueForm.Release; // caFree
+  ContinueForm := nil;
   ChessBoard.Enabled := TRUE;
   SendData(CMD_CONTINUE_GAME);
   ContinueGame;
@@ -1525,6 +1553,11 @@ begin
   ChessBoard.StopClock;
   ContinueForm := TContinueForm.Create(ChessBoard, ContinueHandler);
   ChessBoard.Enabled := FALSE;
+{$IFDEF LCLgtk2}
+  Application.ProcessMessages; // It's done to prevent hiding of ContinueForm
+  Sleep(200);
+  Application.ProcessMessages;
+{$ENDIF}
   ContinueForm.Show;
 end;
 

@@ -28,7 +28,7 @@ type
     procedure LTCPComponentError(const msg: string; aSocket: TLSocket);
     procedure LTCPComponentReceive(aSocket: TLSocket);
     procedure sendTimerTimer(Sender: TObject);
-    
+
   private
     Handler: TConnectorHandler;
     sendTextBuffer: string;
@@ -50,7 +50,7 @@ type
 implementation
 
 type
-  TOpenClientOperator = class(TThread) // Vvedeno, iz-za problem s TLTCPComponent v Linux (ne rabotaet repaint okon)
+  TOpenClientOperator = class(TThread)
   private
     _connector: TConnector;
     _clientOpened: boolean;
@@ -105,18 +105,19 @@ begin
       Exception.Create('Client is already created');
     if _host = '' then
       Exception.Create('Wrong host name');
-{$IFDEF LCLwin32}
-     if not DoOpenClient then
-       Exception.Create('Cannot open client');
+{$IFDEF WINDOWS}
+    if (not DoOpenClient) then
+      Exception.Create('Cannot open client');
 {$ENDIF}
-{$IFDEF LCLgtk2}
-    TOpenClientOperator.Create(self);
+{$IFDEF UNIX}
+    TOpenClientOperator.Create(self); // Otherwise windows repaint is not working in Linux
 {$ENDIF}
     _state := [csClient];
   except
     Handler(ceError);
   end;
 end;
+
 
 procedure TConnector.SendData(const d: string);
 begin
@@ -129,10 +130,10 @@ end;
 procedure TConnector.LTCPComponentAccept(aSocket: TLSocket);
 begin
   if Assigned(_socket) then
-    begin
-      aSocket.Disconnect;
-      exit;
-    end;
+  begin
+    aSocket.Disconnect;
+    exit;
+  end;
   _socket := aSocket;
   sendTextBuffer := '';
   Handler(ceConnected, _socket);
@@ -211,11 +212,11 @@ end;
   
 procedure TOpenClientOperator.OpenClientOperatorTerminated(Sender: TObject);
 begin
-  if not _clientOpened then
-    begin
-      _connector._state := [];
-      _connector.Handler(ceError);
-    end;
+  if (not _clientOpened) then
+  begin
+    _connector._state := [];
+    _connector.Handler(ceError);
+  end;
 end;
 
 

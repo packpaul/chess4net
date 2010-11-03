@@ -1,5 +1,0 @@
-object ModalForm: TModalForm
-  Height = 240
-  Width = 320
-  Caption = 'ModalForm'
-end

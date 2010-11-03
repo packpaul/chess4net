@@ -9,11 +9,10 @@
         <AlwaysBuild Value="False"/>
         <LRSInOutputDirectory Value="False"/>
       </Flags>
-      <SessionStorage Value="InIDEConfig"/>
+      <SessionStorage Value="InProjectDir"/>
       <MainUnit Value="0"/>
       <TargetFileExt Value=".exe"/>
       <Title Value="Chess4Net"/>
-      <Icon Value="0"/>
     </General>
     <VersionInfo>
       <ProjectVersion Value=""/>
@@ -39,7 +38,7 @@
         <PackageName Value="LCL"/>
       </Item2>
     </RequiredPackages>
-    <Units Count="14">
+    <Units Count="15">
       <Unit0>
         <Filename Value="Chess4Net.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -54,10 +53,11 @@
         <UnitName Value="ManagerSocketUnit"/>
       </Unit1>
       <Unit2>
-        <Filename Value="PromotionUnit.pas"/>
+        <Filename Value="..\..\FPC\PromotionUnit.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="PromotionForm"/>
         <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
         <UnitName Value="PromotionUnit"/>
       </Unit2>
       <Unit3>
@@ -69,12 +69,12 @@
         <UnitName Value="ConnectorSocketUnit"/>
       </Unit3>
       <Unit4>
-        <Filename Value="PosBaseUnit.pas"/>
+        <Filename Value="..\..\FPC\PosBaseUnit.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="PosBaseUnit"/>
       </Unit4>
       <Unit5>
-        <Filename Value="PosBaseChessBoardUnit.pas"/>
+        <Filename Value="..\..\FPC\PosBaseChessBoardUnit.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="PosBaseChessBoardUnit"/>
       </Unit5>
@@ -84,12 +84,12 @@
         <UnitName Value="GlobalsSocketUnit"/>
       </Unit6>
       <Unit7>
-        <Filename Value="GlobalsUnit.pas"/>
+        <Filename Value="..\..\FPC\GlobalsUnit.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="GlobalsUnit"/>
       </Unit7>
       <Unit8>
-        <Filename Value="ModalForm.pas"/>
+        <Filename Value="..\..\FPC\ModalForm.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="ModalForm"/>
         <HasResources Value="True"/>
@@ -97,7 +97,7 @@
         <UnitName Value="ModalForm"/>
       </Unit8>
       <Unit9>
-        <Filename Value="win32\ChessBoardUnit.pas"/>
+        <Filename Value="..\..\FPC\win32\ChessBoardUnit.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="ChessBoard"/>
         <HasResources Value="True"/>
@@ -105,7 +105,7 @@
         <UnitName Value="ChessBoardUnit"/>
       </Unit9>
       <Unit10>
-        <Filename Value="win32\ConnectionUnit.pas"/>
+        <Filename Value="..\..\FPC\win32\ConnectionUnit.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="ConnectionForm"/>
         <HasResources Value="True"/>
@@ -113,7 +113,7 @@
         <UnitName Value="ConnectionUnit"/>
       </Unit10>
       <Unit11>
-        <Filename Value="win32\GameOptionsUnit.pas"/>
+        <Filename Value="..\..\FPC\win32\GameOptionsUnit.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="GameOptionsForm"/>
         <HasResources Value="True"/>
@@ -121,7 +121,7 @@
         <UnitName Value="GameOptionsUnit"/>
       </Unit11>
       <Unit12>
-        <Filename Value="win32\LookFeelOptionsUnit.pas"/>
+        <Filename Value="..\..\FPC\win32\LookFeelOptionsUnit.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="LookFeelOptionsForm"/>
         <HasResources Value="True"/>
@@ -129,12 +129,21 @@
         <UnitName Value="LookFeelOptionsUnit"/>
       </Unit12>
       <Unit13>
-        <Filename Value="win32\ContinueUnit.pas"/>
+        <Filename Value="..\..\FPC\win32\ContinueUnit.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="ContinueForm"/>
         <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
         <UnitName Value="ContinueUnit"/>
       </Unit13>
+      <Unit14>
+        <Filename Value="..\..\FPC\win32\ConnectingUnit.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="ConnectingForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="ConnectingUnit"/>
+      </Unit14>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -144,8 +153,8 @@
       <Filename Value="..\..\bin\Chess4Net"/>
     </Target>
     <SearchPaths>
-      <IncludeFiles Value="win32\"/>
-      <OtherUnitFiles Value="win32\"/>
+      <IncludeFiles Value="..\..\FPC\;..\..\FPC\win32\"/>
+      <OtherUnitFiles Value="..\..\FPC\;..\..\FPC\win32\"/>
       <UnitOutputDirectory Value="bin"/>
     </SearchPaths>
     <Parsing>
@@ -157,6 +166,9 @@
     <CodeGeneration>
       <SmartLinkUnit Value="True"/>
       <SmallerCode Value="True"/>
+      <Optimizations>
+        <OptimizationLevel Value="2"/>
+      </Optimizations>
     </CodeGeneration>
     <Linking>
       <Debugging>

@@ -1,17 +1,17 @@
 <?xml version="1.0"?>
 <CONFIG>
   <ProjectOptions>
-    <PathDelim Value="/"/>
-    <Version Value="5"/>
+    <Version Value="7"/>
     <General>
       <Flags>
+        <SaveOnlyProjectUnits Value="True"/>
         <AlwaysBuild Value="False"/>
+        <LRSInOutputDirectory Value="False"/>
       </Flags>
+      <SessionStorage Value="InProjectDir"/>
       <MainUnit Value="0"/>
-      <IconPath Value="./"/>
       <TargetFileExt Value=".exe"/>
       <Title Value="Chess4Net"/>
-      <ActiveEditorIndexAtStart Value="5"/>
     </General>
     <VersionInfo>
       <ProjectVersion Value=""/>
@@ -37,827 +37,134 @@
         <PackageName Value="LCL"/>
       </Item2>
     </RequiredPackages>
-    <Units Count="101">
+    <Units Count="15">
       <Unit0>
         <Filename Value="Chess4Net.lpr"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="Chess4Net"/>
-        <CursorPos X="5" Y="25"/>
-        <TopLine Value="12"/>
-        <UsageCount Value="139"/>
       </Unit0>
       <Unit1>
-        <Filename Value="tmp.pas"/>
-        <ComponentName Value="Form1"/>
-        <ResourceFilename Value="tmp.lrs"/>
-        <UnitName Value="Tmp"/>
-        <CursorPos X="14" Y="24"/>
-        <TopLine Value="1"/>
-        <UsageCount Value="14"/>
-      </Unit1>
-      <Unit2>
         <Filename Value="ManagerSocketUnit.pas"/>
+        <IsPartOfProject Value="True"/>
         <ComponentName Value="Manager"/>
         <HasResources Value="True"/>
-        <IsPartOfProject Value="True"/>
-        <ResourceFilename Value="ManagerSocketUnit.lrs"/>
+        <ResourceBaseClass Value="Form"/>
         <UnitName Value="ManagerSocketUnit"/>
-        <CursorPos X="1" Y="1"/>
-        <TopLine Value="1"/>
-        <UsageCount Value="139"/>
-        <Bookmarks Count="1">
-          <Item0 X="13" Y="872" ID="1"/>
-        </Bookmarks>
-      </Unit2>
-      <Unit3>
-        <Filename Value="ConnectingUnit.pas"/>
-        <ComponentName Value="ConnectingForm"/>
-        <HasResources Value="True"/>
-        <ResourceFilename Value="ConnectingUnit.lrs"/>
-        <UnitName Value="ConnectingUnit"/>
-        <CursorPos X="5" Y="91"/>
-        <TopLine Value="65"/>
-        <UsageCount Value="65"/>
-      </Unit3>
-      <Unit4>
-        <Filename Value="PromotionUnit.pas"/>
+      </Unit1>
+      <Unit2>
+        <Filename Value="../../FPC/PromotionUnit.pas"/>
+        <IsPartOfProject Value="True"/>
         <ComponentName Value="PromotionForm"/>
         <HasResources Value="True"/>
-        <IsPartOfProject Value="True"/>
-        <ResourceFilename Value="PromotionUnit.lrs"/>
+        <ResourceBaseClass Value="Form"/>
         <UnitName Value="PromotionUnit"/>
-        <CursorPos X="1" Y="110"/>
-        <TopLine Value="92"/>
-        <EditorIndex Value="4"/>
-        <UsageCount Value="139"/>
-        <Loaded Value="True"/>
-      </Unit4>
-      <Unit5>
-        <Filename Value="LookFeelOptionsUnit.pas"/>
-        <ComponentName Value="LookFeelOptionsForm"/>
-        <HasResources Value="True"/>
-        <ResourceFilename Value="LookFeelOptionsUnit.lrs"/>
-        <UnitName Value="LookFeelOptionsUnit"/>
-        <CursorPos X="18" Y="14"/>
-        <TopLine Value="1"/>
-        <UsageCount Value="87"/>
-      </Unit5>
-      <Unit6>
-        <Filename Value="GameOptionsUnit.pas"/>
-        <ComponentName Value="GameOptionsForm"/>
-        <HasResources Value="True"/>
-        <ResourceFilename Value="GameOptionsUnit.lrs"/>
-        <UnitName Value="GameOptionsUnit"/>
-        <CursorPos X="1" Y="112"/>
-        <TopLine Value="91"/>
-        <UsageCount Value="87"/>
-      </Unit6>
-      <Unit7>
-        <Filename Value="ContinueUnit.pas"/>
-        <ComponentName Value="ContinueForm"/>
-        <HasResources Value="True"/>
-        <ResourceFilename Value="ContinueUnit.lrs"/>
-        <UnitName Value="ContinueUnit"/>
-        <CursorPos X="68" Y="48"/>
-        <TopLine Value="46"/>
-        <UsageCount Value="64"/>
-      </Unit7>
-      <Unit8>
-        <Filename Value="ConnectionUnit.pas"/>
-        <ComponentName Value="ConnectionForm"/>
-        <HasResources Value="True"/>
-        <ResourceFilename Value="ConnectionUnit.lrs"/>
-        <UnitName Value="ConnectionUnit"/>
-        <CursorPos X="20" Y="96"/>
-        <TopLine Value="91"/>
-        <UsageCount Value="87"/>
-        <Bookmarks Count="1">
-          <Item0 X="1" Y="70" ID="2"/>
-        </Bookmarks>
-      </Unit8>
-      <Unit9>
-        <Filename Value="ConnectionUnit.lfm"/>
-        <CursorPos X="20" Y="15"/>
-        <TopLine Value="1"/>
-        <UsageCount Value="4"/>
-        <SyntaxHighlighter Value="LFM"/>
-      </Unit9>
-      <Unit10>
-        <Filename Value="ChessBoardUnit.pas"/>
-        <ComponentName Value="ChessBoard"/>
-        <HasResources Value="True"/>
-        <ResourceFilename Value="gtk2/ChessBoardUnit.lrs"/>
-        <UnitName Value="ChessBoardUnit"/>
-        <CursorPos X="5" Y="1965"/>
-        <TopLine Value="1814"/>
-        <UsageCount Value="86"/>
-      </Unit10>
-      <Unit11>
+      </Unit2>
+      <Unit3>
         <Filename Value="ConnectorSocketUnit.pas"/>
+        <IsPartOfProject Value="True"/>
         <ComponentName Value="Connector"/>
         <HasResources Value="True"/>
-        <IsPartOfProject Value="True"/>
-        <ResourceFilename Value="ConnectorSocketUnit.lrs"/>
+        <ResourceBaseClass Value="DataModule"/>
         <UnitName Value="ConnectorSocketUnit"/>
-        <CursorPos X="1" Y="1"/>
-        <TopLine Value="1"/>
-        <UsageCount Value="139"/>
-        <Bookmarks Count="1">
-          <Item0 X="15" Y="33" ID="0"/>
-        </Bookmarks>
-      </Unit11>
-      <Unit12>
-        <Filename Value="PosBaseUnit.pas"/>
+      </Unit3>
+      <Unit4>
+        <Filename Value="../../FPC/PosBaseUnit.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="PosBaseUnit"/>
-        <CursorPos X="24" Y="315"/>
-        <TopLine Value="304"/>
-        <UsageCount Value="139"/>
-        <Bookmarks Count="1">
-          <Item0 X="21" Y="315" ID="1"/>
-        </Bookmarks>
-      </Unit12>
-      <Unit13>
-        <Filename Value="PosBaseChessBoardUnit.pas"/>
+      </Unit4>
+      <Unit5>
+        <Filename Value="../../FPC/PosBaseChessBoardUnit.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="PosBaseChessBoardUnit"/>
-        <CursorPos X="1" Y="294"/>
-        <TopLine Value="1"/>
-        <UsageCount Value="139"/>
-      </Unit13>
-      <Unit14>
+      </Unit5>
+      <Unit6>
         <Filename Value="GlobalsSocketUnit.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="GlobalsSocketUnit"/>
-        <CursorPos X="39" Y="9"/>
-        <TopLine Value="1"/>
-        <UsageCount Value="139"/>
-      </Unit14>
-      <Unit15>
-        <Filename Value="GlobalsUnit.pas"/>
+      </Unit6>
+      <Unit7>
+        <Filename Value="../../FPC/GlobalsUnit.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="GlobalsUnit"/>
-        <CursorPos X="37" Y="12"/>
-        <TopLine Value="1"/>
-        <UsageCount Value="139"/>
-      </Unit15>
-      <Unit16>
-        <Filename Value="ModalForm.pas"/>
+      </Unit7>
+      <Unit8>
+        <Filename Value="../../FPC/ModalForm.pas"/>
+        <IsPartOfProject Value="True"/>
         <ComponentName Value="ModalForm"/>
         <HasResources Value="True"/>
-        <IsPartOfProject Value="True"/>
-        <ResourceFilename Value="ModalForm.lrs"/>
+        <ResourceBaseClass Value="Form"/>
         <UnitName Value="ModalForm"/>
-        <CursorPos X="14" Y="9"/>
-        <TopLine Value="1"/>
-        <UsageCount Value="129"/>
-      </Unit16>
-      <Unit17>
-        <Filename Value="ConnectorSocketUnit.lfm"/>
-        <CursorPos X="1" Y="1"/>
-        <TopLine Value="1"/>
-        <UsageCount Value="4"/>
-        <SyntaxHighlighter Value="LFM"/>
-      </Unit17>
-      <Unit18>
-        <Filename Value="DialogUnit.pas"/>
-        <UnitName Value="DialogUnit"/>
-        <CursorPos X="11" Y="3"/>
-        <TopLine Value="1"/>
-        <UsageCount Value="6"/>
-        <Bookmarks Count="1">
-          <Item0 X="32" Y="61" ID="1"/>
-        </Bookmarks>
-      </Unit18>
-      <Unit19>
-        <Filename Value="MessageDialogUnit.pas"/>
-        <UnitName Value="MessageDialogUnit"/>
-        <CursorPos X="6" Y="33"/>
-        <TopLine Value="21"/>
-        <UsageCount Value="11"/>
-      </Unit19>
-      <Unit20>
-        <Filename Value="/lazarus/lcl/forms.pp"/>
-        <UnitName Value="Forms"/>
-        <CursorPos X="26" Y="470"/>
-        <TopLine Value="456"/>
-        <UsageCount Value="5"/>
-      </Unit20>
-      <Unit21>
-        <Filename Value="/lazarus/lcl/include/customform.inc"/>
-        <CursorPos X="52" Y="1323"/>
-        <TopLine Value="1325"/>
-        <UsageCount Value="5"/>
-      </Unit21>
-      <Unit22>
-        <Filename Value="/lazarus/lcl/dialogs.pp"/>
-        <UnitName Value="Dialogs"/>
-        <CursorPos X="10" Y="445"/>
-        <TopLine Value="431"/>
-        <UsageCount Value="5"/>
-      </Unit22>
-      <Unit23>
-        <Filename Value="/lazarus/lcl/include/messagedialogs.inc"/>
-        <CursorPos X="35" Y="205"/>
-        <TopLine Value="191"/>
-        <UsageCount Value="5"/>
-      </Unit23>
-      <Unit24>
-        <Filename Value="/lazarus/lcl/include/lclintfh.inc"/>
-        <CursorPos X="4" Y="140"/>
-        <TopLine Value="1"/>
-        <UsageCount Value="5"/>
-      </Unit24>
-      <Unit25>
-        <Filename Value="../../../../lazarus/lcl/extctrls.pp"/>
-        <UnitName Value="ExtCtrls"/>
-        <CursorPos X="29" Y="479"/>
-        <TopLine Value="477"/>
-        <UsageCount Value="8"/>
-      </Unit25>
-      <Unit26>
-        <Filename Value="../../../../lazarus/lcl/controls.pp"/>
-        <UnitName Value="Controls"/>
-        <CursorPos X="1" Y="1"/>
-        <TopLine Value="1"/>
-        <UsageCount Value="8"/>
-      </Unit26>
-      <Unit27>
-        <Filename Value="../../../../lazarus/lcl/include/control.inc"/>
-        <CursorPos X="3" Y="941"/>
-        <TopLine Value="936"/>
-        <UsageCount Value="6"/>
-        <Bookmarks Count="1">
-          <Item0 X="35" Y="1146" ID="1"/>
-        </Bookmarks>
-      </Unit27>
-      <Unit28>
-        <Filename Value="../../../../lazarus/lcl/forms.pp"/>
-        <UnitName Value="Forms"/>
-        <CursorPos X="15" Y="990"/>
-        <TopLine Value="980"/>
-        <UsageCount Value="7"/>
-      </Unit28>
-      <Unit29>
-        <Filename Value="../../../../lazarus/fpc/2.0.4/source/rtl/objpas/classes/classesh.inc"/>
-        <CursorPos X="3" Y="104"/>
-        <TopLine Value="92"/>
-        <UsageCount Value="7"/>
-      </Unit29>
-      <Unit30>
-        <Filename Value="../../../../lazarus/fpc/2.0.4/source/rtl/win32/messages.pp"/>
-        <UnitName Value="messages"/>
-        <CursorPos X="11" Y="11"/>
-        <TopLine Value="1"/>
-        <UsageCount Value="8"/>
-      </Unit30>
-      <Unit31>
-        <Filename Value="../../../../lazarus/fpc/2.0.4/source/rtl/win32/wininc/messages.inc"/>
-        <CursorPos X="56" Y="1161"/>
-        <TopLine Value="1151"/>
-        <UsageCount Value="6"/>
-      </Unit31>
-      <Unit32>
-        <Filename Value="../../../../lazarus/lcl/include/application.inc"/>
-        <CursorPos X="22" Y="1622"/>
-        <TopLine Value="1612"/>
-        <UsageCount Value="7"/>
-      </Unit32>
-      <Unit33>
-        <Filename Value="../../../../lazarus/fpc/2.0.4/source/rtl/inc/systemh.inc"/>
-        <CursorPos X="14" Y="515"/>
-        <TopLine Value="505"/>
-        <UsageCount Value="7"/>
-      </Unit33>
-      <Unit34>
-        <Filename Value="../../../../lazarus/fpc/2.0.4/source/rtl/inc/astrings.inc"/>
-        <CursorPos X="1" Y="590"/>
-        <TopLine Value="580"/>
-        <UsageCount Value="7"/>
-      </Unit34>
-      <Unit35>
-        <Filename Value="../../../../lazarus/lcl/customtimer.pas"/>
-        <UnitName Value="CustomTimer"/>
-        <CursorPos X="1" Y="176"/>
-        <TopLine Value="166"/>
-        <UsageCount Value="6"/>
-      </Unit35>
-      <Unit36>
-        <Filename Value="../../../../lazarus/lcl/interfaces/win32/win32callback.inc"/>
-        <CursorPos X="1" Y="2331"/>
-        <TopLine Value="2321"/>
-        <UsageCount Value="6"/>
-      </Unit36>
-      <Unit37>
-        <Filename Value="../../../../lazarus/lcl/graphtype.pp"/>
-        <UnitName Value="GraphType"/>
-        <CursorPos X="13" Y="42"/>
-        <TopLine Value="31"/>
-        <UsageCount Value="7"/>
-      </Unit37>
-      <Unit38>
-        <Filename Value="../../../../lazarus/lcl/graphics.pp"/>
-        <UnitName Value="Graphics"/>
-        <CursorPos X="3" Y="230"/>
-        <TopLine Value="219"/>
-        <UsageCount Value="7"/>
-      </Unit38>
-      <Unit39>
-        <Filename Value="../../../../lazarus/components/lnet/lib/lnet.pp"/>
-        <UnitName Value="lNet"/>
-        <CursorPos X="3" Y="656"/>
-        <TopLine Value="662"/>
-        <UsageCount Value="7"/>
-      </Unit39>
-      <Unit40>
-        <Filename Value="../../../../lazarus/fpc/2.0.4/source/rtl/objpas/math.pp"/>
-        <UnitName Value="math"/>
-        <CursorPos X="10" Y="186"/>
-        <TopLine Value="176"/>
-        <UsageCount Value="6"/>
-      </Unit40>
-      <Unit41>
-        <Filename Value="/DOCUME~1/PAVELP~1.SUN/LOCALS~1/Temp/testcompileroptions3.pas"/>
-        <UnitName Value="testcompileroptions3"/>
-        <CursorPos X="61" Y="1"/>
-        <TopLine Value="1"/>
-        <UsageCount Value="6"/>
-      </Unit41>
-      <Unit42>
-        <Filename Value="D:/lazarus/components/lnet/lib/lnet.pp"/>
-        <UnitName Value="lNet"/>
-        <CursorPos X="31" Y="659"/>
-        <TopLine Value="654"/>
-        <UsageCount Value="9"/>
-      </Unit42>
-      <Unit43>
-        <Filename Value="D:/lazarus/lcl/graphics.pp"/>
-        <UnitName Value="Graphics"/>
-        <CursorPos X="14" Y="1015"/>
-        <TopLine Value="1001"/>
-        <UsageCount Value="8"/>
-      </Unit43>
-      <Unit44>
-        <Filename Value="D:/lazarus/fpc/2.0.4/source/fcl/image/fpcanvas.pp"/>
-        <UnitName Value="FPCanvas"/>
-        <CursorPos X="16" Y="134"/>
-        <TopLine Value="120"/>
-        <UsageCount Value="6"/>
-      </Unit44>
-      <Unit45>
-        <Filename Value="D:/lazarus/lcl/include/application.inc"/>
-        <CursorPos X="1" Y="1622"/>
-        <TopLine Value="1610"/>
-        <UsageCount Value="12"/>
-      </Unit45>
-      <Unit46>
-        <Filename Value="D:/lazarus/lcl/include/bitmap.inc"/>
-        <CursorPos X="1" Y="246"/>
-        <TopLine Value="232"/>
-        <UsageCount Value="6"/>
-      </Unit46>
-      <Unit47>
-        <Filename Value="Chess4Net.lrs"/>
-        <CursorPos X="1" Y="1"/>
-        <TopLine Value="1"/>
-        <UsageCount Value="6"/>
-      </Unit47>
-      <Unit48>
-        <Filename Value="D:/lazarus/lcl/lresources.pp"/>
-        <UnitName Value="LResources"/>
-        <CursorPos X="3" Y="260"/>
-        <TopLine Value="246"/>
-        <UsageCount Value="6"/>
-      </Unit48>
-      <Unit49>
-        <Filename Value="D:/lazarus/components/lnet/lib/lcommon.pp"/>
-        <UnitName Value="lCommon"/>
-        <CursorPos X="33" Y="38"/>
-        <TopLine Value="24"/>
-        <UsageCount Value="7"/>
-      </Unit49>
-      <Unit50>
-        <Filename Value="D:/lazarus/fpc/2.0.4/source/rtl/win32/winsock2.pp"/>
-        <UnitName Value="WinSock2"/>
-        <CursorPos X="3" Y="202"/>
-        <TopLine Value="188"/>
-        <UsageCount Value="7"/>
-      </Unit50>
-      <Unit51>
-        <Filename Value="D:/lazarus/fpc/2.0.4/source/rtl/inc/sockets.inc"/>
-        <CursorPos X="1" Y="274"/>
-        <TopLine Value="253"/>
-        <UsageCount Value="6"/>
-      </Unit51>
-      <Unit52>
-        <Filename Value="D:/lazarus/fpc/2.0.4/source/rtl/inc/except.inc"/>
-        <CursorPos X="1" Y="166"/>
-        <TopLine Value="145"/>
-        <UsageCount Value="6"/>
-      </Unit52>
-      <Unit53>
-        <Filename Value="D:/lazarus/lcl/forms.pp"/>
-        <UnitName Value="Forms"/>
-        <CursorPos X="3" Y="61"/>
-        <TopLine Value="49"/>
-        <UsageCount Value="9"/>
-      </Unit53>
-      <Unit54>
-        <Filename Value="D:/lazarus/lcl/include/customform.inc"/>
-        <CursorPos X="28" Y="1387"/>
-        <TopLine Value="1383"/>
-        <UsageCount Value="7"/>
-      </Unit54>
-      <Unit55>
-        <Filename Value="D:/lazarus/lcl/controls.pp"/>
-        <UnitName Value="Controls"/>
-        <CursorPos X="53" Y="987"/>
-        <TopLine Value="968"/>
-        <UsageCount Value="14"/>
-      </Unit55>
-      <Unit56>
-        <Filename Value="D:/lazarus/lcl/include/control.inc"/>
-        <CursorPos X="16" Y="1139"/>
-        <TopLine Value="1126"/>
-        <UsageCount Value="12"/>
-      </Unit56>
-      <Unit57>
-        <Filename Value="D:/lazarus/lcl/lclproc.pas"/>
-        <UnitName Value="LCLProc"/>
-        <CursorPos X="15" Y="57"/>
-        <TopLine Value="39"/>
-        <UsageCount Value="6"/>
-      </Unit57>
-      <Unit58>
-        <Filename Value="D:/lazarus/lcl/include/wincontrol.inc"/>
-        <CursorPos X="1" Y="5476"/>
-        <TopLine Value="5463"/>
-        <UsageCount Value="11"/>
-      </Unit58>
-      <Unit59>
-        <Filename Value="D:/lazarus/lcl/stdctrls.pp"/>
-        <UnitName Value="StdCtrls"/>
-        <CursorPos X="47" Y="16"/>
-        <TopLine Value="1"/>
-        <UsageCount Value="7"/>
-      </Unit59>
-      <Unit60>
-        <Filename Value="D:/lazarus/lcl/buttons.pp"/>
-        <UnitName Value="Buttons"/>
-        <CursorPos X="3" Y="107"/>
-        <TopLine Value="95"/>
-        <UsageCount Value="6"/>
-      </Unit60>
-      <Unit61>
-        <Filename Value="D:/lazarus/fpc/2.0.4/source/rtl/win32/system.pp"/>
-        <UnitName Value="System"/>
-        <CursorPos X="2" Y="33"/>
-        <TopLine Value="21"/>
-        <UsageCount Value="6"/>
-      </Unit61>
-      <Unit62>
-        <Filename Value="D:/lazarus/fpc/2.0.4/source/rtl/inc/systemh.inc"/>
-        <CursorPos X="3" Y="214"/>
-        <TopLine Value="202"/>
-        <UsageCount Value="8"/>
-      </Unit62>
-      <Unit63>
-        <Filename Value="D:/lazarus/fpc/2.0.4/source/rtl/objpas/classes/classesh.inc"/>
-        <CursorPos X="14" Y="1495"/>
-        <TopLine Value="1486"/>
-        <UsageCount Value="6"/>
-      </Unit63>
-      <Unit64>
-        <Filename Value="D:/lazarus/fpc/2.0.4/source/rtl/objpas/sysutils/sysinth.inc"/>
-        <CursorPos X="4" Y="76"/>
-        <TopLine Value="126"/>
-        <UsageCount Value="7"/>
-      </Unit64>
-      <Unit65>
-        <Filename Value="D:/lazarus/fpc/2.0.4/source/rtl/objpas/sysutils/sysutilh.inc"/>
-        <CursorPos X="18" Y="212"/>
-        <TopLine Value="200"/>
-        <UsageCount Value="7"/>
-      </Unit65>
-      <Unit66>
-        <Filename Value="/DOCUME~1/Pavel/LOCALS~1/Temp/testcompileroptions1.pas"/>
-        <UnitName Value="testcompileroptions1"/>
-        <CursorPos X="1" Y="1"/>
-        <TopLine Value="1"/>
-        <UsageCount Value="8"/>
-      </Unit66>
-      <Unit67>
-        <Filename Value="D:/lazarus/fpc/2.0.4/source/rtl/objpas/sysutils/datih.inc"/>
-        <CursorPos X="60" Y="101"/>
-        <TopLine Value="90"/>
-        <UsageCount Value="8"/>
-      </Unit67>
-      <Unit68>
-        <Filename Value="D:/lazarus/fpc/2.0.4/source/rtl/objpas/sysutils/dati.inc"/>
-        <CursorPos X="1" Y="467"/>
-        <TopLine Value="470"/>
-        <UsageCount Value="8"/>
-      </Unit68>
-      <Unit69>
-        <Filename Value="D:/lazarus/lcl/extctrls.pp"/>
-        <UnitName Value="ExtCtrls"/>
-        <CursorPos X="23" Y="479"/>
-        <TopLine Value="466"/>
-        <UsageCount Value="12"/>
-      </Unit69>
-      <Unit70>
-        <Filename Value="D:/lazarus/lcl/include/graphiccontrol.inc"/>
-        <CursorPos X="3" Y="57"/>
-        <TopLine Value="48"/>
-        <UsageCount Value="14"/>
-      </Unit70>
-      <Unit71>
-        <Filename Value="/DOCUME~1/Pavel/LOCALS~1/Temp/testcompileroptions2.pas"/>
-        <UnitName Value="testcompileroptions2"/>
-        <CursorPos X="1" Y="1"/>
-        <TopLine Value="1"/>
-        <UsageCount Value="12"/>
-      </Unit71>
-      <Unit72>
-        <Filename Value="D:/lazarus/components/lnet/lazaruspackage/lnetvisual.pas"/>
-        <UnitName Value="lnetvisual"/>
-        <CursorPos X="1" Y="1"/>
-        <TopLine Value="1"/>
-        <UsageCount Value="7"/>
-      </Unit72>
-      <Unit73>
-        <Filename Value="ChessBoardUnit.inc"/>
-        <CursorPos X="34" Y="496"/>
-        <TopLine Value="485"/>
-        <EditorIndex Value="6"/>
-        <UsageCount Value="23"/>
-        <Bookmarks Count="2">
-          <Item0 X="28" Y="1379" ID="2"/>
-          <Item1 X="45" Y="792" ID="3"/>
-        </Bookmarks>
-        <Loaded Value="True"/>
-      </Unit73>
-      <Unit74>
-        <Filename Value="gtk2/ChessBoardUnit.lrs"/>
-        <CursorPos X="1" Y="1"/>
-        <TopLine Value="1"/>
-        <UsageCount Value="8"/>
-      </Unit74>
-      <Unit75>
-        <Filename Value="ChessSet.lrs"/>
-        <CursorPos X="1" Y="1"/>
-        <TopLine Value="1"/>
-        <UsageCount Value="8"/>
-      </Unit75>
-      <Unit76>
-        <Filename Value="gtk2/ChessBoardUnit.pas"/>
+      </Unit8>
+      <Unit9>
+        <Filename Value="../../FPC/gtk2/ChessBoardUnit.pas"/>
+        <IsPartOfProject Value="True"/>
         <ComponentName Value="ChessBoard"/>
         <HasResources Value="True"/>
-        <IsPartOfProject Value="True"/>
-        <ResourceFilename Value="gtk2/ChessBoardUnit.lrs"/>
+        <ResourceBaseClass Value="Form"/>
         <UnitName Value="ChessBoardUnit"/>
-        <CursorPos X="13" Y="3"/>
-        <TopLine Value="1"/>
-        <EditorIndex Value="5"/>
-        <UsageCount Value="71"/>
-        <Loaded Value="True"/>
-      </Unit76>
-      <Unit77>
-        <Filename Value="~ChessBoardUnit.inc"/>
-        <CursorPos X="5" Y="2002"/>
-        <TopLine Value="1976"/>
-        <UsageCount Value="8"/>
-      </Unit77>
-      <Unit78>
-        <Filename Value="gtk2/ConnectionUnit.pas"/>
+      </Unit9>
+      <Unit10>
+        <Filename Value="../../FPC/gtk2/ConnectionUnit.pas"/>
+        <IsPartOfProject Value="True"/>
         <ComponentName Value="ConnectionForm"/>
         <HasResources Value="True"/>
-        <IsPartOfProject Value="True"/>
-        <ResourceFilename Value="gtk2/ConnectionUnit.lrs"/>
+        <ResourceBaseClass Value="Form"/>
         <UnitName Value="ConnectionUnit"/>
-        <CursorPos X="16" Y="3"/>
-        <TopLine Value="1"/>
-        <EditorIndex Value="0"/>
-        <UsageCount Value="70"/>
-        <Loaded Value="True"/>
-      </Unit78>
-      <Unit79>
-        <Filename Value="ConnectionUnit.inc"/>
-        <CursorPos X="14" Y="34"/>
-        <TopLine Value="30"/>
-        <UsageCount Value="11"/>
-      </Unit79>
-      <Unit80>
-        <Filename Value="gtk2/GameOptionsUnit.pas"/>
+      </Unit10>
+      <Unit11>
+        <Filename Value="../../FPC/gtk2/GameOptionsUnit.pas"/>
+        <IsPartOfProject Value="True"/>
         <ComponentName Value="GameOptionsForm"/>
         <HasResources Value="True"/>
-        <IsPartOfProject Value="True"/>
-        <ResourceFilename Value="gtk2/GameOptionsUnit.lrs"/>
+        <ResourceBaseClass Value="Form"/>
         <UnitName Value="GameOptionsUnit"/>
-        <CursorPos X="16" Y="3"/>
-        <TopLine Value="1"/>
-        <EditorIndex Value="3"/>
-        <UsageCount Value="70"/>
-        <Loaded Value="True"/>
-      </Unit80>
-      <Unit81>
-        <Filename Value="GameOptionsUnit.inc"/>
-        <CursorPos X="1" Y="1"/>
-        <TopLine Value="1"/>
-        <UsageCount Value="10"/>
-      </Unit81>
-      <Unit82>
-        <Filename Value="gtk2/LookFeelOptionsUnit.pas"/>
+      </Unit11>
+      <Unit12>
+        <Filename Value="../../FPC/gtk2/LookFeelOptionsUnit.pas"/>
+        <IsPartOfProject Value="True"/>
         <ComponentName Value="LookFeelOptionsForm"/>
         <HasResources Value="True"/>
-        <IsPartOfProject Value="True"/>
-        <ResourceFilename Value="gtk2/LookFeelOptionsUnit.lrs"/>
+        <ResourceBaseClass Value="Form"/>
         <UnitName Value="LookFeelOptionsUnit"/>
-        <CursorPos X="4" Y="3"/>
-        <TopLine Value="1"/>
-        <UsageCount Value="70"/>
-      </Unit82>
-      <Unit83>
-        <Filename Value="LookFeelOptionsUnit.inc"/>
-        <CursorPos X="5" Y="37"/>
-        <TopLine Value="11"/>
-        <UsageCount Value="8"/>
-      </Unit83>
-      <Unit84>
-        <Filename Value="gtk2/ConnectingUnit.pas"/>
+      </Unit12>
+      <Unit13>
+        <Filename Value="../../FPC/gtk2/ConnectingUnit.pas"/>
+        <IsPartOfProject Value="True"/>
         <ComponentName Value="ConnectingForm"/>
         <HasResources Value="True"/>
-        <IsPartOfProject Value="True"/>
-        <ResourceFilename Value="gtk2/ConnectingUnit.lrs"/>
+        <ResourceBaseClass Value="Form"/>
         <UnitName Value="ConnectingUnit"/>
-        <CursorPos X="6" Y="3"/>
-        <TopLine Value="1"/>
-        <EditorIndex Value="2"/>
-        <UsageCount Value="68"/>
-        <Loaded Value="True"/>
-      </Unit84>
-      <Unit85>
-        <Filename Value="ConnectingUnit.inc"/>
-        <CursorPos X="1" Y="55"/>
-        <TopLine Value="53"/>
-        <UsageCount Value="13"/>
-      </Unit85>
-      <Unit86>
-        <Filename Value="gtk2/ContinueUnit.pas"/>
+      </Unit13>
+      <Unit14>
+        <Filename Value="../../FPC/gtk2/ContinueUnit.pas"/>
+        <IsPartOfProject Value="True"/>
         <ComponentName Value="ContinueForm"/>
         <HasResources Value="True"/>
-        <IsPartOfProject Value="True"/>
-        <ResourceFilename Value="gtk2/ContinueUnit.lrs"/>
+        <ResourceBaseClass Value="Form"/>
         <UnitName Value="ContinueUnit"/>
-        <CursorPos X="14" Y="3"/>
-        <TopLine Value="1"/>
-        <EditorIndex Value="1"/>
-        <UsageCount Value="68"/>
-        <Loaded Value="True"/>
-      </Unit86>
-      <Unit87>
-        <Filename Value="ContinueUnit.inc"/>
-        <CursorPos X="5" Y="96"/>
-        <TopLine Value="70"/>
-        <UsageCount Value="8"/>
-      </Unit87>
-      <Unit88>
-        <Filename Value="/usr/lib/lazarus/lcl/dialogs.pp"/>
-        <UnitName Value="Dialogs"/>
-        <CursorPos X="1" Y="437"/>
-        <TopLine Value="434"/>
-        <UsageCount Value="12"/>
-      </Unit88>
-      <Unit89>
-        <Filename Value="/usr/lib/lazarus/lcl/interfaces/gtk2/gtk2object.inc"/>
-        <CursorPos X="1" Y="527"/>
-        <TopLine Value="522"/>
-        <UsageCount Value="9"/>
-      </Unit89>
-      <Unit90>
-        <Filename Value="/usr/lib/lazarus/lcl/buttons.pp"/>
-        <UnitName Value="Buttons"/>
-        <CursorPos X="6" Y="29"/>
-        <TopLine Value="21"/>
-        <UsageCount Value="8"/>
-      </Unit90>
-      <Unit91>
-        <Filename Value="/usr/lib/lazarus/lcl/include/messagedialogs.inc"/>
-        <CursorPos X="44" Y="123"/>
-        <TopLine Value="113"/>
-        <UsageCount Value="10"/>
-      </Unit91>
-      <Unit92>
-        <Filename Value="/usr/lib/lazarus/lcl/include/lclintf.inc"/>
-        <CursorPos X="30" Y="324"/>
-        <TopLine Value="322"/>
-        <UsageCount Value="8"/>
-      </Unit92>
-      <Unit93>
-        <Filename Value="/usr/share/fpcsrc/rtl/inc/systemh.inc"/>
-        <CursorPos X="11" Y="582"/>
-        <TopLine Value="574"/>
-        <UsageCount Value="10"/>
-      </Unit93>
-      <Unit94>
-        <Filename Value="gtk2/TestDialogUnit.pas"/>
-        <ComponentName Value="TestDialogForm"/>
-        <HasResources Value="True"/>
-        <ResourceFilename Value="gtk2/TestDialogUnit.lrs"/>
-        <UnitName Value="TestDialogUnit"/>
-        <CursorPos X="46" Y="116"/>
-        <TopLine Value="111"/>
-        <UsageCount Value="20"/>
-      </Unit94>
-      <Unit95>
-        <Filename Value="/usr/share/fpcsrc/rtl/objpas/classes/classesh.inc"/>
-        <CursorPos X="17" Y="1518"/>
-        <TopLine Value="1514"/>
-        <UsageCount Value="9"/>
-      </Unit95>
-      <Unit96>
-        <Filename Value="/usr/lib/lazarus/lcl/forms.pp"/>
-        <UnitName Value="Forms"/>
-        <CursorPos X="1" Y="1352"/>
-        <TopLine Value="1341"/>
-        <UsageCount Value="8"/>
-      </Unit96>
-      <Unit97>
-        <Filename Value="/usr/lib/lazarus/components/lnet/lib/lnet.pp"/>
-        <UnitName Value="lNet"/>
-        <CursorPos X="6" Y="1086"/>
-        <TopLine Value="1076"/>
-        <UsageCount Value="10"/>
-      </Unit97>
-      <Unit98>
-        <Filename Value="/usr/lib/lazarus/lcl/controls.pp"/>
-        <UnitName Value="Controls"/>
-        <CursorPos X="8" Y="16"/>
-        <TopLine Value="5"/>
-        <UsageCount Value="8"/>
-      </Unit98>
-      <Unit99>
-        <Filename Value="/usr/lib/lazarus/lcl/include/dragdock.inc"/>
-        <CursorPos X="5" Y="141"/>
-        <TopLine Value="130"/>
-        <UsageCount Value="8"/>
-      </Unit99>
-      <Unit100>
-        <Filename Value="/usr/lib/lazarus/lcl/graphics.pp"/>
-        <UnitName Value="Graphics"/>
-        <CursorPos X="3" Y="226"/>
-        <TopLine Value="222"/>
-        <UsageCount Value="11"/>
-      </Unit100>
+      </Unit14>
     </Units>
-    <JumpHistory Count="6" HistoryIndex="5">
-      <Position1>
-        <Filename Value="ChessBoardUnit.inc"/>
-        <Caret Line="792" Column="63" TopLine="780"/>
-      </Position1>
-      <Position2>
-        <Filename Value="ChessBoardUnit.inc"/>
-        <Caret Line="1" Column="1" TopLine="1"/>
-      </Position2>
-      <Position3>
-        <Filename Value="ChessBoardUnit.inc"/>
-        <Caret Line="225" Column="9" TopLine="214"/>
-      </Position3>
-      <Position4>
-        <Filename Value="ChessBoardUnit.inc"/>
-        <Caret Line="342" Column="9" TopLine="290"/>
-      </Position4>
-      <Position5>
-        <Filename Value="ChessBoardUnit.inc"/>
-        <Caret Line="341" Column="3" TopLine="331"/>
-      </Position5>
-      <Position6>
-        <Filename Value="ChessBoardUnit.inc"/>
-        <Caret Line="342" Column="32" TopLine="331"/>
-      </Position6>
-    </JumpHistory>
   </ProjectOptions>
   <CompilerOptions>
-    <Version Value="5"/>
+    <Version Value="8"/>
     <Target>
-      <Filename Value="../../Testing/FPC/Chess4Net"/>
+      <Filename Value="../../bin/Chess4Net"/>
     </Target>
     <SearchPaths>
-      <IncludeFiles Value="gtk2/"/>
-      <OtherUnitFiles Value="gtk2/"/>
+      <IncludeFiles Value="../../FPC/;../../FPC/gtk2/"/>
+      <OtherUnitFiles Value="../../FPC/;../../FPC/gtk2/"/>
       <UnitOutputDirectory Value="bin"/>
       <LCLWidgetType Value="gtk2"/>
     </SearchPaths>
     <Parsing>
       <SyntaxOptions>
-        <D2Extensions Value="False"/>
+        <SyntaxMode Value="Delphi"/>
         <IncludeAssertionCode Value="True"/>
-        <DelphiCompat Value="True"/>
       </SyntaxOptions>
     </Parsing>
     <CodeGeneration>
       <SmartLinkUnit Value="True"/>
-      <Generate Value="Smaller"/>
+      <SmallerCode Value="True"/>
       <Optimizations>
         <OptimizationLevel Value="2"/>
       </Optimizations>
@@ -865,7 +172,6 @@
     <Linking>
       <Debugging>
         <UseLineInfoUnit Value="False"/>
-        <StripSymbols Value="True"/>
       </Debugging>
       <LinkSmart Value="True"/>
     </Linking>
@@ -873,11 +179,4 @@
       <CompilerPath Value="$(CompPath)"/>
     </Other>
   </CompilerOptions>
-  <Debugging>
-    <Watches Count="1">
-      <Item1>
-        <Expression Value="dragged_moved"/>
-      </Item1>
-    </Watches>
-  </Debugging>
 </CONFIG>
