@@ -1,0 +1,32 @@
+object Connector: TConnector
+  OnCreate = DataModuleCreate
+  OnDestroy = DataModuleDestroy
+  OldCreateOrder = False
+  left = 43
+  top = 227
+  Height = 120
+  HorizontalOffset = 0
+  VerticalOffset = 0
+  Width = 288
+  object sendTimer: TTimer
+    Enabled = False
+    Interval = 100
+    OnTimer = sendTimerTimer
+    left = 16
+    top = 8
+  end
+  object showContactsTimer: TTimer
+    Enabled = False
+    Interval = 500
+    OnTimer = showContactsTimerTimer
+    left = 96
+    top = 8
+  end
+  object userConnectingTimer: TTimer
+    Enabled = False
+    Interval = 500
+    OnTimer = userConnectingTimerTimer
+    left = 200
+    top = 8
+  end
+end

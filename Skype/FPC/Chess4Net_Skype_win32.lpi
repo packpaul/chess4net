@@ -12,7 +12,7 @@
       <SessionStorage Value="InProjectDir"/>
       <MainUnit Value="0"/>
       <TargetFileExt Value=".exe"/>
-      <Title Value="Chess4Net"/>
+      <Title Value="Chess4Net_Skype"/>
     </General>
     <VersionInfo>
       <ProjectVersion Value=""/>
@@ -38,19 +38,19 @@
         <PackageName Value="LCL"/>
       </Item2>
     </RequiredPackages>
-    <Units Count="16">
+    <Units Count="18">
       <Unit0>
-        <Filename Value="Chess4Net.lpr"/>
+        <Filename Value="Chess4Net_Skype.lpr"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="Chess4Net"/>
+        <UnitName Value="Chess4Net_Skype"/>
       </Unit0>
       <Unit1>
-        <Filename Value="ManagerSocketUnit.pas"/>
+        <Filename Value="ManagerSkypeUnit.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="Manager"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <UnitName Value="ManagerSocketUnit"/>
+        <UnitName Value="ManagerSkypeUnit"/>
       </Unit1>
       <Unit2>
         <Filename Value="..\..\FPC\PromotionUnit.pas"/>
@@ -61,108 +61,120 @@
         <UnitName Value="PromotionUnit"/>
       </Unit2>
       <Unit3>
-        <Filename Value="ConnectorSocketUnit.pas"/>
-        <IsPartOfProject Value="True"/>
-        <ComponentName Value="Connector"/>
-        <HasResources Value="True"/>
-        <ResourceBaseClass Value="DataModule"/>
-        <UnitName Value="ConnectorSocketUnit"/>
-      </Unit3>
-      <Unit4>
         <Filename Value="..\..\FPC\PosBaseUnit.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="PosBaseUnit"/>
-      </Unit4>
-      <Unit5>
+      </Unit3>
+      <Unit4>
         <Filename Value="..\..\FPC\PosBaseChessBoardUnit.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="PosBaseChessBoardUnit"/>
+      </Unit4>
+      <Unit5>
+        <Filename Value="GlobalsSkypeUnit.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="GlobalsSkypeUnit"/>
       </Unit5>
       <Unit6>
-        <Filename Value="GlobalsSocketUnit.pas"/>
-        <IsPartOfProject Value="True"/>
-        <UnitName Value="GlobalsSocketUnit"/>
-      </Unit6>
-      <Unit7>
         <Filename Value="..\..\FPC\GlobalsUnit.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="GlobalsUnit"/>
-      </Unit7>
-      <Unit8>
+      </Unit6>
+      <Unit7>
         <Filename Value="..\..\FPC\ModalForm.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="ModalForm"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="ModalForm"/>
-      </Unit8>
-      <Unit9>
+      </Unit7>
+      <Unit8>
         <Filename Value="..\..\FPC\win32\ChessBoardUnit.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="ChessBoard"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="ChessBoardUnit"/>
-      </Unit9>
-      <Unit10>
-        <Filename Value="win32\ConnectionUnit.pas"/>
-        <IsPartOfProject Value="True"/>
-        <ComponentName Value="ConnectionForm"/>
-        <HasResources Value="True"/>
-        <ResourceBaseClass Value="Form"/>
-        <UnitName Value="ConnectionUnit"/>
-      </Unit10>
-      <Unit11>
+      </Unit8>
+      <Unit9>
         <Filename Value="..\..\FPC\win32\GameOptionsUnit.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="GameOptionsForm"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="GameOptionsUnit"/>
-      </Unit11>
-      <Unit12>
+      </Unit9>
+      <Unit10>
         <Filename Value="..\..\FPC\win32\LookFeelOptionsUnit.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="LookFeelOptionsForm"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="LookFeelOptionsUnit"/>
-      </Unit12>
-      <Unit13>
+      </Unit10>
+      <Unit11>
         <Filename Value="..\..\FPC\win32\ContinueUnit.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="ContinueForm"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="ContinueUnit"/>
-      </Unit13>
-      <Unit14>
+      </Unit11>
+      <Unit12>
         <Filename Value="..\..\FPC\win32\ConnectingUnit.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="ConnectingForm"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="ConnectingUnit"/>
+      </Unit12>
+      <Unit13>
+        <Filename Value="win32\SelectSkypeContactUnit.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="SelectSkypeContactForm"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="SelectSkypeContactUnit"/>
+      </Unit13>
+      <Unit14>
+        <Filename Value="ConnectorSkypeUnit.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="Connector"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="DataModule"/>
+        <UnitName Value="ConnectorSkypeUnit"/>
       </Unit14>
       <Unit15>
+        <Filename Value="..\..\FPC\ManagerUnit.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="Manager"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="ManagerUnit"/>
+      </Unit15>
+      <Unit16>
+        <Filename Value="..\..\FPC\LocalizerUnit.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="LocalizerUnit"/>
+      </Unit16>
+      <Unit17>
         <Filename Value="..\..\FPC\ModalFormBase.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="ModalFormBase"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="ModalFormBase"/>
-      </Unit15>
+      </Unit17>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
     <Version Value="8"/>
     <PathDelim Value="\"/>
     <Target>
-      <Filename Value="..\..\bin\Chess4Net"/>
+      <Filename Value="..\..\bin\Chess4Net_Skype"/>
     </Target>
     <SearchPaths>
-      <IncludeFiles Value="..\..\FPC\;..\..\FPC\win32\;win32\"/>
-      <OtherUnitFiles Value="..\..\FPC\;..\..\FPC\win32\;win32\"/>
+      <IncludeFiles Value="..\..\FPC\;..\..\FPC\win32\;win32\;..\SkypeAPI\"/>
+      <OtherUnitFiles Value="..\..\FPC\;..\..\FPC\win32\;win32\;..\SkypeAPI\"/>
       <UnitOutputDirectory Value="bin"/>
     </SearchPaths>
     <Parsing>
@@ -180,8 +192,8 @@
     </CodeGeneration>
     <Linking>
       <Debugging>
-        <UseLineInfoUnit Value="False"/>
-        <StripSymbols Value="True"/>
+        <GenerateDebugInfo Value="True"/>
+        <UseExternalDbgSyms Value="True"/>
       </Debugging>
       <LinkSmart Value="True"/>
       <Options>

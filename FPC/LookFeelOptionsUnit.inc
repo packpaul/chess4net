@@ -5,8 +5,9 @@ interface
 
 uses
   LCLIntf, SysUtils, Classes, Graphics, Controls, Forms,
-  Dialogs, StdCtrls, ExtCtrls, Buttons,
-  ModalForm, LResources;
+  Dialogs, StdCtrls, ExtCtrls, Buttons, LResources,
+  //
+  ModalFormBase, ModalForm;
 
 type
 
@@ -23,12 +24,12 @@ type
     StayOnTopBox: TCheckBox;
     ExtraExitBox: TCheckBox;
   public
-    class function GetModalID : TModalFormID; override;
+    function GetModalID : TModalFormID; override;
   end;
 
 implementation
 
-class function TLookFeelOptionsForm.GetModalID: TModalFormID;
+function TLookFeelOptionsForm.GetModalID: TModalFormID;
 begin
   Result := mfLookFeel;
 end;

@@ -1,0 +1,13 @@
+{ This is an automatically generated lazarus resource file }
+
+LazarusResources.Add('TConnector','FORMDATA',[
+  'TPF0'#10'TConnector'#9'Connector'#8'OnCreate'#7#16'DataModuleCreate'#9'OnDes'
+  +'troy'#7#17'DataModuleDestroy'#14'OldCreateOrder'#8#4'left'#2'+'#3'top'#3#227
+  +#0#6'Height'#2'x'#16'HorizontalOffset'#2#0#14'VerticalOffset'#2#0#5'Width'#3
+  +' '#1#0#6'TTimer'#9'sendTimer'#7'Enabled'#8#8'Interval'#2'd'#7'OnTimer'#7#14
+  +'sendTimerTimer'#4'left'#2#16#3'top'#2#8#0#0#6'TTimer'#17'showContactsTimer'
+  +#7'Enabled'#8#8'Interval'#3#244#1#7'OnTimer'#7#22'showContactsTimerTimer'#4
+  +'left'#2'`'#3'top'#2#8#0#0#6'TTimer'#19'userConnectingTimer'#7'Enabled'#8#8
+  +'Interval'#3#244#1#7'OnTimer'#7#24'userConnectingTimerTimer'#4'left'#3#200#0
+  +#3'top'#2#8#0#0#0
+]);

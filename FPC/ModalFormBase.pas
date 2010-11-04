@@ -1,0 +1,117 @@
+unit ModalFormBase;
+
+interface
+
+uses
+  Forms, LCLType;
+
+type
+  TModalFormBase = class;
+
+  TModalFormID = (mfNone, mfMsgClose, mfMsgLeave, mfMsgAbort, mfMsgResign,
+                  mfMsgDraw, mfMsgTakeBack, mfConnecting, mfGameOptions,
+                  mfLookFeel, mfCanPause, mfContinue, mfIncompatible,
+                  mfSelectSkypeContact, mfMsgAdjourn);
+
+  TModalFormHandler = procedure(modSender: TModalFormBase; modID: TModalFormID) of object;
+
+  TDialogsBase = class
+  protected
+    Owner: TForm;
+    Handler: TModalFormHandler;
+  public
+    procedure SetShowing(msgDlgID: TModalFormID); virtual; abstract;
+    procedure UnsetShowing(msgDlgID: TModalFormID; msgDlg: TModalFormBase = nil); virtual; abstract;
+  end;
+
+  TModalFormBase = class(TForm)
+    procedure FormCreate(Sender: TObject);
+    procedure FormClose(Sender: TObject; var aAction: TCloseAction);
+  private
+    GenFormClose: TCloseEvent;
+  protected
+    Handler: TModalFormHandler;
+    dlgOwner: TDialogsBase;
+    function GetHandle: hWnd; virtual; abstract;
+    function GetEnabled_: boolean; virtual; abstract;
+    procedure SetEnabled_(flag: boolean); virtual; abstract;
+    function RGetModalResult: TModalResult; virtual; abstract;
+    procedure RSetModalResult(Value: TModalResult); virtual; abstract;
+    function GetLeft_: integer; virtual; abstract;
+    procedure SetLeft_(x: integer); virtual; abstract;
+    function GetTop_: integer; virtual; abstract;
+    procedure SetTop_(y: integer); virtual; abstract;
+  public
+    constructor Create(aOwner: TForm; modHandler: TModalFormHandler = nil); virtual; overload; reintroduce;
+    constructor Create(aDlgOwner: TDialogsBase); overload; reintroduce;
+
+    procedure SetFocus; virtual; abstract;
+    procedure Show; virtual; abstract;
+    function GetModalID: TModalFormID; virtual; abstract;
+
+    property Handle: hWnd read GetHandle;
+    property Enabled: boolean read GetEnabled_ write SetEnabled_;
+    property ModalResult: TModalResult read RGetModalResult write RSetModalResult;
+    property Left: integer read GetLeft_ write SetLeft_;
+    property Top: integer read GetTop_ write SetTop_;
+  end;
+
+implementation
+
+////////////////////////////////////////////////////////////////////////////////
+// TModalFormBase
+
+constructor TModalFormBase.Create(aOwner: TForm; modHandler: TModalFormHandler = nil);
+begin
+  inherited Create(aOwner);
+  FormCreate(self);
+
+  GenFormClose := OnClose;
+  OnClose := FormClose;
+
+  Handler := modhandler;
+end;
+
+
+constructor TModalFormBase.Create(aDlgOwner: TDialogsBase);
+begin
+  dlgOwner := aDlgOwner;
+  Create(dlgOwner.Owner, dlgOwner.Handler);
+  dlgOwner.SetShowing(GetModalID);
+end;
+
+
+procedure TModalFormBase.FormCreate(Sender: TObject);
+var
+  frmOwner: TForm;
+begin
+{$IFDEF LCLgtk2}
+  with Constraints do
+  begin
+    MinWidth := Width;
+    MaxWidth := Width + 1;
+    MinHeight := Height;
+    MaxHeight := Height + 1;
+  end;
+{$ENDIF}
+  frmOwner := (Owner as TForm);
+  Left := frmOwner.Left + (frmOwner.Width - Width) div 2;
+  Top := frmOwner.Top + (frmOwner.Height - Height) div 2;
+end;
+
+
+procedure TModalFormBase.FormClose(Sender: TObject; var aAction: TCloseAction);
+begin
+  if Assigned(GenFormClose) then
+    GenFormClose(Sender, aAction);
+  if Assigned(dlgOwner) then
+    dlgOwner.UnsetShowing(GetModalID, self);
+//  if fsModal in FormState then
+//    exit;
+  if Assigned(Handler) then
+    Handler(self, GetModalID);
+  aAction := caFree;
+end;
+
+end.
+

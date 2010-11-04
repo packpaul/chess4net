@@ -1,0 +1,8 @@
+object ModalFormBase: TModalFormBase
+  Left = 0
+  Height = 240
+  Top = 0
+  Width = 320
+  Caption = 'ModalFormBase'
+  LCLVersion = '0.9.28.2'
+end

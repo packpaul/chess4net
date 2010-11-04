@@ -1,0 +1,7 @@
+{ This is an automatically generated lazarus resource file }
+
+LazarusResources.Add('TModalFormBase','FORMDATA',[
+  'TPF0'#14'TModalFormBase'#13'ModalFormBase'#4'Left'#2#0#6'Height'#3#240#0#3'T'
+  +'op'#2#0#5'Width'#3'@'#1#7'Caption'#6#13'ModalFormBase'#10'LCLVersion'#6#8'0'
+  +'.9.28.2'#0#0
+]);

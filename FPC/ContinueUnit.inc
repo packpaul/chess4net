@@ -7,7 +7,7 @@ uses
   LCLIntf, SysUtils, Classes, Graphics, Controls, Forms,
   ExtCtrls, StdCtrls, Buttons, LResources,
   //
-  ModalForm;
+  ModalFormBase, ModalForm;
 
 type
   TContinueHandler = procedure of object;
@@ -23,7 +23,7 @@ type
     shuted: boolean;
   public
     procedure Shut;
-    class function GetModalID : TModalFormID; override;
+    function GetModalID : TModalFormID; override;
     constructor Create(Owner: TForm; h: TContinueHandler = nil); reintroduce; overload;
   end;
 
@@ -68,7 +68,7 @@ begin
   Close;
 end;
 
-class function TContinueForm.GetModalID: TModalFormID;
+function TContinueForm.GetModalID: TModalFormID;
 begin
   Result := mfContinue;
 end;

@@ -4,8 +4,9 @@ interface
 
 uses
   LCLIntf, SysUtils, Classes, Graphics, Controls,
-  Dialogs, StdCtrls, ExtCtrls, Buttons,
-  ModalForm, ComCtrls, LResources;
+  Dialogs, StdCtrls, ExtCtrls, Buttons, ComCtrls, LResources,
+  //
+  ModalFormBase, ModalForm;
 
 type
 
@@ -50,7 +51,7 @@ type
     procedure UnlimitedCheckBoxChange(Sender: TObject);
 
   public
-    class function GetModalID: TModalFormID; override;
+    function GetModalID: TModalFormID; override;
   end;
 
 implementation
@@ -125,7 +126,7 @@ begin
     end;
 end;
 
-class function TGameOptionsForm.GetModalID : TModalFormID;
+function TGameOptionsForm.GetModalID : TModalFormID;
 begin
   Result := mfGameOptions;
 end;

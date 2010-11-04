@@ -1,4 +1,3 @@
-
 {$MODE Delphi}
 
 interface
@@ -7,7 +6,7 @@ uses
   LCLIntf, Messages, SysUtils, Classes, Graphics, Controls, Forms,
   ExtCtrls, StdCtrls, Buttons,
   //
-  ModalForm, LResources;
+  ModalFormBase, ModalForm, LResources;
 
 type
   TConnectingHandler = procedure of object;
@@ -25,16 +24,12 @@ type
     procedure FSetOnShow(Value: TNotifyEvent);
   public
     procedure Shut;
-    class function GetModalID : TModalFormID; override;
+    function GetModalID: TModalFormID; override;
     constructor Create(Owner: TForm; h: TConnectingHandler = nil); reintroduce; overload;
     property OnShow: TNotifyEvent read FGetOnShow write FSetOnShow;
   end;
 
-var
-  ConnectingForm: TConnectingForm;
-
 implementation
-
 
 procedure TConnectingForm.AbortButtonClick(Sender: TObject);
 begin
@@ -86,7 +81,7 @@ begin
   inherited OnShow := Value;
 end;
 
-class function TConnectingForm.GetModalID: TModalFormID;
+function TConnectingForm.GetModalID: TModalFormID;
 begin
   Result := mfConnecting;
 end;

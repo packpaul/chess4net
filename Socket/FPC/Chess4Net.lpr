@@ -6,10 +6,10 @@ uses
 {$ENDIF}
   Interfaces, // this includes the LCL widgetset
   Forms, LResources, lnetvisual,
-  { add your units here } ManagerSocketUnit, PromotionUnit,
-  ConnectorSocketUnit, PosBaseUnit, PosBaseChessBoardUnit,
-  GlobalsSocketUnit, GlobalsUnit, ModalForm, ChessBoardUnit, ConnectionUnit,
-  GameOptionsUnit, LookFeelOptionsUnit, ContinueUnit, ConnectingUnit;
+  { add your units here } ManagerSocketUnit, PromotionUnit, ConnectorSocketUnit,
+  PosBaseUnit, PosBaseChessBoardUnit, GlobalsSocketUnit, GlobalsUnit, ModalFormBase,
+  ModalForm, ChessBoardUnit, ConnectionUnit, GameOptionsUnit,
+  LookFeelOptionsUnit, ContinueUnit, ConnectingUnit;
 
 var
   Manager: TManager;

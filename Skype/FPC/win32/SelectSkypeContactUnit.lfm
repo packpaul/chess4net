@@ -1,0 +1,42 @@
+inherited SelectSkypeContactForm: TSelectSkypeContactForm
+  Left = 557
+  Height = 321
+  Top = 204
+  Width = 327
+  BorderIcons = [biSystemMenu]
+  BorderStyle = bsDialog
+  Caption = 'Skype contact Selection'
+  ClientHeight = 321
+  ClientWidth = 327
+  object ContactsListBox: TListBox[0]
+    Left = 8
+    Height = 304
+    Top = 8
+    Width = 222
+    Anchors = [akTop, akLeft, akRight, akBottom]
+    ItemHeight = 0
+    TabOrder = 0
+  end
+  object OkButton: TButton[1]
+    Left = 240
+    Height = 25
+    Top = 16
+    Width = 75
+    Anchors = [akTop, akRight]
+    Caption = '&OK'
+    Default = True
+    ModalResult = 1
+    TabOrder = 1
+  end
+  object CancelButton: TButton[2]
+    Left = 240
+    Height = 25
+    Top = 48
+    Width = 75
+    Anchors = [akTop, akRight]
+    Cancel = True
+    Caption = '&Cancel'
+    ModalResult = 2
+    TabOrder = 2
+  end
+end

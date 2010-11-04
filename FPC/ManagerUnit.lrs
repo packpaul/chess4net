@@ -1,0 +1,43 @@
+{ This is an automatically generated lazarus resource file }
+
+LazarusResources.Add('TManager','FORMDATA',[
+  'TPF0'#8'TManager'#7'Manager'#4'Left'#2','#6'Height'#3#21#2#3'Top'#2','#5'Wid'
+  +'th'#3#184#3#11'BorderIcons'#11#0#11'BorderStyle'#7#12'bsToolWindow'#7'Capti'
+  +'on'#6#7'Manager'#11'Font.Height'#2#245#9'Font.Name'#6#20'Microsoft Sans Ser'
+  +'if'#7'OnClose'#7#9'FormClose'#8'OnCreate'#7#10'FormCreate'#9'OnDestroy'#7#11
+  +'FormDestroy'#8'Position'#7#9'poDefault'#10'LCLVersion'#6#8'0.9.28.2'#0#11'T'
+  +'ActionList'#10'ActionList'#8'OnUpdate'#7#16'ActionListUpdate'#4'left'#2'('#3
+  +'top'#2'p'#0#7'TAction'#21'LookFeelOptionsAction'#7'Caption'#6#23'Look && Fe'
+  +'el Options...'#9'OnExecute'#7#28'LookFeelOptionsActionExecute'#0#0#7'TActio'
+  +'n'#11'AboutAction'#7'Caption'#6#8'About...'#9'OnExecute'#7#18'AboutActionEx'
+  +'ecute'#0#0#0#10'TPopupMenu'#18'ConnectedPopupMenu'#9'AutoPopup'#8#4'left'#2
+  +'('#3'top'#2#8#0#9'TMenuItem'#27'StartAdjournedGameConnected'#7'Caption'#6#20
+  +'Start Adjourned Game'#7'Visible'#8#7'OnClick'#7' StartAdjournedGameConnecte'
+  +'dClick'#0#0#9'TMenuItem'#26'StartStandartGameConnected'#7'Caption'#6#19'Sta'
+  +'rt Standart Game'#7'OnClick'#7#31'StartStandartGameConnectedClick'#0#0#9'TM'
+  +'enuItem'#26'StartPPRandomGameConnected'#7'Caption'#6#20'Start PP Random Gam'
+  +'e'#7'OnClick'#7#31'StartPPRandomGameConnectedClick'#0#0#9'TMenuItem'#2'N5'#7
+  +'Caption'#6#1'-'#0#0#9'TMenuItem'#20'ChangeColorConnected'#7'Caption'#6#12'C'
+  +'hange Color'#7'OnClick'#7#25'ChangeColorConnectedClick'#0#0#9'TMenuItem'#0#7
+  +'Caption'#6#1'-'#0#0#9'TMenuItem'#20'GameOptionsConnected'#7'Caption'#6#15'G'
+  +'ame Options...'#7'OnClick'#7#25'GameOptionsConnectedClick'#0#0#9'TMenuItem'
+  +#24'LookFeelOptionsConnected'#6'Action'#7#21'LookFeelOptionsAction'#7'OnClic'
+  +'k'#7#28'LookFeelOptionsActionExecute'#0#0#9'TMenuItem'#2'N1'#7'Caption'#6#1
+  +'-'#0#0#9'TMenuItem'#14'AboutConnected'#6'Action'#7#11'AboutAction'#7'OnClic'
+  +'k'#7#18'AboutActionExecute'#0#0#0#10'TPopupMenu'#13'GamePopupMenu'#9'AutoPo'
+  +'pup'#8#7'OnPopup'#7#18'GamePopupMenuPopup'#4'left'#2'('#3'top'#2'8'#0#9'TMe'
+  +'nuItem'#9'AbortGame'#7'Caption'#6#5'Abort'#7'OnClick'#7#14'AbortGameClick'#0
+  +#0#9'TMenuItem'#8'DrawGame'#7'Caption'#6#4'Draw'#7'OnClick'#7#13'DrawGameCli'
+  +'ck'#0#0#9'TMenuItem'#10'ResignGame'#7'Caption'#6#6'Resign'#7'OnClick'#7#15
+  +'ResignGameClick'#0#0#9'TMenuItem'#2'N6'#7'Caption'#6#1'-'#0#0#9'TMenuItem'
+  +#11'AdjournGame'#7'Caption'#6#7'Adjourn'#7'Visible'#8#7'OnClick'#7#16'Adjour'
+  +'nGameClick'#0#0#9'TMenuItem'#9'GamePause'#7'Caption'#6#5'Pause'#7'Visible'#8
+  +#7'OnClick'#7#14'GamePauseClick'#0#0#9'TMenuItem'#12'TakebackGame'#7'Caption'
+  +#6#8'Takeback'#7'Visible'#8#7'OnClick'#7#17'TakebackGameClick'#0#0#9'TMenuIt'
+  +'em'#2'N4'#7'Caption'#6#1'-'#0#0#9'TMenuItem'#19'LookFeelOptionsGame'#6'Acti'
+  +'on'#7#21'LookFeelOptionsAction'#7'OnClick'#7#28'LookFeelOptionsActionExecut'
+  +'e'#0#0#9'TMenuItem'#2'N2'#7'Caption'#6#1'-'#0#0#9'TMenuItem'#9'AboutGame'#6
+  +'Action'#7#11'AboutAction'#7'OnClick'#7#18'AboutActionExecute'#0#0#0#6'TTime'
+  +'r'#14'ConnectorTimer'#7'Enabled'#8#8'Interval'#3#244#1#7'OnTimer'#7#19'Conn'
+  +'ectorTimerTimer'#4'left'#3#144#0#3'top'#2#8#0#0#0
+]);

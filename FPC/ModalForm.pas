@@ -3,65 +3,52 @@ unit ModalForm;
 interface
 
 uses
-  Forms, Dialogs, Classes, LCLType;
+  Forms, Dialogs, Classes, LCLType,
+  //
+  ModalFormBase;
 
 type
   TModalForm = class;
   TModalFormClass = class of TModalForm;
 
-  TModalFormID = (mfNone, mfMsgClose, mfMsgLeave, mfMsgAbort, mfMsgResign,
-                  mfMsgDraw, mfMsgTakeBack, mfConnecting, mfGameOptions,
-                  mfLookFeel, mfCanPause, mfContinue, mfIncompatible);
-
-  TModalFormHandler = procedure(modSender: TModalForm; modID: TModalFormID) of object;
-
-  TDialogs = class
+  TDialogs = class(TDialogsBase)
   private
     IDCount: array[TModalFormID] of word;
     frmList: TList;
     function GetShowing: boolean;
-  protected
-    Handler: TModalFormHandler;
   public
-    Owner: TForm;
-// -5  procedure MessageDlg(const Msg: string; DlgType: TMsgDlgType; Buttons: TMsgDlgButtons; msgDlgID: TModalFormID);
-    function CreateDialog(modalFormClass: TModalFormClass): TModalForm;
-    procedure SetShowing(msgDlgID: TModalFormID);
-    procedure UnsetShowing(msgDlgID: TModalFormID; msgDlg: TModalForm = nil);
-    function InFormList(frm: TForm): boolean;
-    procedure BringToFront;
-    procedure MoveForms(dx, dy: integer);
     constructor Create(aOwner: TForm; aHandler: TModalFormHandler);
     destructor Destroy; override;
+    procedure MessageDlg(const Msg: string; DlgType: TMsgDlgType; Buttons: TMsgDlgButtons; msgDlgID: TModalFormID);
+    function CreateDialog(modalFormClass: TModalFormClass): TModalForm;
+    procedure SetShowing(msgDlgID: TModalFormID); override;
+    procedure UnsetShowing(msgDlgID: TModalFormID; msgDlg: TModalFormBase = nil); override;
+    function InFormList(frm: TForm): boolean;
+    procedure BringToFront;
+    procedure CloseNoneDialogs;
+    procedure MoveForms(dx, dy: integer);
     property Showing: boolean read GetShowing;
   end;
 
-  TModalForm = class(TForm)
-    procedure FormCreate(Sender: TObject);
-    procedure FormClose(Sender: TObject; var aAction: TCloseAction);
+  TModalForm = class(TModalFormBase)
     procedure ButtonClick(Sender: TObject);
-  private
-    GenFormClose: TCloseEvent;
   protected
-    Handler: TModalFormhandler;
-    dlgOwner: TDialogs;
-    function GetHandle: hWnd; virtual;
-    function GetEnabled_: boolean; virtual;
-    procedure SetEnabled_(flag: boolean); virtual;
-    function GetLeft_: integer; virtual;
-    procedure SetLeft_(x: integer); virtual;
-    function GetTop_: integer; virtual;
-    procedure SetTop_(y: integer); virtual;
+    function GetHandle: hWnd; override;
+    function GetEnabled_: boolean; override;
+    procedure SetEnabled_(flag: boolean); override;
+    function RGetModalResult: TModalResult; override;
+    procedure RSetModalResult(Value: TModalResult); override;
+    function GetLeft_: integer; override;
+    procedure SetLeft_(x: integer); override;
+    function GetTop_: integer; override;
+    procedure SetTop_(y: integer); override;
   public
-    procedure Show; virtual;
-    constructor Create(aOwner: TForm; modID: TModalFormID = mfNone; modHandler: TModalFormHandler = nil); reintroduce; overload;
-    constructor Create(aDlgOwner: TDialogs; modID: TModalFormID; modHandler: TModalFormHandler); reintroduce; overload;
-    class function GetModalID : TModalFormID; virtual;
+    constructor Create(aOwner: TForm; modHandler: TModalFormHandler = nil); override;
 
-    property Handle: hWnd read GetHandle;
-    property Enabled: boolean read GetEnabled_ write SetEnabled_;
-    property Left: integer read GetLeft_ write SetLeft_;
-    property Top: integer read GetTop_ write SetTop_;
+    procedure Show; override;
+    procedure SetFocus; override;
+
+    function GetModalID: TModalFormID; override;
   end;
 
 implementation
@@ -71,38 +58,34 @@ uses
   //
   GlobalsUnit;
 
+type
+  TModalFormDecorator = class(TModalFormBase)
+  private
+    m_Form: TForm;
+    m_ModalID: TModalFormID;
+  protected
+    function GetHandle: hWnd; override;
+    function GetEnabled_: boolean; override;
+    procedure SetEnabled_(flag: boolean); override;
+    function RGetModalResult: TModalResult; override;
+    procedure RSetModalResult(Value: TModalResult); override;
+    function GetLeft_: integer; override;
+    procedure SetLeft_(x: integer); override;
+    function GetTop_: integer; override;
+    procedure SetTop_(y: integer); override;
 
-procedure TModalForm.FormCreate(Sender: TObject);
-var
-  frmOwner: TForm;
-begin
-{$IFDEF LCLgtk2}
-  with Constraints do
-    begin
-      MinWidth := Width;
-      MaxWidth := Width + 1;
-      MinHeight := Height;
-      MaxHeight := Height + 1;
-    end;
-{$ENDIF}
-  frmOwner := (Owner as TForm);
-  Left := frmOwner.Left + (frmOwner.Width - Width) div 2;
-  Top := frmOwner.Top + (frmOwner.Height - Height) div 2;
-end;
+  public
+    constructor Create(const AForm: TForm; AModalID: TModalFormID;
+      aDlgOwner: TDialogs);
+    procedure SetFocus; override;
+    procedure Show; override;
+    function GetModalID: TModalFormID; override;
+    property Handle: hWnd read GetHandle;
+    property Enabled: boolean read GetEnabled_ write SetEnabled_;
+  end;
 
-
-procedure TModalForm.FormClose(Sender: TObject; var aAction: TCloseAction);
-begin
-  if Assigned(GenFormClose) then
-    GenFormClose(Sender, aAction);
-  if Assigned(dlgOwner) then
-    dlgOwner.UnsetShowing(GetModalID, self);
-  if fsModal in FormState then
-    exit;
-  if Assigned(Handler) then
-    Handler(self, GetModalID);
-  aAction := caFree;
-end;
+////////////////////////////////////////////////////////////////////////////////
+// TModalForm
 
 
 procedure TModalForm.ButtonClick(Sender: TObject);
@@ -113,19 +96,13 @@ begin
 end;
 
 
-constructor TModalForm.Create(aOwner: TForm; modID: TModalFormID; modHandler: TModalFormHandler);
+constructor TModalForm.Create(aOwner: TForm; modHandler: TModalFormHandler);
 var
   i: integer;
 begin
   FormStyle := aOwner.FormStyle;
 
-  inherited Create(aOwner);
-  FormCreate(self);
-
-  GenFormClose := OnClose;
-  OnClose := FormClose;
-
-  Handler := modhandler;
+  inherited Create(aOwner, modHandler);
 
   for i := 0 to (ComponentCount - 1) do
   begin
@@ -134,15 +111,8 @@ begin
   end;
 end;
 
-constructor TModalForm.Create(aDlgOwner: TDialogs; modID: TModalFormID; modHandler: TModalFormHandler);
-begin
-  dlgOwner := aDlgOwner;
-  Create(dlgOwner.Owner, modID, modHandler);
-  dlgOwner.SetShowing(modID);
-end;
 
-
-class function TModalForm.GetModalID : TModalFormID;
+function TModalForm.GetModalID : TModalFormID;
 begin
   Result := mfNone;
 end;
@@ -150,52 +120,70 @@ end;
 
 function TModalForm.GetHandle: hWnd;
 begin
-  Result := inherited Handle;
+  Result := (self as TForm).Handle;
 end;
 
 
 function TModalForm.GetEnabled_: boolean;
 begin
-  Result := inherited Enabled;
+  Result := (self as TForm).Enabled;
 end;
 
 
 procedure TModalForm.SetEnabled_(flag: boolean);
 begin
-  inherited Enabled := flag;
+  (self as TForm).Enabled := flag;
 end;
 
 
+function TModalForm.RGetModalResult: TModalResult;
+begin
+  Result := (self as TForm).ModalResult;
+end;
+
+
+procedure TModalForm.RSetModalResult(Value: TModalResult);
+begin
+  (self as TForm).ModalResult := Value;
+end;
+
 procedure TModalForm.Show;
 begin
-  inherited Show;
+  (self as TForm).Show;
 end;
 
 
 function TModalForm.GetLeft_: integer;
 begin
-  Result := inherited Left;
+  Result := (self as TForm).Left;
 end;
 
 
 procedure TModalForm.SetLeft_(x: integer);
 begin
-  inherited Left := x;
+  (self as TForm).Left := x;
 end;
 
 
 function TModalForm.GetTop_: integer;
 begin
-  Result := inherited Top;
+  Result := (self as TForm).Top;
 end;
 
 
 procedure TModalForm.SetTop_(y: integer);
 begin
-  inherited Top := y;
+  (self as TForm).Top := y;
 end;
 
-{-------------------------- TDialogs ------------------------------}
+
+procedure TModalForm.SetFocus;
+begin
+  (self as TForm).SetFocus;
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TDialogs
 
 function TDialogs.GetShowing: boolean;
 var
@@ -211,7 +199,7 @@ begin
 end;
 
 
-procedure TDialogs.UnsetShowing(msgDlgID: TModalFormID; msgDlg: TModalForm = nil);
+procedure TDialogs.UnsetShowing(msgDlgID: TModalFormID; msgDlg: TModalFormBase = nil);
 var
   i: integer;
 begin
@@ -221,7 +209,7 @@ begin
     begin
       for i := 0 to frmList.Count - 1 do
         begin
-          if TModalForm(frmList[i]).Handle = msgDlg.Handle then
+          if TModalFormBase(frmList[i]).Handle = msgDlg.Handle then
             begin
               frmList.Delete(i);
               break;
@@ -230,8 +218,8 @@ begin
     end;
   if frmList.Count > 0 then
     begin
-      TModalForm(frmList.Last).Enabled := TRUE;
-      TModalForm(frmList.Last).SetFocus;
+      TModalFormBase(frmList.Last).Enabled := TRUE;
+      TModalFormBase(frmList.Last).SetFocus;
     end
   else
     begin
@@ -247,7 +235,7 @@ var
 begin
   for i := 0 to frmList.Count - 1 do
     begin
-      if TModalForm(frmList[i]).Handle = frm.Handle then
+      if (TModalFormBase(frmList[i]).Handle = frm.Handle) then
         begin
           Result := TRUE;
           exit;
@@ -256,24 +244,40 @@ begin
   Result := FALSE;
 end;
 
-{ // -5
+
 procedure TDialogs.MessageDlg(const Msg: string; DlgType: TMsgDlgType; Buttons: TMsgDlgButtons; msgDlgID: TModalFormID);
 var
-  DialogForm: TDialogForm;
+  DialogForm: TForm;
+  ModalFormDecorator: TModalFormDecorator;
 begin
   if (msgDlgID <> mfNone) and (IDCount[msgDlgID] > 0) then
     exit;
-  DialogForm := TDialogForm.Create(self, Msg, DlgType, Buttons, msgDlgID, Handler);
-  DialogForm.Caption := DIALOG_CAPTION;
-  SetShowing(msgDlgID);
-  DialogForm.Show;
-  frmList.Add(DialogForm);
+
+  ModalFormDecorator := nil;
+
+  DialogForm := CreateMessageDialog(Msg, DlgType, Buttons);
+  with DialogForm do
+  try
+    Position := poDesigned;
+    Caption := DIALOG_CAPTION;
+    FormStyle := self.Owner.FormStyle;
+
+    SetShowing(msgDlgID);
+
+    ModalFormDecorator := TModalFormDecorator.Create(DialogForm, msgDlgID, self);
+    frmList.Add(ModalFormDecorator);
+
+    DialogForm.ShowModal;
+
+  finally
+    ModalFormDecorator.Free;
+  end;
 end;
-}
+
 
 function TDialogs.CreateDialog(modalFormClass: TModalFormClass): TModalForm;
 begin
-  Result := modalFormClass.Create(self, modalFormClass.GetModalID, Handler);
+  Result := modalFormClass.Create(self);
   frmList.Add(Result);
 end;
 
@@ -301,7 +305,7 @@ procedure TDialogs.SetShowing(msgDlgID: TModalFormID);
 begin
   inc(IDCount[msgDlgID]);
   if frmList.Count > 0 then
-    TModalForm(frmList.Last).Enabled := FALSE;
+    TModalFormBase(frmList.Last).Enabled := FALSE;
 end;
 
 
@@ -312,21 +316,118 @@ begin
   if frmList.Count = 0 then
     exit;
   for i := 0 to frmList.Count - 1 do
-    TModalForm(frmList[i]).Show;
-  TModalForm(frmList.Last).SetFocus;
+    TModalFormBase(frmList[i]).Show;
+  TModalFormBase(frmList.Last).SetFocus;
 end;
 
+
+procedure TDialogs.CloseNoneDialogs;
+var
+  i: integer;
+  Dlg: TModalForm;
+begin
+  i := frmList.Count - 1;
+  while (i >= 0) do
+  begin
+    Dlg := frmList[i];
+    if (Dlg.GetModalID = mfNone) then
+      Dlg.Close;
+    dec(i);
+  end;
+end;
 
 procedure TDialogs.MoveForms(dx, dy: integer);
 var
   i: integer;
 begin
   for i := 0 to frmList.Count - 1 do
-    with TModalForm(frmList[i]) do
-      begin
-        Left := Left + dx;
-        Top := Top + dy;
-      end;
+    with TModalFormBase(frmList[i]) do
+    begin
+      Left := Left + dx;
+      Top := Top + dy;
+    end;
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TModalFormDecorator
+
+constructor TModalFormDecorator.Create(const AForm: TForm; AModalID: TModalFormID;
+  aDlgOwner: TDialogs);
+begin
+  m_Form := AForm;
+  m_ModalID := AModalID;
+
+  inherited Create(aDlgOwner);
+end;
+
+
+function TModalFormDecorator.GetHandle: hWnd;
+begin
+  Result := m_Form.Handle;
+end;
+
+
+function TModalFormDecorator.GetEnabled_: boolean;
+begin
+  Result := m_Form.Enabled;
+end;
+
+
+procedure TModalFormDecorator.SetEnabled_(flag: boolean);
+begin
+  m_Form.Enabled := flag;
+end;
+
+
+function TModalFormDecorator.RGetModalResult: TModalResult;
+begin
+  Result := m_Form.ModalResult;
+end;
+
+
+procedure TModalFormDecorator.RSetModalResult(Value: TModalResult);
+begin
+  m_Form.ModalResult := Value;
+end;
+
+procedure TModalFormDecorator.SetFocus;
+begin
+  m_Form.SetFocus;
+end;
+
+
+procedure TModalFormDecorator.Show;
+begin
+  m_Form.Show;
+end;
+
+
+function TModalFormDecorator.GetModalID: TModalFormID;
+begin
+  Result := m_ModalID;
+end;
+
+function TModalFormDecorator.GetLeft_: integer;
+begin
+  Result := m_Form.Left;
+end;
+
+
+procedure TModalFormDecorator.SetLeft_(x: integer);
+begin
+  m_Form.Left := x;
+end;
+
+
+function TModalFormDecorator.GetTop_: integer;
+begin
+  Result := m_Form.Top;
+end;
+
+
+procedure TModalFormDecorator.SetTop_(y: integer);
+begin
+  m_Form.Top := y;
 end;
 
 end.
