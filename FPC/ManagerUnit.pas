@@ -242,7 +242,7 @@ uses
   , ControlUnit
 {$ENDIF}
 {$IFDEF SKYPE}
-  , SelectSkypeContactUnit{, CreditsFormUnit}
+  , SelectSkypeContactUnit, CreditsFormUnit
 {$ENDIF}
   ;
 
@@ -2352,7 +2352,6 @@ procedure TManager.FShowCredits;
 begin // TManager.FShowCredits
   if (m_bConnectionOccured and (not m_bDontShowCredits) and (not NFridayThe13)) then
   begin
-{ // TODO:
     with TCreditsForm.Create(nil) do
     try
       ShowModal;
@@ -2360,7 +2359,6 @@ begin // TManager.FShowCredits
     finally
       Free;
     end;
-}
   end;
 end;
 {$ENDIF}
