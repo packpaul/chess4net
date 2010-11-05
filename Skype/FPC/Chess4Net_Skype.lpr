@@ -5,7 +5,7 @@ uses
   cthreads,
 {$ENDIF}
   Interfaces, // this includes the LCL widgetset
-  Forms,
+  Forms, LResources,
   { add your units here }
   ManagerUnit, ManagerSkypeUnit, PromotionUnit,
   PosBaseUnit, PosBaseChessBoardUnit, GlobalsSkypeUnit, ConnectorSkypeUnit,

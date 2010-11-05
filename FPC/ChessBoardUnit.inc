@@ -784,9 +784,21 @@ begin
   if CHESS_BOARD_INSTANCES = 0 then
     begin
       bmChessBoard := TBitmap.Create;
-      bmChessBoard.LoadFromLazarusResource('BOARD');
-      bmChessBoard.Canvas.Brush.Color := PBoxBoard.Color;
-      bmChessBoard.Canvas.FloodFill(0, 0, bmChessBoard.Canvas.Pixels[0, 0], fsSurface);
+
+      with bmChessBoard do
+      begin
+        bmChessBoard.LoadFromLazarusResource('BOARD');
+        bmChessBoard.Canvas.Brush.Color := PBoxBoard.Color;
+{$IFDEF LCLgtk2}
+        bmChessBoard.Canvas.Pen.Color := PBoxBoard.Color;
+        bmChessBoard.Canvas.FillRect(Bounds(0, 0, Width, 2));
+        bmChessBoard.Canvas.FillRect(Bounds(0, 0, 16, Height));
+        bmChessBoard.Canvas.FillRect(Bounds(Width - 1, 0, 2, Height));
+        bmChessBoard.Canvas.FillRect(Rect(0, 330, Width, Height));
+{$ELSE}
+        bmChessBoard.Canvas.FloodFill(0, 0, bmChessBoard.Canvas.Pixels[0, 0], fsSurface);
+{$ENDIF}
+      end;
 
       for fig:= low(fig) to high(fig) do
         begin
