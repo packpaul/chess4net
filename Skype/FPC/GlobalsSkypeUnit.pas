@@ -16,8 +16,8 @@ const
   MSG_INVITATION = 'Wellcome to Chess4Net. If you don''t have it, please download it from http://chess4net.ru';
   SKYPE_APP_NAME = 'Chess4Net_Skype';
 
-  PLUGIN_URL = 'http://chess4net.ru';
-  PLUGIN_EMAIL = 'packpaul@mail.ru';
+  PLUGIN_PLAYING_OVER = 'Plugin for playing chess over Skype';
+  PLUGIN_INFO_NAME = 'Chess4Net 2010.1.1';
 
 implementation
 

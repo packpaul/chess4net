@@ -63,7 +63,7 @@ type
 implementation
 
 uses
-  SysUtils, StdCtrls, Buttons,
+  SysUtils, Buttons,
   //
   GlobalsUnit;
 

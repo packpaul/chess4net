@@ -3,7 +3,7 @@ unit CreditsFormUnit;
 interface
 
 uses
-  SysUtils, {Variants,} Classes, Graphics, Controls, Forms,
+  SysUtils, Classes, Graphics, Controls, Forms,
   Dialogs, StdCtrls, ExtCtrls, LResources;
 
 type
@@ -30,7 +30,7 @@ uses
 {$IFDEF WINDOWS}
   Windows, ShellAPI,
 {$ENDIF}
-  GlobalsUnit, GlobalsSkypeUnit, LocalizerUnit;
+  GlobalsUnit, LocalizerUnit;
 
 ////////////////////////////////////////////////////////////////////////////////
 // TCreditsForm
@@ -62,8 +62,10 @@ end;
 
 procedure TCreditsForm.URLLabelClick(Sender: TObject);
 begin
+{$IFDEF WINDOWS}
   ShellExecute(Handle, nil, PChar(URLLabel.Caption), nil, nil, SW_SHOWNORMAL);
   CloseButton.Click;
+{$ENDIF}
 end;
 
 

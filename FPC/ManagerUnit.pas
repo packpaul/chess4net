@@ -17,6 +17,9 @@ uses
   ModalFormBase, ModalForm, {DialogUnit,} ContinueUnit, LocalizerUnit;
 
 type
+
+  { TManager }
+
   TManager = class(TForm, ILocalizable)
     ActionList: TActionList;
     LookFeelOptionsAction: TAction;
@@ -145,6 +148,7 @@ type
 {$IFDEF SKYPE}
     procedure FShowCredits;
 {$ENDIF}
+    procedure FShowInfo;
 
     procedure FSetTransmittable(bValue: boolean);
 
@@ -234,7 +238,7 @@ implementation
 uses
   // Chess4Net
   DateUtils, Math, StrUtils, IniFiles, Dialogs,
-  LookFeelOptionsUnit, GlobalsUnit, GlobalsSkypeUnit{, InfoUnit}
+  LookFeelOptionsUnit, GlobalsUnit, GlobalsSkypeUnit, InfoUnit
 {$IFDEF AND_RQ}
   , CallExec
 {$ENDIF}
@@ -1815,6 +1819,13 @@ begin
 end;
 
 
+procedure TManager.FShowInfo;
+begin
+  with m_Dialogs.CreateDialog(TInfoForm) do
+    ShowModal;
+end;
+
+
 procedure TManager.FWriteToGameLog(const s: string);
 begin
   if ((not m_bConnectionOccured) or m_bTransmittable) then
@@ -2122,10 +2133,12 @@ begin
   ChessBoard.SwitchClock(ChessBoard.PositionColor);
 end;
 
+
 procedure TManager.AboutActionExecute(Sender: TObject);
 begin
-//  ShowInfo; // TODO:
+  FShowInfo;
 end;
+
 
 procedure TManager.AdjournGameClick(Sender: TObject);
 begin

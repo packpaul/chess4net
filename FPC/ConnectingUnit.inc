@@ -3,7 +3,7 @@
 interface
 
 uses
-  LCLIntf, Messages, SysUtils, Classes, Graphics, Controls, Forms,
+  LCLIntf, SysUtils, Classes, Graphics, Controls, Forms,
   ExtCtrls, StdCtrls, Buttons,
   //
   ModalFormBase, ModalForm, LResources;
