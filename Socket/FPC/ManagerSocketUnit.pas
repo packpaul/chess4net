@@ -309,7 +309,7 @@ begin
               if ClockColor <> PlayerColor then
                 begin
                   Time[PlayerColor] := IncSecond(Time[PlayerColor], you_inc);
-                  ShortTimeFormat := FULL_TIME_FORMAT;
+                  LongTimeFormat := FULL_TIME_FORMAT;
                   s := TimeToStr(Time[PlayerColor]);
                   if not Unlimited[PlayerColor] or (opponentClientVersion < 200706) then
                     SendData(CMD_SWITCH_CLOCK + ' ' + s);
@@ -1195,7 +1195,7 @@ var
 begin
   gameLog := '';
 
-  ShortTimeFormat := HOUR_TIME_FORMAT;
+  LongTimeFormat := HOUR_TIME_FORMAT;
   WriteToGameLog('[' + DateTimeToStr(Now) + ']' + #13#10);
 
   if ChessBoard.PlayerColor = White then

@@ -4,6 +4,8 @@ unit ConnectorSocketUnit;
 
 interface
 
+// {$DEFINE DEBUG_LOG}
+
 uses
   SysUtils, Classes, ExtCtrls, LResources, lNetComponents, lNet;
 
@@ -36,10 +38,20 @@ type
     _state: TConnectionState;
     _host: string;
     _port: word;
+
+{$IFDEF DEBUG_LOG}
+    _logFile: Text;
+
+    procedure FInitLog;
+    procedure FWriteToLog(const s: string);
+    procedure FCloseLog;
+{$ENDIF}
+
     function DoOpenClient: boolean;
 
   public
     constructor Create(Owner: TComponent;  h: TConnectorHandler); reintroduce;
+    destructor Destroy; override;
     procedure OpenServer(port: word = 5555);
     procedure OpenClient(const host: string; port: word = 5555);
     procedure Close; overload;
@@ -48,6 +60,11 @@ type
   end;
 
 implementation
+
+{$I-}
+
+uses
+  GlobalsUnit;
 
 type
   TOpenClientOperator = class(TThread)
@@ -69,7 +86,20 @@ begin
   _socket := nil;
   _state := [];
   Handler := h;
+{$IFDEF DEBUG_LOG}
+  FInitLog;
+{$ENDIF}
 end;
+
+
+destructor TConnector.Destroy;
+begin
+{$IFDEF DEBUG_LOG}
+  FCloseLog;
+{$ENDIF}
+  inherited;
+end;
+
 
 procedure TConnector.OpenServer(port: word = 5555);
 begin
@@ -165,12 +195,18 @@ var
   data: string;
 begin
   _socket.GetMessage(data);
+{$IFDEF DEBUG_LOG}
+  FWriteToLog('>> ' + data);
+{$ENDIF}
   if length(data) > 0 then
     Handler(ceData, @data);
 end;
 
 procedure TConnector.Close;
 begin
+{$IFDEF DEBUG_LOG}
+  FCloseLog;
+{$ENDIF}
   _socket := nil;
   LTCPComponent.Disconnect;
   _state := []
@@ -184,10 +220,50 @@ begin
   if (_socket.SendMessage(sendTextBuffer) = -1) then
     Handler(ceError)
   else
+  begin
+{$IFDEF DEBUG_LOG}
+    FWriteToLog('<< ' + sendTextBuffer);
+{$ENDIF}
     sendTextBuffer := '';
+  end;
   // иначе сообщение пересылается
   sendTimer.Enabled := FALSE;
 end;
+
+{$IFDEF DEBUG_LOG}
+
+procedure TConnector.FInitLog;
+begin
+  AssignFile(_logFile, Chess4NetPath + 'Connector.log');
+  Append(_logFile);
+  if IOResult <> 0 then
+    begin
+      Rewrite(_logFile);
+      if IOResult <> 0 then
+        begin
+          AssignFile(_logFile, Chess4NetPath + 'Connector~.log');
+          Append(_logFile);
+          if IOResult <> 0 then Rewrite(_logFile);
+        end;
+    end;
+
+   FWriteToLog('[' + DateTimeToStr(Now) + ']');
+end;
+
+
+procedure TConnector.FWriteToLog(const s: string);
+begin
+  WriteLn(_logFile, s);
+  Flush(_logFile);
+end;
+
+
+procedure TConnector.FCloseLog;
+begin
+  CloseFile(_logFile);
+end;
+
+{$ENDIF}
 
 {------------------------- TOpenClientOperator --------------------------}
 

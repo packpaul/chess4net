@@ -64,7 +64,6 @@ type
     AnimateTimer: TTimer;
     WhiteFlagButton: TSpeedButton;
     BlackFlagButton: TSpeedButton;
-    WhiteTimeLabel1: TLabel;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure PBoxBoardPaint(Sender: TObject);
@@ -576,14 +575,14 @@ begin
 
   time_label.Font.Color:= TIME_COLOR;
 
-  ShortTimeFormat := MIN_TIME_FORMAT;
+  LongTimeFormat := MIN_TIME_FORMAT;
   if player_time[c] >= EncodeTime(1, 0, 0, 0) then
-    ShortTimeFormat := HOUR_TIME_FORMAT
+    LongTimeFormat := HOUR_TIME_FORMAT
   else
     if (player_time[c] < EncodeTime(0, 0, ZEITNOT_BOARDER, 0)) and
        (player_time[c] > 0) then
       begin
-        ShortTimeFormat := ZEITNOT_FORMAT;
+        LongTimeFormat := ZEITNOT_FORMAT;
         time_label.Font.Color:= ZEITNOT_COLOR;
       end;
 
