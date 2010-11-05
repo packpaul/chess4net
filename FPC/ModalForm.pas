@@ -31,6 +31,7 @@ type
   end;
 
   TModalForm = class(TModalFormBase)
+  private
     procedure ButtonClick(Sender: TObject);
   protected
     function GetHandle: hWnd; override;
@@ -71,6 +72,8 @@ type
   private
     m_Form: TForm;
     m_ModalID: TModalFormID;
+    FGenFormClose: TCloseEvent;
+    procedure FFormClose(Sender: TObject; var aAction: TCloseAction);
   protected
     function GetHandle: hWnd; override;
     function GetEnabled_: boolean; override;
@@ -326,8 +329,6 @@ begin
     Caption := DIALOG_CAPTION;
     FormStyle := self.Owner.FormStyle;
 
-    SetShowing(msgDlgID);
-
     ModalFormDecorator := TModalFormDecorator.Create(DialogForm, msgDlgID, self);
     frmList.Add(ModalFormDecorator);
 
@@ -420,6 +421,7 @@ constructor TModalFormDecorator.Create(const AForm: TForm; AModalID: TModalFormI
 begin
   m_Form := AForm;
   m_ModalID := AModalID;
+  FGenFormClose := m_Form.OnClose;
 
   inherited Create(aDlgOwner);
 end;
@@ -527,13 +529,26 @@ end;
 
 function TModalFormDecorator.RGetOnClose: TCloseEvent;
 begin
-  Result := m_Form.OnClose;
+  Result := FGenFormClose;
 end;
 
 
 procedure TModalFormDecorator.RSetOnClose(Value: TCloseEvent);
 begin
-  m_Form.OnClose := Value;
+  FGenFormClose := Value;
+  if (Assigned(FGenFormClose)) then
+    m_Form.OnClose := FFormClose
+  else
+    m_Form.OnClose := nil;
+end;
+
+
+procedure TModalFormDecorator.FFormClose(Sender: TObject; var aAction: TCloseAction);
+begin
+  if (Assigned(FGenFormClose)) then
+    FGenFormClose(self, aAction);
+//  if (aAction = caFree) then // this instance is always freed explicitly
+//    Release;
 end;
 
 

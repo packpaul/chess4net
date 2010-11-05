@@ -25,10 +25,10 @@ type
   end;
 
   TModalFormBase = class(TForm)
-    procedure FormCreate(Sender: TObject);
-    procedure FormClose(Sender: TObject; var aAction: TCloseAction);
   private
     GenFormClose: TCloseEvent;
+    procedure FormCreate(Sender: TObject);
+    procedure FormClose(Sender: TObject; var aAction: TCloseAction);
   protected
     Handler: TModalFormHandler;
     dlgOwner: TDialogsBase;

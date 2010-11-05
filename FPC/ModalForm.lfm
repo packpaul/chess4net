@@ -1,8 +1,0 @@
-object ModalForm: TModalForm
-  Left = 0
-  Height = 240
-  Top = 2
-  Width = 320
-  Caption = 'ModalForm'
-  LCLVersion = '0.9.28.2'
-end
