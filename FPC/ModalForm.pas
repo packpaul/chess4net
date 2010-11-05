@@ -3,7 +3,7 @@ unit ModalForm;
 interface
 
 uses
-  Forms, Dialogs, Classes, LCLType,
+  Forms, Dialogs, Classes, Controls, LCLType,
   //
   ModalFormBase;
 
@@ -42,6 +42,14 @@ type
     procedure SetLeft_(x: integer); override;
     function GetTop_: integer; override;
     procedure SetTop_(y: integer); override;
+    function RGetWidth: integer; override;
+    procedure RSetWidth(iValue: integer); override;
+    function RGetHeight: integer; override;
+    procedure RSetHeight(iValue: integer); override;
+    function RGetConstraints: TSizeConstraints; override;
+    function RGetOnClose: TCloseEvent; override;
+    procedure RSetOnClose(Value: TCloseEvent); override;
+    function RGetFormState: TFormState; override;
   public
     constructor Create(aOwner: TForm; modHandler: TModalFormHandler = nil); override;
 
@@ -54,7 +62,7 @@ type
 implementation
 
 uses
-  SysUtils, StdCtrls, Controls, Buttons,
+  SysUtils, StdCtrls, Buttons,
   //
   GlobalsUnit;
 
@@ -73,10 +81,18 @@ type
     procedure SetLeft_(x: integer); override;
     function GetTop_: integer; override;
     procedure SetTop_(y: integer); override;
+    function RGetWidth: integer; override;
+    procedure RSetWidth(iValue: integer); override;
+    function RGetHeight: integer; override;
+    procedure RSetHeight(iValue: integer); override;
+    function RGetConstraints: TSizeConstraints; override;
+    function RGetOnClose: TCloseEvent; override;
+    procedure RSetOnClose(Value: TCloseEvent); override;
+    function RGetFormState: TFormState; override;
 
   public
     constructor Create(const AForm: TForm; AModalID: TModalFormID;
-      aDlgOwner: TDialogs);
+      aDlgOwner: TDialogs); reintroduce;
     procedure SetFocus; override;
     procedure Show; override;
     function GetModalID: TModalFormID; override;
@@ -177,9 +193,57 @@ begin
 end;
 
 
+function TModalForm.RGetWidth: integer;
+begin
+  Result := (self as TForm).Width;
+end;
+
+
+procedure TModalForm.RSetWidth(iValue: integer);
+begin
+  (self as TForm).Width := iValue;
+end;
+
+
+function TModalForm.RGetHeight: integer;
+begin
+  Result := (self as TForm).Height;
+end;
+
+
+procedure TModalForm.RSetHeight(iValue: integer);
+begin
+  (self as TForm).Height := iValue;
+end;
+
+
 procedure TModalForm.SetFocus;
 begin
   (self as TForm).SetFocus;
+end;
+
+
+function TModalForm.RGetConstraints: TSizeConstraints;
+begin
+  Result := (self as TForm).Constraints;
+end;
+
+
+function TModalForm.RGetOnClose: TCloseEvent;
+begin
+  Result := (self as TForm).OnClose;
+end;
+
+
+procedure TModalForm.RSetOnClose(Value: TCloseEvent);
+begin
+  (self as TForm).OnClose := Value;
+end;
+
+
+function TModalForm.RGetFormState: TFormState;
+begin
+  Result := (self as TForm).FormState;
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -428,6 +492,54 @@ end;
 procedure TModalFormDecorator.SetTop_(y: integer);
 begin
   m_Form.Top := y;
+end;
+
+
+function TModalFormDecorator.RGetWidth: integer;
+begin
+  Result := m_Form.Width;
+end;
+
+
+procedure TModalFormDecorator.RSetWidth(iValue: integer);
+begin
+  m_Form.Width := iValue;
+end;
+
+
+function TModalFormDecorator.RGetHeight: integer;
+begin
+  Result := m_Form.Height;
+end;
+
+
+procedure TModalFormDecorator.RSetHeight(iValue: integer);
+begin
+  m_Form.Height := iValue;
+end;
+
+
+function TModalFormDecorator.RGetConstraints: TSizeConstraints;
+begin
+  Result := m_Form.Constraints;
+end;
+
+
+function TModalFormDecorator.RGetOnClose: TCloseEvent;
+begin
+  Result := m_Form.OnClose;
+end;
+
+
+procedure TModalFormDecorator.RSetOnClose(Value: TCloseEvent);
+begin
+  m_Form.OnClose := Value;
+end;
+
+
+function TModalFormDecorator.RGetFormState: TFormState;
+begin
+  Result := m_Form.FormState;
 end;
 
 end.

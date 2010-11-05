@@ -80,7 +80,7 @@ implementation
 {$J+} {$I-}
 
 uses
-  Forms, SysUtils, StrUtils, Windows,
+  Forms, SysUtils, StrUtils,
   GlobalsSkypeUnit;
 
 var

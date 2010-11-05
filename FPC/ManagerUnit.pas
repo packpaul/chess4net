@@ -6,7 +6,7 @@ unit ManagerUnit;
 interface
 
 uses
-  Windows, SysUtils, Classes, Graphics, Controls, Forms,
+  SysUtils, Classes, Graphics, Controls, Forms,
   Menus, ActnList, ExtCtrls, LResources,
 {$IFDEF TRILLIAN}
   plugin,
@@ -371,6 +371,8 @@ end;
 
 procedure TManager.ChessBoardHandler(e: TChessBoardEvent;
                             d1: pointer = nil; d2: pointer = nil);
+const
+  VK_ESCAPE = $1b;
 var
   s: string;
   wstrMsg1, wstrMsg2: WideString;
@@ -392,7 +394,7 @@ begin
 
     cbeExit:
     begin
-      if (ChessBoard.Enabled) then
+      if (not m_Dialogs.Showing) then
         Close;
     end;
 

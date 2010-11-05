@@ -5,12 +5,13 @@ uses
   cthreads,
 {$ENDIF}
   Interfaces, // this includes the LCL widgetset
-  Forms, LResources, lnetvisual,
-  { add your units here } ManagerUnit, ManagerSkypeUnit, PromotionUnit,
+  Forms,
+  { add your units here }
+  ManagerUnit, ManagerSkypeUnit, PromotionUnit,
   PosBaseUnit, PosBaseChessBoardUnit, GlobalsSkypeUnit, ConnectorSkypeUnit,
-  GlobalsUnit, ModalForm, LocalizerUnit, ChessBoardUnit, GameOptionsUnit,
-  LookFeelOptionsUnit, ContinueUnit, ConnectingUnit, SelectSkypeContactUnit,
-  ModalFormBase;
+  GlobalsUnit, ModalFormBase, ModalForm, LocalizerUnit, ChessBoardUnit,
+  GameOptionsUnit, LookFeelOptionsUnit, ContinueUnit, ConnectingUnit,
+  SelectSkypeContactUnit;
 
 var
   Manager: TManager;

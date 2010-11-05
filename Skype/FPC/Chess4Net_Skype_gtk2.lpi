@@ -28,16 +28,12 @@
         <LaunchingApplication PathPlusParams="/usr/X11R6/bin/xterm -T 'Lazarus Run Output' -e $(LazarusDir)/tools/runwait.sh $(TargetCmdLine)"/>
       </local>
     </RunParams>
-    <RequiredPackages Count="2">
+    <RequiredPackages Count="1">
       <Item1>
-        <PackageName Value="lnetvisual"/>
-        <MinVersion Minor="5" Release="8" Valid="True"/>
-      </Item1>
-      <Item2>
         <PackageName Value="LCL"/>
-      </Item2>
+      </Item1>
     </RequiredPackages>
-    <Units Count="15">
+    <Units Count="18">
       <Unit0>
         <Filename Value="Chess4Net_Skype.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -143,6 +139,27 @@
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="ContinueUnit"/>
       </Unit14>
+      <Unit15>
+        <Filename Value="../../FPC/ModalFormBase.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="ModalFormBase"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="ModalFormBase"/>
+      </Unit15>
+      <Unit16>
+        <Filename Value="gtk2/SelectSkypeContactUnit.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="SelectSkypeContactForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="SelectSkypeContactUnit"/>
+      </Unit16>
+      <Unit17>
+        <Filename Value="../../FPC/LocalizerUnit.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="LocalizerUnit"/>
+      </Unit17>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -151,8 +168,8 @@
       <Filename Value="../../bin/Chess4Net_Skype"/>
     </Target>
     <SearchPaths>
-      <IncludeFiles Value="../../FPC/;../../FPC/gtk2/"/>
-      <OtherUnitFiles Value="../../FPC/;../../FPC/gtk2/"/>
+      <IncludeFiles Value="../../FPC/;../../FPC/gtk2/;gtk2/;../SkypeAPI/"/>
+      <OtherUnitFiles Value="../../FPC/;../../FPC/gtk2/;gtk2/;../SkypeAPI/"/>
       <UnitOutputDirectory Value="bin"/>
       <LCLWidgetType Value="gtk2"/>
     </SearchPaths>

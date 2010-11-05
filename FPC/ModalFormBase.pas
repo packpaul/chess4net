@@ -3,7 +3,7 @@ unit ModalFormBase;
 interface
 
 uses
-  Forms, LCLType;
+  Forms, Controls, LCLType;
 
 type
   TModalFormBase = class;
@@ -41,6 +41,15 @@ type
     procedure SetLeft_(x: integer); virtual; abstract;
     function GetTop_: integer; virtual; abstract;
     procedure SetTop_(y: integer); virtual; abstract;
+    function RGetWidth: integer; virtual; abstract;
+    procedure RSetWidth(iValue: integer); virtual; abstract;
+    function RGetHeight: integer; virtual; abstract;
+    procedure RSetHeight(iValue: integer); virtual; abstract;
+    function RGetConstraints: TSizeConstraints; virtual; abstract;
+    function RGetOnClose: TCloseEvent; virtual; abstract;
+    procedure RSetOnClose(Value: TCloseEvent); virtual; abstract;
+    function RGetFormState: TFormState; virtual; abstract;
+
   public
     constructor Create(aOwner: TForm; modHandler: TModalFormHandler = nil); virtual; overload; reintroduce;
     constructor Create(aDlgOwner: TDialogsBase); overload; reintroduce;
@@ -52,8 +61,16 @@ type
     property Handle: hWnd read GetHandle;
     property Enabled: boolean read GetEnabled_ write SetEnabled_;
     property ModalResult: TModalResult read RGetModalResult write RSetModalResult;
+
     property Left: integer read GetLeft_ write SetLeft_;
     property Top: integer read GetTop_ write SetTop_;
+    property Width: integer read RGetWidth write RSetWidth;
+    property Height: integer read RGetHeight write RSetHeight;
+
+    property Constraints: TSizeConstraints read RGetConstraints;
+
+    property OnClose: TCloseEvent read RGetOnClose write RSetOnClose;
+    property FormState: TFormState read RGetFormState;
   end;
 
 implementation
@@ -106,10 +123,13 @@ begin
     GenFormClose(Sender, aAction);
   if Assigned(dlgOwner) then
     dlgOwner.UnsetShowing(GetModalID, self);
-//  if fsModal in FormState then
-//    exit;
   if Assigned(Handler) then
     Handler(self, GetModalID);
+  if (fsModal in FormState) then
+  begin
+    if (ModalResult = mrNone) then
+      ModalResult := mrCancel;
+  end;
   aAction := caFree;
 end;
 
