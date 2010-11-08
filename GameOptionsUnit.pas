@@ -3,7 +3,7 @@ unit GameOptionsUnit;
 interface
 
 uses
-  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls,
+  Windows, Messages, SysUtils, Classes, Graphics, Controls,
   Dialogs, StdCtrls, TntStdCtrls, ExtCtrls, ComCtrls,
   ModalForm;
 

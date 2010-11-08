@@ -3,7 +3,7 @@ unit PromotionUnit;
 interface
 
 uses
-  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms,
   Dialogs, ExtCtrls,
   // Chess4net
   ChessRulesEngine, ChessBoardHeaderUnit, BitmapResUnit;

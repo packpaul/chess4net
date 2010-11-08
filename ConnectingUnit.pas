@@ -3,7 +3,7 @@ unit ConnectingUnit;
 interface
 
 uses
-  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, TntStdCtrls,
+  Windows, Messages, SysUtils, Classes, Graphics, Controls, TntStdCtrls,
   Forms, {Dialogs, }ExtCtrls, StdCtrls,
   DialogUnit, ModalForm;
 
