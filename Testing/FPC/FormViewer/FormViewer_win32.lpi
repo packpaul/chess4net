@@ -1,0 +1,125 @@
+<?xml version="1.0"?>
+<CONFIG>
+  <ProjectOptions>
+    <PathDelim Value="\"/>
+    <Version Value="7"/>
+    <General>
+      <Flags>
+        <SaveOnlyProjectUnits Value="True"/>
+      </Flags>
+      <SessionStorage Value="InProjectDir"/>
+      <MainUnit Value="0"/>
+      <TargetFileExt Value=".exe"/>
+    </General>
+    <VersionInfo>
+      <ProjectVersion Value=""/>
+    </VersionInfo>
+    <PublishOptions>
+      <Version Value="2"/>
+      <IgnoreBinaries Value="False"/>
+      <IncludeFileFilter Value="*.(pas|pp|inc|lfm|lpr|lrs|lpi|lpk|sh|xml)"/>
+      <ExcludeFileFilter Value="*.(bak|ppu|ppw|o|so);*~;backup"/>
+    </PublishOptions>
+    <RunParams>
+      <local>
+        <FormatVersion Value="1"/>
+        <LaunchingApplication PathPlusParams="/usr/X11R6/bin/xterm -T 'Lazarus Run Output' -e $(LazarusDir)/tools/runwait.sh $(TargetCmdLine)"/>
+      </local>
+    </RunParams>
+    <RequiredPackages Count="1">
+      <Item1>
+        <PackageName Value="LCL"/>
+      </Item1>
+    </RequiredPackages>
+    <Units Count="8">
+      <Unit0>
+        <Filename Value="FormViewer.lpr"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="FormViewer"/>
+      </Unit0>
+      <Unit1>
+        <Filename Value="MainFormUnit.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="MainForm"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="MainFormUnit"/>
+      </Unit1>
+      <Unit2>
+        <Filename Value="..\..\..\FPC\ModalForm.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="ModalForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="ModalForm"/>
+      </Unit2>
+      <Unit3>
+        <Filename Value="..\..\..\FPC\win32\LookFeelOptionsUnit.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="LookFeelOptionsForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="LookFeelOptionsUnit"/>
+      </Unit3>
+      <Unit4>
+        <Filename Value="..\..\..\FPC\win32\GameOptionsUnit.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="GameOptionsForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="GameOptionsUnit"/>
+      </Unit4>
+      <Unit5>
+        <Filename Value="..\..\..\FPC\InfoUnit.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="InfoForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="InfoUnit"/>
+      </Unit5>
+      <Unit6>
+        <Filename Value="..\..\..\Skype\FPC\win32\CreditsFormUnit.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="CreditsForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="CreditsFormUnit"/>
+      </Unit6>
+      <Unit7>
+        <Filename Value="..\..\..\FPC\LocalizerUnit.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="LocalizerUnit"/>
+      </Unit7>
+    </Units>
+  </ProjectOptions>
+  <CompilerOptions>
+    <Version Value="8"/>
+    <PathDelim Value="\"/>
+    <Target>
+      <Filename Value="..\..\..\bin\FormViewer"/>
+    </Target>
+    <SearchPaths>
+      <IncludeFiles Value="..\..\..\Skype\FPC\;..\..\..\Skype\FPC\win32\;..\..\..\FPC\;..\..\..\FPC\win32\;$(ProjOutDir)\"/>
+      <OtherUnitFiles Value="..\..\..\Skype\FPC\;..\..\..\Skype\FPC\win32\;..\..\..\FPC\;..\..\..\FPC\win32\"/>
+      <UnitOutputDirectory Value="bin"/>
+    </SearchPaths>
+    <Parsing>
+      <SyntaxOptions>
+        <SyntaxMode Value="Delphi"/>
+      </SyntaxOptions>
+    </Parsing>
+    <Linking>
+      <Debugging>
+        <GenerateDebugInfo Value="True"/>
+        <UseExternalDbgSyms Value="True"/>
+      </Debugging>
+      <Options>
+        <Win32>
+          <GraphicApplication Value="True"/>
+        </Win32>
+      </Options>
+    </Linking>
+    <Other>
+      <CompilerPath Value="$(CompPath)"/>
+    </Other>
+  </CompilerOptions>
+</CONFIG>
