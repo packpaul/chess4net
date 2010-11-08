@@ -1,7 +1,7 @@
 inherited LookFeelOptionsForm: TLookFeelOptionsForm
-  Left = 305
-  Height = 161
-  Top = 196
+  Left = 502
+  Height = 197
+  Top = 269
   Width = 284
   HorzScrollBar.Page = 283
   VertScrollBar.Page = 160
@@ -9,18 +9,28 @@ inherited LookFeelOptionsForm: TLookFeelOptionsForm
   BorderIcons = [biSystemMenu]
   BorderStyle = bsDialog
   Caption = 'Look & Feel Options'
+  ClientHeight = 197
+  ClientWidth = 284
   Font.Height = -11
   Font.Name = 'MS Sans Serif'
-  object AnimateLabel: TLabel
+  OnCreate = FormCreate
+  object AnimateLabel: TLabel[0]
     Left = 8
     Height = 14
-    Top = 8
-    Width = 69
-    Caption = 'Animate Move'
-    Color = clNone
+    Top = 10
+    Width = 72
+    Caption = 'Animate Move:'
     ParentColor = False
   end
-  object OkButton: TButton
+  object GuiLangLabel: TLabel[1]
+    Left = 8
+    Height = 14
+    Top = 161
+    Width = 74
+    Caption = 'GUI Language:'
+    ParentColor = False
+  end
+  object OkButton: TButton[2]
     Left = 192
     Height = 25
     Top = 24
@@ -31,7 +41,7 @@ inherited LookFeelOptionsForm: TLookFeelOptionsForm
     ModalResult = 1
     TabOrder = 2
   end
-  object CancelButton: TButton
+  object CancelButton: TButton[3]
     Left = 192
     Height = 25
     Top = 56
@@ -42,12 +52,11 @@ inherited LookFeelOptionsForm: TLookFeelOptionsForm
     ModalResult = 2
     TabOrder = 3
   end
-  object AnimationComboBox: TComboBox
+  object AnimationComboBox: TComboBox[4]
     Left = 88
     Height = 21
     Top = 8
     Width = 65
-    AutoCompleteText = [cbactEndOfLineComplete, cbactSearchAscending]
     ItemHeight = 13
     ItemIndex = 0
     Items.Strings = (
@@ -55,22 +64,23 @@ inherited LookFeelOptionsForm: TLookFeelOptionsForm
       'Slowly'
       'Quickly'
     )
-    MaxLength = 0
     Style = csDropDownList
     TabOrder = 0
     Text = 'No'
   end
-  object BoxPanel: TPanel
+  object BoxPanel: TPanel[5]
     Left = 8
     Height = 105
     Top = 40
     Width = 161
     BevelInner = bvRaised
     BevelOuter = bvLowered
+    ClientHeight = 105
+    ClientWidth = 161
     TabOrder = 1
     object HilightLastMoveBox: TCheckBox
       Left = 8
-      Height = 13
+      Height = 17
       Top = 8
       Width = 114
       Caption = 'Highlight Last Move'
@@ -78,7 +88,7 @@ inherited LookFeelOptionsForm: TLookFeelOptionsForm
     end
     object CoordinatesBox: TCheckBox
       Left = 8
-      Height = 13
+      Height = 17
       Top = 32
       Width = 106
       Caption = 'Show Coordinates'
@@ -86,7 +96,7 @@ inherited LookFeelOptionsForm: TLookFeelOptionsForm
     end
     object StayOnTopBox: TCheckBox
       Left = 8
-      Height = 13
+      Height = 17
       Top = 56
       Width = 114
       Caption = 'Stay Always on Top'
@@ -94,11 +104,25 @@ inherited LookFeelOptionsForm: TLookFeelOptionsForm
     end
     object ExtraExitBox: TCheckBox
       Left = 8
-      Height = 13
+      Height = 17
       Top = 80
       Width = 103
       Caption = 'Extra Exit on ESC'
       TabOrder = 3
     end
+  end
+  object GUILangComboBox: TComboBox[6]
+    Left = 88
+    Height = 21
+    Top = 157
+    Width = 144
+    ItemHeight = 13
+    ItemIndex = 0
+    Items.Strings = (
+      'English'
+    )
+    Style = csDropDownList
+    TabOrder = 4
+    Text = 'English'
   end
 end

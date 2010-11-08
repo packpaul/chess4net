@@ -15,7 +15,7 @@ type
   TGameOptionsForm = class(TModalForm)
     OkButton: TButton;
     CancelButton: TButton;
-    GroupBox1: TGroupBox;
+    TimeControlGroupBox: TGroupBox;
     EqualTimeCheckBox: TCheckBox;
     YouGroupBox: TGroupBox;
     YouMinLabel: TLabel;
@@ -32,12 +32,13 @@ type
     Panel1: TPanel;
     AutoFlagCheckBox: TCheckBox;
     TakeBackCheckBox: TCheckBox;
-    GroupBox2: TGroupBox;
+    TrainingModeGroupBox: TGroupBox;
     TrainingEnabledCheckBox: TCheckBox;
     ExtBaseComboBox: TComboBox;
     UsrBaseCheckBox: TCheckBox;
     ExtBaseLabel: TLabel;
     GamePauseCheckBox: TCheckBox;
+    GameAdjournCheckBox: TCheckBox;
     YouMinUpDown: TUpDown;
     YouIncUpDown: TUpDown;
     OpponentMinUpDown: TUpDown;
@@ -49,12 +50,19 @@ type
     procedure ExtBaseComboBoxChange(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure UnlimitedCheckBoxChange(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+
+  private
+    procedure FLocalize;
 
   public
     function GetModalID: TModalFormID; override;
   end;
 
 implementation
+
+uses
+  LocalizerUnit;
 
 procedure TGameOptionsForm.YouEditChange(Sender: TObject);
 begin
@@ -130,6 +138,46 @@ function TGameOptionsForm.GetModalID : TModalFormID;
 begin
   Result := mfGameOptions;
 end;
+
+
+procedure TGameOptionsForm.FormCreate(Sender: TObject);
+begin
+  FLocalize;
+end;
+
+
+procedure TGameOptionsForm.FLocalize;
+begin
+  with TLocalizer.Instance do
+  begin
+    Caption := GetLabel(24);
+
+    TimeControlGroupBox.Caption := GetLabel(25);
+    EqualTimeCheckBox.Caption := GetLabel(26);
+    YouGroupBox.Caption := GetLabel(27);
+    OpponentGroupBox.Caption := GetLabel(28);
+    YouUnlimitedCheckBox.Caption := GetLabel(29);
+    OpponentUnlimitedCheckBox.Caption := GetLabel(29);
+    YouMinLabel.Caption := GetLabel(30);
+    OpponentMinLabel.Caption := GetLabel(30);
+    YouIncLabel.Caption := GetLabel(31);
+    OpponentIncLabel.Caption := GetLabel(31);
+
+    TrainingModeGroupBox.Caption := GetLabel(32);
+    TrainingEnabledCheckBox.Caption := GetLabel(33);
+    ExtBaseLabel.Caption := GetLabel(34);
+    UsrBaseCheckBox.Caption := GetLabel(35);
+
+    GamePauseCheckBox.Caption := GetLabel(36);
+    GameAdjournCheckBox.Caption := GetLabel(37);
+    TakeBackCheckBox.Caption := GetLabel(38);
+    AutoFlagCheckBox.Caption := GetLabel(39);
+
+    OkButton.Caption := GetLabel(11);
+    CancelButton.Caption := GetLabel(12);
+  end;
+end;
+
 
 initialization
   {$i GameOptionsUnit.lrs}

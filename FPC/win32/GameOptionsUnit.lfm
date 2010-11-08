@@ -1,7 +1,7 @@
 inherited GameOptionsForm: TGameOptionsForm
-  Left = 936
-  Height = 483
-  Top = 148
+  Left = 456
+  Height = 501
+  Top = 161
   Width = 364
   HorzScrollBar.Page = 363
   VertScrollBar.Page = 482
@@ -9,10 +9,13 @@ inherited GameOptionsForm: TGameOptionsForm
   BorderIcons = [biSystemMenu]
   BorderStyle = bsDialog
   Caption = 'Game Options'
+  ClientHeight = 501
+  ClientWidth = 364
   Font.Height = -11
   Font.Name = 'MS Sans Serif'
+  OnCreate = FormCreate
   OnShow = FormShow
-  object OkButton: TButton
+  object OkButton: TButton[0]
     Left = 280
     Height = 25
     Top = 16
@@ -23,7 +26,7 @@ inherited GameOptionsForm: TGameOptionsForm
     ModalResult = 1
     TabOrder = 3
   end
-  object CancelButton: TButton
+  object CancelButton: TButton[1]
     Left = 280
     Height = 25
     Top = 48
@@ -34,16 +37,18 @@ inherited GameOptionsForm: TGameOptionsForm
     ModalResult = 2
     TabOrder = 4
   end
-  object GroupBox1: TGroupBox
+  object TimeControlGroupBox: TGroupBox[2]
     Left = 8
     Height = 265
     Top = 8
     Width = 257
     Caption = 'Time Control'
+    ClientHeight = 247
+    ClientWidth = 253
     TabOrder = 0
     object EqualTimeCheckBox: TCheckBox
       Left = 16
-      Height = 13
+      Height = 17
       Top = 8
       Width = 144
       Caption = 'Equal time for both players'
@@ -58,6 +63,8 @@ inherited GameOptionsForm: TGameOptionsForm
       Top = 32
       Width = 193
       Caption = 'Your time'
+      ClientHeight = 79
+      ClientWidth = 189
       TabOrder = 1
       object YouMinLabel: TLabel
         Left = 16
@@ -65,7 +72,6 @@ inherited GameOptionsForm: TGameOptionsForm
         Top = 24
         Width = 88
         Caption = 'Minutes per game:'
-        Color = clNone
         ParentColor = False
       end
       object YouIncLabel: TLabel
@@ -74,7 +80,6 @@ inherited GameOptionsForm: TGameOptionsForm
         Top = 48
         Width = 105
         Caption = 'Increment in seconds:'
-        Color = clNone
         ParentColor = False
       end
       object YouMinEdit: TEdit
@@ -100,7 +105,8 @@ inherited GameOptionsForm: TGameOptionsForm
       end
       object YouUnlimitedCheckBox: TCheckBox
         Left = 16
-        Height = 13
+        Height = 17
+        Top = 0
         Width = 63
         Caption = 'Unlimited'
         OnChange = UnlimitedCheckBoxChange
@@ -116,6 +122,7 @@ inherited GameOptionsForm: TGameOptionsForm
         Max = 999
         Position = 5
         TabOrder = 3
+        Wrap = False
       end
       object YouIncUpDown: TUpDown
         Left = 169
@@ -123,8 +130,11 @@ inherited GameOptionsForm: TGameOptionsForm
         Top = 48
         Width = 15
         Associate = YouIncEdit
+        Min = 0
         Max = 999
+        Position = 0
         TabOrder = 4
+        Wrap = False
       end
     end
     object OpponentGroupBox: TGroupBox
@@ -133,6 +143,8 @@ inherited GameOptionsForm: TGameOptionsForm
       Top = 136
       Width = 193
       Caption = 'Opponent''s time'
+      ClientHeight = 79
+      ClientWidth = 189
       TabOrder = 2
       object OpponentMinLabel: TLabel
         Left = 16
@@ -140,7 +152,6 @@ inherited GameOptionsForm: TGameOptionsForm
         Top = 24
         Width = 88
         Caption = 'Minutes per game:'
-        Color = clNone
         ParentColor = False
       end
       object OpponentIncLabel: TLabel
@@ -149,7 +160,6 @@ inherited GameOptionsForm: TGameOptionsForm
         Top = 48
         Width = 105
         Caption = 'Increment in seconds:'
-        Color = clNone
         ParentColor = False
       end
       object OpponentIncEdit: TEdit
@@ -175,7 +185,8 @@ inherited GameOptionsForm: TGameOptionsForm
       end
       object OpponentUnlimitedCheckBox: TCheckBox
         Left = 16
-        Height = 13
+        Height = 17
+        Top = 0
         Width = 63
         Caption = 'Unlimited'
         OnChange = UnlimitedCheckBoxChange
@@ -191,6 +202,7 @@ inherited GameOptionsForm: TGameOptionsForm
         Max = 999
         Position = 5
         TabOrder = 3
+        Wrap = False
       end
       object OpponentIncUpDown: TUpDown
         Left = 169
@@ -198,23 +210,28 @@ inherited GameOptionsForm: TGameOptionsForm
         Top = 48
         Width = 16
         Associate = OpponentIncEdit
+        Min = 0
         Max = 999
+        Position = 0
         TabOrder = 4
+        Wrap = False
       end
     end
   end
-  object Panel1: TPanel
+  object Panel1: TPanel[3]
     Left = 8
-    Height = 81
+    Height = 104
     Top = 392
     Width = 257
     BevelInner = bvRaised
     BevelOuter = bvLowered
+    ClientHeight = 104
+    ClientWidth = 257
     TabOrder = 2
     object AutoFlagCheckBox: TCheckBox
       Left = 8
-      Height = 13
-      Top = 56
+      Height = 17
+      Top = 80
       Width = 65
       Caption = 'Auto Flag'
       Checked = True
@@ -223,27 +240,37 @@ inherited GameOptionsForm: TGameOptionsForm
     end
     object TakeBackCheckBox: TCheckBox
       Left = 8
-      Height = 13
-      Top = 32
+      Height = 17
+      Top = 56
       Width = 169
       Caption = 'Allow takebacks to your partner'
       TabOrder = 1
     end
     object GamePauseCheckBox: TCheckBox
       Left = 8
-      Height = 13
+      Height = 17
       Top = 8
       Width = 122
       Caption = 'Game can be paused'
       TabOrder = 0
     end
+    object GameAdjournCheckBox: TCheckBox
+      Left = 8
+      Height = 17
+      Top = 32
+      Width = 134
+      Caption = 'Game can be adjourned'
+      TabOrder = 3
+    end
   end
-  object GroupBox2: TGroupBox
+  object TrainingModeGroupBox: TGroupBox[4]
     Left = 8
     Height = 97
     Top = 280
     Width = 257
     Caption = 'Training Mode'
+    ClientHeight = 79
+    ClientWidth = 253
     TabOrder = 1
     object ExtBaseLabel: TLabel
       Left = 16
@@ -251,12 +278,12 @@ inherited GameOptionsForm: TGameOptionsForm
       Top = 24
       Width = 68
       Caption = 'External base:'
-      Color = clNone
       ParentColor = False
     end
     object TrainingEnabledCheckBox: TCheckBox
       Left = 16
-      Height = 13
+      Height = 17
+      Top = 0
       Width = 59
       Caption = 'Enabled'
       OnChange = TrainingEnabledCheckBoxChange
@@ -267,14 +294,12 @@ inherited GameOptionsForm: TGameOptionsForm
       Height = 21
       Top = 20
       Width = 137
-      AutoCompleteText = [cbactEndOfLineComplete, cbactSearchAscending]
       Enabled = False
       ItemHeight = 13
       ItemIndex = 0
       Items.Strings = (
         '<No>'
       )
-      MaxLength = 0
       OnChange = ExtBaseComboBoxChange
       Style = csDropDownList
       TabOrder = 1
@@ -282,7 +307,7 @@ inherited GameOptionsForm: TGameOptionsForm
     end
     object UsrBaseCheckBox: TCheckBox
       Left = 104
-      Height = 13
+      Height = 17
       Top = 48
       Width = 88
       Caption = 'Use user base'

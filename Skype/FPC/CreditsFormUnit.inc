@@ -1,4 +1,4 @@
-unit CreditsFormUnit;
+{$MODE Delphi}
 
 interface
 
