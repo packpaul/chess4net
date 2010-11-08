@@ -6,7 +6,9 @@ interface
 
 uses
   LCLIntf, SysUtils, Classes, Graphics, Controls, Forms,
-  Dialogs, StdCtrls, ExtCtrls, Buttons, LResources;
+  Dialogs, StdCtrls, ExtCtrls, Buttons, LResources,
+  //
+  LocalizerUnit;
 
 type
   TFigureName = (K, Q, R, B, N, P);
@@ -50,7 +52,7 @@ type
 
   { TChessBoard }
 
-  TChessBoard = class(TForm)
+  TChessBoard = class(TForm, ILocalizable)
     BlackLabel1: TLabel;
     BlackTimeLabel1: TLabel;
     PBoxBoard: TPaintBox;
@@ -139,6 +141,10 @@ type
     procedure SetStayOnTop(onTop: boolean);
     procedure CancelAnimationDragging; // отмена анимации и перетаскивания для удаления грязи при прорисовки
     procedure SetAutoFlag(auto_flag: boolean);
+
+    // Localization
+    procedure ILocalizable.Localize = FLocalize;
+    procedure FLocalize;
 
   protected
     lstPosition: TList;
@@ -808,6 +814,10 @@ begin
       bmFigure[ES].TransparentColor := DUMMY_TRANSPARENT_COLOR;
       bmFigure[ES].Transparent:= FALSE;
       BlackFlagButton.Glyph := WhiteFlagButton.Glyph; // чтоб не тащить лишнего
+
+      TLocalizer.Instance.AddSubscriber(self);
+      FLocalize;
+
       coord_show:= TRUE;
       last_hilight:= FALSE;
       animation:= aQuick;
@@ -968,6 +978,8 @@ var
   fig: TFigure;
   i: integer;
 begin
+  TLocalizer.Instance.DeleteSubscriber(self);
+
   for i := 0 to lstPosition.Count - 1 do
     dispose(PPosMove(lstPosition[i]));
   lstPosition.Free;
@@ -2011,6 +2023,16 @@ begin
       WhiteFlagButton.Visible := FALSE;
       BlackFlagButton.Visible := FALSE;
     end;
+end;
+
+
+procedure TChessBoard.FLocalize;
+begin
+  with TLocalizer.Instance do
+  begin
+    WhiteLabel.Caption := GetLabel(13); // White
+    BlackLabel.Caption := GetLabel(16); // Black
+  end;
 end;
 
 initialization

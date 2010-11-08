@@ -23,7 +23,7 @@
     <RunParams>
       <local>
         <FormatVersion Value="1"/>
-        <LaunchingApplication PathPlusParams="/usr/X11R6/bin/xterm -T 'Lazarus Run Output' -e $(LazarusDir)/tools/runwait.sh $(TargetCmdLine)"/>
+        <LaunchingApplication PathPlusParams="\usr\X11R6\bin\xterm -T 'Lazarus Run Output' -e $(LazarusDir)\tools\runwait.sh $(TargetCmdLine)"/>
       </local>
     </RunParams>
     <RequiredPackages Count="1">
@@ -95,7 +95,7 @@
     <Version Value="8"/>
     <PathDelim Value="\"/>
     <Target>
-      <Filename Value="..\..\..\bin\FormViewer"/>
+      <Filename Value="..\..\..\bin\Chess4Net_Skype\FormViewer"/>
     </Target>
     <SearchPaths>
       <IncludeFiles Value="..\..\..\Skype\FPC\;..\..\..\Skype\FPC\gtk2\;..\..\..\FPC\;..\..\..\FPC\gtk2\;$(ProjOutDir)\"/>
@@ -109,14 +109,8 @@
     </Parsing>
     <Linking>
       <Debugging>
-        <GenerateDebugInfo Value="True"/>
         <UseExternalDbgSyms Value="True"/>
       </Debugging>
-      <Options>
-        <Win32>
-          <GraphicApplication Value="False"/>
-        </Win32>
-      </Options>
     </Linking>
     <Other>
       <CompilerPath Value="$(CompPath)"/>

@@ -26,6 +26,8 @@ type
     StayOnTopBox: TCheckBox;
     ExtraExitBox: TCheckBox;
     procedure FormCreate(Sender: TObject);
+    procedure FormDestroy(Sender: TObject);
+    procedure GUILangComboBoxChange(Sender: TObject);
   private
     procedure ILocalizable.Localize = FLocalize;
     procedure FLocalize;
@@ -92,6 +94,17 @@ begin
   FLocalize;
 end;
 
+
+procedure TLookFeelOptionsForm.GUILangComboBoxChange(Sender: TObject);
+begin
+  TLocalizer.Instance.ActiveLanguage := GUILangComboBox.ItemIndex;
+end;
+
+
+procedure TLookFeelOptionsForm.FormDestroy(Sender: TObject);
+begin
+  TLocalizer.Instance.DeleteSubscriber(self);
+end;
 
 initialization
   {$i LookFeelOptionsUnit.lrs}

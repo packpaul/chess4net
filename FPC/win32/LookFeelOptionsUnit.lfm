@@ -1,8 +1,8 @@
 inherited LookFeelOptionsForm: TLookFeelOptionsForm
-  Left = 502
+  Left = 500
   Height = 197
-  Top = 269
-  Width = 284
+  Top = 208
+  Width = 324
   HorzScrollBar.Page = 283
   VertScrollBar.Page = 160
   ActiveControl = AnimationComboBox
@@ -10,10 +10,11 @@ inherited LookFeelOptionsForm: TLookFeelOptionsForm
   BorderStyle = bsDialog
   Caption = 'Look & Feel Options'
   ClientHeight = 197
-  ClientWidth = 284
+  ClientWidth = 324
   Font.Height = -11
   Font.Name = 'MS Sans Serif'
   OnCreate = FormCreate
+  OnDestroy = FormDestroy
   object AnimateLabel: TLabel[0]
     Left = 8
     Height = 14
@@ -31,9 +32,9 @@ inherited LookFeelOptionsForm: TLookFeelOptionsForm
     ParentColor = False
   end
   object OkButton: TButton[2]
-    Left = 192
+    Left = 240
     Height = 25
-    Top = 24
+    Top = 10
     Width = 75
     BorderSpacing.InnerBorder = 4
     Caption = '&OK'
@@ -42,9 +43,9 @@ inherited LookFeelOptionsForm: TLookFeelOptionsForm
     TabOrder = 2
   end
   object CancelButton: TButton[3]
-    Left = 192
+    Left = 240
     Height = 25
-    Top = 56
+    Top = 40
     Width = 75
     BorderSpacing.InnerBorder = 4
     Cancel = True
@@ -53,9 +54,9 @@ inherited LookFeelOptionsForm: TLookFeelOptionsForm
     TabOrder = 3
   end
   object AnimationComboBox: TComboBox[4]
-    Left = 88
+    Left = 112
     Height = 21
-    Top = 8
+    Top = 7
     Width = 65
     ItemHeight = 13
     ItemIndex = 0
@@ -70,17 +71,17 @@ inherited LookFeelOptionsForm: TLookFeelOptionsForm
   end
   object BoxPanel: TPanel[5]
     Left = 8
-    Height = 105
+    Height = 106
     Top = 40
-    Width = 161
+    Width = 217
     BevelInner = bvRaised
     BevelOuter = bvLowered
-    ClientHeight = 105
-    ClientWidth = 161
+    ClientHeight = 106
+    ClientWidth = 217
     TabOrder = 1
     object HilightLastMoveBox: TCheckBox
       Left = 8
-      Height = 17
+      Height = 19
       Top = 8
       Width = 114
       Caption = 'Highlight Last Move'
@@ -88,7 +89,7 @@ inherited LookFeelOptionsForm: TLookFeelOptionsForm
     end
     object CoordinatesBox: TCheckBox
       Left = 8
-      Height = 17
+      Height = 19
       Top = 32
       Width = 106
       Caption = 'Show Coordinates'
@@ -96,7 +97,7 @@ inherited LookFeelOptionsForm: TLookFeelOptionsForm
     end
     object StayOnTopBox: TCheckBox
       Left = 8
-      Height = 17
+      Height = 19
       Top = 56
       Width = 114
       Caption = 'Stay Always on Top'
@@ -104,7 +105,7 @@ inherited LookFeelOptionsForm: TLookFeelOptionsForm
     end
     object ExtraExitBox: TCheckBox
       Left = 8
-      Height = 17
+      Height = 19
       Top = 80
       Width = 103
       Caption = 'Extra Exit on ESC'
@@ -112,15 +113,16 @@ inherited LookFeelOptionsForm: TLookFeelOptionsForm
     end
   end
   object GUILangComboBox: TComboBox[6]
-    Left = 88
+    Left = 128
     Height = 21
     Top = 157
-    Width = 144
+    Width = 128
     ItemHeight = 13
     ItemIndex = 0
     Items.Strings = (
       'English'
     )
+    OnChange = GUILangComboBoxChange
     Style = csDropDownList
     TabOrder = 4
     Text = 'English'
