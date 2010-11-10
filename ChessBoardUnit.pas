@@ -5,7 +5,7 @@ interface
 uses
   Forms, ExtCtrls, Classes, Controls, Graphics, Types, Messages,
   //
-  ChessRulesEngine, BitmapResUnit;
+  ChessRulesEngine, BitmapResUnit, PromotionUnit;
 
 type
   TMode = (mView, mGame); // Board mode
@@ -17,14 +17,14 @@ type
                                  d1: pointer = nil; d2: pointer = nil) of object;
 
   TChessBoard = class(TForm, IChessRulesEngineable)
+    PBoxBoard: TPaintBox;
+    AnimateTimer: TTimer;
+
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure FormCanResize(Sender: TObject; var NewWidth,
       NewHeight: Integer; var Resize: Boolean);
     procedure FormResize(Sender: TObject);
-  published
-    PBoxBoard: TPaintBox;
-    AnimateTimer: TTimer;
     procedure AnimateTimerTimer(Sender: TObject);
     procedure PBoxBoardPaint(Sender: TObject);
     procedure PBoxBoardDragDrop(Sender, Source: TObject; X, Y: Integer);
@@ -72,6 +72,8 @@ type
     m_ResizingType: (rtNo, rtHoriz, rtVert);
     m_iDeltaWidthHeight: integer;
     m_bDeltaWidthHeightFlag: boolean;
+
+    m_PromotionForm: TPromotionForm;
 
     procedure HilightLastMove;
     procedure Evaluate;
@@ -147,7 +149,7 @@ implementation
 uses
   Math, SysUtils, Windows,
   //
-  ChessBoardHeaderUnit, PromotionUnit;
+  ChessBoardHeaderUnit;
 
 const
   HILIGHT_WIDTH = 1;
@@ -350,14 +352,21 @@ end;
 
 
 function TChessBoard.AskPromotionFigure(FigureColor: TFigureColor): TFigureName;
+var
+  frmOwner: TForm;
 begin
+  if (Owner is TForm) then
+    frmOwner := TForm(Owner)
+  else
+    frmOwner := self;
+
   if (Showing) then
   begin
-    with TPromotionForm.Create(self, m_BitmapRes) do
+    m_PromotionForm := TPromotionForm.Create(frmOwner, m_BitmapRes);
     try
-      Result := ShowPromotion(FigureColor);
+      Result := m_PromotionForm.ShowPromotion(FigureColor);
     finally
-      Free;
+      FreeAndNil(m_PromotionForm);
     end;
   end
   else
@@ -403,7 +412,14 @@ end;
 
 procedure TChessBoard.FSetMode(const Value: TMode);
 begin
+  if (mode_var = Value) then
+    exit;
+
   mode_var := Value;
+
+  if ((mode_var = mView) and (Assigned(m_PromotionForm))) then
+    m_PromotionForm.Close;
+
   RDrawBoard;
   HilightLastMove;
 end;

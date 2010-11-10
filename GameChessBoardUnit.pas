@@ -196,6 +196,37 @@ const
   BLACK_SHORT_LABEL: WideString  =  'B ';
 
 ////////////////////////////////////////////////////////////////////////////////
+// TTimeLabelThread
+
+{$IFDEF THREADED_CHESSCLOCK}
+procedure TTimeLabelThread.Execute;
+begin
+  while ChessBoard.GameTimer.Enabled do
+    begin
+      if self.player_time[fcWhite] <> ChessBoard.player_time[fcWhite] then
+        ChessBoard.ShowTime(fcWhite);
+      if self.player_time[fcBlack] <> ChessBoard.player_time[fcBlack] then
+        ChessBoard.ShowTime(fcBlack);
+      Sleep(ChessBoard.GameTimer.Interval div 2);
+    end;
+  ChessBoard.TimeLabelThread := nil;  
+end;
+
+
+constructor TTimeLabelThread.Create(ChessBoard: TGameChessBoard);
+begin
+  self.ChessBoard := ChessBoard;
+  self.player_time[fcWhite] := ChessBoard.player_time[fcWhite];
+  self.player_time[fcBlack] := ChessBoard.player_time[fcBlack];
+
+  inherited Create(TRUE);
+//Priority := tpNormal;
+  FreeOnTerminate := TRUE;
+  Resume;
+end;
+{$ENDIF}
+
+////////////////////////////////////////////////////////////////////////////////
 // TGameChessBoard
 
 function TGameChessBoard.DoMove(const strMove: string): boolean;
@@ -519,34 +550,6 @@ begin
   Result := m_ChessBoard.NMoveDone;
 end;
 
-
-{$IFDEF THREADED_CHESSCLOCK}
-procedure TTimeLabelThread.Execute;
-begin
-  while ChessBoard.GameTimer.Enabled do
-    begin
-      if self.player_time[fcWhite] <> ChessBoard.player_time[fcWhite] then
-        ChessBoard.ShowTime(fcWhite);
-      if self.player_time[fcBlack] <> ChessBoard.player_time[fcBlack] then
-        ChessBoard.ShowTime(fcBlack);
-      Sleep(ChessBoard.GameTimer.Interval div 2);
-    end;
-  ChessBoard.TimeLabelThread := nil;  
-end;
-
-
-constructor TTimeLabelThread.Create(ChessBoard: TGameChessBoard);
-begin
-  self.ChessBoard := ChessBoard;
-  self.player_time[fcWhite] := ChessBoard.player_time[fcWhite];
-  self.player_time[fcBlack] := ChessBoard.player_time[fcBlack];
-
-  inherited Create(TRUE);
-//Priority := tpNormal;
-  FreeOnTerminate := TRUE;
-  Resume;
-end;
-{$ENDIF}
 
 procedure TGameChessBoard.FormKeyDown(Sender: TObject; var Key: Word;
   Shift: TShiftState);
