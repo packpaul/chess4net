@@ -129,6 +129,7 @@ var
   iLeft, iTop: integer;
 begin // TModalForm.FormShow
   selfForm := Sender as TForm;
+  frmOwner := nil;
 
   if (Assigned(Owner)) then
   begin
@@ -273,6 +274,49 @@ end;
 ////////////////////////////////////////////////////////////////////////////////
 // TDialogs
 
+constructor TDialogs.Create(Owner: TForm; Handler: TModalFormHandler);
+var
+  i: TModalFormID;
+begin
+  inherited Create;
+
+  self.Owner := Owner;
+  self.RHandler := Handler;
+  frmList := TList.Create;
+  for i := Low(TModalFormID) to High(TModalFormID) do
+    IDCount[i] := 0;
+
+  if (not Assigned(g_lstDialogs)) then
+    g_lstDialogs := TList.Create;
+  g_lstDialogs.Add(self);
+end;
+
+
+destructor TDialogs.Destroy;
+var
+  i: integer;
+  ModalForm: TModalForm;
+begin
+  if (Assigned(g_lstDialogs)) then
+  begin
+    g_lstDialogs.Remove(self);
+    if (g_lstDialogs.Count = 0) then
+      FreeAndNil(g_lstDialogs);
+  end;
+
+  for i := 0 to frmList.Count - 1 do
+  begin
+    ModalForm := frmList[i];
+    ModalForm.RHandler := nil;
+    ModalForm.dlgOwner := nil;
+//    ModalForm.Release;
+    ModalForm.Free;
+  end;
+
+  inherited;
+end;
+
+
 function TDialogs.GetShowing: boolean;
 var
   i: TModalFormID;
@@ -357,49 +401,6 @@ function TDialogs.CreateDialog(modalFormClass: TModalFormClass): TModalForm;
 begin
   Result := modalFormClass.Create(self, RHandler);
   frmList.Add(Result);
-end;
-
-
-constructor TDialogs.Create(Owner: TForm; Handler: TModalFormHandler);
-var
-  i: TModalFormID;
-begin
-  inherited Create;
-
-  self.Owner := Owner;
-  self.RHandler := Handler;
-  frmList := TList.Create;
-  for i := Low(TModalFormID) to High(TModalFormID) do
-    IDCount[i] := 0;
-
-  if (not Assigned(g_lstDialogs)) then
-    g_lstDialogs := TList.Create;
-  g_lstDialogs.Add(self);
-end;
-
-
-destructor TDialogs.Destroy;
-var
-  i: integer;
-  ModalForm: TModalForm;
-begin
-  if (Assigned(g_lstDialogs)) then
-  begin
-    g_lstDialogs.Remove(self);
-    if (g_lstDialogs.Count = 0) then
-      FreeAndNil(g_lstDialogs);
-  end;
-
-  for i := 0 to frmList.Count - 1 do
-  begin
-    ModalForm := frmList[i];
-    ModalForm.RHandler := nil;
-    ModalForm.dlgOwner := nil;
-//    ModalForm.Release;
-    ModalForm.Free;
-  end;
-
-  inherited;
 end;
 
 
