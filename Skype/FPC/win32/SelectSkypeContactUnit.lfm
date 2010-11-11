@@ -15,6 +15,7 @@ inherited SelectSkypeContactForm: TSelectSkypeContactForm
     Width = 222
     Anchors = [akTop, akLeft, akRight, akBottom]
     ItemHeight = 0
+    OnDblClick = ContactsListBoxDblClick
     TabOrder = 0
   end
   object OkButton: TButton[1]

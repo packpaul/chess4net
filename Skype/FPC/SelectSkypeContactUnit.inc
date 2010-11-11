@@ -9,10 +9,14 @@ uses
   ModalFormBase, ModalForm;
 
 type
+
+  { TSelectSkypeContactForm }
+
   TSelectSkypeContactForm = class(TModalForm)
     OkButton: TButton;
     CancelButton: TButton;
     ContactsListBox: TListBox;
+    procedure ContactsListBoxDblClick(Sender: TObject);
   private
     function FGetSelectedContactIndex: integer;
     procedure FUpdateGUI;
@@ -37,6 +41,12 @@ begin
   if (ContactsListBox.Count > 0) then
     ContactsListBox.ItemIndex := 0;
   FUpdateGUI;
+end;
+
+
+procedure TSelectSkypeContactForm.ContactsListBoxDblClick(Sender: TObject);
+begin
+  OkButton.Click;
 end;
 
 

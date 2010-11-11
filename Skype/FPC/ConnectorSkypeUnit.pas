@@ -476,7 +476,7 @@ begin
       if (Trim(wstrUserName) = '') then
         wstrUserName := m_ConnectableUserCollection.Item[i].Handle;
 
-      strlConnectableUsers.AddObject(wstrUserName, TObject(i));
+      strlConnectableUsers.AddObject(UTF8Encode(wstrUserName), TObject(i));
     end;
 
     g_handler(ceShowConnectableUsers, strlConnectableUsers);

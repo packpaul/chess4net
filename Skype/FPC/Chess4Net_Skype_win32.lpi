@@ -34,7 +34,7 @@
         <PackageName Value="LCL"/>
       </Item1>
     </RequiredPackages>
-    <Units Count="18">
+    <Units Count="20">
       <Unit0>
         <Filename Value="Chess4Net_Skype.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -160,6 +160,19 @@
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="ModalFormBase"/>
       </Unit17>
+      <Unit18>
+        <Filename Value="..\..\lib\uniqueinstance\uniqueinstanceraw.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="UniqueInstanceRaw"/>
+      </Unit18>
+      <Unit19>
+        <Filename Value="win32\CreditsFormUnit.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="CreditsForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="CreditsFormUnit"/>
+      </Unit19>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -170,7 +183,7 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="..\..\FPC\;..\..\FPC\win32\;win32\;..\SkypeAPI\"/>
-      <OtherUnitFiles Value="..\..\FPC\;..\..\FPC\win32\;win32\;..\SkypeAPI\"/>
+      <OtherUnitFiles Value="..\..\FPC\;..\..\FPC\win32\;win32\;..\SkypeAPI\;..\..\lib\uniqueinstance\"/>
       <UnitOutputDirectory Value="bin"/>
     </SearchPaths>
     <Parsing>

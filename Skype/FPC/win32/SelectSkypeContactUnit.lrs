@@ -1,3 +1,5 @@
+{ This is an automatically generated lazarus resource file }
+
 LazarusResources.Add('TSelectSkypeContactForm','FORMDATA',[
   'TPF0'#241#23'TSelectSkypeContactForm'#22'SelectSkypeContactForm'#4'Left'#3'-'
   +#2#6'Height'#3'A'#1#3'Top'#3#204#0#5'Width'#3'G'#1#11'BorderIcons'#11#12'biS'
@@ -5,10 +7,11 @@ LazarusResources.Add('TSelectSkypeContactForm','FORMDATA',[
   +'lection'#12'ClientHeight'#3'A'#1#11'ClientWidth'#3'G'#1#0#242#2#0#8'TListBo'
   +'x'#15'ContactsListBox'#4'Left'#2#8#6'Height'#3'0'#1#3'Top'#2#8#5'Width'#3
   +#222#0#7'Anchors'#11#5'akTop'#6'akLeft'#7'akRight'#8'akBottom'#0#10'ItemHeig'
-  +'ht'#2#0#8'TabOrder'#2#0#0#0#242#2#1#7'TButton'#8'OkButton'#4'Left'#3#240#0#6
-  +'Height'#2#25#3'Top'#2#16#5'Width'#2'K'#7'Anchors'#11#5'akTop'#7'akRight'#0#7
-  +'Caption'#6#3'&OK'#7'Default'#9#11'ModalResult'#2#1#8'TabOrder'#2#1#0#0#242#2
-  +#2#7'TButton'#12'CancelButton'#4'Left'#3#240#0#6'Height'#2#25#3'Top'#2'0'#5
-  +'Width'#2'K'#7'Anchors'#11#5'akTop'#7'akRight'#0#6'Cancel'#9#7'Caption'#6#7
-  +'&Cancel'#11'ModalResult'#2#2#8'TabOrder'#2#2#0#0#0
+  +'ht'#2#0#10'OnDblClick'#7#23'ContactsListBoxDblClick'#8'TabOrder'#2#0#0#0#242
+  +#2#1#7'TButton'#8'OkButton'#4'Left'#3#240#0#6'Height'#2#25#3'Top'#2#16#5'Wid'
+  +'th'#2'K'#7'Anchors'#11#5'akTop'#7'akRight'#0#7'Caption'#6#3'&OK'#7'Default'
+  +#9#11'ModalResult'#2#1#8'TabOrder'#2#1#0#0#242#2#2#7'TButton'#12'CancelButto'
+  +'n'#4'Left'#3#240#0#6'Height'#2#25#3'Top'#2'0'#5'Width'#2'K'#7'Anchors'#11#5
+  +'akTop'#7'akRight'#0#6'Cancel'#9#7'Caption'#6#7'&Cancel'#11'ModalResult'#2#2
+  +#8'TabOrder'#2#2#0#0#0
 ]);

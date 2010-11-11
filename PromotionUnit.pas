@@ -116,8 +116,11 @@ end;
 
 function TPromotionForm.ShowPromotion(color: TFigureColor): TFigureName;
 begin
+  m_fig := Q;
   m_fig_color := color;
+
   ShowModal;
+  
   Result := m_fig;
 end;
 
@@ -126,12 +129,13 @@ procedure TPromotionForm.PromFigImageMouseUp(Sender: TObject;
   Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 begin
   case X div (m_BitmapRes.SquareSize + 1) of
-    1: m_fig:= R;
-    2: m_fig:= B;
-    3: m_fig:= N;
-    else
-      m_fig:= Q;
+    1: m_fig := R;
+    2: m_fig := B;
+    3: m_fig := N;
+  else
+    m_fig := Q;
   end;
+
   Close;
 end;
 

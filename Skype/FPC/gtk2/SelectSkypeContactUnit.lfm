@@ -1,7 +1,7 @@
-object SelectSkypeContactForm: TSelectSkypeContactForm
-  Left = 595
+inherited SelectSkypeContactForm: TSelectSkypeContactForm
+  Left = 588
   Height = 321
-  Top = 305
+  Top = 302
   Width = 327
   ActiveControl = OkButton
   BorderIcons = [biSystemMenu]
@@ -9,18 +9,18 @@ object SelectSkypeContactForm: TSelectSkypeContactForm
   Caption = 'Skype contact Selection'
   ClientHeight = 321
   ClientWidth = 327
-  LCLVersion = '0.9.28.2'
-  object ContactsListBox: TListBox
+  object ContactsListBox: TListBox[0]
     Left = 8
     Height = 304
     Top = 8
     Width = 222
     Anchors = [akTop, akLeft, akRight, akBottom]
     ItemHeight = 0
+    OnDblClick = ContactsListBoxDblClick
     TabOrder = 0
     TopIndex = -1
   end
-  object OkButton: TButton
+  object OkButton: TButton[1]
     Left = 240
     Height = 25
     Top = 16
@@ -31,7 +31,7 @@ object SelectSkypeContactForm: TSelectSkypeContactForm
     ModalResult = 1
     TabOrder = 1
   end
-  object CancelButton: TButton
+  object CancelButton: TButton[2]
     Left = 240
     Height = 25
     Top = 48
