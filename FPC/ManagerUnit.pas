@@ -12,9 +12,9 @@ uses
   plugin,
 {$ENDIF}
   // Chess4Net Units
-  {ChessBoardHeaderUnit, ChessRulesEngine,} ChessBoardUnit, PosBaseChessBoardUnit,
-  {GameChessBoardUnit,} ConnectorSkypeUnit, ConnectingUnit, GameOptionsUnit,
-  ModalFormBase, ModalForm, {DialogUnit,} ContinueUnit, LocalizerUnit;
+  ChessBoardUnit, PosBaseChessBoardUnit,
+  ConnectorSkypeUnit, ConnectingUnit, GameOptionsUnit,
+  ModalFormBase, ModalForm, ContinueUnit, LocalizerUnit;
 
 type
 
@@ -1294,7 +1294,7 @@ begin
     end;
     UsrBaseCheckBox.Checked := ChessBoard.pUseUserBase;
     GamePauseCheckBox.Checked := (can_pause_game and (m_lwOpponentClientVersion >= 200706));
-//    GameAdjournCheckBox.Checked := (can_adjourn_game and (m_lwOpponentClientVersion >= 200801)); // TODO:
+    GameAdjournCheckBox.Checked := (can_adjourn_game and (m_lwOpponentClientVersion >= 200801));
     ShowModal;
   end; // with
 end;
@@ -1653,13 +1653,11 @@ begin
           end;
           if (m_lwOpponentClientVersion >= 200801) then
           begin
-{ // TODO:
-            if can_adjourn_game <> GameAdjournCheckBox.Checked then
+            if (can_adjourn_game <> GameAdjournCheckBox.Checked) then
             begin
               can_adjourn_game := GameAdjournCheckBox.Checked;
               RSendData(CMD_CAN_ADJOURN_GAME + IfThen(can_adjourn_game, ' 1', ' 0'))
             end;
-}
           end;
           // Training mode
           if (m_lwOpponentClientVersion >= 200705) and (ChessBoard.pTrainingMode <> TrainingEnabledCheckBox.Checked) then

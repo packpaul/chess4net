@@ -1,0 +1,12 @@
+[Last updated: 2010-11-12]
+
+Q: I can't run the downloaded version of Chess4Net on my Linux configuration. What can I do?
+A: All Linux binaries were compiled for i386 architecture initially. If your architecture differs then you have to install environment  for running such binaries (like ia32 shared libraries for use on amd64).
+Chess4Net is based over GTK2. Check dependancies against GTK2 support.
+If nothing helps contact me.
+
+Q: Why there're no installation packages like DEB or RPM?
+A: I don't have any idea of how to build them. Can you help?
+
+Q: I saw that Chess4Net was a good software to play chess. But why is it so unpopular?
+A: Well, I didn't pay much attention for making it popular. It's you who can make it popular. Tell your friends about it. If you can help at promoting it, please do so.
