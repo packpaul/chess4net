@@ -1,8 +1,8 @@
 object AnalyseChessBoard: TAnalyseChessBoard
   Left = 429
   Top = 209
-  Width = 364
-  Height = 398
+  Width = 435
+  Height = 474
   BorderIcons = [biSystemMenu, biMinimize]
   Caption = 'Chess4Net Analyzer <ver.>'
   Color = clBtnFace
@@ -17,8 +17,27 @@ object AnalyseChessBoard: TAnalyseChessBoard
   OldCreateOrder = False
   OnCanResize = FormCanResize
   OnCreate = FormCreate
+  DesignSize = (
+    427
+    428)
   PixelsPerInch = 96
   TextHeight = 16
+  object ChessBoardPanel: TPanel
+    Left = 0
+    Top = 0
+    Width = 356
+    Height = 352
+    Anchors = [akLeft, akTop, akRight, akBottom]
+    BevelOuter = bvNone
+    TabOrder = 0
+  end
+  object StatusBar1: TStatusBar
+    Left = 0
+    Top = 409
+    Width = 427
+    Height = 19
+    Panels = <>
+  end
   object MainMenu: TTntMainMenu
     object FileMenuItem: TTntMenuItem
       Caption = '&File'

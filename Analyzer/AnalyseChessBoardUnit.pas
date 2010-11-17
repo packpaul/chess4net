@@ -4,6 +4,7 @@ interface
 
 uses
   Forms, TntForms, TntMenus, Menus, Classes, Controls, ExtCtrls, Messages,
+  ComCtrls,
   //
   ChessBoardUnit, PosBaseChessBoardUnit;
 
@@ -22,6 +23,8 @@ type
     ContentsMenuItem: TTntMenuItem;
     N3: TTntMenuItem;
     AboutMenuItem: TTntMenuItem;
+    ChessBoardPanel: TPanel;
+    StatusBar1: TStatusBar;
     procedure ExitMenuItemClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormCanResize(Sender: TObject; var NewWidth,
@@ -65,7 +68,7 @@ begin
 
   m_ChessBoard.BorderStyle := bsNone;
   m_ChessBoard.Align := alClient;
-  m_ChessBoard.Parent := self;
+  m_ChessBoard.Parent := ChessBoardPanel;
   m_ChessBoard.Visible := TRUE;
 
   m_ChessBoard.InitPosition;
