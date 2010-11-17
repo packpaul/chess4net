@@ -35,7 +35,6 @@ type
       d2: pointer = nil);
 
     procedure WMSizing(var Msg: TMessage); message WM_SIZING;
-
     procedure FCreateChessBoard;
   end;
 
@@ -45,6 +44,9 @@ uses
   Windows;
 
 {$R *.dfm}
+
+////////////////////////////////////////////////////////////////////////////////
+// TAnalyseChessBoard
 
 procedure TAnalyseChessBoard.ExitMenuItemClick(Sender: TObject);
 begin

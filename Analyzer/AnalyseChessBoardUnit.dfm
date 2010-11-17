@@ -2,7 +2,7 @@ object AnalyseChessBoard: TAnalyseChessBoard
   Left = 429
   Top = 209
   Width = 364
-  Height = 412
+  Height = 398
   BorderIcons = [biSystemMenu, biMinimize]
   Caption = 'Chess4Net Analyzer <ver.>'
   Color = clBtnFace

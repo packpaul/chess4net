@@ -29,7 +29,6 @@ begin
   Application.Initialize;
   Application.Title := 'Chess4Net Analyzer';
   Application.CreateForm(TAnalyseChessBoard, AnalyseChessBoard);
-  Application.CreateForm(TChessBoard, ChessBoard);
   Application.Run;
 end.
 
