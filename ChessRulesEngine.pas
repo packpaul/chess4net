@@ -76,6 +76,7 @@ type
     procedure InitNewPPRandomGame;
     procedure ResetMoveList; // очищает список позиций
     function NMovesDone: integer; // amount of moves done
+    function NPlysDone: integer; // amount of plys done
     function GetEvaluation: TEvaluation;
 
     property Position: PChessPosition read FGetPosition;
@@ -1039,6 +1040,12 @@ end;
 function TChessRulesEngine.NMovesDone: integer;
 begin
   Result := (PositionsList.Count + 1) shr 1; // div 2
+end;
+
+
+function TChessRulesEngine.NPlysDone: integer; // amount of plys done
+begin
+  Result := PositionsList.Count;
 end;
 
 

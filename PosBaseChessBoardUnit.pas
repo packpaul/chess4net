@@ -13,13 +13,13 @@ type
   // Extension of TChessBoard with Position DB
   TPosBaseChessBoard = class(TChessBoard)
   private
-    _bUseUserBase: boolean;
+    m_bUseUserBase: boolean;
     _lstMovePrior: TList;
-    _oPosBase, _oExtPosBase: TPosBase;
-    _bTrainingMode: boolean;
-    _sPosBaseName, _sExtPosBaseName: string;
-    procedure FSetTrainingMode(vbTrainingMode: boolean);
-    procedure FUseUserBase(vbUseUserBase: boolean);
+    m_PosBase, m_ExtPosBase: TPosBase;
+    m_bTrainingMode: boolean;
+    m_strPosBaseName, m_strExtPosBaseName: string;
+    procedure FSetTrainingMode(bEnabled: boolean);
+    procedure FUseUserBase(bUseUserBase: boolean);
     procedure FReadFromBase;
     procedure FWriteGameToBase;
 
@@ -29,13 +29,14 @@ type
     procedure RDrawHiddenBoard; override;
 
   public
-    procedure WriteGameToBase(vGameResult: TGameResult);
-    procedure SetExternalBase(const vsExtPosBaseName: string);
-    procedure UnsetExternalBase;
-    constructor Create(voOwner: TComponent; vfHandler: TChessBoardHandler; const vsPosBaseName: string);
+    constructor Create(voOwner: TComponent; vfHandler: TChessBoardHandler;
+      const strPosBaseName: string = '');
     destructor Destroy; override;
-    property pTrainingMode: boolean read _bTrainingMode write FSetTrainingMode;
-    property pUseUserBase: boolean read _bUseUserBase write FUseUserBase;
+    procedure WriteGameToBase(AGameResult: TGameResult);
+    procedure SetExternalBase(const strExtPosBaseName: string);
+    procedure UnsetExternalBase;
+    property pTrainingMode: boolean read m_bTrainingMode write FSetTrainingMode;
+    property pUseUserBase: boolean read m_bUseUserBase write FUseUserBase;
     procedure PPRandom; reintroduce;
   end;
 
@@ -80,12 +81,13 @@ const
 ////////////////////////////////////////////////////////////////////////////////
 // TPosBaseChessBoard
 
-constructor TPosBaseChessBoard.Create(voOwner: TComponent; vfHandler: TChessBoardHandler; const vsPosBaseName: string);
+constructor TPosBaseChessBoard.Create(voOwner: TComponent; vfHandler: TChessBoardHandler;
+  const strPosBaseName: string = '');
 begin
   inherited Create(voOwner, vfHandler);
 
-  _bUseUserBase := TRUE;
-  _sPosBaseName := vsPosBaseName;
+  m_bUseUserBase := TRUE;
+  m_strPosBaseName := strPosBaseName;
   _lstMovePrior := TList.Create;
 end;
 
@@ -125,41 +127,48 @@ begin
 end;
 
 
-procedure TPosBaseChessBoard.FSetTrainingMode(vbTrainingMode: boolean);
+procedure TPosBaseChessBoard.FSetTrainingMode(bEnabled: boolean);
 begin
-  if _bTrainingMode = vbTrainingMode then
+  if (m_bTrainingMode = bEnabled) then
     exit;
 
-  _bTrainingMode := vbTrainingMode;
+  m_bTrainingMode := bEnabled;
   try
-    if _bTrainingMode then
-      begin
-        _oPosBase := TPosBase.Create(_sPosBaseName, Reestimate);
-        if _sExtPosBaseName <> '' then
-          _oExtPosBase := TPosBase.Create(_sExtPosBaseName);
-        TPosBaseOperator.CreateRead(self, FALSE);
-      end
-    else
-      begin
-        FreeAndNil(_oPosBase);
-        FreeAndNil(_oExtPosBase);
+    if (m_bTrainingMode) then
+    begin
+      if (m_strPosBaseName <> '') then
+        m_PosBase := TPosBase.Create(m_strPosBaseName, Reestimate);
+      if (m_strExtPosBaseName <> '') then
+        m_ExtPosBase := TPosBase.Create(m_strExtPosBaseName);
+      with TPosBaseOperator.CreateRead(self, FALSE, FALSE) do
+      try
+        WaitFor;
+      finally
+        Free;
       end;
+    end
+    else
+    begin
+      FreeAndNil(m_PosBase);
+      FreeAndNil(m_ExtPosBase);
+    end;
+
   except
     on Exception do
-      begin
-        FreeAndNil(_oPosBase);
-        FreeAndNil(_oExtPosBase);
-        _bTrainingMode := FALSE;
-      end;
+    begin
+      FreeAndNil(m_PosBase);
+      FreeAndNil(m_ExtPosBase);
+      m_bTrainingMode := FALSE;
+    end;
   end;
 end;
 
 
-procedure TPosBaseChessBoard.FUseUserBase(vbUseUserBase: boolean);
+procedure TPosBaseChessBoard.FUseUserBase(bUseUserBase: boolean);
 begin
-  if _bUseUserBase = vbUseUserBase then
+  if (m_bUseUserBase = bUseUserBase) then
     exit;
-  _bUseUserBase := vbUseUserBase;
+  m_bUseUserBase := bUseUserBase;
   TPosBaseOperator.CreateRead(self, FALSE);
 end;
 
@@ -187,73 +196,76 @@ begin
 
   inherited;
 
-  if not _bTrainingMode or (Mode <> mGame) or (PlayerColor <> PositionColor)  then
+  if ((not m_bTrainingMode) or (not (Mode in [mGame, mAnalyse])) or
+      (PlayerColor <> PositionColor)) then
     exit;
 
   bmHiddenBoard.Canvas.Pen.Style := psSolid;
 
   for i := 0 to _lstMovePrior.Count - 1 do
-    begin
-      case PMovePrior(_lstMovePrior[i]).prior of
-        mpNo: continue;
-        mpHigh:
-          begin
-            bmHiddenBoard.Canvas.Pen.Color := HIGH_ARROW_COLOR;
-            bmHiddenBoard.Canvas.Pen.Width := HIGH_ARROW_WIDTH;
-          end;
-        mpMid:
-          begin
-            bmHiddenBoard.Canvas.Pen.Color := MID_ARROW_COLOR;
-            bmHiddenBoard.Canvas.Pen.Width := MID_ARROW_WIDTH;
-          end;
-        mpLow:
-          begin
-            bmHiddenBoard.Canvas.Pen.Color := LOW_ARROW_COLOR;
-            bmHiddenBoard.Canvas.Pen.Width := LOW_ARROW_WIDTH;
-          end;
-      end;
-       move := PMovePrior(_lstMovePrior[i]).move;
-      if not flipped then
+  begin
+    case PMovePrior(_lstMovePrior[i]).prior of
+      mpNo: continue;
+      mpHigh:
         begin
-          x0 := CHB_X + iSquareSize * (move.i0 - 1) + (iSquareSize div 2);
-          y0 := CHB_Y + iSquareSize * (8 - move.j0) + (iSquareSize div 2);
-          x := CHB_X + iSquareSize * (move.i - 1) + (iSquareSize div 2);
-          y := CHB_Y + iSquareSize * (8 - move.j) + (iSquareSize div 2);
-        end
-      else
-        begin
-          x0 := CHB_X + iSquareSize * (8 - move.i0) + (iSquareSize div 2);
-          y0 := CHB_Y + iSquareSize * (move.j0 - 1) + (iSquareSize div 2);
-          x := CHB_X + iSquareSize * (8 - move.i) + (iSquareSize div 2);
-          y := CHB_Y + iSquareSize * (move.j - 1) + (iSquareSize div 2);
+          bmHiddenBoard.Canvas.Pen.Color := HIGH_ARROW_COLOR;
+          bmHiddenBoard.Canvas.Pen.Width := HIGH_ARROW_WIDTH;
         end;
-
-      // Рисование стрелки
-      ca := (x - x0) / sqrt(sqr(x - x0) + sqr(y - y0));
-      sa := (y - y0) / sqrt(sqr(x - x0) + sqr(y - y0));
-      x0 := x0 + Round(ARROW_INDENT * ca);
-      y0 := y0 + Round(ARROW_INDENT * sa);
-      x := x - Round(ARROW_INDENT * ca);
-      y := y - Round(ARROW_INDENT * sa);
-
-      bmHiddenBoard.Canvas.MoveTo(x0, y0);
-      bmHiddenBoard.Canvas.LineTo(x, y);
-
-      xa := x + (-ARROW_END_LENGTH * cos(ARROW_END_ANGLE)) * ca -
-                (ARROW_END_LENGTH * sin(ARROW_END_ANGLE)) * sa;
-      ya := y + (-ARROW_END_LENGTH * cos(ARROW_END_ANGLE)) * sa +
-                (ARROW_END_LENGTH * sin(ARROW_END_ANGLE)) * ca;
-
-      bmHiddenBoard.Canvas.LineTo(Round(xa), Round(ya));
-
-      xa := x + (-ARROW_END_LENGTH * cos(ARROW_END_ANGLE)) * ca -
-                (-ARROW_END_LENGTH * sin(ARROW_END_ANGLE)) * sa;
-      ya := y + (-ARROW_END_LENGTH * cos(ARROW_END_ANGLE)) * sa +
-                (-ARROW_END_LENGTH * sin(ARROW_END_ANGLE)) * ca;
-
-      bmHiddenBoard.Canvas.MoveTo(x, y);
-      bmHiddenBoard.Canvas.LineTo(Round(xa), Round(ya));
+      mpMid:
+        begin
+          bmHiddenBoard.Canvas.Pen.Color := MID_ARROW_COLOR;
+          bmHiddenBoard.Canvas.Pen.Width := MID_ARROW_WIDTH;
+        end;
+      mpLow:
+        begin
+          bmHiddenBoard.Canvas.Pen.Color := LOW_ARROW_COLOR;
+          bmHiddenBoard.Canvas.Pen.Width := LOW_ARROW_WIDTH;
+        end;
     end;
+
+    move := PMovePrior(_lstMovePrior[i]).move;
+
+    if (not flipped) then
+    begin
+      x0 := CHB_X + iSquareSize * (move.i0 - 1) + (iSquareSize div 2);
+      y0 := CHB_Y + iSquareSize * (8 - move.j0) + (iSquareSize div 2);
+      x := CHB_X + iSquareSize * (move.i - 1) + (iSquareSize div 2);
+      y := CHB_Y + iSquareSize * (8 - move.j) + (iSquareSize div 2);
+    end
+    else
+    begin
+      x0 := CHB_X + iSquareSize * (8 - move.i0) + (iSquareSize div 2);
+      y0 := CHB_Y + iSquareSize * (move.j0 - 1) + (iSquareSize div 2);
+      x := CHB_X + iSquareSize * (8 - move.i) + (iSquareSize div 2);
+      y := CHB_Y + iSquareSize * (move.j - 1) + (iSquareSize div 2);
+    end;
+
+    // Draw an arrow
+    ca := (x - x0) / sqrt(sqr(x - x0) + sqr(y - y0));
+    sa := (y - y0) / sqrt(sqr(x - x0) + sqr(y - y0));
+    x0 := x0 + Round(ARROW_INDENT * ca);
+    y0 := y0 + Round(ARROW_INDENT * sa);
+    x := x - Round(ARROW_INDENT * ca);
+    y := y - Round(ARROW_INDENT * sa);
+
+    bmHiddenBoard.Canvas.MoveTo(x0, y0);
+    bmHiddenBoard.Canvas.LineTo(x, y);
+
+    xa := x + (-ARROW_END_LENGTH * cos(ARROW_END_ANGLE)) * ca -
+              (ARROW_END_LENGTH * sin(ARROW_END_ANGLE)) * sa;
+    ya := y + (-ARROW_END_LENGTH * cos(ARROW_END_ANGLE)) * sa +
+              (ARROW_END_LENGTH * sin(ARROW_END_ANGLE)) * ca;
+
+    bmHiddenBoard.Canvas.LineTo(Round(xa), Round(ya));
+
+    xa := x + (-ARROW_END_LENGTH * cos(ARROW_END_ANGLE)) * ca -
+              (-ARROW_END_LENGTH * sin(ARROW_END_ANGLE)) * sa;
+    ya := y + (-ARROW_END_LENGTH * cos(ARROW_END_ANGLE)) * sa +
+              (-ARROW_END_LENGTH * sin(ARROW_END_ANGLE)) * ca;
+
+    bmHiddenBoard.Canvas.MoveTo(x, y);
+    bmHiddenBoard.Canvas.LineTo(Round(xa), Round(ya));
+  end;
 
 end;
 
@@ -261,7 +273,8 @@ end;
 procedure TPosBaseChessBoard.ROnAfterMoveDone;
 begin
   inherited;
-  if (_bTrainingMode) then
+  
+  if (m_bTrainingMode) then
   begin
     if (PlayerColor = PositionColor) then
       TPosBaseOperator.CreateRead(self, TRUE) // чтение из базы и вывод на скрытую доску
@@ -270,29 +283,30 @@ end;
 
 
 procedure TPosBaseChessBoard.ROnAfterSetPosition;
-var
-  PosBaseOperator: TPosBaseOperator;
 begin
-  if (_bTrainingMode) then
+  if (m_bTrainingMode) then
   begin
-    PosBaseOperator := TPosBaseOperator.CreateRead(self, FALSE, FALSE); // чтение из базы и вывод на скрытую доску
-    PosBaseOperator.WaitFor;
-    PosBaseOperator.Free;
+    with TPosBaseOperator.CreateRead(self, FALSE, FALSE) do // Read from DB and output to the hidden board
+    try
+      WaitFor;
+    finally
+      Free;
+    end;
   end;
 end;
 
 
-procedure TPosBaseChessBoard.SetExternalBase(const vsExtPosBaseName: string);
+procedure TPosBaseChessBoard.SetExternalBase(const strExtPosBaseName: string);
 begin
-  if _bTrainingMode then
-    begin
-      if _sExtPosBaseName = vsExtPosBaseName then
-        exit;
-      FreeAndNil(_oExtPosBase);
-      _oExtPosBase := TPosBase.Create(vsExtPosBaseName);
-      TPosBaseOperator.CreateRead(self, FALSE);
-    end;
-  _sExtPosBaseName := vsExtPosBaseName;
+  if (m_bTrainingMode) then
+  begin
+    if (m_strExtPosBaseName = strExtPosBaseName) then
+      exit;
+    FreeAndNil(m_ExtPosBase);
+    m_ExtPosBase := TPosBase.Create(strExtPosBaseName);
+    TPosBaseOperator.CreateRead(self, FALSE);
+  end;
+  m_strExtPosBaseName := strExtPosBaseName;
 end;
 
 
@@ -432,15 +446,19 @@ begin
   try
     lstExtMove := TList.Create;
 
-    if _bUseUserBase or (not Assigned(_oExtPosBase)) then
-      _oPosBase.Find(Position^, lstUsrMove);
-    if Assigned(_oExtPosBase) then
-      _oExtPosBase.Find(Position^, lstExtMove);
+    if (m_bUseUserBase or (not Assigned(m_ExtPosBase))) then
+    begin
+      if (Assigned(m_PosBase)) then
+        m_PosBase.Find(Position^, lstUsrMove);
+    end;
+    if (Assigned(m_ExtPosBase)) then
+      m_ExtPosBase.Find(Position^, lstExtMove);
 
     // TODO: Handle wrong DB
 
     ClasterMoves(lstUsrMove);
     ClasterMoves(lstExtMove);
+
     MergeMoves;
 
   finally
@@ -450,11 +468,11 @@ begin
 end;
 
 
-procedure TPosBaseChessBoard.WriteGameToBase(vGameResult: TGameResult);
+procedure TPosBaseChessBoard.WriteGameToBase(AGameResult: TGameResult);
 begin
-  if not _bTrainingMode then
+  if (not m_bTrainingMode) then
     exit;
-  gameResult := vGameResult;
+  gameResult := AGameResult;
   TPosBaseOperator.CreateWrite(self);
 end;
 
@@ -463,6 +481,9 @@ procedure TPosBaseChessBoard.FWriteGameToBase;
 var
   ply: integer;
 begin
+  if (not Assigned(m_PosBase)) then
+    exit;
+
   gameID := Random($FFFF) + 1;
 
   if (PlayerColor = fcWhite) then
@@ -471,16 +492,16 @@ begin
     ply := 1;
 
   while ((ply < PositionsList.Count) and ((MAX_PLY_TO_BASE < 0) or (ply <= MAX_PLY_TO_BASE))) do
-    begin
-      _oPosBase.Add(PPosMove(PositionsList[ply])^);
-      inc(ply, 2);
-    end;
+  begin
+    m_PosBase.Add(PPosMove(PositionsList[ply])^);
+    inc(ply, 2);
+  end;
 end;
 
 
 procedure TPosBaseChessBoard.UnsetExternalBase;
 begin
-  FreeAndNil(_oExtPosBase);
+  FreeAndNil(m_ExtPosBase);
 end;
 
 
@@ -489,15 +510,16 @@ var
   PosBaseOperator: TPosBaseOperator;
 begin
   inherited;
-  if _bTrainingMode then
-    begin
-      PosBaseOperator := TPosBaseOperator.CreateRead(self, FALSE, FALSE); // чтение из базы и вывод на скрытую доску
-      PosBaseOperator.WaitFor;
-      PosBaseOperator.Free;
-    end;
+  if (m_bTrainingMode) then
+  begin
+    PosBaseOperator := TPosBaseOperator.CreateRead(self, FALSE, FALSE); // чтение из базы и вывод на скрытую доску
+    PosBaseOperator.WaitFor;
+    PosBaseOperator.Free;
+  end;
 end;
 
-{------------- TPosBaseOperator --------------}
+////////////////////////////////////////////////////////////////////////////////
+// TPosBaseOperator
 
 constructor TPosBaseOperator.CreateRead(voChessBoard: TPosBaseChessBoard; vbHidden: boolean; vbFreeOnTerminate: boolean = TRUE);
 begin

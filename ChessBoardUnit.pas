@@ -8,7 +8,7 @@ uses
   ChessRulesEngine, BitmapResUnit, PromotionUnit;
 
 type
-  TMode = (mView, mGame); // Board mode
+  TMode = (mView, mGame, mAnalyse); // Board mode
 
   TAnimation = (aNo, aSlow, aQuick);
 
@@ -52,7 +52,7 @@ type
     m_i0, m_j0: integer;
     m_fig: TFigure;
 
-    mode_var: TMode;
+    m_Mode: TMode;
     m_bViewGaming: boolean;
 
     m_bmChessBoard: TBitmap;
@@ -63,7 +63,7 @@ type
     anim_step, anim_step_num: integer;
     anim_dx, anim_dy: real; // Variables for animation of a dragged piece
 
-    player_color: TFigureColor; // Color of player client
+    m_PlayerColor: TFigureColor; // Color of player client
     dragged_moved: boolean; // Flag for switching of dragging
     last_hilight: boolean; // Flag for hilighting of the last move done
     coord_show: boolean; // Flag for showing coordinates
@@ -92,6 +92,7 @@ type
     procedure FWhatSquare(const P: TPoint; var i: Integer; var j: Integer);
 
     procedure FSetPlayerColor(const Value: TFigureColor);
+    procedure FTogglePlayerColor;
     procedure FCancelAnimationDragging; // Caneling of animation and dragging for trace removal after draw
     procedure FSetFlipped(Value: boolean); // Flips chess position
     procedure FSetMode(const Value: TMode);
@@ -128,9 +129,10 @@ type
     procedure PPRandom;
     procedure TakeBack;
     function NMoveDone: integer;
+    function NPlysDone: integer;
 
-    property PlayerColor: TFigureColor read player_color write FSetPlayerColor;
-    property Mode: TMode read mode_var write FSetMode;
+    property PlayerColor: TFigureColor read m_PlayerColor write FSetPlayerColor;
+    property Mode: TMode read m_Mode write FSetMode;
     property CoordinatesShown: boolean read coord_show write FSetCoordinatesShown;
     property Flipped: boolean read _flipped write FSetFlipped;
     property LastMoveHilighted: boolean read last_hilight write FSetLastMoveHilighted;
@@ -377,11 +379,20 @@ end;
 procedure TChessBoard.FSetPlayerColor(const Value: TFigureColor);
 begin
   FCancelAnimationDragging;
-  player_color := Value;
-  if (player_color = fcWhite) then
+  m_PlayerColor := Value;
+  if (m_PlayerColor = fcWhite) then
     FSetFlipped(FALSE)
-  else
-    FSetFlipped(TRUE); // player_color = fcBlack
+  else // fcBlack
+    FSetFlipped(TRUE);
+end;
+
+
+procedure TChessBoard.FTogglePlayerColor;
+begin
+  if (m_PlayerColor = fcWhite) then
+    m_PlayerColor := fcBlack
+  else // fcBlack
+    m_PlayerColor := fcWhite;  
 end;
 
 
@@ -412,12 +423,12 @@ end;
 
 procedure TChessBoard.FSetMode(const Value: TMode);
 begin
-  if (mode_var = Value) then
+  if (m_Mode = Value) then
     exit;
 
-  mode_var := Value;
+  m_Mode := Value;
 
-  if ((mode_var = mView) and (Assigned(m_PromotionForm))) then
+  if ((m_Mode = mView) and (Assigned(m_PromotionForm))) then
     m_PromotionForm.Close;
 
   RDrawBoard;
@@ -539,6 +550,9 @@ var
 begin
   strLastMove := m_ChessRulesEngine.LastMoveStr;
   FDoHandler(cbeMoved, @strLastMove, self);
+
+  if (m_Mode = mAnalyse) then
+    FTogglePlayerColor;
 end;
 
 
@@ -608,7 +622,7 @@ var
   i, j: Integer;
 begin
   FWhatSquare(Point(X, Y), i, j);
-  if (Mode = mGame) then
+  if (Mode in [mGame, mAnalyse]) then
   begin
     if (RDoMove(i, j)) then
       dragged_moved := TRUE;
@@ -718,11 +732,11 @@ begin
   f := Position.board[i,j];
 
   case Mode of
-    mGame:
+    mGame, mAnalyse:
     begin
-      if (ViewGaming) then
+      if (m_bViewGaming) then
         exit;
-      if (Button <> mbLeft) or (Position.color <> player_color) or
+      if (Button <> mbLeft) or (Position.color <> m_PlayerColor) or
          (((Position.color <> fcWhite) or (f >= ES)) and
           ((Position.color <> fcBlack) or (f <= ES))) then
         exit;
@@ -772,12 +786,12 @@ begin
   f := Position.board[i,j];
 
   case Mode of
-    mGame:
+    mGame, mAnalyse:
     begin
-      if (ViewGaming) then
+      if (m_bViewGaming) then
         exit;
 
-      if (player_color = Position.color) and
+      if (m_PlayerColor = Position.color) and
          (((Position.color = fcWhite) and (f < ES)) or
           ((Position.color = fcBlack) and (f > ES))) then
         PBoxBoard.Cursor:= crHandPoint
@@ -806,23 +820,23 @@ begin
     mbLeft:
     begin
       case Mode of
-        mGame:
+        mGame, mAnalyse:
+        begin
+          if (not hilighted) then
+            exit;
+          FWhatSquare(Point(X, Y), i, j);
+          if (dragged_moved) then
+            RDrawBoard
+          else
           begin
-            if (not hilighted) then
-              exit;
-            FWhatSquare(Point(X, Y), i, j);
-            if (dragged_moved) then
-              RDrawBoard
+            hilighted:= FALSE;
+            if (RDoMove(i, j)) then
+              FAnimate(i, j)
             else
-            begin
-              hilighted:= FALSE;
-              if (RDoMove(i, j)) then
-                FAnimate(i, j)
-              else
-                RDrawBoard;
-            end;
+              RDrawBoard;
           end;
-      end;
+        end;
+      end; // case
     end;
 
     mbRight:
@@ -853,6 +867,12 @@ end;
 procedure TChessBoard.InitPosition;
 begin
   m_ChessRulesEngine.InitNewGame;
+
+  if (m_Mode = mAnalyse) then
+    m_PlayerColor := PositionColor;
+
+  FCancelAnimationDragging;
+  ROnAfterSetPosition;
   RDrawBoard;
 end;
 
@@ -868,6 +888,10 @@ procedure TChessBoard.TakeBack;
 begin
   if (not m_ChessRulesEngine.TakeBack) then
     exit;
+
+  if (m_Mode = mAnalyse) then
+    FTogglePlayerColor;
+
   ROnAfterSetPosition;
   // TODO: animation
   RDrawBoard;
@@ -877,6 +901,12 @@ end;
 function TChessBoard.NMoveDone: integer;
 begin
   Result := m_ChessRulesEngine.NMovesDone;
+end;
+
+
+function TChessBoard.NPlysDone: integer;
+begin
+  Result := m_ChessRulesEngine.NPlysDone;
 end;
 
 

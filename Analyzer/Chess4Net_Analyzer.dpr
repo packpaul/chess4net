@@ -18,7 +18,8 @@ uses
   ChessRulesEngine in '..\ChessRulesEngine.pas',
   PosBaseUnit in '..\PosBaseUnit.pas',
   BitmapResUnit in '..\BitmapResUnit.pas',
-  PromotionUnit in '..\PromotionUnit.pas' {PromotionForm};
+  PromotionUnit in '..\PromotionUnit.pas' {PromotionForm},
+  PGNParserUnit in 'PGNParserUnit.pas';
 
 {$R ..\Chess4Net.res}
 
