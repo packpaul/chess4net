@@ -121,7 +121,11 @@ procedure TAnalyseChessBoard.FCreateChessBoard;
 begin
   m_ChessBoard := TPosBaseChessBoard.Create(self, FChessBoardHandler, '');
 
+  with ChessBoardPanel do
+    SetBounds(Left, Top, m_ChessBoard.ClientWidth, m_ChessBoard.ClientHeight);
+
   m_ChessBoard.BorderStyle := bsNone;
+
   m_ChessBoard.Align := alClient;
   m_ChessBoard.Parent := ChessBoardPanel;
   m_ChessBoard.Visible := TRUE;
@@ -197,6 +201,10 @@ begin
   iNewChessBoardWidth := m_ChessBoard.Width + (NewWidth - self.Width);
   iNewChessBoardHeight := m_ChessBoard.Height + (NewHeight - self.Height);
 
+  Resize := ((iNewChessBoardWidth >= 188) and (iNewChessBoardHeight >= 183));
+  if (not Resize) then
+    exit;
+
   m_ChessBoard.FormCanResize(self, iNewChessBoardWidth, iNewChessBoardHeight, Resize);
   if (Resize) then
   begin
@@ -204,7 +212,6 @@ begin
     NewHeight := self.Height + (iNewChessBoardHeight - m_ChessBoard.Height);
   end;
 
-  m_ResizingType := rtNo;
 end;
 
 

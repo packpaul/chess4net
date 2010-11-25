@@ -2,7 +2,7 @@ object AnalyseChessBoard: TAnalyseChessBoard
   Left = 429
   Top = 209
   Width = 364
-  Height = 417
+  Height = 423
   BorderIcons = [biSystemMenu, biMinimize]
   Caption = 'Chess4Net Analyzer 2011.0 gamma'
   Color = clBtnFace
@@ -20,8 +20,8 @@ object AnalyseChessBoard: TAnalyseChessBoard
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   DesignSize = (
-    356
-    371)
+    348
+    367)
   PixelsPerInch = 96
   TextHeight = 16
   object ChessBoardPanel: TPanel
@@ -35,8 +35,8 @@ object AnalyseChessBoard: TAnalyseChessBoard
   end
   object StatusBar: TStatusBar
     Left = 0
-    Top = 352
-    Width = 356
+    Top = 348
+    Width = 348
     Height = 19
     Panels = <>
   end
