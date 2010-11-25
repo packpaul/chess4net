@@ -4,9 +4,9 @@ interface
 
 uses
   Forms, TntForms, TntMenus, Menus, Classes, Controls, ExtCtrls, Messages,
-  ComCtrls, Dialogs,
+  ComCtrls, Dialogs, ActnList,
   //
-  ChessBoardUnit, PosBaseChessBoardUnit;
+  ChessBoardUnit, PosBaseChessBoardUnit, ChessEngineInfoUnit, ChessEngine;
 
 type
   TAnalyseChessBoard = class(TTntForm)
@@ -39,21 +39,29 @@ type
     ViewFlipBoardMenuItem: TTntMenuItem;
     N5: TTntMenuItem;
     OpenPGNDialog: TOpenDialog;
+    ViewChessEngineInfoMenuItem: TTntMenuItem;
+    ActionList: TActionList;
+    ChessEngineInfoAction: TAction;
     procedure ExitMenuItemClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormCanResize(Sender: TObject; var NewWidth,
       NewHeight: Integer; var Resize: Boolean);
     procedure PositionTakebackMoveMenuItemClick(Sender: TObject);
     procedure PositionInitialMenuItemClick(Sender: TObject);
-    procedure TntFormDestroy(Sender: TObject);
+    procedure FormDestroy(Sender: TObject);
     procedure PositionForwardMoveMenuItemClick(Sender: TObject);
     procedure ViewFlipBoardMenuItemClick(Sender: TObject);
     procedure OpenPGNMenuItemClick(Sender: TObject);
     procedure PastePGNMenuItemClick(Sender: TObject);
+    procedure ChessEngineInfoActionExecute(Sender: TObject);
+    procedure ChessEngineInfoActionUpdate(Sender: TObject);
   private
     m_ChessBoard: TPosBaseChessBoard;
     m_strPosBaseName: string;
     m_ResizingType: (rtNo, rtHoriz, rtVert);
+
+    m_ChessEngine: TChessEngine;
+    m_ChessEngineInfoForm: TChessEngineInfoForm;
 
     m_strlPlysList: TStringList;
 
@@ -61,15 +69,24 @@ type
       d2: pointer = nil);
 
     procedure WMSizing(var Msg: TMessage); message WM_SIZING;
-                  
+
     procedure FCreateChessBoard;
     procedure FInitPosition;
+
+    procedure FCreateChessEngineInfoForm;
+    procedure FOnChessEngineInfoFormShow(Sender: TObject);
+    procedure FOnChessEngineInfoFormHide(Sender: TObject);
+
+    procedure FCreateChessEngine;
+    procedure FDestroyChessEngine;
+    procedure FOnChessEngineCalculationInfo(Sender: TObject; rEvaluation: real; strMovesLine: string);
+    procedure FSynchronizeChessEngineWithChessBoardAndStartEvaluation;
   end;
 
 implementation
 
 uses
-  Windows, Clipbrd,
+  SysUtils, Windows, Clipbrd,
   //
   PGNParserUnit;
 
@@ -93,8 +110,9 @@ begin
 end;
 
 
-procedure TAnalyseChessBoard.TntFormDestroy(Sender: TObject);
+procedure TAnalyseChessBoard.FormDestroy(Sender: TObject);
 begin
+  FDestroyChessEngine;
   m_strlPlysList.Free;
 end;
 
@@ -119,23 +137,30 @@ end;
 
 procedure TAnalyseChessBoard.FChessBoardHandler(e: TChessBoardEvent; d1: pointer = nil;
   d2: pointer = nil);
-var
-  strMove: string;
-  iPly: integer;
-begin
+
+  procedure NAdjustPlysList;
+  var
+    strMove: string;
+    iPly: integer;
+  begin
+    strMove := PString(d1)^;
+    iPly := m_ChessBoard.NPlysDone;
+    if (m_strlPlysList.Count >= iPly) then
+    begin
+      if (m_strlPlysList[iPly - 1] = strMove) then
+        exit;
+      while (m_strlPlysList.Count >= iPly) do
+        m_strlPlysList.Delete(m_strlPlysList.Count - 1);
+    end;
+    m_strlPlysList.Add(strMove);
+  end;
+
+begin // .FChessBoardHandler
   case e of
     cbeMoved:
     begin
-      strMove := PString(d1)^;
-      iPly := m_ChessBoard.NPlysDone;
-      if (m_strlPlysList.Count >= iPly) then
-      begin
-        if (m_strlPlysList[iPly - 1] = strMove) then
-          exit;
-        while (m_strlPlysList.Count >= iPly) do
-          m_strlPlysList.Delete(m_strlPlysList.Count - 1);
-      end;
-      m_strlPlysList.Add(strMove);
+      NAdjustPlysList;
+      FSynchronizeChessEngineWithChessBoardAndStartEvaluation;
     end;
   end;
 end;
@@ -178,6 +203,8 @@ begin
     NewWidth := self.Width + (iNewChessBoardWidth - m_ChessBoard.Width);
     NewHeight := self.Height + (iNewChessBoardHeight - m_ChessBoard.Height);
   end;
+
+  m_ResizingType := rtNo;
 end;
 
 
@@ -185,6 +212,7 @@ procedure TAnalyseChessBoard.PositionTakebackMoveMenuItemClick(
   Sender: TObject);
 begin
   m_ChessBoard.TakeBack;
+  FSynchronizeChessEngineWithChessBoardAndStartEvaluation;  
 end;
 
 
@@ -198,6 +226,7 @@ procedure TAnalyseChessBoard.FInitPosition;
 begin
   m_ChessBoard.InitPosition;
   m_strlPlysList.Clear;
+  FSynchronizeChessEngineWithChessBoardAndStartEvaluation;
 end;
 
 
@@ -279,6 +308,81 @@ begin
     strlData.Free;
   end;
   
+end;
+
+
+procedure TAnalyseChessBoard.ChessEngineInfoActionExecute(Sender: TObject);
+begin
+  if (not Assigned(m_ChessEngineInfoForm)) then
+    FCreateChessEngineInfoForm;
+
+  if (m_ChessEngineInfoForm.Showing) then
+    m_ChessEngineInfoForm.Hide
+  else
+    m_ChessEngineInfoForm.Show;
+end;
+
+
+procedure TAnalyseChessBoard.FCreateChessEngineInfoForm;
+begin
+  m_ChessEngineInfoForm := TChessEngineInfoForm.Create(self);
+  m_ChessEngineInfoForm.OnShow := FOnChessEngineInfoFormShow;
+  m_ChessEngineInfoForm.OnHide := FOnChessEngineInfoFormHide;
+end;
+
+
+procedure TAnalyseChessBoard.FOnChessEngineInfoFormShow(Sender: TObject);
+begin
+  FCreateChessEngine;
+  FSynchronizeChessEngineWithChessBoardAndStartEvaluation;
+end;
+
+
+procedure TAnalyseChessBoard.FOnChessEngineInfoFormHide(Sender: TObject);
+begin
+  FDestroyChessEngine;
+end;
+
+
+procedure TAnalyseChessBoard.ChessEngineInfoActionUpdate(Sender: TObject);
+begin
+  (Sender as TAction).Checked := (Assigned(m_ChessEngineInfoForm) and m_ChessEngineInfoForm.Showing);
+end;
+
+
+procedure TAnalyseChessBoard.FCreateChessEngine;
+begin
+  if (Assigned(m_ChessEngine)) then
+    exit;
+  m_ChessEngine := TChessEngine.Create;
+  m_ChessEngine.OnCalculationInfo := FOnChessEngineCalculationInfo;
+end;
+
+
+procedure TAnalyseChessBoard.FDestroyChessEngine;
+begin
+  if (Assigned(m_ChessEngine)) then
+    m_ChessEngine.StopCalculation;
+  FreeAndNil(m_ChessEngine);
+end;
+
+
+procedure TAnalyseChessBoard.FOnChessEngineCalculationInfo(Sender: TObject;
+  rEvaluation: real; strMovesLine: string);
+begin
+  if (not Assigned(m_ChessEngineInfoForm)) then
+    exit;
+
+  m_ChessEngineInfoForm.SetInfo(rEvaluation, strMovesLine);
+end;
+
+
+procedure TAnalyseChessBoard.FSynchronizeChessEngineWithChessBoardAndStartEvaluation;
+begin
+  if (not Assigned(m_ChessEngine)) then
+    exit;
+  m_ChessEngine.SetPosition(m_ChessBoard.GetPosition);
+  m_ChessEngine.CalculateReplyNonBlocking;
 end;
 
 end.

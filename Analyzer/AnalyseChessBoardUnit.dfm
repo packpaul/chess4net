@@ -18,7 +18,7 @@ object AnalyseChessBoard: TAnalyseChessBoard
   PopupMenu = PopupMenu
   OnCanResize = FormCanResize
   OnCreate = FormCreate
-  OnDestroy = TntFormDestroy
+  OnDestroy = FormDestroy
   DesignSize = (
     356
     371)
@@ -94,6 +94,9 @@ object AnalyseChessBoard: TAnalyseChessBoard
         Caption = '&Pos DB Manager'
         Enabled = False
       end
+      object ViewChessEngineInfoMenuItem: TTntMenuItem
+        Action = ChessEngineInfoAction
+      end
     end
     object PositionMenuItem: TTntMenuItem
       Caption = '&Position'
@@ -144,5 +147,13 @@ object AnalyseChessBoard: TAnalyseChessBoard
   object OpenPGNDialog: TOpenDialog
     Filter = 'PGN Files (*.pgn)|*.pgn'
     Top = 32
+  end
+  object ActionList: TActionList
+    Left = 64
+    object ChessEngineInfoAction: TAction
+      Caption = 'Chess &Engine Info'
+      OnExecute = ChessEngineInfoActionExecute
+      OnUpdate = ChessEngineInfoActionUpdate
+    end
   end
 end

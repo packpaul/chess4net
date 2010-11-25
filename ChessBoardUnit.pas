@@ -62,6 +62,7 @@ type
     m_animation: TAnimation; // Animation speed
     anim_step, anim_step_num: integer;
     anim_dx, anim_dy: real; // Variables for animation of a dragged piece
+    m_bWillBeAnimatedFlag: boolean;
 
     m_PlayerColor: TFigureColor; // Color of player client
     dragged_moved: boolean; // Flag for switching of dragging
@@ -105,6 +106,10 @@ type
 
     procedure FDoHandler(e: TChessBoardEvent; d1: pointer = nil; d2: pointer = nil);
 
+    procedure FSetAnimateTimerEnabled(bValue: boolean);
+
+    property AnimateTimerEnabled: boolean write FSetAnimateTimerEnabled;
+
   protected
     iSquareSize: integer; // Size of one chess board field
     bmHiddenBoard: TBitmap;
@@ -114,6 +119,7 @@ type
     procedure ROnAfterMoveDone; virtual;
     procedure ROnAfterSetPosition; virtual;
     function RDoMove(i, j: integer; prom_fig: TFigureName = K): boolean;
+    function RIsAnimating: boolean;
 
     property PositionsList: TList read FGetPositionsList;
 
@@ -201,7 +207,7 @@ begin
   end
   else
   begin
-    AnimateTimer.Enabled := FALSE;
+    AnimateTimerEnabled := FALSE;
     RDrawBoard;
     HilightLastMove;
     Evaluate;
@@ -401,7 +407,7 @@ begin
   // Cancel animation and dragging
   if (AnimateTimer.Enabled) then
   begin
-    AnimateTimer.Enabled := FALSE;
+    AnimateTimerEnabled := FALSE;
     // anim_step := anim_step_num;
     // AnimateTimerTimer(nil);
   end;
@@ -457,7 +463,7 @@ begin
   // Animation canceling
   if (AnimateTimer.Enabled) then
   begin
-    AnimateTimer.Enabled := FALSE;
+    AnimateTimerEnabled := FALSE;
     anim_step := anim_step_num;
     AnimateTimerTimer(nil);
   end;
@@ -1008,6 +1014,19 @@ begin
     FHandler(e, d1, d2);
 end;
 
+
+function TChessBoard.RIsAnimating: boolean;
+begin
+  Result := (AnimateTimer.Enabled or m_bWillBeAnimatedFlag);
+end;
+
+
+procedure TChessBoard.FSetAnimateTimerEnabled(bValue: boolean);
+begin
+  AnimateTimer.Enabled := bValue;
+  if (not bValue) then
+    m_bWillBeAnimatedFlag := FALSE;
+end;
 
 initialization
 

@@ -58,7 +58,6 @@ type
   private
     _enuOperation: (opRead, opWrite);
     _oChessBoard: TPosBaseChessBoard;
-    _bHidden: boolean;
   protected
     procedure Execute; override;
   public
@@ -525,7 +524,6 @@ constructor TPosBaseOperator.CreateRead(voChessBoard: TPosBaseChessBoard; vbHidd
 begin
   _enuOperation := opRead;
   _oChessBoard := voChessBoard;
-  _bHidden := vbHidden;
 
   inherited Create(TRUE);
   Priority := tpNormal;
@@ -549,7 +547,11 @@ procedure TPosBaseOperator.Execute;
 begin
   case _enuOperation of
     opRead:
+    begin
       _oChessBoard.FReadFromBase;
+      if (not _oChessBoard.RIsAnimating) then
+        Synchronize(_oChessBoard.RDrawBoard);
+    end;
     opWrite:
       _oChessBoard.FWriteGameToBase;
   end;

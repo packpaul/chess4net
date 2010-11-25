@@ -19,7 +19,10 @@ uses
   PosBaseUnit in '..\PosBaseUnit.pas',
   BitmapResUnit in '..\BitmapResUnit.pas',
   PromotionUnit in '..\PromotionUnit.pas' {PromotionForm},
-  PGNParserUnit in 'PGNParserUnit.pas';
+  PGNParserUnit in 'PGNParserUnit.pas',
+  ChildProc in 'ChildProc.pas',
+  ChessEngine in 'ChessEngine.pas',
+  ChessEngineInfoUnit in 'ChessEngineInfoUnit.pas' {ChessEngineInfoForm};
 
 {$R ..\Chess4Net.res}
 
