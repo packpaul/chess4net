@@ -2,7 +2,7 @@ object ChessBoard: TChessBoard
   Left = 798
   Top = 238
   Width = 364
-  Height = 379
+  Height = 381
   Caption = 'ChessBoard'
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -20,8 +20,8 @@ object ChessBoard: TChessBoard
   object PBoxBoard: TPaintBox
     Left = 0
     Top = 0
-    Width = 348
-    Height = 343
+    Width = 356
+    Height = 347
     Align = alClient
     Color = clSilver
     DragCursor = crHandPoint

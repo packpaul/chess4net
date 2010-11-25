@@ -198,12 +198,21 @@ begin
   if (not Resize) then
     exit;
 
-  iNewChessBoardWidth := m_ChessBoard.Width + (NewWidth - self.Width);
-  iNewChessBoardHeight := m_ChessBoard.Height + (NewHeight - self.Height);
-
-  Resize := ((iNewChessBoardWidth >= 188) and (iNewChessBoardHeight >= 183));
+  Resize := ((m_ChessBoard.Width > 196) and (m_ChessBoard.Height > 187)); // TODO: handle menu resizing in Vista
+  if (not Resize) then
+  begin
+    case m_ResizingType of
+      rtHoriz:
+        Resize := (NewWidth >= Width);
+      rtVert:
+        Resize := (NewHeight >= Height);
+    end;
+  end;
   if (not Resize) then
     exit;
+
+  iNewChessBoardWidth := m_ChessBoard.Width + (NewWidth - self.Width);
+  iNewChessBoardHeight := m_ChessBoard.Height + (NewHeight - self.Height);
 
   m_ChessBoard.FormCanResize(self, iNewChessBoardWidth, iNewChessBoardHeight, Resize);
   if (Resize) then
