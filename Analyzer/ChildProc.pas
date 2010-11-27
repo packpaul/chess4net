@@ -16,6 +16,8 @@ type
     m_hChildStdoutRead, m_hChildStdoutWrite: THandle;
     m_hChildStdinRead, m_hChildStdinWrite: THandle;
 
+    m_OperatorThread: TThread;
+
     FOnTerminateProcess: TNotifyEvent;
     FOnReadFromPipe: TReadFromPipe;
 
@@ -26,10 +28,10 @@ type
     procedure FDestroyChildProcess;
     function FReadFromPipe(out strData: string): boolean;
 
-    procedure FDoTerminateProcess; // leave static
+    procedure FDoTerminateProcess;
     procedure FDoReadFromPipe(const strData: string);
 
-    procedure FCreateListnerThread;
+    procedure FTerminateProcess;
 
   public
     destructor Destroy; override;
@@ -45,12 +47,11 @@ type
 implementation
 
 type
-  TListnerThread = class(TThread)
+  TOperatorThread = class(TThread)
   private
     m_ChildProc: TChildProc;
     m_strData: string;
     procedure FDoReadFromPipe;
-    procedure FDoTerminateProcess;
     procedure FCheckOnProcessTermination;
     property ChildProc: TChildProc read m_ChildProc;
   protected
@@ -80,19 +81,37 @@ begin
   FCreatePipes;
   FCreateChildProcess(ProcessFileName, strCommandLine, ExtractFilePath(ProcessFileName));
   if (ProcessCreated) then
-    FCreateListnerThread
+    m_OperatorThread := TOperatorThread.Create(self)
   else
     FDestroyPipes;
 end;
 
 
-procedure TChildProc.TerminateProcess;
+procedure TChildProc.FTerminateProcess;
 begin
-  if (not ProcessCreated) then
+  if (not m_bProcessCreated) then
     exit;
 
   FDestroyChildProcess;
+
+  if (m_bProcessCreated) then
+    exit;
+
   FDestroyPipes;
+
+  TThread.Synchronize(nil, FDoTerminateProcess);
+end;
+
+
+procedure TChildProc.TerminateProcess;
+begin
+  if (Assigned(m_OperatorThread)) then
+  begin
+    m_OperatorThread.WaitFor;
+    FreeAndNil(m_OperatorThread);
+  end;
+
+  FTerminateProcess;   
 end;
 
 
@@ -188,6 +207,9 @@ procedure TChildProc.FDestroyChildProcess;
 var
   cdExitCode: Cardinal;
 begin
+  if (not m_bProcessCreated) then
+    exit;
+
   if (not GetExitCodeProcess(m_ProcInfo.hProcess, cdExitCode)) then
     raise EChildProc.Create('Cannot get the child process exit code!');
   if (cdExitCode = STILL_ACTIVE) then
@@ -237,7 +259,7 @@ end;
 
 procedure TChildProc.FDoTerminateProcess;
 begin
-  if (Assigned(self) and Assigned(FOnTerminateProcess)) then
+  if (Assigned(FOnTerminateProcess)) then
     FOnTerminateProcess(self);
 end;
 
@@ -248,59 +270,44 @@ begin
     FOnReadFromPipe(self, strData);
 end;
 
-
-procedure TChildProc.FCreateListnerThread;
-begin
-  TListnerThread.Create(self);
-end;
-
 ////////////////////////////////////////////////////////////////////////////////
-// TListnerThread
+// TOperatorThread
 
-constructor TListnerThread.Create(AChildProc: TChildProc);
+constructor TOperatorThread.Create(AChildProc: TChildProc);
 begin
   inherited Create(TRUE);
   m_ChildProc := AChildProc;
-  FreeOnTerminate := TRUE;
   Resume;
 end;
 
 
-procedure TListnerThread.Execute;
+procedure TOperatorThread.Execute;
 begin
-  while (ChildProc.ProcessCreated) do
-  begin
+  repeat
     if (ChildProc.FReadFromPipe(m_strData)) then
       Synchronize(FDoReadFromPipe);
     Sleep(10);
-    if (Terminated) then
-      break;
     FCheckOnProcessTermination;
-  end;
-  Synchronize(FDoTerminateProcess);
+    if (not ChildProc.ProcessCreated) then
+      break;
+  until (Terminated);
 end;
 
 
-procedure TListnerThread.FDoReadFromPipe;
+procedure TOperatorThread.FDoReadFromPipe;
 begin
   ChildProc.FDoReadFromPipe(m_strData);
 end;
 
 
-procedure TListnerThread.FDoTerminateProcess;
-begin
-  ChildProc.FDoTerminateProcess;
-end;
-
-
-procedure TListnerThread.FCheckOnProcessTermination;
+procedure TOperatorThread.FCheckOnProcessTermination;
 var
   cdExitCode: Cardinal;
 begin
   with ChildProc do
   begin
     if (GetExitCodeProcess(m_ProcInfo.hProcess, cdExitCode) and (cdExitCode <> STILL_ACTIVE)) then
-      TerminateProcess;
+      FTerminateProcess;
   end;
 end;
 
