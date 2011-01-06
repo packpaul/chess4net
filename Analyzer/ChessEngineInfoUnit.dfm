@@ -1,8 +1,8 @@
 object ChessEngineInfoForm: TChessEngineInfoForm
-  Left = 395
-  Top = 443
-  Width = 380
-  Height = 159
+  Left = 429
+  Top = 635
+  Width = 364
+  Height = 122
   BorderIcons = [biSystemMenu]
   BorderStyle = bsSizeToolWin
   Caption = 'Chess Engine Info'
@@ -21,8 +21,8 @@ object ChessEngineInfoForm: TChessEngineInfoForm
   object InfoMemo: TMemo
     Left = 0
     Top = 0
-    Width = 372
-    Height = 132
+    Width = 356
+    Height = 95
     Align = alClient
     ReadOnly = True
     TabOrder = 0

@@ -22,7 +22,8 @@ uses
   PGNParserUnit in 'PGNParserUnit.pas',
   ChildProc in 'ChildProc.pas',
   ChessEngine in 'ChessEngine.pas',
-  ChessEngineInfoUnit in 'ChessEngineInfoUnit.pas' {ChessEngineInfoForm};
+  ChessEngineInfoUnit in 'ChessEngineInfoUnit.pas' {ChessEngineInfoForm},
+  MoveListFormUnit in 'MoveListFormUnit.pas' {MoveListForm};
 
 {$R ..\Chess4Net.res}
 

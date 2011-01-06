@@ -6,10 +6,11 @@ uses
   Forms, TntForms, TntMenus, Menus, Classes, Controls, ExtCtrls, Messages,
   ComCtrls, Dialogs, ActnList,
   //
-  ChessBoardUnit, PosBaseChessBoardUnit, ChessEngineInfoUnit, ChessEngine;
+  ChessBoardUnit, PosBaseChessBoardUnit, ChessEngineInfoUnit, ChessEngine,
+  MoveListFormUnit, ImgList;
 
 type
-  TAnalyseChessBoard = class(TTntForm)
+  TAnalyseChessBoard = class(TTntForm, IPlysProvider)
     MainMenu: TTntMainMenu;
     FileMenuItem: TTntMenuItem;
     OpenPGNMenuItem: TTntMenuItem;
@@ -42,19 +43,28 @@ type
     ViewChessEngineInfoMenuItem: TTntMenuItem;
     ActionList: TActionList;
     ChessEngineInfoAction: TAction;
+    MoveListAction: TAction;
+    TakebackMoveAction: TAction;
+    ForwardMoveAction: TAction;
+    ImageList: TImageList;
     procedure ExitMenuItemClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormCanResize(Sender: TObject; var NewWidth,
       NewHeight: Integer; var Resize: Boolean);
-    procedure PositionTakebackMoveMenuItemClick(Sender: TObject);
     procedure PositionInitialMenuItemClick(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
-    procedure PositionForwardMoveMenuItemClick(Sender: TObject);
     procedure ViewFlipBoardMenuItemClick(Sender: TObject);
     procedure OpenPGNMenuItemClick(Sender: TObject);
     procedure PastePGNMenuItemClick(Sender: TObject);
     procedure ChessEngineInfoActionExecute(Sender: TObject);
     procedure ChessEngineInfoActionUpdate(Sender: TObject);
+    procedure MoveListActionUpdate(Sender: TObject);
+    procedure MoveListActionExecute(Sender: TObject);
+    procedure FormShow(Sender: TObject);
+    procedure TakebackMoveActionExecute(Sender: TObject);
+    procedure ForwardMoveActionExecute(Sender: TObject);
+    procedure TakebackMoveActionUpdate(Sender: TObject);
+    procedure ForwardMoveActionUpdate(Sender: TObject);
   private
     m_ChessBoard: TPosBaseChessBoard;
     m_strPosBaseName: string;
@@ -62,6 +72,8 @@ type
 
     m_ChessEngine: TChessEngine;
     m_ChessEngineInfoForm: TChessEngineInfoForm;
+
+    m_MoveListForm: TMoveListForm;
 
     m_strlPlysList: TStringList;
 
@@ -81,6 +93,20 @@ type
     procedure FDestroyChessEngine;
     procedure FOnChessEngineCalculationInfo(Sender: TObject; rEvaluation: real; strMovesLine: string);
     procedure FSynchronizeChessEngineWithChessBoardAndStartEvaluation;
+
+    function FLoadPGNData(const PGNData: TStrings): boolean;
+
+    function IPlysProvider.GetPlysCount = FGetPlysCount;
+    function FGetPlysCount: integer;
+
+    function IPlysProvider.GetPly = FGetPly;
+    function FGetPly(iIndex: integer): string;
+{
+    procedure IPlysProvider.ForwardPly = FForwardMove;
+    procedure IPlysProvider.BackwardsPly = FTakebackMove;
+}
+    procedure FTakebackMove;
+    procedure FForwardMove;
   end;
 
 implementation
@@ -224,17 +250,17 @@ begin
 end;
 
 
-procedure TAnalyseChessBoard.PositionTakebackMoveMenuItemClick(
-  Sender: TObject);
+procedure TAnalyseChessBoard.FTakebackMove;
 begin
   m_ChessBoard.TakeBack;
-  FSynchronizeChessEngineWithChessBoardAndStartEvaluation;  
+  FSynchronizeChessEngineWithChessBoardAndStartEvaluation;
 end;
 
 
 procedure TAnalyseChessBoard.PositionInitialMenuItemClick(Sender: TObject);
 begin
   FInitPosition;
+  m_MoveListForm.Refresh;
 end;
 
 
@@ -246,8 +272,7 @@ begin
 end;
 
 
-procedure TAnalyseChessBoard.PositionForwardMoveMenuItemClick(
-  Sender: TObject);
+procedure TAnalyseChessBoard.FForwardMove;
 var
   bRes: boolean;
   iPly: integer;
@@ -272,26 +297,15 @@ end;
 procedure TAnalyseChessBoard.OpenPGNMenuItemClick(Sender: TObject);
 var
   strlData: TStringList;
-  PGNParser: TPGNParser;
 begin
   if (not OpenPGNDialog.Execute) then
     exit;
 
-  PGNParser := nil;
   strlData := TStringList.Create;
   try
     strlData.LoadFromFile(OpenPGNDialog.FileName);
-    PGNParser := TPGNParser.Create;
-
-    if (not PGNParser.Parse(strlData)) then
-      exit;
-
-    FInitPosition;
-
-    m_strlPlysList.Assign(PGNParser.PGNMoveList);
-
+    FLoadPGNData(strlData);
   finally
-    PGNParser.Free;
     strlData.Free;
   end;
 
@@ -301,18 +315,30 @@ end;
 procedure TAnalyseChessBoard.PastePGNMenuItemClick(Sender: TObject);
 var
   strlData: TStringList;
-  PGNParser: TPGNParser;
 begin
   if (not Clipboard.HasFormat(CF_TEXT)) then
     exit;
 
-  PGNParser := nil;
   strlData := TStringList.Create;
   try
     strlData.Text := Clipboard.AsText;
-    PGNParser := TPGNParser.Create;
+    FLoadPGNData(strlData);
+  finally
+    strlData.Free;
+  end;
 
-    if (not PGNParser.Parse(strlData)) then
+end;
+
+
+function TAnalyseChessBoard.FLoadPGNData(const PGNData: TStrings): boolean;
+var
+  PGNParser: TPGNParser;
+begin
+  Result := FALSE;
+
+  PGNParser := TPGNParser.Create;
+  try
+    if (not PGNParser.Parse(PGNData)) then
       exit;
 
     FInitPosition;
@@ -321,9 +347,11 @@ begin
 
   finally
     PGNParser.Free;
-    strlData.Free;
   end;
-  
+
+  m_MoveListForm.Refresh;
+
+  Result := TRUE;
 end;
 
 
@@ -399,6 +427,69 @@ begin
     exit;
   m_ChessEngine.SetPosition(m_ChessBoard.GetPosition);
   m_ChessEngine.CalculateReplyNonBlocking;
+end;
+
+
+procedure TAnalyseChessBoard.MoveListActionExecute(Sender: TObject);
+begin
+  if (not Assigned(m_MoveListForm)) then
+  begin
+    m_MoveListForm := TMoveListForm.Create(self);
+    m_MoveListForm.PlysProvider := self;
+  end;
+
+  if (m_MoveListForm.Showing) then
+    m_MoveListForm.Hide
+  else
+    m_MoveListForm.Show;
+end;
+
+
+procedure TAnalyseChessBoard.MoveListActionUpdate(Sender: TObject);
+begin
+  (Sender as TAction).Checked := (Assigned(m_MoveListForm) and m_MoveListForm.Showing);
+end;
+
+
+procedure TAnalyseChessBoard.FormShow(Sender: TObject);
+begin
+  MoveListAction.Execute;
+end;
+
+
+function TAnalyseChessBoard.FGetPlysCount: integer;
+begin
+  Result := m_strlPlysList.Count;
+end;
+
+
+function TAnalyseChessBoard.FGetPly(iIndex: integer): string;
+begin
+  Result := m_strlPlysList[iIndex];
+end;
+
+
+procedure TAnalyseChessBoard.TakebackMoveActionExecute(Sender: TObject);
+begin
+  FTakebackMove;
+end;
+
+
+procedure TAnalyseChessBoard.ForwardMoveActionExecute(Sender: TObject);
+begin
+  FForwardMove;
+end;
+
+
+procedure TAnalyseChessBoard.TakebackMoveActionUpdate(Sender: TObject);
+begin
+  (Sender as TAction).Enabled := (m_ChessBoard.NPlysDone > 0)
+end;
+
+
+procedure TAnalyseChessBoard.ForwardMoveActionUpdate(Sender: TObject);
+begin
+  (Sender as TAction).Enabled := (m_strlPlysList.Count > m_ChessBoard.NPlysDone);
 end;
 
 end.
