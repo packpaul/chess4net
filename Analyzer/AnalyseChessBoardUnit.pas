@@ -4,10 +4,10 @@ interface
 
 uses
   Forms, TntForms, TntMenus, Menus, Classes, Controls, ExtCtrls, Messages,
-  ComCtrls, Dialogs, ActnList,
+  ComCtrls, Dialogs, ActnList, ImgList,
   //
   ChessBoardUnit, PosBaseChessBoardUnit, ChessEngineInfoUnit, ChessEngine,
-  MoveListFormUnit, ImgList;
+  MoveListFormUnit, PlysTreeUnit;
 
 type
   TAnalyseChessBoard = class(TTntForm, IPlysProvider)
@@ -75,7 +75,12 @@ type
 
     m_MoveListForm: TMoveListForm;
 
-    m_strlPlysList: TStringList;
+    m_PlysTree: TPlysTree;
+    m_iCurrentPlyIndex: integer;
+
+    m_lwPlysListUpdateID: LongWord;
+
+    m_bNotRefreshFlag: boolean;
 
     procedure FChessBoardHandler(e: TChessBoardEvent; d1: pointer = nil;
       d2: pointer = nil);
@@ -101,12 +106,24 @@ type
 
     function IPlysProvider.GetPly = FGetPly;
     function FGetPly(iIndex: integer): string;
+
+    function IPlysProvider.GetInvalidationID = FGetInvalidationID;
+    function FGetInvalidationID: LongWord;
+
+    function IPlysProvider.GetCurrentPlyIndex = FGetCurrentPlyIndex;
+    function FGetCurrentPlyIndex: integer;
+
+    procedure IPlysProvider.SetCurrentPlyIndex = FSetCurrentPlyIndex;
+    procedure FSetCurrentPlyIndex(iValue: integer);
+
 {
     procedure IPlysProvider.ForwardPly = FForwardMove;
     procedure IPlysProvider.BackwardsPly = FTakebackMove;
 }
     procedure FTakebackMove;
     procedure FForwardMove;
+
+    procedure FRefreshMoveListForm;
   end;
 
 implementation
@@ -114,7 +131,7 @@ implementation
 uses
   SysUtils, Windows, Clipbrd,
   //
-  PGNParserUnit;
+  PGNParserUnit, ChessRulesEngine;
 
 {$R *.dfm}
 
@@ -130,16 +147,17 @@ procedure TAnalyseChessBoard.FormCreate(Sender: TObject);
 begin
   m_strPosBaseName := 'Sicilian';
 
-  m_strlPlysList := TStringList.Create;
+  m_PlysTree := TPlysTree.Create;
 
   FCreateChessBoard;
+  FInitPosition;
 end;
 
 
 procedure TAnalyseChessBoard.FormDestroy(Sender: TObject);
 begin
   FDestroyChessEngine;
-  m_strlPlysList.Free;
+  m_PlysTree.Free;
 end;
 
 
@@ -174,21 +192,32 @@ procedure TAnalyseChessBoard.FChessBoardHandler(e: TChessBoardEvent; d1: pointer
     iPly: integer;
   begin
     strMove := PString(d1)^;
-    iPly := m_ChessBoard.NPlysDone;
-    if (m_strlPlysList.Count >= iPly) then
+
+    iPly := FGetCurrentPlyIndex;
+
+    if (FGetPlysCount >= iPly) then
     begin
-      if (m_strlPlysList[iPly - 1] = strMove) then
+      if (m_PlysTree[iPly] = strMove) then
+      begin
+        FRefreshMoveListForm; // cursor moved
         exit;
-      while (m_strlPlysList.Count >= iPly) do
-        m_strlPlysList.Delete(m_strlPlysList.Count - 1);
+      end;
+
+      while (FGetPlysCount >= iPly) do
+        m_PlysTree.Delete(FGetPlysCount);
     end;
-    m_strlPlysList.Add(strMove);
+
+    inc(m_lwPlysListUpdateID);
+    m_PlysTree.Add(strMove, m_ChessBoard.GetPosition);
+
+    FRefreshMoveListForm;
   end;
 
 begin // .FChessBoardHandler
   case e of
     cbeMoved:
     begin
+      inc(m_iCurrentPlyIndex);
       NAdjustPlysList;
       FSynchronizeChessEngineWithChessBoardAndStartEvaluation;
     end;
@@ -251,23 +280,33 @@ end;
 
 
 procedure TAnalyseChessBoard.FTakebackMove;
+var
+  iPly: integer;
 begin
-  m_ChessBoard.TakeBack;
-  FSynchronizeChessEngineWithChessBoardAndStartEvaluation;
+  iPly := FGetCurrentPlyIndex;
+  if (iPly > 0) then
+    FSetCurrentPlyIndex(iPly - 1);
 end;
 
 
 procedure TAnalyseChessBoard.PositionInitialMenuItemClick(Sender: TObject);
 begin
   FInitPosition;
-  m_MoveListForm.Refresh;
+  FRefreshMoveListForm;
 end;
 
 
 procedure TAnalyseChessBoard.FInitPosition;
 begin
   m_ChessBoard.InitPosition;
-  m_strlPlysList.Clear;
+
+  m_iCurrentPlyIndex := 0;
+
+  inc(m_lwPlysListUpdateID);
+
+  m_PlysTree.Clear;
+  m_PlysTree.Add('', m_ChessBoard.GetPosition);
+
   FSynchronizeChessEngineWithChessBoardAndStartEvaluation;
 end;
 
@@ -275,14 +314,11 @@ end;
 procedure TAnalyseChessBoard.FForwardMove;
 var
   bRes: boolean;
-  iPly: integer;
 begin
-  iPly := m_ChessBoard.NPlysDone;
-
-  if (m_strlPlysList.Count <= iPly) then
+  if (FGetPlysCount <= FGetCurrentPlyIndex) then
     exit;
 
-  bRes := m_ChessBoard.DoMove(m_strlPlysList[iPly]);
+  bRes := m_ChessBoard.DoMove(m_PlysTree[FGetCurrentPlyIndex + 1]);
   Assert(bRes);
 end;
 
@@ -333,6 +369,8 @@ end;
 function TAnalyseChessBoard.FLoadPGNData(const PGNData: TStrings): boolean;
 var
   PGNParser: TPGNParser;
+  ChessRulesEngine: TChessRulesEngine;
+  i: integer;
 begin
   Result := FALSE;
 
@@ -343,13 +381,25 @@ begin
 
     FInitPosition;
 
-    m_strlPlysList.Assign(PGNParser.PGNMoveList);
+    ChessRulesEngine := TChessRulesEngine.Create;
+    try
+      ChessRulesEngine.InitNewGame;
+      for i := 0 to PGNParser.PGNMoveList.Count - 1 do
+      begin
+        if (ChessRulesEngine.DoMove(PGNParser.PGNMoveList[i])) then
+          m_PlysTree.Add(PGNParser.PGNMoveList[i], ChessRulesEngine.GetPosition)
+        else
+          exit;
+      end;
+
+    finally
+      ChessRulesEngine.Free;
+    end;
 
   finally
     PGNParser.Free;
+    FRefreshMoveListForm;    
   end;
-
-  m_MoveListForm.Refresh;
 
   Result := TRUE;
 end;
@@ -459,13 +509,13 @@ end;
 
 function TAnalyseChessBoard.FGetPlysCount: integer;
 begin
-  Result := m_strlPlysList.Count;
+  Result := m_PlysTree.Count - 1;
 end;
 
 
 function TAnalyseChessBoard.FGetPly(iIndex: integer): string;
 begin
-  Result := m_strlPlysList[iIndex];
+  Result := m_PlysTree[iIndex];
 end;
 
 
@@ -483,13 +533,46 @@ end;
 
 procedure TAnalyseChessBoard.TakebackMoveActionUpdate(Sender: TObject);
 begin
-  (Sender as TAction).Enabled := (m_ChessBoard.NPlysDone > 0)
+  (Sender as TAction).Enabled := (FGetCurrentPlyIndex > 0)
 end;
 
 
 procedure TAnalyseChessBoard.ForwardMoveActionUpdate(Sender: TObject);
 begin
-  (Sender as TAction).Enabled := (m_strlPlysList.Count > m_ChessBoard.NPlysDone);
+  (Sender as TAction).Enabled := ((FGetPlysCount) > FGetCurrentPlyIndex);
+end;
+
+
+function TAnalyseChessBoard.FGetInvalidationID: LongWord;
+begin
+  Result := m_lwPlysListUpdateID;
+end;
+
+
+function TAnalyseChessBoard.FGetCurrentPlyIndex: integer;
+begin
+  Result := m_iCurrentPlyIndex;
+end;
+
+
+procedure TAnalyseChessBoard.FSetCurrentPlyIndex(iValue: integer);
+begin
+  if ((iValue - FGetCurrentPlyIndex) = 1) then
+    FForwardMove
+  else if ((iValue >= 0) and (iValue <= FGetPlysCount)) then
+  begin
+    m_ChessBoard.SetPosition(m_PlysTree.Position[iValue]);
+    m_iCurrentPlyIndex := iValue;
+    FRefreshMoveListForm;
+    FSynchronizeChessEngineWithChessBoardAndStartEvaluation;
+  end;
+end;
+
+
+procedure TAnalyseChessBoard.FRefreshMoveListForm;
+begin
+  if (not m_bNotRefreshFlag) then
+    m_MoveListForm.Refresh;
 end;
 
 end.

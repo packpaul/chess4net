@@ -3,7 +3,7 @@ unit MoveListFormUnit;
 interface
 
 uses
-  Forms, Classes, Controls, Grids, Buttons;
+  Forms, Classes, Windows, Controls, Grids, Buttons;
 
 type
   TStringGrid = class(Grids.TStringGrid)
@@ -16,16 +16,21 @@ type
     destructor Destroy; override;
   end;
 
-
   IPlysProvider = interface
     function GetPlysCount: integer;
     function GetPly(iIndex: integer): string;
+    function GetInvalidationID: LongWord;
+    function GetCurrentPlyIndex: integer;
+    procedure SetCurrentPlyIndex(iValue: integer);
 //    procedure ForwardPly;
 //    procedure BackwardsPly;
     property PlysCount: integer read GetPlysCount;
     property Plys[iIndex: integer]: string read GetPly;
+    property CurrentPlyIndex: integer read GetCurrentPlyIndex
+                                      write SetCurrentPlyIndex;
+    property InvalidationID: LongWord read GetInvalidationID;
+// TODO:    property WhiteStarts: boolean;
   end;
-
 
   TMoveListForm = class(TForm)
     MovesStringGrid: TStringGrid;
@@ -34,8 +39,17 @@ type
     procedure FormCreate(Sender: TObject);
     procedure FormDeactivate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
+    procedure MovesStringGridDrawCell(Sender: TObject; ACol, ARow: Integer;
+      Rect: TRect; State: TGridDrawState);
+    procedure MovesStringGridSetEditText(Sender: TObject; ACol,
+      ARow: Integer; const Value: String);
+    procedure MovesStringGridSelectCell(Sender: TObject; ACol,
+      ARow: Integer; var CanSelect: Boolean);
   private
     m_PlysProvider: IPlysProvider;
+    m_iPlyIndexRow, m_iPlyIndexCol: integer;
+    m_lwInvalidationID: LongWord;
+
     procedure FOnGetPickListItems(ACol, ARow: Integer; Items: TStrings);
     procedure FSetPlysProvider(APlysProvider: IPlysProvider);
     function FGetMovesCount: integer;
@@ -49,12 +63,14 @@ implementation
 {$R *.dfm}
 
 uses
-  Windows, Math, SysUtils,
+  Math, SysUtils, Graphics,
   //
   AnalyseChessBoardUnit;
 
 type
   TInplaceEditList = class(Grids.TInplaceEditList)
+  protected
+    procedure CreateParams(var Params: TCreateParams); override;
   end;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -109,18 +125,36 @@ var
 begin
   MovesStringGrid.RowCount := Max(2, FGetMovesCount + 1);
 
-  for i := 0 to 2 do
-    MovesStringGrid.Cells[i, 1] := '';
-
   if (not Assigned(m_PlysProvider)) then
     exit;
+
+  if (m_PlysProvider.CurrentPlyIndex > 0) then
+  begin
+    m_iPlyIndexRow := ((m_PlysProvider.CurrentPlyIndex - 1) div 2) + 1;
+    m_iPlyIndexCol := ((m_PlysProvider.CurrentPlyIndex - 1) mod 2) + 1;
+  end
+  else
+  begin
+    m_iPlyIndexRow := 1;
+    m_iPlyIndexCol := 0;
+  end;
+
+  MovesStringGrid.FocusCell(m_iPlyIndexCol, m_iPlyIndexRow, TRUE);
+
+  if (m_lwInvalidationID = m_PlysProvider.InvalidationID) then
+    exit
+  else
+    m_lwInvalidationID := m_PlysProvider.InvalidationID;
+
+  for i := 0 to 2 do
+    MovesStringGrid.Cells[i, 1] := '';
 
   iRow := 1;
   iCol := 1;
 
-  for i := 0 to m_PlysProvider.PlysCount - 1 do
+  for i := 1 to m_PlysProvider.PlysCount do
   begin
-    MovesStringGrid.Cells[0, iRow] := Format('%d.', [i div 2 + 1]);
+    MovesStringGrid.Cells[0, iRow] := Format('%d.', [(i + 1) div 2]);
     MovesStringGrid.Cells[iCol, iRow] := m_PlysProvider.Plys[i];
 
     if (iCol = 2) then
@@ -131,6 +165,9 @@ begin
     else
       inc(iCol);
   end;
+
+  if (iRow < MovesStringGrid.RowCount) then
+    MovesStringGrid.Cells[iCol, iRow] := '';
 end;
 
 
@@ -141,6 +178,67 @@ begin
   else
     Result := 0;
 end;
+
+
+procedure TMoveListForm.MovesStringGridDrawCell(Sender: TObject; ACol,
+  ARow: Integer; Rect: TRect; State: TGridDrawState);
+
+  procedure NDrawCell(const strCell: string; Alignment: TAlignment;
+    iIndentX: integer = 0);
+  var
+    ASize: TSize;
+    iX: integer;
+  begin
+    with MovesStringGrid do
+    begin
+      ASize := Canvas.TextExtent(strCell);
+      case Alignment of
+        taLeftJustify:
+          iX := Rect.Left + 2;
+        taRightJustify:
+          iX := Rect.Right - ASize.cx;
+      else //  taCenter:
+          iX := (Rect.Left + Rect.Right - ASize.cx) div 2
+      end;
+
+      inc(iX, iIndentX);
+
+      Canvas.TextRect(Rect, iX, Rect.Top + 2, strCell);
+    end;
+  end;
+
+var
+  str: string;
+begin // .MovesStringGridDrawCell
+  if (gdFixed in State) then
+    exit;
+
+  str := MovesStringGrid.Cells[ACol, ARow];
+
+  if (str = '') then
+    exit;   
+
+  if (ACol = 0) then
+    NDrawCell(str, taRightJustify, -2)
+  else
+  begin
+    if ((m_iPlyIndexCol = ACol) and (m_iPlyIndexRow = ARow)) then
+    begin
+      MovesStringGrid.Canvas.Brush.Color := clHighlight;
+      MovesStringGrid.Canvas.Font.Color := clHighlightText;
+      MovesStringGrid.Canvas.FillRect(Rect);
+    end;
+    NDrawCell(str, taCenter);
+  end;
+end;
+
+
+procedure TMoveListForm.MovesStringGridSetEditText(Sender: TObject; ACol,
+  ARow: Integer; const Value: String);
+begin
+  // TODO:
+end;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // TStringGrid
@@ -182,6 +280,36 @@ end;
 function TStringGrid.CanEditShow: Boolean;
 begin
   Result := ((Col > 0) and (Cells[Col, Row] <> ''));
+end;
+
+
+procedure TMoveListForm.MovesStringGridSelectCell(Sender: TObject; ACol,
+  ARow: Integer; var CanSelect: Boolean);
+begin
+  if ((m_iPlyIndexRow = ARow) and (m_iPlyIndexCol = ACol)) then
+  begin
+    CanSelect := TRUE;
+    exit;
+  end;
+
+  CanSelect := FALSE;
+
+  if (not ((ACol > 0) and (ARow > 0))) then
+    exit;
+
+  if (MovesStringGrid.Cells[ACol, ARow] = '') then
+    exit;
+
+  m_PlysProvider.CurrentPlyIndex := 2 * (ARow - 1) + (ACol - 1) + 1;
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TInplaceEditList
+
+procedure TInplaceEditList.CreateParams(var Params: TCreateParams);
+begin
+  inherited;
+  Params.Style := Params.Style or ES_CENTER;
 end;
 
 end.

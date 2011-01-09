@@ -23,7 +23,8 @@ uses
   ChildProc in 'ChildProc.pas',
   ChessEngine in 'ChessEngine.pas',
   ChessEngineInfoUnit in 'ChessEngineInfoUnit.pas' {ChessEngineInfoForm},
-  MoveListFormUnit in 'MoveListFormUnit.pas' {MoveListForm};
+  MoveListFormUnit in 'MoveListFormUnit.pas' {MoveListForm},
+  PlysTreeUnit in 'PlysTreeUnit.pas';
 
 {$R ..\Chess4Net.res}
 

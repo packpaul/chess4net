@@ -76,6 +76,9 @@ object MoveListForm: TMoveListForm
     FixedCols = 0
     Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goEditing, goTabs]
     TabOrder = 0
+    OnDrawCell = MovesStringGridDrawCell
+    OnSelectCell = MovesStringGridSelectCell
+    OnSetEditText = MovesStringGridSetEditText
     ColWidths = (
       24
       84

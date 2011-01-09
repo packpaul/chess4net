@@ -588,6 +588,8 @@ end;
 
 procedure TChessBoard.ROnAfterSetPosition;
 begin
+  if (m_Mode = mAnalyse) then
+    m_PlayerColor := PositionColor;
 end;
 
 
@@ -873,9 +875,6 @@ end;
 procedure TChessBoard.InitPosition;
 begin
   m_ChessRulesEngine.InitNewGame;
-
-  if (m_Mode = mAnalyse) then
-    m_PlayerColor := PositionColor;
 
   FCancelAnimationDragging;
   ROnAfterSetPosition;

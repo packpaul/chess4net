@@ -283,6 +283,8 @@ end;
 
 procedure TPosBaseChessBoard.ROnAfterSetPosition;
 begin
+  inherited;
+
   if (m_bTrainingMode) then
   begin
     with TPosBaseOperator.CreateRead(self, FALSE, FALSE) do // Read from DB and output to the hidden board
