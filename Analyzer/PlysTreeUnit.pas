@@ -6,23 +6,30 @@ uses
   Classes;
 
 type
-  TPlysTree = class(TStringList)
+  TPlysTree = class
   private
+    m_strItems: TStringList;
     function FGetPosition(iIndex: integer): string;
+    function FGetItem(iIndex: integer): string;
+    function FGetCount: integer;
   public
+    constructor Create;
     destructor Destroy; override;
 
-    function Add(const strMove, strPos: string): integer; reintroduce;
-    procedure Clear; override;
-    procedure Delete(Index: Integer); override;
+    function Add(const strPos: string; strMove: string = ''): integer;
+    procedure Clear;
+    procedure Delete(iIndex: Integer);
 
+    property Items[iIndex: integer]: string read FGetItem; default;
     property Position[iIndex: integer]: string read FGetPosition;
+    
+    property Count: integer read FGetCount;
   end;
 
 implementation
 
 type
-  TPosString = class
+  TPlysTreeNode = class
   private
     m_strPos: string;
   public
@@ -33,59 +40,71 @@ type
 ////////////////////////////////////////////////////////////////////////////////
 // TPlysTree
 
+constructor TPlysTree.Create;
+begin
+  m_strItems := TStringList.Create;
+end;
+
 destructor TPlysTree.Destroy;
 begin
   Clear;
+  m_strItems.Free;
   inherited;
 end;
 
 
 procedure TPlysTree.Clear;
+begin
+  Delete(0);
+end;
+
+
+procedure TPlysTree.Delete(iIndex: Integer);
 var
   i: integer;
   Obj: TObject;
 begin
-  for i := 0 to Count - 1 do
+  for i := m_strItems.Count - 1 downto iIndex do
   begin
-    Obj := Objects[i];
-    Objects[i] := nil;
+    Obj := m_strItems.Objects[i];
+    m_strItems.Objects[iIndex] := nil;
     Obj.Free;
+
+    m_strItems.Delete(i);
   end;
-
-  inherited Clear;
 end;
 
 
-procedure TPlysTree.Delete(Index: Integer);
-var
-  Obj: TObject;
+function TPlysTree.Add(const strPos: string; strMove: string = ''): integer;
 begin
-  Obj := Objects[Index];
-  Objects[Index] := nil;
-  Obj.Free;
-
-  inherited;
-end;
-
-
-function TPlysTree.Add(const strMove, strPos: string): integer;
-begin
-  Result := inherited AddObject(strMove, TPosString.Create(strPos));
+  Result := m_strItems.AddObject(strMove, TPlysTreeNode.Create(strPos));
 end;
 
 
 function TPlysTree.FGetPosition(iIndex: integer): string;
 begin
-  Result := (Objects[iIndex] as TPosString).Pos; 
+  Result := (m_strItems.Objects[iIndex] as TPlysTreeNode).Pos;
+end;
+
+
+function TPlysTree.FGetItem(iIndex: integer): string;
+begin
+  Result := m_strItems[iIndex];
+end;
+
+
+function TPlysTree.FGetCount: integer;
+begin
+  Result := m_strItems.Count;
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
-// TPosString
+// TPlysTreeNode
 
-constructor TPosString.Create(const strPos: string);
+constructor TPlysTreeNode.Create(const strPos: string);
 begin
-  m_strPos := strPos;
   inherited Create;
+  m_strPos := strPos;  
 end;
 
 end.

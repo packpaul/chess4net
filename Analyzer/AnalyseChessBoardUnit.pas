@@ -4,7 +4,7 @@ interface
 
 uses
   Forms, TntForms, TntMenus, Menus, Classes, Controls, ExtCtrls, Messages,
-  ComCtrls, Dialogs, ActnList, ImgList,
+  ComCtrls, Dialogs, ActnList, ImgList, AppEvnts,
   //
   ChessBoardUnit, PosBaseChessBoardUnit, ChessEngineInfoUnit, ChessEngine,
   MoveListFormUnit, PlysTreeUnit;
@@ -47,6 +47,7 @@ type
     TakebackMoveAction: TAction;
     ForwardMoveAction: TAction;
     ImageList: TImageList;
+    ApplicationEvents: TApplicationEvents;
     procedure ExitMenuItemClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormCanResize(Sender: TObject; var NewWidth,
@@ -65,6 +66,7 @@ type
     procedure ForwardMoveActionExecute(Sender: TObject);
     procedure TakebackMoveActionUpdate(Sender: TObject);
     procedure ForwardMoveActionUpdate(Sender: TObject);
+    procedure ApplicationEventsIdle(Sender: TObject; var Done: Boolean);
   private
     m_ChessBoard: TPosBaseChessBoard;
     m_strPosBaseName: string;
@@ -203,12 +205,11 @@ procedure TAnalyseChessBoard.FChessBoardHandler(e: TChessBoardEvent; d1: pointer
         exit;
       end;
 
-      while (FGetPlysCount >= iPly) do
-        m_PlysTree.Delete(FGetPlysCount);
+      m_PlysTree.Delete(iPly);
     end;
 
     inc(m_lwPlysListUpdateID);
-    m_PlysTree.Add(strMove, m_ChessBoard.GetPosition);
+    m_PlysTree.Add(m_ChessBoard.GetPosition, strMove);
 
     FRefreshMoveListForm;
   end;
@@ -305,7 +306,7 @@ begin
   inc(m_lwPlysListUpdateID);
 
   m_PlysTree.Clear;
-  m_PlysTree.Add('', m_ChessBoard.GetPosition);
+  m_PlysTree.Add(m_ChessBoard.GetPosition);
 
   FSynchronizeChessEngineWithChessBoardAndStartEvaluation;
 end;
@@ -387,7 +388,7 @@ begin
       for i := 0 to PGNParser.PGNMoveList.Count - 1 do
       begin
         if (ChessRulesEngine.DoMove(PGNParser.PGNMoveList[i])) then
-          m_PlysTree.Add(PGNParser.PGNMoveList[i], ChessRulesEngine.GetPosition)
+          m_PlysTree.Add(ChessRulesEngine.GetPosition, PGNParser.PGNMoveList[i])
         else
           exit;
       end;
@@ -573,6 +574,15 @@ procedure TAnalyseChessBoard.FRefreshMoveListForm;
 begin
   if (not m_bNotRefreshFlag) then
     m_MoveListForm.Refresh;
+end;
+
+
+procedure TAnalyseChessBoard.ApplicationEventsIdle(Sender: TObject;
+  var Done: Boolean);
+begin
+  // Because TSpeedButton actions do not work on Vista
+  TakebackMoveAction.Update;
+  ForwardMoveAction.Update;
 end;
 
 end.

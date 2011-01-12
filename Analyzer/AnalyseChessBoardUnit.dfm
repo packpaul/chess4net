@@ -316,4 +316,9 @@ object AnalyseChessBoard: TAnalyseChessBoard
       F3FFFFCF00000000FFFFFFFF0000000000000000000000000000000000000000
       000000000000}
   end
+  object ApplicationEvents: TApplicationEvents
+    OnIdle = ApplicationEventsIdle
+    Left = 32
+    Top = 32
+  end
 end

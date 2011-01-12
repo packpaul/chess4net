@@ -1,7 +1,7 @@
 object MoveListForm: TMoveListForm
   Left = 796
   Top = 209
-  Width = 226
+  Width = 236
   Height = 423
   BorderStyle = bsSizeToolWin
   Caption = 'Move List'
@@ -19,16 +19,17 @@ object MoveListForm: TMoveListForm
   OnDestroy = FormDestroy
   OnDeactivate = FormDeactivate
   DesignSize = (
-    218
-    396)
+    220
+    387)
   PixelsPerInch = 96
   TextHeight = 13
   object BackSpeedButton: TSpeedButton
     Left = 81
-    Top = 368
+    Top = 359
     Width = 23
     Height = 22
     Action = AnalyseChessBoard.TakebackMoveAction
+    Anchors = [akLeft, akBottom]
     Glyph.Data = {
       76010000424D7601000000000000760000002800000020000000100000000100
       0400000000000001000000000000000000001000000000000000000000000000
@@ -46,10 +47,11 @@ object MoveListForm: TMoveListForm
   end
   object ForthSpeedButton: TSpeedButton
     Left = 107
-    Top = 368
+    Top = 359
     Width = 23
     Height = 22
     Action = AnalyseChessBoard.ForwardMoveAction
+    Anchors = [akLeft, akBottom]
     Glyph.Data = {
       76010000424D7601000000000000760000002800000020000000100000000100
       0400000000000001000000000000000000001000000000000000000000000000
@@ -68,8 +70,9 @@ object MoveListForm: TMoveListForm
   object MovesStringGrid: TStringGrid
     Left = 0
     Top = 0
-    Width = 217
-    Height = 361
+    Width = 220
+    Height = 352
+    Align = alTop
     Anchors = [akLeft, akTop, akRight, akBottom]
     ColCount = 3
     DefaultRowHeight = 20
