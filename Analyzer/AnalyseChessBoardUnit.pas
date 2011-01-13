@@ -204,13 +204,11 @@ procedure TAnalyseChessBoard.FChessBoardHandler(e: TChessBoardEvent; d1: pointer
         FRefreshMoveListForm; // cursor moved
         exit;
       end;
-
-      m_PlysTree.Delete(iPly);
     end;
 
-    inc(m_lwPlysListUpdateID);
-    m_PlysTree.Add(m_ChessBoard.GetPosition, strMove);
+    m_PlysTree.Add(iPly, m_ChessBoard.GetPosition, strMove);
 
+    inc(m_lwPlysListUpdateID);
     FRefreshMoveListForm;
   end;
 
