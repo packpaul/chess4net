@@ -6,7 +6,37 @@ uses
   Forms, Classes, Windows, Controls, Grids, Buttons;
 
 type
+  IPlysProvider = interface
+    function GetPlysCount: integer;
+    function GetPly(iIndex: integer): string;
+
+    function GetCurrentPlyIndex: integer;
+    procedure SetCurrentPlyIndex(iValue: integer);
+
+    function GetPlysCountForPlyIndex(iPlyIndex: integer): integer;
+    procedure GetPlysForPlyIndex(iPlyIndex: integer; var List: TStrings);
+    function SetPlyForPlyIndex(iPlyIndex: integer; const strPly: string): boolean;
+
+    function GetInvalidationID: LongWord;
+
+    property PlysCount: integer read GetPlysCount;
+    property Plys[iIndex: integer]: string read GetPly;
+    property CurrentPlyIndex: integer read GetCurrentPlyIndex
+                                      write SetCurrentPlyIndex;
+    property InvalidationID: LongWord read GetInvalidationID;
+// TODO:    property WhiteStarts: boolean;
+  end;
+
+
   TStringGrid = class(Grids.TStringGrid)
+  private
+    m_bPlyLineSelection: boolean;
+    class procedure FPlyIndexToGridPos(iPlyIndex: integer; out iCol, iRow: integer);
+    class function FGridPosToPlyIndex(iCol, iRow: integer): integer;
+    function FGetPlysProvider: IPlysProvider;
+    procedure FSetPlyLineSelection(bValue: boolean);
+    property PlysProvider: IPlysProvider read FGetPlysProvider;
+    property PlyLineSelection: boolean read m_bPlyLineSelection write FSetPlyLineSelection;
   protected
     function CreateEditor: TInplaceEdit; override;
     function GetEditStyle(ACol, ARow: Longint): TEditStyle; override;
@@ -16,22 +46,7 @@ type
     destructor Destroy; override;
   end;
 
-  IPlysProvider = interface
-    function GetPlysCount: integer;
-    function GetPly(iIndex: integer): string;
-    function GetInvalidationID: LongWord;
-    function GetCurrentPlyIndex: integer;
-    procedure SetCurrentPlyIndex(iValue: integer);
-//    procedure ForwardPly;
-//    procedure BackwardsPly;
-    property PlysCount: integer read GetPlysCount;
-    property Plys[iIndex: integer]: string read GetPly;
-    property CurrentPlyIndex: integer read GetCurrentPlyIndex
-                                      write SetCurrentPlyIndex;
-    property InvalidationID: LongWord read GetInvalidationID;
-// TODO:    property WhiteStarts: boolean;
-  end;
-
+  
   TMoveListForm = class(TForm)
     MovesStringGrid: TStringGrid;
     BackSpeedButton: TSpeedButton;
@@ -45,6 +60,8 @@ type
       ARow: Integer; const Value: String);
     procedure MovesStringGridSelectCell(Sender: TObject; ACol,
       ARow: Integer; var CanSelect: Boolean);
+    procedure MovesStringGridMouseDown(Sender: TObject;
+      Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
   private
     m_PlysProvider: IPlysProvider;
     m_iPlyIndexRow, m_iPlyIndexCol: integer;
@@ -89,19 +106,16 @@ end;
 
 procedure TMoveListForm.FOnGetPickListItems(ACol, ARow: Integer; Items: TStrings);
 begin
-  with Items do
-  begin
-    Clear;
-    Add('one');
-    Add('two');
-    Add('three');
-  end;
+  if (Assigned(m_PlysProvider)) then
+    m_PlysProvider.GetPlysForPlyIndex(TStringGrid.FGridPosToPlyIndex(ACol, ARow), Items)
+  else
+    Items.Clear;
 end;
 
 
 procedure TMoveListForm.FormDeactivate(Sender: TObject);
 begin
-  MovesStringGrid.HideEditor;
+  MovesStringGrid.PlyLineSelection := FALSE;
 end;
 
 
@@ -123,21 +137,14 @@ var
   i: integer;
   iCol, iRow: integer;
 begin
+  MovesStringGrid.PlyLineSelection := FALSE;
   MovesStringGrid.RowCount := Max(2, FGetMovesCount + 1);
 
   if (not Assigned(m_PlysProvider)) then
     exit;
 
-  if (m_PlysProvider.CurrentPlyIndex > 0) then
-  begin
-    m_iPlyIndexRow := ((m_PlysProvider.CurrentPlyIndex - 1) div 2) + 1;
-    m_iPlyIndexCol := ((m_PlysProvider.CurrentPlyIndex - 1) mod 2) + 1;
-  end
-  else
-  begin
-    m_iPlyIndexRow := 1;
-    m_iPlyIndexCol := 0;
-  end;
+  TStringGrid.FPlyIndexToGridPos(m_PlysProvider.CurrentPlyIndex,
+    m_iPlyIndexCol, m_iPlyIndexRow);
 
   MovesStringGrid.FocusCell(m_iPlyIndexCol, m_iPlyIndexRow, TRUE);
 
@@ -183,6 +190,20 @@ end;
 procedure TMoveListForm.MovesStringGridDrawCell(Sender: TObject; ACol,
   ARow: Integer; Rect: TRect; State: TGridDrawState);
 
+  function NGetData: string;
+  var
+    iPly: integer;
+  begin
+    Result := MovesStringGrid.Cells[ACol, ARow];
+
+    if (not Assigned(m_PlysProvider)) then
+      exit;
+
+    iPly := TStringGrid.FGridPosToPlyIndex(ACol, ARow);
+    if (m_PlysProvider.GetPlysCountForPlyIndex(iPly) > 1) then
+      Result := Result + '...';
+  end;
+
   procedure NDrawCell(const strCell: string; Alignment: TAlignment;
     iIndentX: integer = 0);
   var
@@ -207,20 +228,7 @@ procedure TMoveListForm.MovesStringGridDrawCell(Sender: TObject; ACol,
     end;
   end;
 
-var
-  str: string;
-begin // .MovesStringGridDrawCell
-  if (gdFixed in State) then
-    exit;
-
-  str := MovesStringGrid.Cells[ACol, ARow];
-
-  if (str = '') then
-    exit;   
-
-  if (ACol = 0) then
-    NDrawCell(str, taRightJustify, -2)
-  else
+  procedure NColorCell;
   begin
     if ((m_iPlyIndexCol = ACol) and (m_iPlyIndexRow = ARow)) then
     begin
@@ -228,6 +236,23 @@ begin // .MovesStringGridDrawCell
       MovesStringGrid.Canvas.Font.Color := clHighlightText;
       MovesStringGrid.Canvas.FillRect(Rect);
     end;
+  end;
+
+var
+  str: string;
+begin // .MovesStringGridDrawCell
+  if (gdFixed in State) then
+    exit;
+
+  str := NGetData;
+  if (str = '') then
+    exit;   
+
+  if (ACol = 0) then
+    NDrawCell(str, taRightJustify, -2)
+  else
+  begin
+    NColorCell;
     NDrawCell(str, taCenter);
   end;
 end;
@@ -235,10 +260,63 @@ end;
 
 procedure TMoveListForm.MovesStringGridSetEditText(Sender: TObject; ACol,
   ARow: Integer; const Value: String);
+var
+  iPly: integer;
+  strOldPly: string;
 begin
-  // TODO:
+  MovesStringGrid.PlyLineSelection := FALSE;
+
+  if (not Assigned(m_PlysProvider)) then
+    exit;
+
+  iPly := TStringGrid.FGridPosToPlyIndex(ACol, ARow);
+
+  strOldPly := m_PlysProvider.Plys[iPly];
+  if (Value = strOldPly) then
+    exit;
+
+  if (not m_PlysProvider.SetPlyForPlyIndex(iPly, Value)) then
+    MovesStringGrid.Cells[ACol, ARow] := strOldPly;
 end;
 
+
+procedure TMoveListForm.MovesStringGridSelectCell(Sender: TObject; ACol,
+  ARow: Integer; var CanSelect: Boolean);
+begin
+  if ((m_iPlyIndexRow = ARow) and (m_iPlyIndexCol = ACol)) then
+  begin
+    CanSelect := TRUE;
+    exit;
+  end;
+
+  CanSelect := FALSE;
+
+  if (not ((ACol > 0) and (ARow > 0))) then
+    exit;
+
+  if (MovesStringGrid.Cells[ACol, ARow] = '') then
+    exit;
+
+  if (Assigned(m_PlysProvider)) then
+    m_PlysProvider.CurrentPlyIndex := TStringGrid.FGridPosToPlyIndex(ACol, ARow);
+end;
+
+
+procedure TMoveListForm.MovesStringGridMouseDown(Sender: TObject;
+  Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+var
+  iRow, iCol: integer;
+begin
+  MovesStringGrid.MouseToCell(X, Y, iCol, iRow);
+  if ((iCol <> m_iPlyIndexCol) or (iRow <> m_iPlyIndexRow)) then
+    exit;
+
+  if (not Assigned(m_PlysProvider)) then
+    exit;
+
+  if (m_PlysProvider.GetPlysCountForPlyIndex(m_PlysProvider.CurrentPlyIndex) > 1) then
+    MovesStringGrid.PlyLineSelection := TRUE;
+end;
 
 ////////////////////////////////////////////////////////////////////////////////
 // TStringGrid
@@ -279,28 +357,61 @@ end;
 
 function TStringGrid.CanEditShow: Boolean;
 begin
+  Result := m_bPlyLineSelection;
+  if (not Result) then
+    exit;
+
   Result := ((Col > 0) and (Cells[Col, Row] <> ''));
+  if (not Result) then
+    exit;
+
+  Result := (PlysProvider.GetPlysCountForPlyIndex(FGridPosToPlyIndex(Col, Row)) > 1);
 end;
 
 
-procedure TMoveListForm.MovesStringGridSelectCell(Sender: TObject; ACol,
-  ARow: Integer; var CanSelect: Boolean);
+class procedure TStringGrid.FPlyIndexToGridPos(iPlyIndex: integer; out iCol, iRow: integer);
 begin
-  if ((m_iPlyIndexRow = ARow) and (m_iPlyIndexCol = ACol)) then
+  if (iPlyIndex > 0) then
   begin
-    CanSelect := TRUE;
-    exit;
+    iRow := ((iPlyIndex - 1) div 2) + 1;
+    iCol := ((iPlyIndex - 1) mod 2) + 1;
+  end
+  else
+  begin
+    iRow := 1;
+    iCol := 0;
   end;
+end;
 
-  CanSelect := FALSE;
 
-  if (not ((ACol > 0) and (ARow > 0))) then
+class function TStringGrid.FGridPosToPlyIndex(iCol, iRow: integer): integer;
+begin
+  if (iCol = 0) then
+    Result := 0
+  else
+    Result := 2 * (iRow - 1) + iCol;
+end;
+
+
+function TStringGrid.FGetPlysProvider: IPlysProvider;
+begin
+  Result := (self.Owner as TMoveListForm).PlysProvider;
+end;
+
+
+procedure TStringGrid.FSetPlyLineSelection(bValue: boolean);
+begin
+  if (m_bPlyLineSelection = bValue) then
     exit;
 
-  if (MovesStringGrid.Cells[ACol, ARow] = '') then
-    exit;
+  m_bPlyLineSelection := bValue;
 
-  m_PlysProvider.CurrentPlyIndex := 2 * (ARow - 1) + (ACol - 1) + 1;
+  if (bValue) then
+    ShowEditor
+  else
+    HideEditor;
+
+  m_bPlyLineSelection := EditorMode;
 end;
 
 ////////////////////////////////////////////////////////////////////////////////

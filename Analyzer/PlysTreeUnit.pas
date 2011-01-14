@@ -20,6 +20,9 @@ type
     procedure FDeleteNextNodeOfLine;
     procedure FDeleteNextNodes;
     procedure FAddLineNode(Node: TPlysTreeNode);
+    function FGetNextNodesCount: integer;
+    procedure FGetNextNodesList(var List: TStrings);
+    function FSetNextNodeOfLineToPly(const strPly: string): boolean;
 
     function FEquals(Node: TPlysTreeNode): boolean;
 
@@ -45,6 +48,10 @@ type
 
     procedure Clear;
     procedure Delete(iIndex: Integer);
+
+    function GetPlysCountForPlyIndex(iIndex: integer): integer;
+    procedure GetPlysForPlyIndex(iIndex: integer; var List: TStrings);
+    function SetPlyForPlyIndex(iIndex: integer; const strPly: string): boolean;
 
     property Plys[iIndex: integer]: string read FGetPly; default;
     property Position[iIndex: integer]: string read FGetPosition;
@@ -95,7 +102,14 @@ function TPlysTree.FGetNodeOfDepth(iPlyDepth: integer): TPlysTreeNode;
 var
   i: integer;
 begin
-  Result := m_FirstNode;
+  if (iPlyDepth < 0) then
+  begin
+    Result := nil;
+    exit;
+  end;
+
+  Result := m_FirstNode;    
+        
   for i := 0 to iPlyDepth - 1 do
   begin
     if (not Assigned(Result)) then
@@ -173,6 +187,45 @@ begin
     inc(Result);
     NextNode := NextNode.FGetNextNodeOfLine;
   end;
+end;
+
+
+function TPlysTree.GetPlysCountForPlyIndex(iIndex: integer): integer;
+var
+  Node: TPlysTreeNode;
+begin
+  Node := FGetNodeOfDepth(iIndex - 1);
+  if (Assigned(Node)) then
+    Result := Node.FGetNextNodesCount
+  else
+    Result := 0;
+end;
+
+
+procedure TPlysTree.GetPlysForPlyIndex(iIndex: integer; var List: TStrings);
+var
+  Node: TPlysTreeNode;
+begin
+  if (not Assigned(List)) then
+    exit;
+
+  List.Clear;
+
+  Node := FGetNodeOfDepth(iIndex - 1);
+  if (Assigned(Node)) then
+    Node.FGetNextNodesList(List);
+end;
+
+
+function TPlysTree.SetPlyForPlyIndex(iIndex: integer; const strPly: string): boolean;
+var
+  Node: TPlysTreeNode;
+begin
+  Result := FALSE;
+
+  Node := FGetNodeOfDepth(iIndex - 1);
+  if (Assigned(Node)) then
+    Result := Node.FSetNextNodeOfLineToPly(strPly);
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -271,6 +324,61 @@ end;
 function TPlysTreeNode.FEquals(Node: TPlysTreeNode): boolean;
 begin
   Result := ((m_strPly = Node.Ply) and (m_strPos = Node.Pos));
+end;
+
+
+function TPlysTreeNode.FGetNextNodesCount: integer;
+var
+  i: integer;
+begin
+  Result := 0;
+  for i := Low(m_arrNextNodes) to High(m_arrNextNodes) do
+  begin
+    if (Assigned(m_arrNextNodes[i])) then
+      inc(Result);
+  end;
+end;
+
+
+procedure TPlysTreeNode.FGetNextNodesList(var List: TStrings);
+var
+  i: integer;
+  Node: TPlysTreeNode;
+begin
+  List.Clear;
+
+  for i := Low(m_arrNextNodes) to High(m_arrNextNodes) do
+  begin
+    Node := m_arrNextNodes[i];
+
+    if (i = m_iNextNodeOfLineIndex) then
+      List.Insert(0, Node.Ply)
+    else
+      List.Append(Node.Ply);
+  end;
+end;
+
+
+function TPlysTreeNode.FSetNextNodeOfLineToPly(const strPly: string): boolean;
+var
+  i: integer;
+  Node: TPlysTreeNode;
+begin
+  Result := FALSE;
+
+  for i := Low(m_arrNextNodes) to High(m_arrNextNodes) do
+  begin
+    Node := m_arrNextNodes[i];
+    if (not Assigned(Node)) then
+      continue;
+
+    Result := ((Node.Ply = strPly) and (i <> m_iNextNodeOfLineIndex));
+    if (Result) then
+    begin
+      m_iNextNodeOfLineIndex := i;
+      exit;
+    end;
+  end;
 end;
 
 end.

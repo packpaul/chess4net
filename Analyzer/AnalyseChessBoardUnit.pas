@@ -48,6 +48,8 @@ type
     ForwardMoveAction: TAction;
     ImageList: TImageList;
     ApplicationEvents: TApplicationEvents;
+    PositionSelectLineMenuItem: TTntMenuItem;
+    SelectLineAction: TAction;
     procedure ExitMenuItemClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormCanResize(Sender: TObject; var NewWidth,
@@ -67,6 +69,8 @@ type
     procedure TakebackMoveActionUpdate(Sender: TObject);
     procedure ForwardMoveActionUpdate(Sender: TObject);
     procedure ApplicationEventsIdle(Sender: TObject; var Done: Boolean);
+    procedure SelectLineActionExecute(Sender: TObject);
+    procedure SelectLineActionUpdate(Sender: TObject);
   private
     m_ChessBoard: TPosBaseChessBoard;
     m_strPosBaseName: string;
@@ -118,10 +122,15 @@ type
     procedure IPlysProvider.SetCurrentPlyIndex = FSetCurrentPlyIndex;
     procedure FSetCurrentPlyIndex(iValue: integer);
 
-{
-    procedure IPlysProvider.ForwardPly = FForwardMove;
-    procedure IPlysProvider.BackwardsPly = FTakebackMove;
-}
+    function IPlysProvider.GetPlysCountForPlyIndex = FGetPlysCountForPlyIndex;
+    function FGetPlysCountForPlyIndex(iPlyIndex: integer): integer;
+
+    procedure IPlysProvider.GetPlysForPlyIndex = FGetPlysForPlyIndex;
+    procedure FGetPlysForPlyIndex(iPlyIndex: integer; var List: TStrings);
+
+    function IPlysProvider.SetPlyForPlyIndex = FSetPlyForPlyIndex;
+    function FSetPlyForPlyIndex(iPlyIndex: integer; const strPly: string): boolean;
+
     procedure FTakebackMove;
     procedure FForwardMove;
 
@@ -581,6 +590,42 @@ begin
   // Because TSpeedButton actions do not work on Vista
   TakebackMoveAction.Update;
   ForwardMoveAction.Update;
+end;
+
+
+function TAnalyseChessBoard.FGetPlysCountForPlyIndex(iPlyIndex: integer): integer;
+begin
+  Result := m_PlysTree.GetPlysCountForPlyIndex(iPlyIndex);
+end;
+
+
+procedure TAnalyseChessBoard.FGetPlysForPlyIndex(iPlyIndex: integer; var List: TStrings);
+begin
+  m_PlysTree.GetPlysForPlyIndex(iPlyIndex, List);
+end;
+
+
+function TAnalyseChessBoard.FSetPlyForPlyIndex(iPlyIndex: integer; const strPly: string): boolean;
+begin
+  Result := m_PlysTree.SetPlyForPlyIndex(iPlyIndex, strPly);
+  if (Result) then
+  begin
+    inc(m_lwPlysListUpdateID);
+    FSetCurrentPlyIndex(FGetCurrentPlyIndex);
+  end;
+end;
+
+
+procedure TAnalyseChessBoard.SelectLineActionExecute(Sender: TObject);
+begin
+  // TODO:
+end;
+
+
+procedure TAnalyseChessBoard.SelectLineActionUpdate(Sender: TObject);
+begin
+  (Sender as TAction).Enabled := ((FGetCurrentPlyIndex > 0) and
+    (FGetPlysCountForPlyIndex(FGetCurrentPlyIndex) > 1));
 end;
 
 end.

@@ -110,12 +110,14 @@ object AnalyseChessBoard: TAnalyseChessBoard
       object PositionTakebackMoveMenuItem: TTntMenuItem
         Action = TakebackMoveAction
         Caption = '&Takeback Move'
-        ShortCut = 37
       end
       object PositionForwardMoveMenuItem: TTntMenuItem
         Action = ForwardMoveAction
         Caption = '&Forward Move'
-        ShortCut = 39
+      end
+      object PositionSelectLineMenuItem: TTntMenuItem
+        Action = SelectLineAction
+        Caption = 'Select &Line...'
       end
     end
     object HelpMenuItem: TTntMenuItem
@@ -164,13 +166,19 @@ object AnalyseChessBoard: TAnalyseChessBoard
     end
     object TakebackMoveAction: TAction
       ImageIndex = 1
+      ShortCut = 37
       OnExecute = TakebackMoveActionExecute
       OnUpdate = TakebackMoveActionUpdate
     end
     object ForwardMoveAction: TAction
       ImageIndex = 0
+      ShortCut = 39
       OnExecute = ForwardMoveActionExecute
       OnUpdate = ForwardMoveActionUpdate
+    end
+    object SelectLineAction: TAction
+      OnExecute = SelectLineActionExecute
+      OnUpdate = SelectLineActionUpdate
     end
   end
   object ImageList: TImageList
