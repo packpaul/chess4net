@@ -3,17 +3,20 @@ unit MoveListFormUnit;
 interface
 
 uses
-  Forms, Classes, Windows, Controls, Grids, Buttons;
+  Forms, Classes, Windows, Controls, Grids, Buttons,
+  //
+  PlyStatusUnit;
 
 type
   IPlysProvider = interface
     function GetPlysCount: integer;
     function GetPly(iIndex: integer): string;
+    function GetPlyStatus(iIndex: integer): TPlyStatuses;
 
     function GetCurrentPlyIndex: integer;
     procedure SetCurrentPlyIndex(iValue: integer);
 
-    function GetPlysCountForPlyIndex(iPlyIndex: integer): integer;
+    function HasSeveralPlysForPlyIndex(iPlyIndex: integer): boolean;
     procedure GetPlysForPlyIndex(iPlyIndex: integer; var List: TStrings);
     function SetPlyForPlyIndex(iPlyIndex: integer; const strPly: string): boolean;
 
@@ -62,16 +65,20 @@ type
       ARow: Integer; var CanSelect: Boolean);
     procedure MovesStringGridMouseDown(Sender: TObject;
       Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+    procedure FormKeyDown(Sender: TObject; var Key: Word;
+      Shift: TShiftState);
   private
     m_PlysProvider: IPlysProvider;
     m_iPlyIndexRow, m_iPlyIndexCol: integer;
     m_lwInvalidationID: LongWord;
+    m_bCellFirstSelected: boolean;
 
     procedure FOnGetPickListItems(ACol, ARow: Integer; Items: TStrings);
     procedure FSetPlysProvider(APlysProvider: IPlysProvider);
     function FGetMovesCount: integer;
   public
     procedure Refresh;
+    procedure SelectLine;
     property PlysProvider: IPlysProvider read m_PlysProvider write FSetPlysProvider;
   end;
 
@@ -88,7 +95,12 @@ type
   TInplaceEditList = class(Grids.TInplaceEditList)
   protected
     procedure CreateParams(var Params: TCreateParams); override;
+    procedure DoDropDownKeys(var Key: Word; Shift: TShiftState); override;
+    procedure CloseUp(Accept: Boolean); override;
   end;
+
+const
+  SEVERAL_PLYS_COLOR = TColor($D0E0F0);
 
 ////////////////////////////////////////////////////////////////////////////////
 // TMoveListForm
@@ -191,17 +203,45 @@ procedure TMoveListForm.MovesStringGridDrawCell(Sender: TObject; ACol,
   ARow: Integer; Rect: TRect; State: TGridDrawState);
 
   function NGetData: string;
-  var
-    iPly: integer;
   begin
     Result := MovesStringGrid.Cells[ACol, ARow];
 
     if (not Assigned(m_PlysProvider)) then
       exit;
 
-    iPly := TStringGrid.FGridPosToPlyIndex(ACol, ARow);
-    if (m_PlysProvider.GetPlysCountForPlyIndex(iPly) > 1) then
+    if (m_PlysProvider.HasSeveralPlysForPlyIndex(
+        TStringGrid.FGridPosToPlyIndex(ACol, ARow))) then
       Result := Result + '...';
+  end;
+
+  procedure NStylishCell;
+  var
+    iPly: integer;
+    PlyStatuses: TPlyStatuses;
+  begin
+    iPly := TStringGrid.FGridPosToPlyIndex(ACol, ARow);
+
+    if ((m_iPlyIndexCol = ACol) and (m_iPlyIndexRow = ARow)) then
+    begin
+      MovesStringGrid.Canvas.Brush.Color := clHighlight;
+      MovesStringGrid.Canvas.Font.Color := clHighlightText;
+      MovesStringGrid.Canvas.FillRect(Rect);
+    end
+    else if (m_PlysProvider.HasSeveralPlysForPlyIndex(iPly)) then
+    begin
+      MovesStringGrid.Canvas.Brush.Color := SEVERAL_PLYS_COLOR;
+      MovesStringGrid.Canvas.FillRect(Rect);
+    end;
+
+    PlyStatuses := m_PlysProvider.GetPlyStatus(iPly);
+    if (psMainLine in PlyStatuses) then
+    begin
+      MovesStringGrid.Canvas.Font.Style := [fsBold];
+    end
+    else if (psUserLine in PlyStatuses) then
+    begin
+//      MovesStringGrid.Canvas.Font.Style := [fsItalic];
+    end;
   end;
 
   procedure NDrawCell(const strCell: string; Alignment: TAlignment;
@@ -228,16 +268,6 @@ procedure TMoveListForm.MovesStringGridDrawCell(Sender: TObject; ACol,
     end;
   end;
 
-  procedure NColorCell;
-  begin
-    if ((m_iPlyIndexCol = ACol) and (m_iPlyIndexRow = ARow)) then
-    begin
-      MovesStringGrid.Canvas.Brush.Color := clHighlight;
-      MovesStringGrid.Canvas.Font.Color := clHighlightText;
-      MovesStringGrid.Canvas.FillRect(Rect);
-    end;
-  end;
-
 var
   str: string;
 begin // .MovesStringGridDrawCell
@@ -252,7 +282,7 @@ begin // .MovesStringGridDrawCell
     NDrawCell(str, taRightJustify, -2)
   else
   begin
-    NColorCell;
+    NStylishCell;
     NDrawCell(str, taCenter);
   end;
 end;
@@ -299,6 +329,8 @@ begin
 
   if (Assigned(m_PlysProvider)) then
     m_PlysProvider.CurrentPlyIndex := TStringGrid.FGridPosToPlyIndex(ACol, ARow);
+
+  m_bCellFirstSelected := TRUE;
 end;
 
 
@@ -307,6 +339,12 @@ procedure TMoveListForm.MovesStringGridMouseDown(Sender: TObject;
 var
   iRow, iCol: integer;
 begin
+  if (m_bCellFirstSelected) then
+  begin
+    m_bCellFirstSelected := FALSE;
+    exit;
+  end;
+
   MovesStringGrid.MouseToCell(X, Y, iCol, iRow);
   if ((iCol <> m_iPlyIndexCol) or (iRow <> m_iPlyIndexRow)) then
     exit;
@@ -314,8 +352,38 @@ begin
   if (not Assigned(m_PlysProvider)) then
     exit;
 
-  if (m_PlysProvider.GetPlysCountForPlyIndex(m_PlysProvider.CurrentPlyIndex) > 1) then
+  if (m_PlysProvider.HasSeveralPlysForPlyIndex(m_PlysProvider.CurrentPlyIndex)) then
+    SelectLine;
+end;
+
+
+procedure TMoveListForm.SelectLine;
+begin
+  if (not MovesStringGrid.PlyLineSelection) then
+  begin
     MovesStringGrid.PlyLineSelection := TRUE;
+  end
+  else
+  begin
+    if (Assigned(MovesStringGrid.InplaceEditor)) then
+    begin
+      (MovesStringGrid.InplaceEditor as TInplaceEditList).CloseUp(TRUE);
+      MovesStringGrid.PlyLineSelection := FALSE;
+    end;
+  end;
+end;
+
+
+procedure TMoveListForm.FormKeyDown(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+begin
+  case Key of
+    VK_ESCAPE:
+    begin
+      MovesStringGrid.PlyLineSelection := FALSE;
+      Key := 0;
+    end;
+  end;
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -365,7 +433,7 @@ begin
   if (not Result) then
     exit;
 
-  Result := (PlysProvider.GetPlysCountForPlyIndex(FGridPosToPlyIndex(Col, Row)) > 1);
+  Result := (PlysProvider.HasSeveralPlysForPlyIndex(FGridPosToPlyIndex(Col, Row)));
 end;
 
 
@@ -407,7 +475,15 @@ begin
   m_bPlyLineSelection := bValue;
 
   if (bValue) then
-    ShowEditor
+  begin
+    ShowEditor;
+    with InplaceEditor as TInplaceEditList do
+    begin
+      if (not (self.Owner as TMoveListForm).Active) then
+        DropDown;
+      DropDown;
+    end;
+  end
   else
     HideEditor;
 
@@ -421,6 +497,26 @@ procedure TInplaceEditList.CreateParams(var Params: TCreateParams);
 begin
   inherited;
   Params.Style := Params.Style or ES_CENTER;
+end;
+
+
+procedure TInplaceEditList.DoDropDownKeys(var Key: Word; Shift: TShiftState);
+begin
+  case Key of
+    VK_ESCAPE:
+      ;
+  else
+    inherited;
+  end;
+end;
+
+
+procedure TInplaceEditList.CloseUp(Accept: Boolean);
+begin
+  if (Accept) then
+    Text := '';
+    
+  inherited;
 end;
 
 end.

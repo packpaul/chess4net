@@ -3,18 +3,21 @@ unit PlysTreeUnit;
 interface
 
 uses
-  Classes;
+  Classes,
+  //
+  PlyStatusUnit;
 
 type
   TPlysTreeNode = class
   private
     m_strPly: string;
     m_strPos: string;
+    m_PlyStatuses: TPlyStatuses;
 
     m_arrNextNodes: array of TPlysTreeNode;
     m_iNextNodeOfLineIndex: integer;
 
-    constructor Create(const strPos, strPly: string);
+    constructor Create(const strPos, strPly: string; APlyStatuses: TPlyStatuses);
 
     function FGetNextNodeOfLine: TPlysTreeNode;
     procedure FDeleteNextNodeOfLine;
@@ -28,6 +31,7 @@ type
 
     property Ply: string read m_strPly;
     property Pos: string read m_strPos;
+    property PlyStatuses: TPlyStatuses read m_PlyStatuses write m_PlyStatuses;
 
   public
     destructor Destroy; override;
@@ -43,8 +47,10 @@ type
   public
     destructor Destroy; override;
 
-    function Add(iPlyIndex: integer; const strPos: string; const strMove: string = ''): integer; overload;
-    function Add(const strPos: string; strMove: string = ''): integer; overload;
+    function Add(iPlyIndex: integer; const strPos: string;
+      const strMove: string = ''; APlyStatuses: TPlyStatuses = []): integer; overload;
+    function Add(const strPos: string; strMove: string = '';
+      APlyStatuses: TPlyStatuses = []): integer; overload;
 
     procedure Clear;
     procedure Delete(iIndex: Integer);
@@ -52,6 +58,7 @@ type
     function GetPlysCountForPlyIndex(iIndex: integer): integer;
     procedure GetPlysForPlyIndex(iIndex: integer; var List: TStrings);
     function SetPlyForPlyIndex(iIndex: integer; const strPly: string): boolean;
+    function GetPlyStatus(iIndex: integer): TPlyStatuses;
 
     property Plys[iIndex: integer]: string read FGetPly; default;
     property Position[iIndex: integer]: string read FGetPosition;
@@ -119,7 +126,8 @@ begin
 end;
 
 
-function TPlysTree.Add(iPlyIndex: integer; const strPos: string; const strMove: string = ''): integer;
+function TPlysTree.Add(iPlyIndex: integer; const strPos: string;
+  const strMove: string = ''; APlyStatuses: TPlyStatuses = []): integer;
 var
   Node, NextNode: TPlysTreeNode;
 begin
@@ -130,7 +138,8 @@ begin
   if (iPlyIndex = 0) then
   begin
     Clear;
-    m_FirstNode := TPlysTreeNode.Create(strPos, strMove);
+    m_FirstNode := TPlysTreeNode.Create(strPos, strMove, APlyStatuses);
+    m_FirstNode.PlyStatuses := m_FirstNode.PlyStatuses + [psMainLine]; 
     exit;
   end;
 
@@ -141,13 +150,14 @@ begin
     NextNode := Node.FGetNextNodeOfLine;
   until ((Result >= iPlyIndex) or (not Assigned(NextNode)));
 
-  Node.FAddLineNode(TPlysTreeNode.Create(strPos, strMove));
+  Node.FAddLineNode(TPlysTreeNode.Create(strPos, strMove, APlyStatuses));
 end;
 
 
-function TPlysTree.Add(const strPos: string; strMove: string = ''): integer;
+function TPlysTree.Add(const strPos: string; strMove: string = '';
+  APlyStatuses: TPlyStatuses = []): integer;
 begin
-  Result := Add(Count, strPos, strMove);
+  Result := Add(Count, strPos, strMove, APlyStatuses);
 end;
 
 
@@ -217,6 +227,18 @@ begin
 end;
 
 
+function TPlysTree.GetPlyStatus(iIndex: integer): TPlyStatuses;
+var
+  Node: TPlysTreeNode;
+begin
+  Node := FGetNodeOfDepth(iIndex);
+  if (Assigned(Node)) then
+    Result := Node.PlyStatuses
+  else
+    Result := [];
+end;
+
+
 function TPlysTree.SetPlyForPlyIndex(iIndex: integer; const strPly: string): boolean;
 var
   Node: TPlysTreeNode;
@@ -231,12 +253,13 @@ end;
 ////////////////////////////////////////////////////////////////////////////////
 // TPlysTreeNode
 
-constructor TPlysTreeNode.Create(const strPos, strPly: string);
+constructor TPlysTreeNode.Create(const strPos, strPly: string; APlyStatuses: TPlyStatuses);
 begin
   inherited Create;
 
   m_strPos := strPos;
   m_strPly := strPly;
+  m_PlyStatuses := APlyStatuses;
 
   m_iNextNodeOfLineIndex := -1;
 end;
@@ -305,6 +328,9 @@ begin
     end;
   end;
 
+  if ((psMainLine in PlyStatuses) and (FGetNextNodesCount = 0)) then
+    Node.PlyStatuses := Node.PlyStatuses + [psMainLine];
+
   for i := Low(m_arrNextNodes) to High(m_arrNextNodes) do
   begin
     if (not Assigned(m_arrNextNodes[i])) then
@@ -350,10 +376,7 @@ begin
   for i := Low(m_arrNextNodes) to High(m_arrNextNodes) do
   begin
     Node := m_arrNextNodes[i];
-
-    if (i = m_iNextNodeOfLineIndex) then
-      List.Insert(0, Node.Ply)
-    else
+    if (Assigned(Node)) then
       List.Append(Node.Ply);
   end;
 end;

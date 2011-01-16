@@ -14,13 +14,15 @@ object MoveListForm: TMoveListForm
   Font.Name = 'MS Sans Serif'
   Font.Style = []
   FormStyle = fsStayOnTop
+  KeyPreview = True
   OldCreateOrder = False
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   OnDeactivate = FormDeactivate
+  OnKeyDown = FormKeyDown
   DesignSize = (
-    220
-    387)
+    228
+    396)
   PixelsPerInch = 96
   TextHeight = 13
   object BackSpeedButton: TSpeedButton
@@ -70,7 +72,7 @@ object MoveListForm: TMoveListForm
   object MovesStringGrid: TStringGrid
     Left = 0
     Top = 0
-    Width = 220
+    Width = 228
     Height = 352
     Align = alTop
     Anchors = [akLeft, akTop, akRight, akBottom]

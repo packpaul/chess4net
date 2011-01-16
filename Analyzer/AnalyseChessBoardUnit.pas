@@ -7,7 +7,7 @@ uses
   ComCtrls, Dialogs, ActnList, ImgList, AppEvnts,
   //
   ChessBoardUnit, PosBaseChessBoardUnit, ChessEngineInfoUnit, ChessEngine,
-  MoveListFormUnit, PlysTreeUnit;
+  MoveListFormUnit, PlysTreeUnit, PlyStatusUnit;
 
 type
   TAnalyseChessBoard = class(TTntForm, IPlysProvider)
@@ -50,6 +50,7 @@ type
     ApplicationEvents: TApplicationEvents;
     PositionSelectLineMenuItem: TTntMenuItem;
     SelectLineAction: TAction;
+    SelectLineFromMoveListAction: TAction;
     procedure ExitMenuItemClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormCanResize(Sender: TObject; var NewWidth,
@@ -71,6 +72,7 @@ type
     procedure ApplicationEventsIdle(Sender: TObject; var Done: Boolean);
     procedure SelectLineActionExecute(Sender: TObject);
     procedure SelectLineActionUpdate(Sender: TObject);
+    procedure SelectLineFromMoveListActionExecute(Sender: TObject);
   private
     m_ChessBoard: TPosBaseChessBoard;
     m_strPosBaseName: string;
@@ -122,14 +124,18 @@ type
     procedure IPlysProvider.SetCurrentPlyIndex = FSetCurrentPlyIndex;
     procedure FSetCurrentPlyIndex(iValue: integer);
 
-    function IPlysProvider.GetPlysCountForPlyIndex = FGetPlysCountForPlyIndex;
-    function FGetPlysCountForPlyIndex(iPlyIndex: integer): integer;
+    function IPlysProvider.HasSeveralPlysForPlyIndex = FHasSeveralPlysForPlyIndex;
+    function FHasSeveralPlysForPlyIndex(iPlyIndex: integer): boolean;
 
     procedure IPlysProvider.GetPlysForPlyIndex = FGetPlysForPlyIndex;
     procedure FGetPlysForPlyIndex(iPlyIndex: integer; var List: TStrings);
 
     function IPlysProvider.SetPlyForPlyIndex = FSetPlyForPlyIndex;
     function FSetPlyForPlyIndex(iPlyIndex: integer; const strPly: string): boolean;
+
+    function IPlysProvider.GetPlyStatus = FGetPlyStatus;
+    function FGetPlyStatus(iPlyIndex: integer): TPlyStatuses;
+
 
     procedure FTakebackMove;
     procedure FForwardMove;
@@ -215,7 +221,7 @@ procedure TAnalyseChessBoard.FChessBoardHandler(e: TChessBoardEvent; d1: pointer
       end;
     end;
 
-    m_PlysTree.Add(iPly, m_ChessBoard.GetPosition, strMove);
+    m_PlysTree.Add(iPly, m_ChessBoard.GetPosition, strMove, [psUserLine]);
 
     inc(m_lwPlysListUpdateID);
     FRefreshMoveListForm;
@@ -593,9 +599,9 @@ begin
 end;
 
 
-function TAnalyseChessBoard.FGetPlysCountForPlyIndex(iPlyIndex: integer): integer;
+function TAnalyseChessBoard.FHasSeveralPlysForPlyIndex(iPlyIndex: integer): boolean;
 begin
-  Result := m_PlysTree.GetPlysCountForPlyIndex(iPlyIndex);
+  Result := (m_PlysTree.GetPlysCountForPlyIndex(iPlyIndex) > 1);
 end;
 
 
@@ -622,10 +628,24 @@ begin
 end;
 
 
+procedure TAnalyseChessBoard.SelectLineFromMoveListActionExecute(
+  Sender: TObject);
+begin
+  if (Assigned(m_MoveListForm)) then
+    m_MoveListForm.SelectLine;
+end;
+
+
 procedure TAnalyseChessBoard.SelectLineActionUpdate(Sender: TObject);
 begin
   (Sender as TAction).Enabled := ((FGetCurrentPlyIndex > 0) and
-    (FGetPlysCountForPlyIndex(FGetCurrentPlyIndex) > 1));
+    (FHasSeveralPlysForPlyIndex(FGetCurrentPlyIndex)));
+end;
+
+
+function TAnalyseChessBoard.FGetPlyStatus(iPlyIndex: integer): TPlyStatuses;
+begin
+  Result := m_PlysTree.GetPlyStatus(iPlyIndex);
 end;
 
 end.

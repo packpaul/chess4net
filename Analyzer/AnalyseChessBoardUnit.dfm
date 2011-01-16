@@ -180,6 +180,12 @@ object AnalyseChessBoard: TAnalyseChessBoard
       OnExecute = SelectLineActionExecute
       OnUpdate = SelectLineActionUpdate
     end
+    object SelectLineFromMoveListAction: TAction
+      Caption = 'SelectLineFromMoveListAction'
+      ShortCut = 13
+      OnExecute = SelectLineFromMoveListActionExecute
+      OnUpdate = SelectLineActionUpdate
+    end
   end
   object ImageList: TImageList
     Left = 1

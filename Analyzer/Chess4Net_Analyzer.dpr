@@ -24,7 +24,8 @@ uses
   ChessEngine in 'ChessEngine.pas',
   ChessEngineInfoUnit in 'ChessEngineInfoUnit.pas' {ChessEngineInfoForm},
   MoveListFormUnit in 'MoveListFormUnit.pas' {MoveListForm},
-  PlysTreeUnit in 'PlysTreeUnit.pas';
+  PlysTreeUnit in 'PlysTreeUnit.pas',
+  PlyStatusUnit in 'PlyStatusUnit.pas';
 
 {$R ..\Chess4Net.res}
 
