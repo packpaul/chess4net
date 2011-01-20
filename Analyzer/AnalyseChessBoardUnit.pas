@@ -520,11 +520,13 @@ end;
 procedure TAnalyseChessBoard.FormShow(Sender: TObject);
 begin
   MoveListAction.Execute;
+{$IFDEF RELEASE}
   with TURLVersionQuery.Create do
   begin
     OnQueryReady := FOnQueryReady;
     Query(aidAnalyzer, CHESS4NET_VERSION, osidWindows);
   end;
+{$ENDIF}
 end;
 
 
