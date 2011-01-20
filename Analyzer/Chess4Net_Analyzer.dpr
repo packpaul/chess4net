@@ -27,7 +27,9 @@ uses
   PlysTreeUnit in 'PlysTreeUnit.pas',
   PlyStatusUnit in 'PlyStatusUnit.pas',
   URLVersionQueryUnit in '..\URLVersionQueryUnit.pas' {URLVersionQuery: TDataModule},
-  GlobalsLocalUnit in 'GlobalsLocalUnit.pas';
+  GlobalsLocalUnit in 'GlobalsLocalUnit.pas',
+  DontShowMessageDlgUnit in 'DontShowMessageDlgUnit.pas',
+  IniSettingsUnit in 'IniSettingsUnit.pas';
 
 {$R ..\Chess4Net.res}
 

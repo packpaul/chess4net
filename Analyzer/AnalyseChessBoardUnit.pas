@@ -150,7 +150,8 @@ implementation
 uses
   SysUtils, Windows, Clipbrd,
   //
-  PGNParserUnit, ChessRulesEngine, GlobalsLocalUnit;
+  PGNParserUnit, ChessRulesEngine, GlobalsLocalUnit, DontShowMessageDlgUnit,
+  IniSettingsUnit;
 
 {$R *.dfm}
 
@@ -531,17 +532,32 @@ end;
 
 
 procedure TAnalyseChessBoard.FOnQueryReady(Sender: TURLVersionQuery);
+var
+  bDontShowFlag: boolean;
+  IniSettings: TIniSettings;
 begin
   if (not Assigned(Sender)) then
     exit;
 
-  if (Sender.LastVersion <= CHESS4NET_VERSION) then
-    exit; 
+  IniSettings := nil;
+  try
+    IniSettings := TIniSettings.Create;
 
-  if (Sender.Info <> '') then
-    MessageDlg(Sender.Info, mtInformation, [mbOK], 0);
+    if ((Sender.LastVersion <= IniSettings.DontShowLastVersion)) then
+      exit;
 
-  Sender.Free;
+    bDontShowFlag := FALSE;
+
+    if (Sender.Info <> '') then
+      TDontShowMessageDlg.Show(Sender.Info, bDontShowFlag);
+
+    if (bDontShowFlag) then
+      IniSettings.DontShowLastVersion := Sender.LastVersion;
+
+  finally
+    IniSettings.Free;
+    Sender.Free;
+  end;
 end;
 
 
@@ -648,7 +664,7 @@ end;
 
 procedure TAnalyseChessBoard.SelectLineActionExecute(Sender: TObject);
 begin
-  // TODO:
+  ShowMessage('TODO:');
 end;
 
 
