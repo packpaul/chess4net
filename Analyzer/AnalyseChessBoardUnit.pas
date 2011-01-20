@@ -7,7 +7,7 @@ uses
   ComCtrls, Dialogs, ActnList, ImgList, AppEvnts,
   //
   ChessBoardUnit, PosBaseChessBoardUnit, ChessEngineInfoUnit, ChessEngine,
-  MoveListFormUnit, PlysTreeUnit, PlyStatusUnit;
+  MoveListFormUnit, PlysTreeUnit, PlyStatusUnit, URLVersionQueryUnit;
 
 type
   TAnalyseChessBoard = class(TTntForm, IPlysProvider)
@@ -141,6 +141,8 @@ type
     procedure FForwardMove;
 
     procedure FRefreshMoveListForm;
+
+    procedure FOnQueryReady(Sender: TURLVersionQuery);
   end;
 
 implementation
@@ -148,7 +150,7 @@ implementation
 uses
   SysUtils, Windows, Clipbrd,
   //
-  PGNParserUnit, ChessRulesEngine;
+  PGNParserUnit, ChessRulesEngine, GlobalsLocalUnit;
 
 {$R *.dfm}
 
@@ -518,6 +520,26 @@ end;
 procedure TAnalyseChessBoard.FormShow(Sender: TObject);
 begin
   MoveListAction.Execute;
+  with TURLVersionQuery.Create do
+  begin
+    OnQueryReady := FOnQueryReady;
+    Query(aidAnalyzer, CHESS4NET_VERSION, osidWindows);
+  end;
+end;
+
+
+procedure TAnalyseChessBoard.FOnQueryReady(Sender: TURLVersionQuery);
+begin
+  if (not Assigned(Sender)) then
+    exit;
+
+  if (Sender.LastVersion <= CHESS4NET_VERSION) then
+    exit; 
+
+  if (Sender.Info <> '') then
+    MessageDlg(Sender.Info, mtInformation, [mbOK], 0);
+
+  Sender.Free;
 end;
 
 

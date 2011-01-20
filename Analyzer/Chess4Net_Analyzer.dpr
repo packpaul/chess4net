@@ -25,7 +25,9 @@ uses
   ChessEngineInfoUnit in 'ChessEngineInfoUnit.pas' {ChessEngineInfoForm},
   MoveListFormUnit in 'MoveListFormUnit.pas' {MoveListForm},
   PlysTreeUnit in 'PlysTreeUnit.pas',
-  PlyStatusUnit in 'PlyStatusUnit.pas';
+  PlyStatusUnit in 'PlyStatusUnit.pas',
+  URLVersionQueryUnit in '..\URLVersionQueryUnit.pas' {URLVersionQuery: TDataModule},
+  GlobalsLocalUnit in 'GlobalsLocalUnit.pas';
 
 {$R ..\Chess4Net.res}
 
