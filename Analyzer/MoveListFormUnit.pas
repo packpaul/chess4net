@@ -5,32 +5,9 @@ interface
 uses
   Forms, Classes, Windows, Controls, Grids, Buttons,
   //
-  PlyStatusUnit;
+  PlysProviderIntfUnit;
 
 type
-  IPlysProvider = interface
-    function GetPlysCount: integer;
-    function GetPly(iIndex: integer): string;
-    function GetPlyStatus(iIndex: integer): TPlyStatuses;
-
-    function GetCurrentPlyIndex: integer;
-    procedure SetCurrentPlyIndex(iValue: integer);
-
-    function HasSeveralPlysForPlyIndex(iPlyIndex: integer): boolean;
-    procedure GetPlysForPlyIndex(iPlyIndex: integer; var List: TStrings);
-    function SetPlyForPlyIndex(iPlyIndex: integer; const strPly: string): boolean;
-
-    function GetInvalidationID: LongWord;
-
-    property PlysCount: integer read GetPlysCount;
-    property Plys[iIndex: integer]: string read GetPly;
-    property CurrentPlyIndex: integer read GetCurrentPlyIndex
-                                      write SetCurrentPlyIndex;
-    property InvalidationID: LongWord read GetInvalidationID;
-// TODO:    property WhiteStarts: boolean;
-  end;
-
-
   TStringGrid = class(Grids.TStringGrid)
   private
     m_bPlyLineSelection: boolean;
@@ -54,6 +31,7 @@ type
     MovesStringGrid: TStringGrid;
     BackSpeedButton: TSpeedButton;
     ForthSpeedButton: TSpeedButton;
+    SelectLineSpeedButton: TSpeedButton;
     procedure FormCreate(Sender: TObject);
     procedure FormDeactivate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
@@ -359,6 +337,9 @@ end;
 
 procedure TMoveListForm.SelectLine;
 begin
+  if (not Showing) then
+    exit;
+
   if (not MovesStringGrid.PlyLineSelection) then
   begin
     MovesStringGrid.PlyLineSelection := TRUE;

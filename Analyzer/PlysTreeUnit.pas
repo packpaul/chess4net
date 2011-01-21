@@ -5,7 +5,7 @@ interface
 uses
   Classes,
   //
-  PlyStatusUnit;
+  PlysProviderIntfUnit;
 
 type
   TPlysTreeNode = class

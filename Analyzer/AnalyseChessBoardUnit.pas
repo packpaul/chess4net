@@ -7,7 +7,8 @@ uses
   ComCtrls, Dialogs, ActnList, ImgList, AppEvnts,
   //
   ChessBoardUnit, PosBaseChessBoardUnit, ChessEngineInfoUnit, ChessEngine,
-  MoveListFormUnit, PlysTreeUnit, PlyStatusUnit, URLVersionQueryUnit;
+  MoveListFormUnit, PlysTreeUnit, PlysProviderIntfUnit, URLVersionQueryUnit,
+  SelectLineFormUnit;
 
 type
   TAnalyseChessBoard = class(TTntForm, IPlysProvider)
@@ -51,6 +52,7 @@ type
     PositionSelectLineMenuItem: TTntMenuItem;
     SelectLineAction: TAction;
     SelectLineFromMoveListAction: TAction;
+    PopupSelectLineMenuItem: TTntMenuItem;
     procedure ExitMenuItemClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormCanResize(Sender: TObject; var NewWidth,
@@ -73,6 +75,7 @@ type
     procedure SelectLineActionExecute(Sender: TObject);
     procedure SelectLineActionUpdate(Sender: TObject);
     procedure SelectLineFromMoveListActionExecute(Sender: TObject);
+    procedure SelectLineFromMoveListActionUpdate(Sender: TObject);
   private
     m_ChessBoard: TPosBaseChessBoard;
     m_strPosBaseName: string;
@@ -82,6 +85,7 @@ type
     m_ChessEngineInfoForm: TChessEngineInfoForm;
 
     m_MoveListForm: TMoveListForm;
+    m_SelectLineForm: TSelectLineForm;
 
     m_PlysTree: TPlysTree;
     m_iCurrentPlyIndex: integer;
@@ -636,6 +640,7 @@ begin
   // Because TSpeedButton actions do not work on Vista
   TakebackMoveAction.Update;
   ForwardMoveAction.Update;
+  SelectLineAction.Update;
 end;
 
 
@@ -657,14 +662,20 @@ begin
   if (Result) then
   begin
     inc(m_lwPlysListUpdateID);
-    FSetCurrentPlyIndex(FGetCurrentPlyIndex);
+    FSetCurrentPlyIndex(iPlyIndex);
   end;
 end;
 
 
 procedure TAnalyseChessBoard.SelectLineActionExecute(Sender: TObject);
 begin
-  ShowMessage('TODO:');
+  if (not Assigned(m_SelectLineForm)) then
+  begin
+    m_SelectLineForm := TSelectLineForm.Create(self);
+    m_SelectLineForm.PlysProvider := self;
+  end;
+
+  m_SelectLineForm.ShowModal;
 end;
 
 
@@ -677,6 +688,13 @@ end;
 
 
 procedure TAnalyseChessBoard.SelectLineActionUpdate(Sender: TObject);
+begin
+  (Sender as TAction).Enabled := FHasSeveralPlysForPlyIndex(FGetCurrentPlyIndex + 1);
+end;
+
+
+procedure TAnalyseChessBoard.SelectLineFromMoveListActionUpdate(
+  Sender: TObject);
 begin
   (Sender as TAction).Enabled := ((FGetCurrentPlyIndex > 0) and
     (FHasSeveralPlysForPlyIndex(FGetCurrentPlyIndex)));

@@ -25,11 +25,12 @@ uses
   ChessEngineInfoUnit in 'ChessEngineInfoUnit.pas' {ChessEngineInfoForm},
   MoveListFormUnit in 'MoveListFormUnit.pas' {MoveListForm},
   PlysTreeUnit in 'PlysTreeUnit.pas',
-  PlyStatusUnit in 'PlyStatusUnit.pas',
+  PlysProviderIntfUnit in 'PlysProviderIntfUnit.pas',
   URLVersionQueryUnit in '..\URLVersionQueryUnit.pas' {URLVersionQuery: TDataModule},
   GlobalsLocalUnit in 'GlobalsLocalUnit.pas',
   DontShowMessageDlgUnit in 'DontShowMessageDlgUnit.pas',
-  IniSettingsUnit in 'IniSettingsUnit.pas';
+  IniSettingsUnit in 'IniSettingsUnit.pas',
+  SelectLineFormUnit in 'SelectLineFormUnit.pas' {SelectLineForm};
 
 {$R ..\Chess4Net.res}
 
