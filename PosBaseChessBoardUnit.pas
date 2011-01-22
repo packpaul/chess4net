@@ -152,6 +152,8 @@ begin
       FreeAndNil(m_ExtPosBase);
     end;
 
+    RDrawBoard;
+
   except
     on Exception do
     begin

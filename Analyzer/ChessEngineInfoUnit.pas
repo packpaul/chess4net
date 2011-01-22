@@ -3,8 +3,7 @@ unit ChessEngineInfoUnit;
 interface
 
 uses
-  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, StdCtrls;
+  Forms, Classes, Controls, StdCtrls;
 
 type
   TChessEngineInfoForm = class(TForm)
@@ -25,9 +24,12 @@ type
 implementation
 
 uses
-  Math;
+  SysUtils, Math;
 
 {$R *.dfm}
+
+////////////////////////////////////////////////////////////////////////////////
+// TChessEngineInfoForm
 
 procedure TChessEngineInfoForm.SetInfo(const rEvaluation: real; const strMovesLine: string);
 

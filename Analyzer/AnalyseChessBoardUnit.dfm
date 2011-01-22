@@ -90,9 +90,8 @@ object AnalyseChessBoard: TAnalyseChessBoard
       object ViewMoveListMenuItem: TTntMenuItem
         Action = MoveListAction
       end
-      object ViewPosDBManagerMenuItem: TTntMenuItem
-        Caption = '&Pos DB Manager'
-        Enabled = False
+      object ViewOpeningsDBManagerMenuItem: TTntMenuItem
+        Action = OpeningsDBManagerAction
       end
       object ViewChessEngineInfoMenuItem: TTntMenuItem
         Action = ChessEngineInfoAction
@@ -159,16 +158,19 @@ object AnalyseChessBoard: TAnalyseChessBoard
     Images = ImageList
     Left = 64
     object ChessEngineInfoAction: TAction
+      Category = 'Views'
       Caption = 'Chess &Engine Info'
       OnExecute = ChessEngineInfoActionExecute
       OnUpdate = ChessEngineInfoActionUpdate
     end
     object MoveListAction: TAction
+      Category = 'Views'
       Caption = '&Move List'
       OnExecute = MoveListActionExecute
       OnUpdate = MoveListActionUpdate
     end
     object TakebackMoveAction: TAction
+      Category = 'Navigation'
       Hint = 'Takeback move'
       ImageIndex = 1
       ShortCut = 37
@@ -176,6 +178,7 @@ object AnalyseChessBoard: TAnalyseChessBoard
       OnUpdate = TakebackMoveActionUpdate
     end
     object ForwardMoveAction: TAction
+      Category = 'Navigation'
       Hint = 'Forward move'
       ImageIndex = 0
       ShortCut = 39
@@ -183,6 +186,7 @@ object AnalyseChessBoard: TAnalyseChessBoard
       OnUpdate = ForwardMoveActionUpdate
     end
     object SelectLineAction: TAction
+      Category = 'Navigation'
       Hint = 'Select line'
       ImageIndex = 2
       ShortCut = 16423
@@ -192,18 +196,25 @@ object AnalyseChessBoard: TAnalyseChessBoard
       OnUpdate = SelectLineActionUpdate
     end
     object SelectLineFromMoveListAction: TAction
+      Category = 'Navigation'
       ShortCut = 13
       SecondaryShortCuts.Strings = (
         'Space')
       OnExecute = SelectLineFromMoveListActionExecute
       OnUpdate = SelectLineFromMoveListActionUpdate
     end
+    object OpeningsDBManagerAction: TAction
+      Category = 'Views'
+      Caption = '&Openings DB Manager'
+      OnExecute = OpeningsDBManagerActionExecute
+      OnUpdate = OpeningsDBManagerActionUpdate
+    end
   end
   object ImageList: TImageList
     Left = 1
     Top = 64
     Bitmap = {
-      494C010103000400040010001000FFFFFFFFFF00FFFFFFFFFFFFFFFF424D3600
+      494C010103000400040010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000001000000001002000000000000010
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
@@ -339,7 +350,8 @@ object AnalyseChessBoard: TAnalyseChessBoard
       E7FFFFFFFF8F0000E1FFFF9FFF830000E07FFE0FFC030000E01FF80FFC010000
       E007E00FFCC30000E003C00FFCCF0000E003800FFCFF0000E001800FFCFF0000
       E003C00FFCFF0000E00FF00F80FF0000E03FFC0F80010000F0FFFF0FC0010000
-      F3FFFFCFFFFF0000FFFFFFFFFFFF0000}
+      F3FFFFCFFFFF0000FFFFFFFFFFFF000000000000000000000000000000000000
+      000000000000}
   end
   object ApplicationEvents: TApplicationEvents
     OnIdle = ApplicationEventsIdle

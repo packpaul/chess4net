@@ -8,7 +8,7 @@ uses
   //
   ChessBoardUnit, PosBaseChessBoardUnit, ChessEngineInfoUnit, ChessEngine,
   MoveListFormUnit, PlysTreeUnit, PlysProviderIntfUnit, URLVersionQueryUnit,
-  SelectLineFormUnit;
+  SelectLineFormUnit, OpeningsDBManagerFormUnit, OpeningsDBManagerUnit;
 
 type
   TAnalyseChessBoard = class(TTntForm, IPlysProvider)
@@ -29,7 +29,7 @@ type
     StatusBar: TStatusBar;
     ViewMenuItem: TTntMenuItem;
     ViewMoveListMenuItem: TTntMenuItem;
-    ViewPosDBManagerMenuItem: TTntMenuItem;
+    ViewOpeningsDBManagerMenuItem: TTntMenuItem;
     PositionMenuItem: TTntMenuItem;
     PositionInitialMenuItem: TTntMenuItem;
     N4: TTntMenuItem;
@@ -53,6 +53,7 @@ type
     SelectLineAction: TAction;
     SelectLineFromMoveListAction: TAction;
     PopupSelectLineMenuItem: TTntMenuItem;
+    OpeningsDBManagerAction: TAction;
     procedure ExitMenuItemClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormCanResize(Sender: TObject; var NewWidth,
@@ -76,14 +77,18 @@ type
     procedure SelectLineActionUpdate(Sender: TObject);
     procedure SelectLineFromMoveListActionExecute(Sender: TObject);
     procedure SelectLineFromMoveListActionUpdate(Sender: TObject);
+    procedure OpeningsDBManagerActionExecute(Sender: TObject);
+    procedure OpeningsDBManagerActionUpdate(Sender: TObject);
   private
     m_ChessBoard: TPosBaseChessBoard;
-    m_strPosBaseName: string;
     m_ResizingType: (rtNo, rtHoriz, rtVert);
+
+    m_OpeningsDBManager: TOpeningsDBManager;
 
     m_ChessEngine: TChessEngine;
     m_ChessEngineInfoForm: TChessEngineInfoForm;
 
+    m_OpeningsDBManagerForm: TOpeningsDBManagerForm;
     m_MoveListForm: TMoveListForm;
     m_SelectLineForm: TSelectLineForm;
 
@@ -146,7 +151,8 @@ type
 
     procedure FRefreshMoveListForm;
 
-    procedure FOnQueryReady(Sender: TURLVersionQuery);
+    procedure FOnURLQueryReady(Sender: TURLVersionQuery);
+    procedure FOnOpeningsDBManagerChanged(Sender: TObject);
   end;
 
 implementation
@@ -169,9 +175,10 @@ end;
 
 procedure TAnalyseChessBoard.FormCreate(Sender: TObject);
 begin
-  m_strPosBaseName := 'Sicilian';
-
   m_PlysTree := TPlysTree.Create;
+
+  m_OpeningsDBManager := TOpeningsDBManager.Create;
+  m_OpeningsDBManager.OnChanged := FOnOpeningsDBManagerChanged;
 
   FCreateChessBoard;
   FInitPosition;
@@ -181,6 +188,7 @@ end;
 procedure TAnalyseChessBoard.FormDestroy(Sender: TObject);
 begin
   FDestroyChessEngine;
+  m_OpeningsDBManager.Free;
   m_PlysTree.Free;
 end;
 
@@ -200,8 +208,8 @@ begin
 
   m_ChessBoard.Mode := mAnalyse;
 
-  m_ChessBoard.SetExternalBase(m_strPosBaseName);
-  m_ChessBoard.pTrainingMode := TRUE;
+  m_ChessBoard.SetExternalBase(m_OpeningsDBManager.DBName);
+  m_ChessBoard.pTrainingMode := m_OpeningsDBManager.DBEnabled;
 
   m_ChessBoard.InitPosition;
 end;
@@ -525,17 +533,18 @@ end;
 procedure TAnalyseChessBoard.FormShow(Sender: TObject);
 begin
   MoveListAction.Execute;
+  OpeningsDBManagerAction.Execute;
 {$IFDEF RELEASE}
   with TURLVersionQuery.Create do
   begin
-    OnQueryReady := FOnQueryReady;
+    OnQueryReady := FOnURLQueryReady;
     Query(aidAnalyzer, CHESS4NET_VERSION, osidWindows);
   end;
 {$ENDIF}
 end;
 
 
-procedure TAnalyseChessBoard.FOnQueryReady(Sender: TURLVersionQuery);
+procedure TAnalyseChessBoard.FOnURLQueryReady(Sender: TURLVersionQuery);
 var
   bDontShowFlag: boolean;
   IniSettings: TIniSettings;
@@ -562,6 +571,12 @@ begin
     IniSettings.Free;
     Sender.Free;
   end;
+end;
+
+
+procedure TAnalyseChessBoard.FOnOpeningsDBManagerChanged(Sender: TObject);
+begin
+  m_ChessBoard.pTrainingMode := m_OpeningsDBManager.DBEnabled;
 end;
 
 
@@ -704,6 +719,30 @@ end;
 function TAnalyseChessBoard.FGetPlyStatus(iPlyIndex: integer): TPlyStatuses;
 begin
   Result := m_PlysTree.GetPlyStatus(iPlyIndex);
+end;
+
+
+procedure TAnalyseChessBoard.OpeningsDBManagerActionExecute(
+  Sender: TObject);
+begin
+  if (not Assigned(m_OpeningsDBManagerForm)) then
+  begin
+    m_OpeningsDBManagerForm := TOpeningsDBManagerForm.Create(self);
+    m_OpeningsDBManagerForm.OpeningsDBManagerProvider := m_OpeningsDBManager;
+  end;
+
+  if (m_OpeningsDBManagerForm.Showing) then
+    m_OpeningsDBManagerForm.Hide
+  else
+    m_OpeningsDBManagerForm.Show;
+end;
+
+
+procedure TAnalyseChessBoard.OpeningsDBManagerActionUpdate(
+  Sender: TObject);
+begin
+  (Sender as TAction).Checked := (Assigned(m_OpeningsDBManagerForm) and
+    m_OpeningsDBManagerForm.Showing);
 end;
 
 end.

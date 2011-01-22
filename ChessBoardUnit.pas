@@ -217,6 +217,8 @@ end;
 
 procedure TChessBoard.RDrawBoard;
 begin
+  if (csDestroying in ComponentState) then
+    exit;
   RDrawHiddenBoard;
   PBoxBoardPaint(nil);
 end;

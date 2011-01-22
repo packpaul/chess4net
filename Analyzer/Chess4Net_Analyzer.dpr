@@ -30,7 +30,10 @@ uses
   GlobalsLocalUnit in 'GlobalsLocalUnit.pas',
   DontShowMessageDlgUnit in 'DontShowMessageDlgUnit.pas',
   IniSettingsUnit in 'IniSettingsUnit.pas',
-  SelectLineFormUnit in 'SelectLineFormUnit.pas' {SelectLineForm};
+  SelectLineFormUnit in 'SelectLineFormUnit.pas' {SelectLineForm},
+  OpeningsDBManagerFormUnit in 'OpeningsDBManagerFormUnit.pas' {OpeningsDBSelectionForm},
+  OpeningsDBManagerUnit in 'OpeningsDBManagerUnit.pas',
+  NonRefInterfacedObjectUnit in '..\NonRefInterfacedObjectUnit.pas';
 
 {$R ..\Chess4Net.res}
 
