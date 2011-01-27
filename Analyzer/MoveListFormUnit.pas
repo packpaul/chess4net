@@ -32,6 +32,7 @@ type
     BackSpeedButton: TSpeedButton;
     ForthSpeedButton: TSpeedButton;
     SelectLineSpeedButton: TSpeedButton;
+    InitialSpeedButton: TSpeedButton;
     procedure FormCreate(Sender: TObject);
     procedure FormDeactivate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
@@ -117,6 +118,8 @@ end;
 
 procedure TMoveListForm.FSetPlysProvider(APlysProvider: IPlysProvider);
 begin
+  if (not Assigned(self)) then
+    exit;
   m_PlysProvider := APlysProvider;
   Refresh;
 end;

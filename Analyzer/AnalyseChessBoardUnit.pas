@@ -4,7 +4,7 @@ interface
 
 uses
   Forms, TntForms, TntMenus, Menus, Classes, Controls, ExtCtrls, Messages,
-  ComCtrls, Dialogs, ActnList, ImgList, AppEvnts,
+  ComCtrls, Dialogs, ActnList, ImgList, AppEvnts, SysUtils,
   //
   ChessBoardUnit, PosBaseChessBoardUnit, ChessEngineInfoUnit, ChessEngine,
   MoveListFormUnit, PlysTreeUnit, PlysProviderIntfUnit, URLVersionQueryUnit,
@@ -14,17 +14,17 @@ type
   TAnalyseChessBoard = class(TTntForm, IPlysProvider)
     MainMenu: TTntMainMenu;
     FileMenuItem: TTntMenuItem;
-    OpenPGNMenuItem: TTntMenuItem;
-    SavePGNMenuItem: TTntMenuItem;
+    FileOpenPGNMenuItem: TTntMenuItem;
+    FileSavePGNMenuItem: TTntMenuItem;
     N2: TTntMenuItem;
-    CopyPGNMenuItem: TTntMenuItem;
-    PastePGNMenuItem: TTntMenuItem;
+    FileCopyPGNMenuItem: TTntMenuItem;
+    FilePastePGNMenuItem: TTntMenuItem;
     N1: TTntMenuItem;
-    ExitMenuItem: TTntMenuItem;
+    FileExitMenuItem: TTntMenuItem;
     HelpMenuItem: TTntMenuItem;
-    ContentsMenuItem: TTntMenuItem;
+    HelpContentsMenuItem: TTntMenuItem;
     N3: TTntMenuItem;
-    AboutMenuItem: TTntMenuItem;
+    HelpAboutMenuItem: TTntMenuItem;
     ChessBoardPanel: TPanel;
     StatusBar: TStatusBar;
     ViewMenuItem: TTntMenuItem;
@@ -54,15 +54,18 @@ type
     SelectLineFromMoveListAction: TAction;
     PopupSelectLineMenuItem: TTntMenuItem;
     OpeningsDBManagerAction: TAction;
-    procedure ExitMenuItemClick(Sender: TObject);
+    InitialPositionAction: TAction;
+    PopupInitialPositionMenuItem: TTntMenuItem;
+    FileNewMenuItem: TTntMenuItem;
+    N6: TTntMenuItem;
+    procedure FileExitMenuItemClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormCanResize(Sender: TObject; var NewWidth,
       NewHeight: Integer; var Resize: Boolean);
-    procedure PositionInitialMenuItemClick(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure ViewFlipBoardMenuItemClick(Sender: TObject);
-    procedure OpenPGNMenuItemClick(Sender: TObject);
-    procedure PastePGNMenuItemClick(Sender: TObject);
+    procedure FileOpenPGNMenuItemClick(Sender: TObject);
+    procedure FilePastePGNMenuItemClick(Sender: TObject);
     procedure ChessEngineInfoActionExecute(Sender: TObject);
     procedure ChessEngineInfoActionUpdate(Sender: TObject);
     procedure MoveListActionUpdate(Sender: TObject);
@@ -79,6 +82,10 @@ type
     procedure SelectLineFromMoveListActionUpdate(Sender: TObject);
     procedure OpeningsDBManagerActionExecute(Sender: TObject);
     procedure OpeningsDBManagerActionUpdate(Sender: TObject);
+    procedure TntFormCloseQuery(Sender: TObject; var CanClose: Boolean);
+    procedure InitialPositionActionExecute(Sender: TObject);
+    procedure InitialPositionActionUpdate(Sender: TObject);
+    procedure FileNewMenuItemClick(Sender: TObject);
   private
     m_ChessBoard: TPosBaseChessBoard;
     m_ResizingType: (rtNo, rtHoriz, rtVert);
@@ -97,7 +104,8 @@ type
 
     m_lwPlysListUpdateID: LongWord;
 
-    m_bNotRefreshFlag: boolean;
+    m_bGameChanged: boolean;
+//    m_PGNFileName: TFileName;
 
     procedure FChessBoardHandler(e: TChessBoardEvent; d1: pointer = nil;
       d2: pointer = nil);
@@ -117,6 +125,8 @@ type
     procedure FSynchronizeChessEngineWithChessBoardAndStartEvaluation;
 
     function FLoadPGNData(const PGNData: TStrings): boolean;
+    procedure FSavePGNData;
+    function FAskAndSavePGNData: boolean;
 
     function IPlysProvider.GetPlysCount = FGetPlysCount;
     function FGetPlysCount: integer;
@@ -145,7 +155,7 @@ type
     function IPlysProvider.GetPlyStatus = FGetPlyStatus;
     function FGetPlyStatus(iPlyIndex: integer): TPlyStatuses;
 
-
+    procedure FSetToInitialPosition;
     procedure FTakebackMove;
     procedure FForwardMove;
 
@@ -158,17 +168,21 @@ type
 implementation
 
 uses
-  SysUtils, Windows, Clipbrd,
+  Windows, Clipbrd,
   //
   PGNParserUnit, ChessRulesEngine, GlobalsLocalUnit, DontShowMessageDlgUnit,
   IniSettingsUnit;
 
 {$R *.dfm}
 
+const
+  MSG_GAME_CHANGED_SAVE_CHANGES = 'Current game was modified. Save the changes?';
+  MSG_INCORRECT_FILE_FORMAT = 'Incorrect file format encountered or data is broken!';
+
 ////////////////////////////////////////////////////////////////////////////////
 // TAnalyseChessBoard
 
-procedure TAnalyseChessBoard.ExitMenuItemClick(Sender: TObject);
+procedure TAnalyseChessBoard.FileExitMenuItemClick(Sender: TObject);
 begin
   Close;
 end;
@@ -188,6 +202,10 @@ end;
 procedure TAnalyseChessBoard.FormDestroy(Sender: TObject);
 begin
   FDestroyChessEngine;
+
+  m_MoveListForm.PlysProvider := nil;
+  m_OpeningsDBManagerForm.OpeningsDBManagerProvider := nil;
+   
   m_OpeningsDBManager.Free;
   m_PlysTree.Free;
 end;
@@ -237,6 +255,7 @@ procedure TAnalyseChessBoard.FChessBoardHandler(e: TChessBoardEvent; d1: pointer
     end;
 
     m_PlysTree.Add(iPly, m_ChessBoard.GetPosition, strMove, [psUserLine]);
+    m_bGameChanged := TRUE;
 
     inc(m_lwPlysListUpdateID);
     FRefreshMoveListForm;
@@ -318,10 +337,10 @@ begin
 end;
 
 
-procedure TAnalyseChessBoard.PositionInitialMenuItemClick(Sender: TObject);
+procedure TAnalyseChessBoard.FSetToInitialPosition;
 begin
-  FInitPosition;
-  FRefreshMoveListForm;
+  if (FGetCurrentPlyIndex > 0) then
+    FSetCurrentPlyIndex(0);
 end;
 
 
@@ -335,6 +354,8 @@ begin
 
   m_PlysTree.Clear;
   m_PlysTree.Add(m_ChessBoard.GetPosition);
+
+  m_bGameChanged := FALSE;
 
   FSynchronizeChessEngineWithChessBoardAndStartEvaluation;
 end;
@@ -359,17 +380,21 @@ begin
 end;
 
 
-procedure TAnalyseChessBoard.OpenPGNMenuItemClick(Sender: TObject);
+procedure TAnalyseChessBoard.FileOpenPGNMenuItemClick(Sender: TObject);
 var
   strlData: TStringList;
 begin
+  if (not FAskAndSavePGNData) then
+    exit;
+
   if (not OpenPGNDialog.Execute) then
     exit;
 
   strlData := TStringList.Create;
   try
     strlData.LoadFromFile(OpenPGNDialog.FileName);
-    FLoadPGNData(strlData);
+    if (not FLoadPGNData(strlData)) then
+      MessageDlg(MSG_INCORRECT_FILE_FORMAT, mtError, [mbOK], 0);
   finally
     strlData.Free;
   end;
@@ -377,11 +402,14 @@ begin
 end;
 
 
-procedure TAnalyseChessBoard.PastePGNMenuItemClick(Sender: TObject);
+procedure TAnalyseChessBoard.FilePastePGNMenuItemClick(Sender: TObject);
 var
   strlData: TStringList;
 begin
   if (not Clipboard.HasFormat(CF_TEXT)) then
+    exit;
+
+  if (not FAskAndSavePGNData) then
     exit;
 
   strlData := TStringList.Create;
@@ -427,7 +455,7 @@ begin
 
   finally
     PGNParser.Free;
-    FRefreshMoveListForm;    
+    FRefreshMoveListForm;
   end;
 
   Result := TRUE;
@@ -644,8 +672,7 @@ end;
 
 procedure TAnalyseChessBoard.FRefreshMoveListForm;
 begin
-  if (not m_bNotRefreshFlag) then
-    m_MoveListForm.Refresh;
+  m_MoveListForm.Refresh;
 end;
 
 
@@ -743,6 +770,62 @@ procedure TAnalyseChessBoard.OpeningsDBManagerActionUpdate(
 begin
   (Sender as TAction).Checked := (Assigned(m_OpeningsDBManagerForm) and
     m_OpeningsDBManagerForm.Showing);
+end;
+
+
+procedure TAnalyseChessBoard.TntFormCloseQuery(Sender: TObject; var CanClose: Boolean);
+begin
+  if (not FAskAndSavePGNData) then
+    CanClose := FALSE;
+end;
+
+
+function TAnalyseChessBoard.FAskAndSavePGNData: boolean;
+var
+  iRes: integer;
+begin
+  Result := TRUE;
+
+  if (not m_bGameChanged) then
+    exit;
+
+  iRes := MessageDlg(MSG_GAME_CHANGED_SAVE_CHANGES, mtConfirmation, mbYesNoCancel, 0);
+  case iRes of
+    mrCancel:
+      Result := FALSE;
+    mrYes:
+      FSavePGNData;
+    mrNo:
+      ;
+  end;
+end;
+
+
+procedure TAnalyseChessBoard.FSavePGNData;
+begin
+  ShowMessage('TODO: TAnalyseChessBoard.FSavePGNData');
+  m_bGameChanged := FALSE;
+end;
+
+
+procedure TAnalyseChessBoard.InitialPositionActionExecute(Sender: TObject);
+begin
+  FSetToInitialPosition;
+end;
+
+
+procedure TAnalyseChessBoard.InitialPositionActionUpdate(Sender: TObject);
+begin
+  (Sender as TAction).Enabled := (FGetCurrentPlyIndex > 0);
+end;
+
+procedure TAnalyseChessBoard.FileNewMenuItemClick(Sender: TObject);
+begin
+  if (not FAskAndSavePGNData) then
+    exit;
+
+  FInitPosition;
+  FRefreshMoveListForm;
 end;
 
 end.

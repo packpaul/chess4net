@@ -52,7 +52,7 @@ end;
 
 procedure TOpeningsDBManagerForm.FSetOpeningsDBManagerProvider(Value: IOpeningsDBManagerProvider);
 begin
-  if (m_OpeningsDBManagerProvider = Value) then
+  if ((not Assigned(self)) or (m_OpeningsDBManagerProvider = Value)) then
     exit;
 
   m_OpeningsDBManagerProvider := Value;
