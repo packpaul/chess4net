@@ -3,32 +3,70 @@ unit OpeningsDBManagerUnit;
 interface
 
 uses
-  Classes,
+  Classes, SysUtils,
   //
   NonRefInterfacedObjectUnit, OpeningsDBManagerFormUnit;
 
 type
   TOpeningsDBManager = class(TNonRefInterfacedObject, IOpeningsDBManagerProvider)
   private
-    m_bDBEnabled: boolean;
+    m_bEnabled: boolean;
     FOnChanged: TNotifyEvent;
-    function FGetDBName: string;
+    m_strlDBs: TStringList;
+    m_iDBIndex: integer;
+
     procedure FDoChanged;
 
-    function IOpeningsDBManagerProvider.GetDBEnabled = FGetDBEnabled;
-    function FGetDBEnabled: boolean;
+    procedure FLoadSettings;
+    procedure FSaveSettings;
 
-    procedure IOpeningsDBManagerProvider.SetDBEnabled = FSetDBEnabled;
-    procedure FSetDBEnabled(bValue: boolean);
+    function IOpeningsDBManagerProvider.GetDBIndex = FGetDBIndex;
+    function FGetDBIndex: integer;
+
+    procedure IOpeningsDBManagerProvider.SetDBIndex = FSetDBIndex;
+    procedure FSetDBIndex(iIndex: integer);
+
+    function IOpeningsDBManagerProvider.GetDBCount = FGetDBCount;
+    function FGetDBCount: integer;
+
+    function IOpeningsDBManagerProvider.GetDBs = FGetDBs;
+    function FGetDBs(iIndex: integer): TFileName;
+
+    function IOpeningsDBManagerProvider.GetDBNames = FGetDBNames;
+    function FGetDBNames(iIndex: integer): WideString;
+
+    function FGetDB: TFileName;
+
+    function IOpeningsDBManagerProvider.GetEnabled = FGetEnabled;
+    function FGetEnabled: boolean;
+
+    procedure IOpeningsDBManagerProvider.SetEnabled = FSetEnabled;
+    procedure FSetEnabled(bValue: boolean);
+
+    function IOpeningsDBManagerProvider.AddDB = FAddDB;
+    function FAddDB(const DB: TFileName): boolean;
+
+    function IOpeningsDBManagerProvider.RemoveDB = FRemoveDB;
+    function FRemoveDB(iIndex: integer): boolean;
 
   public
     constructor Create;
-    property DBName: string read FGetDBName;
-    property DBEnabled: boolean read m_bDBEnabled;
+    destructor Destroy; override;
+
     property OnChanged: TNotifyEvent read FOnChanged write FOnChanged;
+
+    property Enabled: boolean read m_bEnabled;
+
+    property DB: TFileName read FGetDB; // Selected DB
+    property DBIndex: integer read FGetDBIndex;
+    property DBCount: integer read FGetDBCount;
+    property DBs[iIndex: integer]: TFileName read FGetDBs;
   end;
 
 implementation
+
+uses
+  IniSettingsUnit;
 
 ////////////////////////////////////////////////////////////////////////////////
 // TOpeningsDBManager
@@ -36,14 +74,31 @@ implementation
 constructor TOpeningsDBManager.Create;
 begin
   inherited Create;
-  m_bDBEnabled := TRUE;
+  m_bEnabled := TRUE;
+  m_iDBIndex := -1;
+  m_strlDBs := TStringList.Create;
+
+  FLoadSettings;
 end;
 
 
-function TOpeningsDBManager.FGetDBName: string;
+destructor TOpeningsDBManager.Destroy;
 begin
-  Result := 'Sicilian';
-  // TODO:
+  m_strlDBs.Free;
+
+  inherited;
+end;
+
+
+function TOpeningsDBManager.FGetDB: TFileName;
+begin
+  Result := DBs[DBIndex];
+end;
+
+
+function TOpeningsDBManager.FGetDBIndex: integer;
+begin
+  Result := m_iDBIndex;
 end;
 
 
@@ -54,20 +109,131 @@ begin
 end;
 
 
-function TOpeningsDBManager.FGetDBEnabled: boolean;
+function TOpeningsDBManager.FGetEnabled: boolean;
 begin
-  Result := m_bDBEnabled;
+  Result := m_bEnabled;
 end;
 
 
-procedure TOpeningsDBManager.FSetDBEnabled(bValue: boolean);
+procedure TOpeningsDBManager.FSetEnabled(bValue: boolean);
 begin
-  if (m_bDBEnabled = bValue) then
+  if (m_bEnabled = bValue) then
     exit;
 
-  m_bDBEnabled := bValue;
+  m_bEnabled := bValue;
 
   FDoChanged;
+end;
+
+
+function TOpeningsDBManager.FAddDB(const DB: TFileName): boolean;
+begin
+  Result := FALSE;
+
+  if (m_strlDBs.IndexOf(DB) >= 0) then
+    exit;
+
+  // TODO: Validate data
+
+  m_strlDBs.Append(DB);
+
+  if (m_strlDBs.Count = 1) then
+  begin
+    m_iDBIndex := 0;
+    FDoChanged;
+  end;
+
+  FSaveSettings;
+
+  Result := TRUE;
+end;
+
+
+function TOpeningsDBManager.FRemoveDB(iIndex: integer): boolean;
+begin
+  Result := FALSE;
+
+  if (not ((iIndex >= 0) and (iIndex < m_strlDBs.Count))) then
+    exit;
+
+  m_strlDBs.Delete(iIndex);
+
+  if (m_iDBIndex >= m_strlDBs.Count) then
+    m_iDBIndex := m_strlDBs.Count - 1;
+
+  FDoChanged;
+
+  FSaveSettings;
+
+  Result := TRUE;
+end;
+
+
+function TOpeningsDBManager.FGetDBCount: integer;
+begin
+  Result := m_strlDBs.Count;
+end;
+
+
+procedure TOpeningsDBManager.FSetDBIndex(iIndex: integer);
+begin
+  if ((iIndex = m_iDBIndex) or
+      (not ((iIndex >= 0) and (iIndex < m_strlDBs.Count)))) then
+    exit;
+
+  m_iDBIndex := iIndex;
+  
+  FDoChanged;
+end;
+
+
+function TOpeningsDBManager.FGetDBs(iIndex: integer): TFileName;
+begin
+  if ((iIndex >= 0) and (iIndex < m_strlDBs.Count)) then
+    Result := m_strlDBs[iIndex]
+  else
+    Result := '';
+end;
+
+
+function TOpeningsDBManager.FGetDBNames(iIndex: integer): WideString;
+
+  function NConstructDBName(ADB: TFileName): WideString;
+  begin
+    Result := ExtractFileName(ADB);
+  end;
+
+var
+  iNum: integer;
+  i: integer;
+begin // .FGetDBNames
+  Result := NConstructDBName(DBs[iIndex]);
+
+  if (Result = '') then
+    exit;
+
+  iNum := 1;
+  for i := 0 to iIndex - 1 do
+  begin
+    if (Result = NConstructDBName(DBs[i])) then
+      inc(iNum);
+  end;
+
+  if (iNum > 1) then
+    Result := Result + ' (' + IntToStr(iNum) + ')';
+end;
+
+
+procedure TOpeningsDBManager.FLoadSettings;
+begin
+  TIniSettings.Instance.GetDBs(TStrings(m_strlDBs), m_iDBIndex);
+  // TODO: Validate data
+end;
+
+
+procedure TOpeningsDBManager.FSaveSettings;
+begin
+  TIniSettings.Instance.SetDBs(m_strlDBs, m_iDBIndex);
 end;
 
 end.

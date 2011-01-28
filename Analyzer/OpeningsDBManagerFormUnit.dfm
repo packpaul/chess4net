@@ -30,7 +30,10 @@ object OpeningsDBManagerForm: TOpeningsDBManagerForm
     Align = alTop
     Anchors = [akLeft, akTop, akRight, akBottom]
     ItemHeight = 13
+    ParentShowHint = False
+    ShowHint = True
     TabOrder = 0
+    OnClick = OpeningsDBListBoxClick
   end
   object AddDBButton: TButton
     Left = 185
@@ -38,14 +41,16 @@ object OpeningsDBManagerForm: TOpeningsDBManagerForm
     Width = 75
     Height = 25
     Anchors = [akRight, akBottom]
-    Caption = '&Add DB'
+    Caption = '&Add DB...'
     TabOrder = 1
+    OnClick = AddDBButtonClick
   end
   object RemoveDBButton: TButton
     Left = 264
     Top = 80
     Width = 80
     Height = 25
+    Action = RemoveDBAction
     Anchors = [akRight, akBottom]
     Caption = '&Remove DB'
     TabOrder = 2
@@ -59,5 +64,24 @@ object OpeningsDBManagerForm: TOpeningsDBManagerForm
     Caption = 'DB Enabled'
     TabOrder = 3
     OnClick = DBEnabledCheckBoxClick
+  end
+  object DBOpenDialog: TOpenDialog
+    Filter = 'Opening DB Files (*.pos)|*.pos'
+    Options = [ofEnableSizing]
+    Left = 136
+    Top = 78
+  end
+  object ActionList: TActionList
+    Left = 104
+    Top = 78
+    object RemoveDBAction: TAction
+      OnExecute = RemoveDBActionExecute
+      OnUpdate = RemoveDBActionUpdate
+    end
+  end
+  object ApplicationEvents: TApplicationEvents
+    OnShowHint = ApplicationEventsShowHint
+    Left = 16
+    Top = 8
   end
 end

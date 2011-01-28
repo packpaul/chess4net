@@ -3,24 +3,33 @@ unit IniSettingsUnit;
 interface
 
 uses
-  IniFiles;
+  Classes, IniFiles;
 
 type
-  TIniSettingsID = (isidDontShowLastVersion);
+  TIniSettingsID = (isidDontShowLastVersion, isidDB, isidDBIndex);
 
   TIniSettings = class
   private
     m_IniFile: TIniFile;
 
+    constructor FCreate;
+
     function FGetIniFileName: string;
 
     function FGetIntegerValue(ID: TIniSettingsID): integer;
     procedure FSetIntegerValue(ID: TIniSettingsID; iValue: integer);
-    class function FGetIdentName(ID: TIniSettingsID): string;
+
+    class function FGetIdentName(ID: TIniSettingsID; iIndex: integer = 0): string;
     class function FGetDefaultIdentValue(ID: TIniSettingsID): Variant;
+
   public
     constructor Create;
     destructor Destroy; override;
+    class function Instance: TIniSettings;
+    class procedure FreeInstance; reintroduce;
+
+    procedure GetDBs(var Data: TStrings; var iDBIndex: integer);
+    procedure SetDBs(const Data: TStrings; iDBIndex: integer);
     property DontShowLastVersion: integer index isidDontShowLastVersion
       read FGetIntegerValue write FSetIntegerValue;
   end;
@@ -34,14 +43,36 @@ uses
 
 const
   DEFAULT_SECTION = 'Settings';
+  DBS_SECTION = 'DBs';
 
 ////////////////////////////////////////////////////////////////////////////////
 // TIniSettingsID
 
 constructor TIniSettings.Create;
 begin
+  raise Exception.Create('TIniSettings cannot be instantiated directly!');
+end;
+
+constructor TIniSettings.FCreate;
+begin
   inherited Create;
   m_IniFile := TIniFile.Create(FGetIniFileName);
+end;
+
+var
+  g_Instance: TIniSettings = nil;
+
+class function TIniSettings.Instance: TIniSettings;
+begin
+  if (not Assigned(g_Instance)) then
+    g_Instance := TIniSettings.FCreate;
+  Result := g_Instance;
+end;
+
+
+class procedure TIniSettings.FreeInstance;
+begin
+  FreeAndNil(g_Instance);
 end;
 
 
@@ -67,14 +98,19 @@ end;
 procedure TIniSettings.FSetIntegerValue(ID: TIniSettingsID; iValue: integer);
 begin
   m_IniFile.WriteInteger(DEFAULT_SECTION, FGetIdentName(ID), iValue);
+  m_IniFile.UpdateFile;
 end;
 
 
-class function TIniSettings.FGetIdentName(ID: TIniSettingsID): string;
+class function TIniSettings.FGetIdentName(ID: TIniSettingsID; iIndex: integer = 0): string;
 begin
   case ID of
     isidDontShowLastVersion:
       Result := 'DontShowLastVersion';
+    isidDB:
+      Result := 'DB' + IntToStr(iIndex);
+    isidDBIndex:
+      Result := 'DBIndex';      
   else
     Result := '';
   end;
@@ -92,5 +128,55 @@ begin
     Result := Unassigned;
   end;
 end;
+
+
+procedure TIniSettings.GetDBs(var Data: TStrings; var iDBIndex: integer);
+var
+  iNum: integer;
+begin
+  if (not Assigned(Data)) then
+    exit;
+
+  if (not m_IniFile.SectionExists(DBS_SECTION)) then
+  begin
+    iDBIndex := Data.Add(ExpandFileName('.\DBs\Sicilian'));
+    exit;
+  end;
+
+  Data.Clear;
+
+  iNum := 0;
+
+  while (m_IniFile.ValueExists(DBS_SECTION, FGetIdentName(isidDB, iNum))) do
+  begin
+    Data.Append(m_IniFile.ReadString(DBS_SECTION, FGetIdentName(isidDB, iNum), ''));
+    inc(iNum);
+  end;
+
+  iDBIndex := m_IniFile.ReadInteger(DBS_SECTION, FGetIdentName(isidDBIndex), -1);
+end;
+
+
+procedure TIniSettings.SetDBs(const Data: TStrings; iDBIndex: integer);
+var
+  i: integer;
+begin
+  if (not Assigned(Data)) then
+    exit;
+
+  m_IniFile.EraseSection(DBS_SECTION);
+
+  for i := 0 to Data.Count - 1 do
+    m_IniFile.WriteString(DBS_SECTION, FGetIdentName(isidDB, i), Data[i]);
+
+  m_IniFile.WriteInteger(DBS_SECTION, FGetIdentName(isidDBIndex), iDBIndex);
+
+  m_IniFile.UpdateFile;
+end;
+
+initialization
+
+finalization
+  TIniSettings.FreeInstance;
 
 end.

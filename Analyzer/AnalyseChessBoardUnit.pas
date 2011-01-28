@@ -226,8 +226,7 @@ begin
 
   m_ChessBoard.Mode := mAnalyse;
 
-  m_ChessBoard.SetExternalBase(m_OpeningsDBManager.DBName);
-  m_ChessBoard.pTrainingMode := m_OpeningsDBManager.DBEnabled;
+  FOnOpeningsDBManagerChanged(nil);
 
   m_ChessBoard.InitPosition;
 end;
@@ -575,16 +574,12 @@ end;
 procedure TAnalyseChessBoard.FOnURLQueryReady(Sender: TURLVersionQuery);
 var
   bDontShowFlag: boolean;
-  IniSettings: TIniSettings;
 begin
   if (not Assigned(Sender)) then
     exit;
 
-  IniSettings := nil;
   try
-    IniSettings := TIniSettings.Create;
-
-    if ((Sender.LastVersion <= IniSettings.DontShowLastVersion)) then
+    if ((Sender.LastVersion <= TIniSettings.Instance.DontShowLastVersion)) then
       exit;
 
     bDontShowFlag := FALSE;
@@ -593,10 +588,9 @@ begin
       TDontShowMessageDlg.Show(Sender.Info, bDontShowFlag);
 
     if (bDontShowFlag) then
-      IniSettings.DontShowLastVersion := Sender.LastVersion;
+      TIniSettings.Instance.DontShowLastVersion := Sender.LastVersion;
 
   finally
-    IniSettings.Free;
     Sender.Free;
   end;
 end;
@@ -604,7 +598,8 @@ end;
 
 procedure TAnalyseChessBoard.FOnOpeningsDBManagerChanged(Sender: TObject);
 begin
-  m_ChessBoard.pTrainingMode := m_OpeningsDBManager.DBEnabled;
+  m_ChessBoard.pTrainingMode := ((m_OpeningsDBManager.DB <> '') and (m_OpeningsDBManager.Enabled));
+  m_ChessBoard.SetExternalBase(m_OpeningsDBManager.DB);
 end;
 
 
