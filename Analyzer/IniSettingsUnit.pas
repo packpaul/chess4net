@@ -6,7 +6,7 @@ uses
   Classes, IniFiles;
 
 type
-  TIniSettingsID = (isidDontShowLastVersion, isidDB, isidDBIndex);
+  TIniSettingsID = (isidDontShowLastVersion, isidDB, isidDBIndex, isidDBEnabled);
 
   TIniSettings = class
   private
@@ -19,6 +19,9 @@ type
     function FGetIntegerValue(ID: TIniSettingsID): integer;
     procedure FSetIntegerValue(ID: TIniSettingsID; iValue: integer);
 
+    function FGetBooleanValue(ID: TIniSettingsID): boolean;
+    procedure FSetBooleanValue(ID: TIniSettingsID; bValue: boolean);
+
     class function FGetIdentName(ID: TIniSettingsID; iIndex: integer = 0): string;
     class function FGetDefaultIdentValue(ID: TIniSettingsID): Variant;
 
@@ -30,8 +33,11 @@ type
 
     procedure GetDBs(var Data: TStrings; var iDBIndex: integer);
     procedure SetDBs(const Data: TStrings; iDBIndex: integer);
+
     property DontShowLastVersion: integer index isidDontShowLastVersion
       read FGetIntegerValue write FSetIntegerValue;
+    property DBEnabled: boolean index isidDBEnabled
+      read FGetBooleanValue write FSetBooleanValue;
   end;
 
 implementation
@@ -102,6 +108,19 @@ begin
 end;
 
 
+function TIniSettings.FGetBooleanValue(ID: TIniSettingsID): boolean;
+begin
+  Result := m_IniFile.ReadBool(DEFAULT_SECTION, FGetIdentName(ID), FGetDefaultIdentValue(ID));
+end;
+
+
+procedure TIniSettings.FSetBooleanValue(ID: TIniSettingsID; bValue: boolean);
+begin
+  m_IniFile.WriteBool(DEFAULT_SECTION, FGetIdentName(ID), bValue);
+  m_IniFile.UpdateFile;
+end;
+
+
 class function TIniSettings.FGetIdentName(ID: TIniSettingsID; iIndex: integer = 0): string;
 begin
   case ID of
@@ -110,7 +129,9 @@ begin
     isidDB:
       Result := 'DB' + IntToStr(iIndex);
     isidDBIndex:
-      Result := 'DBIndex';      
+      Result := 'DBIndex';
+    isidDBEnabled:
+      Result := 'DBEnabled';
   else
     Result := '';
   end;
@@ -124,6 +145,8 @@ begin
   case ID of
     isidDontShowLastVersion:
       Result := CHESS4NET_VERSION;
+    isidDBEnabled:
+      Result := TRUE;
   else
     Result := Unassigned;
   end;

@@ -14,11 +14,11 @@ type
   TAnalyseChessBoard = class(TTntForm, IPlysProvider)
     MainMenu: TTntMainMenu;
     FileMenuItem: TTntMenuItem;
-    FileOpenPGNMenuItem: TTntMenuItem;
-    FileSavePGNMenuItem: TTntMenuItem;
+    FileOpenMenuItem: TTntMenuItem;
+    FileSaveMenuItem: TTntMenuItem;
     N2: TTntMenuItem;
-    FileCopyPGNMenuItem: TTntMenuItem;
-    FilePastePGNMenuItem: TTntMenuItem;
+    FileCopyMenuItem: TTntMenuItem;
+    FilePasteMenuItem: TTntMenuItem;
     N1: TTntMenuItem;
     FileExitMenuItem: TTntMenuItem;
     HelpMenuItem: TTntMenuItem;
@@ -64,8 +64,8 @@ type
       NewHeight: Integer; var Resize: Boolean);
     procedure FormDestroy(Sender: TObject);
     procedure ViewFlipBoardMenuItemClick(Sender: TObject);
-    procedure FileOpenPGNMenuItemClick(Sender: TObject);
-    procedure FilePastePGNMenuItemClick(Sender: TObject);
+    procedure FileOpenMenuItemClick(Sender: TObject);
+    procedure FilePasteMenuItemClick(Sender: TObject);
     procedure ChessEngineInfoActionExecute(Sender: TObject);
     procedure ChessEngineInfoActionUpdate(Sender: TObject);
     procedure MoveListActionUpdate(Sender: TObject);
@@ -379,7 +379,7 @@ begin
 end;
 
 
-procedure TAnalyseChessBoard.FileOpenPGNMenuItemClick(Sender: TObject);
+procedure TAnalyseChessBoard.FileOpenMenuItemClick(Sender: TObject);
 var
   strlData: TStringList;
 begin
@@ -401,7 +401,7 @@ begin
 end;
 
 
-procedure TAnalyseChessBoard.FilePastePGNMenuItemClick(Sender: TObject);
+procedure TAnalyseChessBoard.FilePasteMenuItemClick(Sender: TObject);
 var
   strlData: TStringList;
 begin
@@ -426,7 +426,6 @@ function TAnalyseChessBoard.FLoadPGNData(const PGNData: TStrings): boolean;
 var
   PGNParser: TPGNParser;
   ChessRulesEngine: TChessRulesEngine;
-  i: integer;
 begin
   Result := FALSE;
 
@@ -437,25 +436,13 @@ begin
 
     FInitPosition;
 
-    ChessRulesEngine := TChessRulesEngine.Create;
-    try
-      ChessRulesEngine.InitNewGame;
-      for i := 0 to PGNParser.PGNMoveList.Count - 1 do
-      begin
-        if (ChessRulesEngine.DoMove(PGNParser.PGNMoveList[i])) then
-          m_PlysTree.Add(ChessRulesEngine.GetPosition, PGNParser.PGNMoveList[i])
-        else
-          exit;
-      end;
-
-    finally
-      ChessRulesEngine.Free;
-    end;
+    m_PlysTree.Assign(PGNParser.Tree);
 
   finally
     PGNParser.Free;
-    FRefreshMoveListForm;
   end;
+
+  FRefreshMoveListForm;
 
   Result := TRUE;
 end;

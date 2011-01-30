@@ -84,6 +84,8 @@ end;
 
 destructor TOpeningsDBManager.Destroy;
 begin
+  FSaveSettings;
+  
   m_strlDBs.Free;
 
   inherited;
@@ -226,14 +228,22 @@ end;
 
 procedure TOpeningsDBManager.FLoadSettings;
 begin
-  TIniSettings.Instance.GetDBs(TStrings(m_strlDBs), m_iDBIndex);
-  // TODO: Validate data
+  with TIniSettings.Instance do
+  begin
+    GetDBs(TStrings(m_strlDBs), m_iDBIndex);
+    // TODO: Validate data
+    m_bEnabled := DBEnabled;
+  end;
 end;
 
 
 procedure TOpeningsDBManager.FSaveSettings;
 begin
-  TIniSettings.Instance.SetDBs(m_strlDBs, m_iDBIndex);
+  with TIniSettings.Instance do
+  begin
+    SetDBs(m_strlDBs, m_iDBIndex);
+    DBEnabled := m_bEnabled;
+  end;
 end;
 
 end.

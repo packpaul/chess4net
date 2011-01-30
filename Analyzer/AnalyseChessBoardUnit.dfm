@@ -54,26 +54,26 @@ object AnalyseChessBoard: TAnalyseChessBoard
       object N6: TTntMenuItem
         Caption = '-'
       end
-      object FileOpenPGNMenuItem: TTntMenuItem
-        Caption = '&Open PGN...'
+      object FileOpenMenuItem: TTntMenuItem
+        Caption = '&Open...'
         ShortCut = 16463
-        OnClick = FileOpenPGNMenuItemClick
+        OnClick = FileOpenMenuItemClick
       end
-      object FileSavePGNMenuItem: TTntMenuItem
-        Caption = '&Save PGN...'
+      object FileSaveMenuItem: TTntMenuItem
+        Caption = '&Save...'
         Enabled = False
         ShortCut = 16467
       end
       object N2: TTntMenuItem
         Caption = '-'
       end
-      object FilePastePGNMenuItem: TTntMenuItem
-        Caption = '&Paste PGN'
+      object FilePasteMenuItem: TTntMenuItem
+        Caption = '&Paste'
         ShortCut = 16470
-        OnClick = FilePastePGNMenuItemClick
+        OnClick = FilePasteMenuItemClick
       end
-      object FileCopyPGNMenuItem: TTntMenuItem
-        Caption = '&Copy PGN'
+      object FileCopyMenuItem: TTntMenuItem
+        Caption = '&Copy'
         Enabled = False
         ShortCut = 16451
       end
@@ -164,7 +164,9 @@ object AnalyseChessBoard: TAnalyseChessBoard
     end
   end
   object OpenPGNDialog: TOpenDialog
-    Filter = 'PGN Files (*.pgn)|*.pgn'
+    Filter = 
+      'Supported Files (*.c4n *.pgn)|*.c4n;*.pgn|Chess4Net Files (*.c4n' +
+      ')|*.c4n|PGN Files (*.pgn)|*.pgn'
     Top = 32
   end
   object ActionList: TActionList

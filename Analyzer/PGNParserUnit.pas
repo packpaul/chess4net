@@ -5,7 +5,7 @@ interface
 uses
   Classes,
   //
-  ChessRulesEngine;
+  ChessRulesEngine, PlysTreeUnit;
 
 type
   TPGNParser = class
@@ -18,7 +18,7 @@ type
     m_strBlack: string;
 
     m_ChessRulesEngine: TChessRulesEngine;
-    m_strlMoveList: TStringList;
+    m_Tree: TPlysTree;
 
     function FGetLine: string;
     function FGetNextLine: string;
@@ -31,8 +31,10 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+
     function Parse(const AData: TStrings): boolean;
-    property PGNMoveList: TStringList read m_strlMoveList;
+
+    property Tree: TPlysTree read m_Tree;
   end;
 
 implementation
@@ -52,13 +54,13 @@ type
 constructor TPGNParser.Create;
 begin
   inherited Create;
-  m_strlMoveList := TStringList.Create;
+  m_Tree := TPlysTree.Create;
 end;
 
 
 destructor TPGNParser.Destroy;
 begin
-  m_strlMoveList.Free;
+  m_Tree.Free;
   inherited;
 end;
 
@@ -67,17 +69,15 @@ function TPGNParser.Parse(const AData: TStrings): boolean;
 begin
   Result := FALSE;
 
-  m_strlMoveList.Clear;
-
-  if (not Assigned(AData)) then
+  if (not (Assigned(AData))) then
     exit;
 
-  m_ChessRulesEngine := nil;
-
-  m_iDataLine := 0;
-  m_Data := AData;
   try
     m_ChessRulesEngine := TChessRulesEngine.Create;
+
+    m_Data := AData;
+
+    m_iDataLine := 0;
 
     m_bParseResult := TRUE;
     try
@@ -201,7 +201,7 @@ begin
   if (not m_bParseResult) then
     exit;
 
-  FParseGameStr(ss, FALSE);
+  FParseGameStr(ss, TRUE);
 end;
 
 
@@ -414,6 +414,8 @@ var
 
       if m_ChessRulesEngine.DoMove(movePly.move) then
       begin
+        m_Tree.SetPlyForPlyIndex(m_ChessRulesEngine.NPlysDone,
+          m_ChessRulesEngine.lastMoveStr);
         inc(n_ply);
 //        addPos := (genOpening = openNo) or PosBase.Find(ChessRulesEngine.Position^); // Opening
       end
@@ -501,7 +503,8 @@ var
       posMove.pos := m_ChessRulesEngine.Position^;
       if (m_ChessRulesEngine.DoMove(s)) then
       begin
-        m_strlMoveList.Add(m_ChessRulesEngine.lastMoveStr);
+        m_Tree.Add(m_ChessRulesEngine.NPlysDone, m_ChessRulesEngine.GetPosition,
+          m_ChessRulesEngine.lastMoveStr);
 
         bkpMove := s;
 
@@ -533,10 +536,13 @@ var
 var
   str: string;
   i: integer;
-begin // TPGNProcessor.FProceedGameStr
+begin // .FParseGameStr
 //  inc(n_game);
 
   m_ChessRulesEngine.InitNewGame;
+
+  m_Tree.Clear;
+  m_Tree.Add(m_ChessRulesEngine.GetPosition);
 
   moveEsts := nil;
   posMoveStack := nil;

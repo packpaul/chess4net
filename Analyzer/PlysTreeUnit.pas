@@ -17,7 +17,8 @@ type
     m_arrNextNodes: array of TPlysTreeNode;
     m_iNextNodeOfLineIndex: integer;
 
-    constructor Create(const strPos, strPly: string; APlyStatuses: TPlyStatuses);
+    constructor Create(const strPos, strPly: string; APlyStatuses: TPlyStatuses); overload;
+    class function Create(const Source: TPlysTreeNode): TPlysTreeNode; overload;
 
     function FGetNextNodeOfLine: TPlysTreeNode;
     procedure FDeleteNextNodeOfLine;
@@ -59,6 +60,8 @@ type
     procedure GetPlysForPlyIndex(iIndex: integer; var List: TStrings);
     function SetPlyForPlyIndex(iIndex: integer; const strPly: string): boolean;
     function GetPlyStatus(iIndex: integer): TPlyStatuses;
+
+    procedure Assign(const Source: TPlysTree);
 
     property Plys[iIndex: integer]: string read FGetPly; default;
     property Position[iIndex: integer]: string read FGetPosition;
@@ -139,7 +142,7 @@ begin
   begin
     Clear;
     m_FirstNode := TPlysTreeNode.Create(strPos, strMove, APlyStatuses);
-    m_FirstNode.PlyStatuses := m_FirstNode.PlyStatuses + [psMainLine]; 
+    m_FirstNode.PlyStatuses := m_FirstNode.PlyStatuses + [psMainLine];
     exit;
   end;
 
@@ -250,6 +253,15 @@ begin
     Result := Node.FSetNextNodeOfLineToPly(strPly);
 end;
 
+
+procedure TPlysTree.Assign(const Source: TPlysTree);
+begin
+  Assert(Assigned(Source));
+
+  Clear;
+  m_FirstNode := TPlysTreeNode.Create(Source.m_FirstNode);
+end;
+
 ////////////////////////////////////////////////////////////////////////////////
 // TPlysTreeNode
 
@@ -264,6 +276,32 @@ begin
   m_iNextNodeOfLineIndex := -1;
 end;
 
+
+class function TPlysTreeNode.Create(const Source: TPlysTreeNode): TPlysTreeNode;
+var
+  i: integer;
+begin
+  if (not Assigned(Source)) then
+  begin
+    Result := nil;
+    exit;
+  end;
+
+  Result := inherited Create;
+
+  with Result do
+  begin
+    m_strPos := Source.m_strPos;
+    m_strPly := Source.m_strPly;
+    m_PlyStatuses := Source.m_PlyStatuses;
+
+    SetLength(m_arrNextNodes, Length(Source.m_arrNextNodes));
+    for i := Low(Source.m_arrNextNodes) to High(Source.m_arrNextNodes) do
+      m_arrNextNodes[i] := TPlysTreeNode.Create(Source.m_arrNextNodes[i]);
+
+    m_iNextNodeOfLineIndex := Source.m_iNextNodeOfLineIndex;
+  end;
+end;
 
 destructor TPlysTreeNode.Destroy;
 begin
