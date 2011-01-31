@@ -33,6 +33,7 @@ type
     ForthSpeedButton: TSpeedButton;
     SelectLineSpeedButton: TSpeedButton;
     InitialSpeedButton: TSpeedButton;
+    ReturnFromLineSpeedButton: TSpeedButton;
     procedure FormCreate(Sender: TObject);
     procedure FormDeactivate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);

@@ -26,7 +26,7 @@ object MoveListForm: TMoveListForm
   PixelsPerInch = 96
   TextHeight = 13
   object BackSpeedButton: TSpeedButton
-    Left = 88
+    Left = 96
     Top = 359
     Width = 23
     Height = 22
@@ -50,7 +50,7 @@ object MoveListForm: TMoveListForm
     ShowHint = True
   end
   object ForthSpeedButton: TSpeedButton
-    Left = 114
+    Left = 122
     Top = 359
     Width = 23
     Height = 22
@@ -74,7 +74,7 @@ object MoveListForm: TMoveListForm
     ShowHint = True
   end
   object SelectLineSpeedButton: TSpeedButton
-    Left = 140
+    Left = 148
     Top = 359
     Width = 23
     Height = 22
@@ -98,7 +98,7 @@ object MoveListForm: TMoveListForm
     ShowHint = True
   end
   object InitialSpeedButton: TSpeedButton
-    Left = 62
+    Left = 44
     Top = 359
     Width = 23
     Height = 22
@@ -121,10 +121,34 @@ object MoveListForm: TMoveListForm
     ParentShowHint = False
     ShowHint = True
   end
+  object ReturnFromLineSpeedButton: TSpeedButton
+    Left = 70
+    Top = 359
+    Width = 23
+    Height = 22
+    Action = AnalyseChessBoard.ReturnFromLineAction
+    Anchors = [akLeft, akBottom]
+    Glyph.Data = {
+      76010000424D7601000000000000760000002800000020000000100000000100
+      0400000000000001000000000000000000001000000000000000000000000000
+      8000008000000080800080000000800080008080000080808000C0C0C0000000
+      FF0000FF000000FFFF00FF000000FF00FF00FFFF0000FFFFFF00DDDDDDDDDDDD
+      DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD77777777777
+      77DDD7777777777777DDD74444444444444DD77777777777777DDD4444444444
+      444DDD7777777777777DDDDDDDDD74DDDDDDDDDDDDDD77DDDDDDDDDDDDDD74DD
+      DDDDDDDDDDDD77DDDDDDDDDDDDDD74DDDDDDDDDDDDDD77DDDDDDDDDD77DD74DD
+      DDDDDDDD77DD77DDDDDDDD77722D74DDDDDDDD77777D77DDDDDDD772222774DD
+      DDDDD777777777DDDDDDDD22222444DDDDDDDD77777777DDDDDDDDD2222DDDDD
+      DDDDDDD7777DDDDDDDDDDDDDD22DDDDDDDDDDDDDD77DDDDDDDDDDDDDDDDDDDDD
+      DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD}
+    NumGlyphs = 2
+    ParentShowHint = False
+    ShowHint = True
+  end
   object MovesStringGrid: TStringGrid
     Left = 0
     Top = 0
-    Width = 228
+    Width = 220
     Height = 352
     Align = alTop
     Anchors = [akLeft, akTop, akRight, akBottom]

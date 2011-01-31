@@ -58,6 +58,8 @@ type
     PopupInitialPositionMenuItem: TTntMenuItem;
     FileNewMenuItem: TTntMenuItem;
     N6: TTntMenuItem;
+    PositionReturnFromLineMenuItem: TTntMenuItem;
+    ReturnFromLineAction: TAction;
     procedure FileExitMenuItemClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormCanResize(Sender: TObject; var NewWidth,
@@ -86,6 +88,8 @@ type
     procedure InitialPositionActionExecute(Sender: TObject);
     procedure InitialPositionActionUpdate(Sender: TObject);
     procedure FileNewMenuItemClick(Sender: TObject);
+    procedure ReturnFromLineActionExecute(Sender: TObject);
+    procedure ReturnFromLineActionUpdate(Sender: TObject);
   private
     m_ChessBoard: TPosBaseChessBoard;
     m_ResizingType: (rtNo, rtHoriz, rtVert);
@@ -158,6 +162,7 @@ type
     procedure FSetToInitialPosition;
     procedure FTakebackMove;
     procedure FForwardMove;
+    procedure FReturnFromCurrentLine;
 
     procedure FRefreshMoveListForm;
 
@@ -425,7 +430,6 @@ end;
 function TAnalyseChessBoard.FLoadPGNData(const PGNData: TStrings): boolean;
 var
   PGNParser: TPGNParser;
-  ChessRulesEngine: TChessRulesEngine;
 begin
   Result := FALSE;
 
@@ -665,6 +669,7 @@ begin
   TakebackMoveAction.Update;
   ForwardMoveAction.Update;
   SelectLineAction.Update;
+  ReturnFromLineAction.Update;
 end;
 
 
@@ -684,10 +689,39 @@ function TAnalyseChessBoard.FSetPlyForPlyIndex(iPlyIndex: integer; const strPly:
 begin
   Result := m_PlysTree.SetPlyForPlyIndex(iPlyIndex, strPly);
   if (Result) then
-  begin
     inc(m_lwPlysListUpdateID);
-    FSetCurrentPlyIndex(iPlyIndex);
+
+  FSetCurrentPlyIndex(iPlyIndex);  
+end;
+
+
+procedure TAnalyseChessBoard.FReturnFromCurrentLine;
+var
+  iPlyIndex: integer;
+  strlPlysList: TStringList;
+begin
+  iPlyIndex := FGetCurrentPlyIndex;
+  if (iPlyIndex = 0) then
+    exit;
+
+  while ((iPlyIndex > 0) and (not FHasSeveralPlysForPlyIndex(iPlyIndex))) do
+  begin
+    dec(iPlyIndex);
   end;
+
+  strlPlysList := TStringList.Create;
+  try
+    FGetPlysForPlyIndex(iPlyIndex, TStrings(strlPlysList));
+    Assert(strlPlysList.Count > 0);
+
+    if (m_PlysTree.SetPlyForPlyIndex(iPlyIndex, strlPlysList[0])) then
+      inc(m_lwPlysListUpdateID);
+
+  finally
+    strlPlysList.Free;
+  end;
+
+  FSetCurrentPlyIndex(iPlyIndex - 1);
 end;
 
 
@@ -801,6 +835,7 @@ begin
   (Sender as TAction).Enabled := (FGetCurrentPlyIndex > 0);
 end;
 
+
 procedure TAnalyseChessBoard.FileNewMenuItemClick(Sender: TObject);
 begin
   if (not FAskAndSavePGNData) then
@@ -808,6 +843,22 @@ begin
 
   FInitPosition;
   FRefreshMoveListForm;
+end;
+
+
+procedure TAnalyseChessBoard.ReturnFromLineActionExecute(Sender: TObject);
+begin
+  FReturnFromCurrentLine;
+end;
+
+
+procedure TAnalyseChessBoard.ReturnFromLineActionUpdate(Sender: TObject);
+var
+  iPly: integer;
+begin
+  iPly := FGetCurrentPlyIndex;
+  (Sender as TAction).Enabled :=
+    ((iPly > 0) and (not (psMainLine in m_PlysTree.GetPlyStatus(iPly))));
 end;
 
 end.
