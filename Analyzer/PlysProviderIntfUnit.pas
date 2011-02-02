@@ -10,6 +10,8 @@ type
   TPlyStatuses = set of TPlyStatus;
 
   IPlysProvider = interface
+    function GetWhiteStarts: boolean;
+
     function GetPlysCount: integer;
     function GetPly(iIndex: integer): string;
     function GetPlyStatus(iIndex: integer): TPlyStatuses;
@@ -28,7 +30,7 @@ type
     property CurrentPlyIndex: integer read GetCurrentPlyIndex
                                       write SetCurrentPlyIndex;
     property InvalidationID: LongWord read GetInvalidationID;
-// TODO:    property WhiteStarts: boolean;
+    property WhiteStarts: boolean read GetWhiteStarts;
   end;
 
 implementation

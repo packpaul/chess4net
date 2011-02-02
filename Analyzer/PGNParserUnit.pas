@@ -20,6 +20,8 @@ type
     m_ChessRulesEngine: TChessRulesEngine;
     m_Tree: TPlysTree;
 
+    m_bInC4NFormat: boolean;
+
     function FGetLine: string;
     function FGetNextLine: string;
     function FIsEndOfData: boolean;
@@ -28,7 +30,7 @@ type
     procedure FParseGame;
     procedure FParseGameStr(const strGame: string; bIncludeVariants: boolean);
 
-    function FGetInC4NFormat: boolean;
+    procedure FCheckAgainstC4NVersionSupport(const strVersion: string);
 
   public
     constructor Create;
@@ -37,7 +39,7 @@ type
     function Parse(const AData: TStrings): boolean;
 
     property Tree: TPlysTree read m_Tree;
-    property InC4NFormat: boolean read FGetInC4NFormat;
+    property InC4NFormat: boolean read m_bInC4NFormat;
   end;
 
 implementation
@@ -75,8 +77,9 @@ begin
   if (not (Assigned(AData))) then
     exit;
 
+  m_ChessRulesEngine := TChessRulesEngine.Create;
   try
-    m_ChessRulesEngine := TChessRulesEngine.Create;
+    m_ChessRulesEngine.MoveNotationFormat := mnfCh4NEx;
 
     m_Data := AData;
 
@@ -84,6 +87,7 @@ begin
 
     m_bParseResult := TRUE;
     try
+      m_bInC4NFormat := FALSE;
       FParseHeader;
       FParseGame;
     except
@@ -133,6 +137,7 @@ procedure TPGNParser.FParseHeader;
   const
     WHITE_PREFIX = '[White "';
     BLACK_PREFIX = '[Black "';
+    C4N_PREFIX = '[C4N "';
     POSTFIX = '"]';
   begin
     Result := FALSE;
@@ -151,6 +156,12 @@ procedure TPGNParser.FParseHeader;
     begin
       m_strBlack := Copy(s, length(BLACK_PREFIX) + 1,
         length(s) - length(BLACK_PREFIX) - length(POSTFIX));
+    end
+    else if ((LeftStr(s, length(C4N_PREFIX)) = C4N_PREFIX) and
+        (RightStr(s, length(POSTFIX)) = POSTFIX)) then
+    begin
+      FCheckAgainstC4NVersionSupport(Copy(s, length(C4N_PREFIX) + 1,
+        length(s) - length(C4N_PREFIX) - length(POSTFIX)));
     end;
 
     Result := TRUE;
@@ -175,6 +186,12 @@ begin // .FParseHeader
     s := FGetNextLine;
 
   until (FIsEndOfData);
+end;
+
+
+procedure TPGNParser.FCheckAgainstC4NVersionSupport(const strVersion: string);
+begin
+  m_bInC4NFormat := (strVersion = '1');
 end;
 
 
@@ -439,7 +456,7 @@ var
     end; // \NTakeBackLine
 
   var
-    s: string;
+    s, strOriginalMove: string;
     i: integer;
     n: integer;
 //    movePly: PMovePly;
@@ -448,6 +465,7 @@ var
     bTakebackLineFlag: boolean;
   begin // \NProceedInner
     s := NextWord;
+
     if (s = '') or (s = '*') or (s = '1-0') or (s = '0-1') or (s = '1/2-1/2') then
       exit;
 
@@ -478,6 +496,9 @@ var
       end;
     end;
 
+    if (s = '...') then
+      exit;
+
     for i := length(s) downto 1 do
     begin
       if (s[i] = '.') then
@@ -496,18 +517,22 @@ var
              (n = (n_ply shr 1) + 1))) and
        (s[1] <> '$') then
     begin
+      strOriginalMove := s;
+
       s := StringReplace(s, 'O-O-O', '0-0-0', []);
       s := StringReplace(s, 'O-O', '0-0', []);
       s := StringReplace(s, 'x', '', []);
-      s := StringReplace(s, '+', '', []);
-      s := StringReplace(s, '#', '', []);
       s := StringReplace(s, '=', '', []);
+//      s := StringReplace(s, '+', '', []);
+//      s := StringReplace(s, '#', '', []);
 
       posMove.pos := m_ChessRulesEngine.Position^;
       if (m_ChessRulesEngine.DoMove(s)) then
       begin
         m_Tree.Add(m_ChessRulesEngine.NPlysDone, m_ChessRulesEngine.GetPosition,
           m_ChessRulesEngine.lastMoveStr);
+
+        m_bInC4NFormat := (m_bInC4NFormat and (strOriginalMove = m_ChessRulesEngine.lastMoveStr));
 
         bkpMove := s;
 
@@ -580,12 +605,6 @@ begin // .FParseGameStr
 
     movePlyStack.Free;
   end;
-end;
-
-
-function TPGNParser.FGetInC4NFormat: boolean;
-begin
-  Result := FALSE; // TODO:
 end;
 
 ////////////////////////////////////////////////////////////////////////////////

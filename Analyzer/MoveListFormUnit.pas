@@ -11,7 +11,7 @@ type
   TStringGrid = class(Grids.TStringGrid)
   private
     m_bPlyLineSelection: boolean;
-    class procedure FPlyIndexToGridPos(iPlyIndex: integer; out iCol, iRow: integer);
+    class procedure FPlyIndexToGridPos(const PlysProvider: IPlysProvider; out iCol, iRow: integer);
     class function FGridPosToPlyIndex(iCol, iRow: integer): integer;
     function FGetPlysProvider: IPlysProvider;
     procedure FSetPlyLineSelection(bValue: boolean);
@@ -69,7 +69,7 @@ implementation
 uses
   Math, SysUtils, Graphics,
   //
-  AnalyseChessBoardUnit;
+  AnalyseChessBoardUnit, PlysTreeUnit;
 
 type
   TInplaceEditList = class(Grids.TInplaceEditList)
@@ -137,8 +137,7 @@ begin
   if (not Assigned(m_PlysProvider)) then
     exit;
 
-  TStringGrid.FPlyIndexToGridPos(m_PlysProvider.CurrentPlyIndex,
-    m_iPlyIndexCol, m_iPlyIndexRow);
+  TStringGrid.FPlyIndexToGridPos(m_PlysProvider, m_iPlyIndexCol, m_iPlyIndexRow);
 
   MovesStringGrid.FocusCell(m_iPlyIndexCol, m_iPlyIndexRow, TRUE);
 
@@ -155,7 +154,8 @@ begin
 
   for i := 1 to m_PlysProvider.PlysCount do
   begin
-    MovesStringGrid.Cells[0, iRow] := Format('%d.', [(i + 1) div 2]);
+    MovesStringGrid.Cells[0, iRow] := Format('%d.',
+      [TPlysTree.ConvertPlyToMove(i, m_PlysProvider.WhiteStarts)]);
     MovesStringGrid.Cells[iCol, iRow] := m_PlysProvider.Plys[i];
 
     if (iCol = 2) then
@@ -175,7 +175,8 @@ end;
 function TMoveListForm.FGetMovesCount: integer;
 begin
   if (Assigned(m_PlysProvider)) then
-    Result := (m_PlysProvider.PlysCount + 1) div 2
+    Result := TPlysTree.ConvertPlyToMove(m_PlysProvider.PlysCount,
+      m_PlysProvider.WhiteStarts)
   else
     Result := 0;
 end;
@@ -422,10 +423,16 @@ begin
 end;
 
 
-class procedure TStringGrid.FPlyIndexToGridPos(iPlyIndex: integer; out iCol, iRow: integer);
+class procedure TStringGrid.FPlyIndexToGridPos(const PlysProvider: IPlysProvider; out iCol, iRow: integer);
+var
+  iPlyIndex: integer;
 begin
+  iPlyIndex := PlysProvider.CurrentPlyIndex;
+
   if (iPlyIndex > 0) then
   begin
+    if (not PlysProvider.WhiteStarts) then
+      inc(iPlyIndex);
     iRow := ((iPlyIndex - 1) div 2) + 1;
     iCol := ((iPlyIndex - 1) mod 2) + 1;
   end

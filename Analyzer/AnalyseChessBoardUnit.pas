@@ -143,6 +143,9 @@ type
     procedure FSavePGNDataAs;
     function FAskAndSavePGNData: boolean;
 
+    function IPlysProvider.GetWhiteStarts = FGetWhiteStarts;
+    function FGetWhiteStarts: boolean;
+
     function IPlysProvider.GetPlysCount = FGetPlysCount;
     function FGetPlysCount: integer;
 
@@ -187,7 +190,7 @@ uses
   Windows, Clipbrd,
   //
   PGNParserUnit, ChessRulesEngine, GlobalsLocalUnit, DontShowMessageDlgUnit,
-  IniSettingsUnit;
+  IniSettingsUnit, PGNWriterUnit;
 
 {$R *.dfm}
 
@@ -618,6 +621,12 @@ begin
 end;
 
 
+function TAnalyseChessBoard.FGetWhiteStarts: boolean;
+begin
+  Result := m_PlysTree.WhiteStarts;
+end;
+
+
 function TAnalyseChessBoard.FGetPly(iIndex: integer): string;
 begin
   Result := m_PlysTree[iIndex];
@@ -836,13 +845,21 @@ end;
 
 
 function TAnalyseChessBoard.FSavePGNData: boolean;
+var
+  Writer: TPGNWriter;
 begin
   Result := FALSE;
 
   if ((m_GameFileName = '') or (not m_bGameFileInC4NFormat)) then
     exit;
 
-  // TODO:
+  Writer := TPGNWriter.Create;
+  try
+    Writer.WriteInChess4NetFormat(m_PlysTree);
+    Writer.Data.SaveToFile(m_GameFileName);
+  finally
+    Writer.Free;
+  end;
 
   m_bGameChanged := FALSE;
 

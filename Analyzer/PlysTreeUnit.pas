@@ -45,6 +45,7 @@ type
     function FGetPly(iIndex: integer): string;
     function FGetCount: integer;
     function FGetNodeOfDepth(iPlyDepth: integer): TPlysTreeNode;
+    function FGetWhiteStarts: boolean;
   public
     destructor Destroy; override;
 
@@ -63,10 +64,14 @@ type
 
     procedure Assign(const Source: TPlysTree);
 
+    class function ConvertPlyToMove(iPly: integer; bWhiteStarts: boolean): integer;
+    class function IsWhiteToMove(iPly: integer; bWhiteStarts: boolean): boolean;
+
     property Plys[iIndex: integer]: string read FGetPly; default;
     property Position[iIndex: integer]: string read FGetPosition;
 
     property Count: integer read FGetCount;
+    property WhiteStarts: boolean read FGetWhiteStarts;
   end;
 
 implementation
@@ -260,6 +265,28 @@ begin
 
   Clear;
   m_FirstNode := TPlysTreeNode.Create(Source.m_FirstNode);
+end;
+
+
+function TPlysTree.FGetWhiteStarts: boolean;
+begin
+  Result := TRUE;
+end;
+
+
+class function TPlysTree.ConvertPlyToMove(iPly: integer; bWhiteStarts: boolean): integer;
+begin
+  if (not bWhiteStarts) then
+    inc(iPly);
+  Result := (iPly + 1) div 2;
+end;
+
+
+class function TPlysTree.IsWhiteToMove(iPly: integer; bWhiteStarts: boolean): boolean;
+begin
+  if (not bWhiteStarts) then
+    inc(iPly);
+  Result := Odd(iPly);
 end;
 
 ////////////////////////////////////////////////////////////////////////////////

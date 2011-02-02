@@ -544,6 +544,13 @@ begin
   j := 0;
 
   l := length(move_str);
+
+  if (l <= 1) then
+    exit;
+
+  if (move_str[l] in ['+', '#']) then
+    dec(l);
+
   prom_f := K;
   case move_str[l] of
     'Q': prom_f := Q;
