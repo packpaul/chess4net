@@ -60,9 +60,12 @@ object AnalyseChessBoard: TAnalyseChessBoard
         OnClick = FileOpenMenuItemClick
       end
       object FileSaveMenuItem: TTntMenuItem
-        Caption = '&Save...'
-        Enabled = False
-        ShortCut = 16467
+        Action = SaveAction
+        Caption = '&Save'
+      end
+      object FileSaveAsMenuItem: TTntMenuItem
+        Action = SaveAsAction
+        Caption = 'Save &As...'
       end
       object N2: TTntMenuItem
         Caption = '-'
@@ -167,7 +170,8 @@ object AnalyseChessBoard: TAnalyseChessBoard
       Caption = 'Initial Position'
     end
   end
-  object OpenPGNDialog: TOpenDialog
+  object OpenDialog: TOpenDialog
+    DefaultExt = 'c4n'
     Filter = 
       'Supported Files (*.c4n *.pgn)|*.c4n;*.pgn|Chess4Net Files (*.c4n' +
       ')|*.c4n|PGN Files (*.pgn)|*.pgn'
@@ -244,12 +248,23 @@ object AnalyseChessBoard: TAnalyseChessBoard
       OnExecute = ReturnFromLineActionExecute
       OnUpdate = ReturnFromLineActionUpdate
     end
+    object SaveAction: TAction
+      Category = 'File'
+      ShortCut = 16467
+      OnExecute = SaveActionExecute
+      OnUpdate = SaveActionUpdate
+    end
+    object SaveAsAction: TAction
+      Category = 'File'
+      OnExecute = SaveAsActionExecute
+      OnUpdate = SaveAsActionUpdate
+    end
   end
   object ImageList: TImageList
     Left = 1
     Top = 64
     Bitmap = {
-      494C010105000900040010001000FFFFFFFFFF00FFFFFFFFFFFFFFFF424D3600
+      494C010105000900040010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000003000000001002000000000000030
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
@@ -649,10 +664,17 @@ object AnalyseChessBoard: TAnalyseChessBoard
       E7FFFFFFFF8FFFFFE1FFFF9FFF839FF3E07FFE0FFC038FC1E01FF80FFC018F01
       E007E00FFCC38C01E003C00FFCCF8801E003800FFCFF8001E001800FFCFF8001
       E003C00FFCFF8801E00FF00F80FF8E01E03FFC0F80018F81F0FFFF0FC0018FE1
-      F3FFFFCFFFFFCFF9FFFFFFFFFFFFFFFF}
+      F3FFFFCFFFFFCFF9FFFFFFFFFFFFFFFF00000000000000000000000000000000
+      000000000000}
   end
   object ApplicationEvents: TApplicationEvents
     OnIdle = ApplicationEventsIdle
+    Left = 64
+    Top = 32
+  end
+  object SaveDialog: TSaveDialog
+    DefaultExt = 'c4n'
+    Filter = 'Chess4Net Files (*.c4n)|*.c4n'
     Left = 32
     Top = 32
   end

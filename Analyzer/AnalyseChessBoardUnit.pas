@@ -15,7 +15,7 @@ type
     MainMenu: TTntMainMenu;
     FileMenuItem: TTntMenuItem;
     FileOpenMenuItem: TTntMenuItem;
-    FileSaveMenuItem: TTntMenuItem;
+    FileSaveAsMenuItem: TTntMenuItem;
     N2: TTntMenuItem;
     FileCopyMenuItem: TTntMenuItem;
     FilePasteMenuItem: TTntMenuItem;
@@ -40,7 +40,7 @@ type
     PopupForwardMoveMenuItem: TTntMenuItem;
     ViewFlipBoardMenuItem: TTntMenuItem;
     N5: TTntMenuItem;
-    OpenPGNDialog: TOpenDialog;
+    OpenDialog: TOpenDialog;
     ViewChessEngineInfoMenuItem: TTntMenuItem;
     ActionList: TActionList;
     ChessEngineInfoAction: TAction;
@@ -60,6 +60,10 @@ type
     N6: TTntMenuItem;
     PositionReturnFromLineMenuItem: TTntMenuItem;
     ReturnFromLineAction: TAction;
+    FileSaveMenuItem: TTntMenuItem;
+    SaveAction: TAction;
+    SaveAsAction: TAction;
+    SaveDialog: TSaveDialog;
     procedure FileExitMenuItemClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormCanResize(Sender: TObject; var NewWidth,
@@ -90,6 +94,10 @@ type
     procedure FileNewMenuItemClick(Sender: TObject);
     procedure ReturnFromLineActionExecute(Sender: TObject);
     procedure ReturnFromLineActionUpdate(Sender: TObject);
+    procedure SaveActionExecute(Sender: TObject);
+    procedure SaveActionUpdate(Sender: TObject);
+    procedure SaveAsActionExecute(Sender: TObject);
+    procedure SaveAsActionUpdate(Sender: TObject);
   private
     m_ChessBoard: TPosBaseChessBoard;
     m_ResizingType: (rtNo, rtHoriz, rtVert);
@@ -109,7 +117,9 @@ type
     m_lwPlysListUpdateID: LongWord;
 
     m_bGameChanged: boolean;
-//    m_PGNFileName: TFileName;
+
+    m_GameFileName: TFileName;
+    m_bGameFileInC4NFormat: boolean;
 
     procedure FChessBoardHandler(e: TChessBoardEvent; d1: pointer = nil;
       d2: pointer = nil);
@@ -129,7 +139,8 @@ type
     procedure FSynchronizeChessEngineWithChessBoardAndStartEvaluation;
 
     function FLoadPGNData(const PGNData: TStrings): boolean;
-    procedure FSavePGNData;
+    function FSavePGNData: boolean;
+    procedure FSavePGNDataAs;
     function FAskAndSavePGNData: boolean;
 
     function IPlysProvider.GetPlysCount = FGetPlysCount;
@@ -183,6 +194,7 @@ uses
 const
   MSG_GAME_CHANGED_SAVE_CHANGES = 'Current game was modified. Save the changes?';
   MSG_INCORRECT_FILE_FORMAT = 'Incorrect file format encountered or data is broken!';
+  MSG_FILE_EXISTS_OVERWRITE = 'File %s already exists. Do you want it to be overwritten?';
 
 ////////////////////////////////////////////////////////////////////////////////
 // TAnalyseChessBoard
@@ -360,6 +372,7 @@ begin
   m_PlysTree.Add(m_ChessBoard.GetPosition);
 
   m_bGameChanged := FALSE;
+  m_GameFileName := '';
 
   FSynchronizeChessEngineWithChessBoardAndStartEvaluation;
 end;
@@ -391,14 +404,17 @@ begin
   if (not FAskAndSavePGNData) then
     exit;
 
-  if (not OpenPGNDialog.Execute) then
+  if (not OpenDialog.Execute) then
     exit;
 
   strlData := TStringList.Create;
   try
-    strlData.LoadFromFile(OpenPGNDialog.FileName);
+    strlData.LoadFromFile(OpenDialog.FileName);
     if (not FLoadPGNData(strlData)) then
       MessageDlg(MSG_INCORRECT_FILE_FORMAT, mtError, [mbOK], 0);
+
+    m_GameFileName := OpenDialog.FileName;
+
   finally
     strlData.Free;
   end;
@@ -441,6 +457,8 @@ begin
     FInitPosition;
 
     m_PlysTree.Assign(PGNParser.Tree);
+
+    m_bGameFileInC4NFormat := PGNParser.InC4NFormat;
 
   finally
     PGNParser.Free;
@@ -810,18 +828,53 @@ begin
     mrCancel:
       Result := FALSE;
     mrYes:
-      FSavePGNData;
+      SaveAction.Execute;
     mrNo:
       ;
   end;
 end;
 
 
-procedure TAnalyseChessBoard.FSavePGNData;
+function TAnalyseChessBoard.FSavePGNData: boolean;
 begin
-  ShowMessage('TODO: TAnalyseChessBoard.FSavePGNData');
+  Result := FALSE;
+
+  if ((m_GameFileName = '') or (not m_bGameFileInC4NFormat)) then
+    exit;
+
+  // TODO:
+
   m_bGameChanged := FALSE;
+
+  Result := TRUE;
 end;
+
+
+procedure TAnalyseChessBoard.FSavePGNDataAs;
+var
+  strMsg: string;
+begin
+  if (m_bGameFileInC4NFormat) then
+    SaveDialog.FileName := m_GameFileName
+  else
+    SaveDialog.FileName := ChangeFileExt(m_GameFileName, '');  
+
+  if (not SaveDialog.Execute) then
+    exit;
+
+  if (FileExists(SaveDialog.FileName)) then
+  begin
+    strMsg := Format(MSG_FILE_EXISTS_OVERWRITE, [SaveDialog.FileName]);
+    if (MessageDlg(strMsg, mtWarning, [mbYes, mbNo], 0) = mrNo) then
+      exit;
+  end;
+
+  m_GameFileName := SaveDialog.FileName;
+  m_bGameFileInC4NFormat := TRUE;
+
+  FSavePGNData;
+end;
+
 
 
 procedure TAnalyseChessBoard.InitialPositionActionExecute(Sender: TObject);
@@ -859,6 +912,32 @@ begin
   iPly := FGetCurrentPlyIndex;
   (Sender as TAction).Enabled :=
     ((iPly > 0) and (not (psMainLine in m_PlysTree.GetPlyStatus(iPly))));
+end;
+
+
+procedure TAnalyseChessBoard.SaveActionExecute(Sender: TObject);
+begin
+  if (not FSavePGNData) then
+    FSavePGNDataAs;
+end;
+
+
+procedure TAnalyseChessBoard.SaveActionUpdate(Sender: TObject);
+begin
+  (Sender as TAction).Enabled :=
+    ((FGetPlysCount > 0) and m_bGameChanged);
+end;
+
+
+procedure TAnalyseChessBoard.SaveAsActionExecute(Sender: TObject);
+begin
+  FSavePGNDataAs;
+end;
+
+
+procedure TAnalyseChessBoard.SaveAsActionUpdate(Sender: TObject);
+begin
+  (Sender as TAction).Enabled := (FGetPlysCount > 0);
 end;
 
 end.

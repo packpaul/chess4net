@@ -33,7 +33,8 @@ uses
   SelectLineFormUnit in 'SelectLineFormUnit.pas' {SelectLineForm},
   OpeningsDBManagerFormUnit in 'OpeningsDBManagerFormUnit.pas' {OpeningsDBSelectionForm},
   OpeningsDBManagerUnit in 'OpeningsDBManagerUnit.pas',
-  NonRefInterfacedObjectUnit in '..\NonRefInterfacedObjectUnit.pas';
+  NonRefInterfacedObjectUnit in '..\NonRefInterfacedObjectUnit.pas',
+  PGNWriterUnit in 'PGNWriterUnit.pas';
 
 {$R ..\Chess4Net.res}
 

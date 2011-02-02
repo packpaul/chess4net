@@ -28,6 +28,8 @@ type
     procedure FParseGame;
     procedure FParseGameStr(const strGame: string; bIncludeVariants: boolean);
 
+    function FGetInC4NFormat: boolean;
+
   public
     constructor Create;
     destructor Destroy; override;
@@ -35,6 +37,7 @@ type
     function Parse(const AData: TStrings): boolean;
 
     property Tree: TPlysTree read m_Tree;
+    property InC4NFormat: boolean read FGetInC4NFormat;
   end;
 
 implementation
@@ -577,6 +580,12 @@ begin // .FParseGameStr
 
     movePlyStack.Free;
   end;
+end;
+
+
+function TPGNParser.FGetInC4NFormat: boolean;
+begin
+  Result := FALSE; // TODO:
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
