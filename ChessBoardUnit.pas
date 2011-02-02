@@ -101,6 +101,8 @@ type
     procedure FSetLastMoveHilighted(Value: boolean);
     function FGetPositionsList: TList;
     function FGetPositionColor: TFigureColor;
+    function FGetMoveNotationFormat: TMoveNotationFormat;
+    procedure FSetMoveNotationFormat(Value: TMoveNotationFormat);
 
     procedure WMSizing(var Msg: TMessage); message WM_SIZING;
 
@@ -145,6 +147,8 @@ type
     property Animation: TAnimation read m_animation write m_animation;
     property ViewGaming: boolean read m_bViewGaming write m_bViewGaming;
     property PositionColor: TFigureColor read FGetPositionColor; // Whos move it is in the current position
+    property MoveNotationFormat: TMoveNotationFormat
+      read FGetMoveNotationFormat write FSetMoveNotationFormat;
   end;
 
 var
@@ -1029,12 +1033,16 @@ begin
     m_bWillBeAnimatedFlag := FALSE;
 end;
 
-initialization
 
+function TChessBoard.FGetMoveNotationFormat: TMoveNotationFormat;
 begin
-  Randomize; // It's for PP Random
+  Result := m_ChessRulesEngine.MoveNotationFormat;
 end;
 
-finalization
+
+procedure TChessBoard.FSetMoveNotationFormat(Value: TMoveNotationFormat);
+begin
+  m_ChessRulesEngine.MoveNotationFormat := Value;
+end;
 
 end.

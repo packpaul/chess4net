@@ -234,6 +234,7 @@ end;
 procedure TAnalyseChessBoard.FCreateChessBoard;
 begin
   m_ChessBoard := TPosBaseChessBoard.Create(self, FChessBoardHandler, '');
+  m_ChessBoard.MoveNotationFormat := mnfCh4NEx;
 
   with ChessBoardPanel do
     SetBounds(Left, Top, m_ChessBoard.ClientWidth, m_ChessBoard.ClientHeight);

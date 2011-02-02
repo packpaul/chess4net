@@ -1177,4 +1177,12 @@ begin
   // TODO: Evaluate position for possible technical draw
 end;
 
+initialization
+
+begin
+  Randomize; // It's for PP Random
+end;
+
+finalization
+
 end.
