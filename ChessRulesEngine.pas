@@ -32,14 +32,17 @@ type
 
   TEvaluation = (evInGame, evMate, evStaleMate);
 
+  TMoveNotationFormat = (mnfCh4N, mnfCh4NEx); // TODO: mnfPGN
+
   TChessRulesEngine = class
   private
     m_ChessRulesEngineable: IChessRulesEngineable;
     m_Position: TChessPosition;
-    m_i0, m_j0: integer;  // Предыдущие координаты фигуры
-    m_fig: TFigure;    // Перетаскиваемая фигура
-    m_lastMove: TMoveAbs; // Последний сделанный ход
+    m_i0, m_j0: integer;  // Previous position of piece
+    m_fig: TFigure;    // Piece that moves
+    m_lastMove: TMoveAbs; // Last move done
     m_strLastMoveStr: string; // last move in algebraic notation
+    m_MoveNotationFormat: TMoveNotationFormat;
     m_lstPosition: TList;
 
     function FGetPosition: PChessPosition;
@@ -74,7 +77,7 @@ type
     function GetPosition: string;
     procedure InitNewGame;
     procedure InitNewPPRandomGame;
-    procedure ResetMoveList; // очищает список позиций
+    procedure ResetMoveList; // Clears positions list 
     function NMovesDone: integer; // amount of moves done
     function NPlysDone: integer; // amount of plys done
     function GetEvaluation: TEvaluation;
@@ -83,6 +86,8 @@ type
     property lastMove: PMoveAbs read FGetLastMove;
     property lastMoveStr: string read m_strLastMoveStr;
     property PositionsList: TList read m_lstPosition;
+    property MoveNotationFormat: TMoveNotationFormat
+      read m_MoveNotationFormat write m_MoveNotationFormat;
   end;
 
   PPosMove = ^TPosMove;
@@ -259,164 +264,201 @@ var
   _fig: TFigure;
   pos: TChessPosition;
 begin
-  Result:= FALSE;
-  if not ((i0 in [1..8]) and (j0 in [1..8]) and
-          (i in [1..8]) and (j in [1..8])) then exit;
+  Result := FALSE;
+  
+  if (not ((i0 in [1..8]) and (j0 in [1..8]) and
+           (i in [1..8]) and (j in [1..8]))) then
+    exit;
 
   _fig := chp.board[i0, j0];
-  if ((chp.color = fcWhite) and (_fig > ES)) or
-     ((chp.color = fcBlack) and (_fig < ES)) then
+  if (((chp.color = fcWhite) and (_fig > ES)) or
+      ((chp.color = fcBlack) and (_fig < ES))) then
     exit;
 
   f := TFigureName(ord(_fig) - ord(chp.color) * ord(BK));
 
-  for l:= 1 to 8 do
+  for l := 1 to 8 do
     with DELTA_MOVE[f], chp do
       begin
-        if (dx[l] = 0) and (dy[l] = 0) then break; // Все ходы просмотрены
+        if (dx[l] = 0) and (dy[l] = 0) then
+          break; // All moves have been viewed
+
         ti := i0;
         tj := j0;
+
         case f of
           P:
-            begin
-              if (l = 1) and
-                 not(((color = fcWhite) and (j0 = 2) and (board[i0,3] = ES)) or
-                     ((color = fcBlack) and (j0 = 7) and (board[i0,6] = ES)))
-                then continue; // Пешка - не на 2/7 гор. - не делаем длинный ход.
-              case color of
-                fcWhite:
-                  begin
-                    ti:= ti + dx[l]; tj:= tj + dy[l];
-                  end;
-                fcBlack:
-                  begin
-                    ti:= ti - dx[l]; tj:= tj - dy[l];
-                  end;
+          begin
+            if ((l = 1) and
+                (not (((color = fcWhite) and (j0 = 2) and (board[i0,3] = ES)) or
+                      ((color = fcBlack) and (j0 = 7) and (board[i0,6] = ES))))) then
+              continue; // Pawn is not on 2/7 row - long move is impossible
+
+            case color of
+              fcWhite:
+              begin
+                inc(ti, dx[l]);
+                inc(tj, dy[l]);
               end;
-              if not(ti in [1..8]) or not(tj in [1..8]) then continue;
-              if (l <= 2) and (board[ti,tj] <> ES)
-                then continue; // Перед пешкой фигура - выход
-              if (l >= 3) and not(((color = fcWhite) and ((board[ti,tj] > ES) or
+
+              fcBlack:
+              begin
+                dec(ti, dx[l]);
+                dec(tj, dy[l]);
+              end;
+            end;
+              
+            if (not (ti in [1..8]) or not(tj in [1..8])) then
+              continue;
+            if ((l <= 2) and (board[ti,tj] <> ES)) then
+              continue; // There's a piece before the pawn -> exit
+
+            if ((l >= 3) and (not (((color = fcWhite) and ((board[ti,tj] > ES) or
                                    ((j0 = 5) and (en_passant = ti)))) or
                                   ((color = fcBlack) and ((board[ti,tj] < ES) or
-                                   ((j0 = 4) and (en_passant = ti)))))
-                then continue;
-              if (ti = i) and (tj = j) then goto here;
-            end;
-          else
+                                   ((j0 = 4) and (en_passant = ti))))))) then
+              continue;
+
+            if ((ti = i) and (tj = j)) then
+              goto here;
+          end;
+          
+        else
+          begin
             repeat
-              ti:= ti + dx[l]; tj:= tj + dy[l];
-              if not(ti in [1..8]) or not(tj in [1..8]) or
-                 ((color = fcWhite) and ((board[ti,tj] < ES) or
-                  ((board[ti,tj] > ES) and ((ti <> i) or (tj <> j))))) or
-                 ((color = fcBlack) and ((board[ti,tj] > ES) or
-                  ((board[ti,tj] < ES) and ((ti <> i) or (tj <> j)))))
-                then break;
-              if (ti = i) and (tj = j) then goto here;
-            until not longRange;
+              inc(ti, dx[l]);
+              inc(tj, dy[l]);
+
+              if ((not (ti in [1..8])) or (not (tj in [1..8])) or
+                  ((color = fcWhite) and ((board[ti,tj] < ES) or
+                   ((board[ti,tj] > ES) and ((ti <> i) or (tj <> j))))) or
+                  ((color = fcBlack) and ((board[ti,tj] > ES) or
+                   ((board[ti,tj] < ES) and ((ti <> i) or (tj <> j)))))) then
+                break;
+
+              if ((ti = i) and (tj = j)) then
+                goto here;
+
+            until (not longRange);
+          end;
+
         end; { case }
       end;
 
-      if f = K then // Проверка на возможность рокировки
+      if (f = K) then // Checking against castling
+      begin
         with chp do
-          begin
-            if (i-i0 = 2) and (j = j0) and
-               (((color = fcWhite) and (WhiteKingSide in castling)) or
-                ((color = fcBlack) and (BlackKingSide in castling))) then
-            begin
-              if ((board[6,j0] <> ES) or (board[7,j0] <> ES) or // 0-0
-                  FFieldUnderAttack(chp,5,j0) or
-                  FFieldUnderAttack(chp,6,j0)) then exit;
-            end
-            else if ((i-i0 = -2) and (j = j0) and
-               (((color = fcWhite) and (WhiteQueenSide in castling)) or
-                ((color = fcBlack) and (BlackQueenSide in castling)))) then
-            begin
-              if ((board[4,j0] <> ES) or (board[3,j0] <> ES) or // 0-0-0
-                  (board[2,j0] <> ES) or
-                  FFieldUnderAttack(chp,5,j0) or
-                  FFieldUnderAttack(chp,4,j0)) then
-                exit;
-            end
-            else exit;
-
-            goto here;
-          end;
-      exit; // передвижение фигуры не по правилам
-here:
-  // Реализация хода на pos
-  pos:= chp;
-  with pos do
-    begin
-      case f of
-        P:
-          begin
-            if (((color = fcWhite) and (j0 = 5)) or
-                ((color = fcBlack) and (j0 = 4))) and (i = en_passant)
-              then board[i,j0]:= ES; // убрать при e.p. враж. пешку
-          end;
-        K:
-          begin
-            if i-i0 = 2 then
-              begin
-                board[6,j0]:= board[8,j0]; // 0-0
-                board[8,j0]:= ES;
-              end
-            else
-            if i0-i = 2 then
-              begin
-                board[4,j0]:= board[1,j0]; // 0-0-0
-                board[1,j0]:= ES;
-              end;
-            case color of
-              fcWhite:
-                castling:= castling - [WhiteKingSide, WhiteQueenSide];
-              fcBlack:
-                castling:= castling - [BlackKingSide, BlackQueenSide];
-            end;
-          end;
-        R:
-          begin
-            if ((i0 = 8) and (j0 = 1)) or ((i = 8) and (j = 1))
-              then castling:= castling - [WhiteKingSide]
-            else
-            if ((i0 = 1) and (j0 = 1)) or ((i = 1) and (j = 1))
-              then castling:= castling - [WhiteQueenSide]
-            else
-            if ((i0 = 8) and (j0 = 8)) or ((i = 8) and (j = 8))
-              then castling:= castling - [BlackKingSide]
-            else
-            if ((i0 = 1) and (j0 = 8)) or ((i = 1) and (j = 8))
-              then castling:= castling - [BlackQueenSide];
-          end;
-      end;
-      if (f = P) and (abs(j-j0) = 2) and
-         (((i > 1) and (((color = fcWhite) and (board[i-1,j] = BP)) or
-                        ((color = fcBlack) and (board[i-1,j] = WP)))) or
-          ((i < 8) and (((color = fcWhite) and (board[i+1,j] = BP)) or
-                        ((color = fcBlack) and (board[i+1,j] = WP))))) then
-        en_passant := i0 // вкл. e.p.
-      else
-        en_passant := 0; // выкл. e.p.
-      // Сделать ход
-      board[i0, j0]:= ES;
-      board[i, j] := _fig;
-      if (FCheckCheck(pos)) then
-        exit; // ход невозможен из-за шаха
-      if (f = P) and ((j = 1) or (j = 8)) then
         begin
-          case prom_fig of
-            Q..N: ;
+          if (i-i0 = 2) and (j = j0) and
+             (((color = fcWhite) and (WhiteKingSide in castling)) or
+              ((color = fcBlack) and (BlackKingSide in castling))) then
+          begin
+            if ((board[6,j0] <> ES) or (board[7,j0] <> ES) or // 0-0
+                FFieldUnderAttack(chp,5,j0) or
+                FFieldUnderAttack(chp,6,j0)) then exit;
+          end
+          else if ((i-i0 = -2) and (j = j0) and
+             (((color = fcWhite) and (WhiteQueenSide in castling)) or
+              ((color = fcBlack) and (BlackQueenSide in castling)))) then
+          begin
+            if ((board[4,j0] <> ES) or (board[3,j0] <> ES) or // 0-0-0
+                (board[2,j0] <> ES) or
+                FFieldUnderAttack(chp,5,j0) or
+                FFieldUnderAttack(chp,4,j0)) then
+              exit;
+          end
           else
-            prom_fig := FAskPromotionFigure(pos.color);
-          end; // case
-          board[i, j] := TFigure(ord(color) * ord(BK) + ord(prom_fig));
+            exit;
+
+          goto here;
         end;
-      if color = fcWhite then color:= fcBlack
-        else color:= fcWhite;
+      end;
+
+      exit; // The piece was moved not according to rules
+
+here:
+  // Making move on pos
+  pos := chp;
+  
+  with pos do
+  begin
+    case f of
+      P:
+      begin
+        if (((color = fcWhite) and (j0 = 5)) or
+            ((color = fcBlack) and (j0 = 4))) and (i = en_passant) then
+          board[i,j0]:= ES; // remove enemy pawn with e.p.
+      end;
+
+      K:
+      begin
+        if i-i0 = 2 then
+          begin
+            board[6,j0]:= board[8,j0]; // 0-0
+            board[8,j0]:= ES;
+          end
+        else
+        if i0-i = 2 then
+          begin
+            board[4,j0]:= board[1,j0]; // 0-0-0
+            board[1,j0]:= ES;
+          end;
+        case color of
+          fcWhite:
+            castling:= castling - [WhiteKingSide, WhiteQueenSide];
+          fcBlack:
+            castling:= castling - [BlackKingSide, BlackQueenSide];
+        end;
+      end;
+
+      R:
+        begin
+          if ((i0 = 8) and (j0 = 1)) or ((i = 8) and (j = 1)) then
+            castling := castling - [WhiteKingSide]
+          else if ((i0 = 1) and (j0 = 1)) or ((i = 1) and (j = 1)) then
+            castling := castling - [WhiteQueenSide]
+          else if ((i0 = 8) and (j0 = 8)) or ((i = 8) and (j = 8)) then
+            castling := castling - [BlackKingSide]
+          else if ((i0 = 1) and (j0 = 8)) or ((i = 1) and (j = 8)) then
+            castling := castling - [BlackQueenSide];
+        end;
     end;
 
-  chp_res:= pos;
+    if ((f = P) and (abs(j-j0) = 2) and
+        (((i > 1) and (((color = fcWhite) and (board[i-1,j] = BP)) or
+                       ((color = fcBlack) and (board[i-1,j] = WP)))) or
+         ((i < 8) and (((color = fcWhite) and (board[i+1,j] = BP)) or
+                       ((color = fcBlack) and (board[i+1,j] = WP)))))) then
+      en_passant := i0 // e.p. on
+    else
+      en_passant := 0; // e.p. off
+
+    // make the move
+
+    board[i0, j0]:= ES;
+    board[i, j] := _fig;
+    
+    if (FCheckCheck(pos)) then
+      exit; // move is impossible because of check
+      
+    if (f = P) and ((j = 1) or (j = 8)) then
+    begin
+      case prom_fig of
+        Q..N: ;
+      else
+        prom_fig := FAskPromotionFigure(pos.color);
+      end; // case
+      board[i, j] := TFigure(ord(color) * ord(BK) + ord(prom_fig));
+    end;
+
+    if (color = fcWhite) then
+      color := fcBlack
+    else
+      color := fcWhite;
+  end; // with
+
+  chp_res := pos;
+  
   Result:= TRUE;
 end;
 
@@ -463,7 +505,8 @@ begin
                 until not longRange;
               end;
         end;
-  Result:= FALSE;
+
+  Result := FALSE;
 end;
 
 
@@ -664,7 +707,7 @@ begin
   Result := FCheckMove(Position^, newPosition, i0, j0, i, j, prom_fig);
   if (Result) then
   begin
-    // запоминание сделанного хода
+    // Store the move done
     lastMove.i0 := i0;
     lastMove.j0 := j0;
     lastMove.i := i;
@@ -674,6 +717,7 @@ begin
     FAddPosMoveToList;
 
     m_strLastMoveStr := FMove2Str(newPosition);
+    
     Position^ := newPosition;
   end;
 end;
@@ -705,14 +749,30 @@ end;
 
 
 function TChessRulesEngine.FMove2Str(const pos: TChessPosition): string;
+
+  procedure NExtendWithCheckOrMate(var strMove: string);
+  begin
+    if (strMove = '') then
+      exit;
+
+    if (FCheckCheck(pos)) then
+    begin
+      if (FCanMove(pos)) then
+        strMove := strMove + '+'
+      else
+        strMove := strMove + '#';      
+    end;
+  end;
+
 var
   f: TFigureName;
   l: byte;
   ti, tj: integer;
   ambig, hor, ver: boolean;
   _fig: TFigure;
-begin
-  if lastMove.i0 = 0 then // Ход не задан
+  DummyPosition: TChessPosition;
+begin // .FMove2Str
+  if (lastMove.i0 = 0) then // No move
   begin
     Result:= '';
     exit;
@@ -720,37 +780,62 @@ begin
 
   _fig := Position.board[lastMove.i0, lastMove.j0];
   f := TFigureName(ord(_fig) + (ord(pos.color) - 1) * ord(BK));
-  // Ход пешкой
+
+  // Pawn moves
   if (f = P) then
   begin
     with pos do
     begin
-      if ((lastMove.i - lastMove.i0) = 0) then // ход
-        Result:= chr(ord('a') + lastMove.i - 1) + IntToStr(lastMove.j)
-      else // взятие
+      if ((lastMove.i - lastMove.i0) = 0) then // move
+        Result := chr(ord('a') + lastMove.i - 1) + IntToStr(lastMove.j)
+      else // capturing
+      begin
+        Result := chr(ord('a') + lastMove.i0 - 1) + chr(ord('a') + lastMove.i - 1);
+
+        for l := 2 to 7 do // Checking against ambiguity of capturing
         begin
-          Result:= chr(ord('a') + lastMove.i0 - 1) + chr(ord('a') + lastMove.i - 1);
+          if (board[lastMove.i0, l] = WP) then
+            tj := l + 1
+          else if (board[lastMove.i0, l] = BP) then
+            tj := l - 1
+          else
+            continue;
 
-          for l := 2 to 7 do // Проверка на двусмысленность взятия
-            if (((board[lastMove.i0, l] = WP)  and ((Position.board[lastMove.i, l+1] > ES) or
-                ((Position.en_passant = lastMove.i) and (l = 5)))) and (color = fcBlack)) or
-               (((board[lastMove.i0, l] = BP)  and ((Position.board[lastMove.i, l-1] < ES) or
-                ((Position.en_passant = lastMove.i) and (l = 4)))) and (color = fcWhite))
-              then Result:= Result + IntToStr(lastMove.j);
+          if ((((tj > l)  and ((Position.board[lastMove.i, tj] > ES) or
+               ((Position.en_passant = lastMove.i) and (l = 5)))) and (color = fcBlack)) or
+              (((tj < l)  and ((Position.board[lastMove.i, tj] < ES) or
+               ((Position.en_passant = lastMove.i) and (l = 4)))) and (color = fcWhite))) then
+          begin
+            if ((MoveNotationFormat <> mnfCh4NEx) or
+                FCheckMove(Position^, DummyPosition, lastMove.i0, l, lastMove.i, tj,
+                           lastMove.prom_fig)) then
+            begin
+              Result := Result + IntToStr(lastMove.j);
+            end;
+          end;
+          
         end;
+      end;
 
-      if (lastMove.j = 8) or (lastMove.j = 1) then // Пешка превратилась
+      if (lastMove.j = 8) or (lastMove.j = 1) then // The pawn has been promoted
+      begin
         case board[lastMove.i,lastMove.j] of
-          WQ,BQ: Result:= Result + 'Q';
-          WR,BR: Result:= Result + 'R';
-          WB,BB: Result:= Result + 'B';
-          WN,BN: Result:= Result + 'N';
+          WQ,BQ: Result := Result + 'Q';
+          WR,BR: Result := Result + 'R';
+          WB,BB: Result := Result + 'B';
+          WN,BN: Result := Result + 'N';
         end;
+      end;
+
+      if (m_MoveNotationFormat = mnfCh4NEx) then
+        NExtendWithCheckOrMate(Result);
+
       exit;
-    end;
+      
+    end; // with
   end; // if
 
-  // <Фигура>
+  // <Piece>
   case f of
     K: Result:= 'K';
     Q: Result:= 'Q';
@@ -758,50 +843,73 @@ begin
     B: Result:= 'B';
     N: Result:= 'N';
   end;
-  // [<Вертикаль>][<Горизонталь>]
+
+  // [<Line>][<Row>]
   ambig:= FALSE;
   hor:= FALSE;
   ver:= FALSE;
+
   for l := 1 to 8 do
+  begin
     with pos, DELTA_MOVE[f] do
-      begin
-        if (dx[l] = 0) and (dy[l] = 0) then
-          break; // Все ходы просмотрены
-        ti := lastMove.i;
-        tj := lastMove.j;
-        repeat
-          ti:= ti + dx[l]; tj:= tj + dy[l];
-          if not (ti in [1..8]) or not (tj in [1..8]) or
-             ((board[ti,tj] <> ES) and (board[ti,tj] <> _fig)) then
-            break;
-          if (board[ti,tj] = _fig) then
-            begin
-              ambig:= TRUE;
-              ver:= ver or (ti = lastMove.i0); hor:= hor or (tj = lastMove.j0);
-              break;
-            end;
-        until (f = K) or (f = N); // Если Кр или К, то выход
-      end;
-
-  if ambig then
     begin
-      if not ver or hor then
-        Result:= Result + chr(ord('a') + lastMove.i0 - 1);
-      if ver then
-        Result := Result + IntToStr(lastMove.j0);
-    end;
+      if (dx[l] = 0) and (dy[l] = 0) then
+        break; // All moves have been viewed
 
-  // <Конечное поле>
+      ti := lastMove.i;
+      tj := lastMove.j;
+
+      repeat
+        inc(ti, dx[l]);
+        inc(tj, dy[l]);
+
+        if ((not (ti in [1..8])) or (not (tj in [1..8]))) then
+          break;
+
+        if (board[ti,tj] = ES) then
+          continue;
+
+        if (board[ti, tj] <> _fig) then
+          break;
+
+        if ((m_MoveNotationFormat <> mnfCh4NEx) or
+            FCheckMove(Position^, DummyPosition, ti, tj, lastMove.i, lastMove.j,
+                       lastMove.prom_fig)) then
+        begin
+          ambig := TRUE;
+          ver := (ver or (ti = lastMove.i0));
+          hor := (hor or (tj = lastMove.j0));
+
+          break;
+        end;
+
+      until (f = K) or (f = N); // If K or N -> exit
+      
+    end;
+  end; // for l
+
+  if (ambig) then
+  begin
+    if ((not ver) or hor) then
+      Result := Result + chr(ord('a') + lastMove.i0 - 1);
+    if (ver) then
+      Result := Result + IntToStr(lastMove.j0);
+  end;
+
+  // <Destination field>
   Result := Result + chr(ord('a') + lastMove.i - 1) + IntToStr(lastMove.j);
 
-  // <Короткая рокировка> | <Длинная рокировка>
-  if f = K then
+  // <Short castling> | <Long castling>
+  if (f = K) then
   begin
-    if lastMove.i - lastMove.i0 = 2 then
-      Result:= '0-0'
-    else if lastMove.i0 - lastMove.i = 2 then
-      Result:= '0-0-0';
+    if ((lastMove.i - lastMove.i0) = 2) then
+      Result := '0-0'
+    else if (lastMove.i0 - lastMove.i = 2) then
+      Result := '0-0-0';
   end;
+
+  if (m_MoveNotationFormat = mnfCh4NEx) then
+    NExtendWithCheckOrMate(Result);
 end;
 
 
