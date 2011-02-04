@@ -18,9 +18,12 @@ type
     procedure FClear;
     procedure FWriteTag(const strTagName: string; const wstrTagData: WideString);
     procedure FWriteLine;
-    procedure FWriteWrappedText(const wstr: WideString);
+    procedure FWriteText(const wstr: WideString; iIndent: integer = 0);
+    procedure FWriteWrappedText(const wstr: WideString; iIndent: integer = 0;
+      bSplit: boolean = FALSE);
 
-    function FConvertTreeToText: WideString;
+    procedure FWriteTreeInChess4NetFormat;
+
   public
     constructor Create;
     destructor Destroy; override;
@@ -31,7 +34,7 @@ type
 implementation
 
 uses
-  SysUtils, StrUtils;
+  SysUtils, StrUtils, Math;
 
 ////////////////////////////////////////////////////////////////////////////////
 // TPGNWriter
@@ -63,7 +66,7 @@ begin
 
     FWriteTag('C4N', '1'); // versionning for future uses
     FWriteLine;
-    FWriteWrappedText(FConvertTreeToText);
+    FWriteTreeInChess4NetFormat;
     
   finally
     FreeAndNil(m_Tree);
@@ -80,7 +83,8 @@ end;
 
 procedure TPGNWriter.FWriteTag(const strTagName: string; const wstrTagData: WideString);
 begin
-  m_strlData.Append(Format('[%s "%s"]', [strTagName, wstrTagData]));
+  FWriteText(Format('[%s "%s"]', [strTagName, wstrTagData]));
+  FWriteLine;
 end;
 
 
@@ -90,17 +94,107 @@ begin
 end;
 
 
-procedure TPGNWriter.FWriteWrappedText(const wstr: WideString);
-begin
-  m_strlData.Append(wstr);
-  // TODO: Text wrapping
+procedure TPGNWriter.FWriteText(const wstr: WideString; iIndent: integer = 0);
+
+  function NGetIndent: WideString;
+  begin
+    Result := WideString(StringOfChar(' ', iIndent));
+  end;
+
+var
+  iIndex: integer;
+begin // .FWriteText
+  if (wstr = '') then
+    exit;
+
+  iIndex := m_strlData.Count - 1;
+
+  if (iIndex < 0) then
+    m_strlData.Append(NGetIndent + wstr)
+  else
+  begin
+    if (Length(m_strlData[iIndex]) > 0) then
+      m_strlData[iIndex] := m_strlData[iIndex] + wstr
+    else
+      m_strlData[iIndex] := NGetIndent + wstr;
+  end;
 end;
 
 
-function TPGNWriter.FConvertTreeToText: WideString;
+procedure TPGNWriter.FWriteWrappedText(const wstr: WideString; iIndent: integer = 0;
+  bSplit: boolean = FALSE);
+const
+  TEXT_WIDTH = 80;
+
+  procedure NWriteSplitted;
+  var
+    wstrLine: WideString;
+    iPos: integer;
+  begin
+    FWriteText(wstr, iIndent);
+
+    wstrLine := m_strlData[m_strlData.Count - 1];
+
+    if (Length(wstrLine) <= TEXT_WIDTH) then
+      exit;
+
+    repeat
+      iPos := TEXT_WIDTH;
+
+      while ((iPos > 0) and (wstrLine[iPos] = ' ')) do
+        dec(iPos);
+
+      if (iPos = 0) then
+        iPos := TEXT_WIDTH;
+
+      m_strlData[m_strlData.Count - 1] := Copy(wstrLine, 1, iPos);
+
+      wstrLine := TrimLeft(Copy(wstrLine, iPos + 1, MaxInt));
+      if (wstrLine <> '') then
+      begin
+        FWriteLine;
+        FWriteText(wstrLine, iIndent);        
+      end;
+
+     until (Length(wstrLine) <= TEXT_WIDTH);
+  end;
+
+  procedure NWriteNonSplitted;
+  begin
+    if ((m_strlData.Count = 0) or
+        ((Length(m_strlData[m_strlData.Count - 1]) + Length(wstr)) > TEXT_WIDTH)) then
+    begin
+      FWriteLine;
+      FWriteText(TrimLeft(wstr), iIndent);
+    end
+    else
+      FWriteText(wstr, iIndent);
+  end;
+
+begin
+  if (wstr = '') then
+    exit;
+
+  if (bSplit) then
+    NWriteSplitted
+  else
+    NWriteNonSplitted;
+end;
+
+
+procedure TPGNWriter.FWriteTreeInChess4NetFormat;
+const
+  MAX_INDENTED_TREE_DEPTH = 3;
 
 var
-  wstrData: WideString;
+  iTreeDepth: integer;
+
+  function NGetTextIndent: integer;
+  begin
+    Result := 2 * Min(iTreeDepth, MAX_INDENTED_TREE_DEPTH);
+  end;
+
+var
   bExplicitNumberingFormatting: boolean;
   bAddIndentFormatting: boolean;
 
@@ -121,7 +215,8 @@ var
       bAddIndentFormatting := FALSE;
     end;
 
-    wstrData := wstrData + IfThen(bAddIndentFormatting, ' ') + wstrMoveNumber + ' ' + wstrPly;
+    FWriteWrappedText(IfThen(bAddIndentFormatting, ' ') + wstrMoveNumber + ' ' + wstrPly,
+      IfThen((NGetTextIndent > 0), NGetTextIndent + 1));
 
     bExplicitNumberingFormatting := FALSE;
     bAddIndentFormatting := TRUE;
@@ -151,7 +246,15 @@ var
 
           if (i = 1) then
           begin
-            wstrData := wstrData + ' (';
+            if (iTreeDepth < MAX_INDENTED_TREE_DEPTH) then
+            begin
+              FWriteLine;
+//              if (iTreeDepth = 0) then
+//                FWriteLine;
+            end;
+
+            FWriteWrappedText(' (', NGetTextIndent + 1, TRUE);
+            
             bExplicitNumberingFormatting := TRUE;
             bAddIndentFormatting := FALSE;
           end;
@@ -159,15 +262,29 @@ var
           NWritePly(iPly, strlPlys[i]);
 
           m_Tree.SetPlyForPlyIndex(iPly, strlPlys[i]);
-          NFConvertTreeToText(iPly);
+
+          inc(iTreeDepth);
+          try
+            NFConvertTreeToText(iPly);
+          finally
+            dec(iTreeDepth);
+          end;
+
+          FWriteWrappedText(')', NGetTextIndent + 3, TRUE);
+          if ((iTreeDepth < MAX_INDENTED_TREE_DEPTH)) then
+          begin
+            FWriteLine;
+            bAddIndentFormatting := FALSE;
+          end;
 
           if (i = strlPlys.Count - 1) then
-            wstrData := wstrData + ')'
-          else
           begin
-            wstrData := wstrData + ') ('; // ';';
-            bAddIndentFormatting := FALSE;            
+            if (iTreeDepth = 0) then
+              FWriteLine;
           end;
+
+          if (i < strlPlys.Count - 1) then
+            FWriteWrappedText(' (', NGetTextIndent + 1, TRUE);
 
           bExplicitNumberingFormatting := TRUE;
         end; // for i
@@ -183,14 +300,12 @@ var
   end;
 
 begin // .FConvertTreeToText
-  wstrData := '';
+  iTreeDepth := 0;
 
   bExplicitNumberingFormatting := TRUE;
   bAddIndentFormatting := FALSE;
   
   NFConvertTreeToText;
-
-  Result := wstrData;
 end;
 
 

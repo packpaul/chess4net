@@ -87,9 +87,9 @@ MinStackSize=16384
 MaxStackSize=1048576
 ImageBase=4194304
 [Directories]
-OutputDir=..\bin
+OutputDir=..\..\bin
 UnitOutputDir=.\dcu
-SearchPath=..\lib\DUnit\src
+SearchPath=..\..\lib\DUnit\src
 UsePackages=0
 [Parameters]
 UseLauncher=0
