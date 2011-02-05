@@ -62,6 +62,8 @@ procedure TPGNWriterTests.FormattedC4NOutputTest;
 
   procedure NFillInputData(var strlData: TStringList);
   begin
+    strlData.Clear;
+    
     strlData.Append('1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5');
     strlData.Append('(3. ... Nf6 4. Ng5 d5 5. ed Na5 6. Bb5+ c6 7. dc bc 8. Be2 h6 9. Nf3 e4 10. Ne5 Bd6 11. d4 ed');
     strlData.Append('(11. ... Qc7 12. f4 (12. Bd2 Be5 13. de Qe5 14. Bc3 Qg5 15. Qd2 Qd2+');
@@ -70,10 +72,6 @@ procedure TPGNWriterTests.FormattedC4NOutputTest;
     strlData.Append('12. ... g5 13. fg hg 14. Bg5 Be5 15. de Qe5 16. Bf6 Qf6 17. Nc3)');
     strlData.Append('12. Nd3 Qc7 13. h3 c5 14. Bf3 Rb8 15. b3 c4 16. bc Nc4)');
     strlData.Append('(3. ... Be7 4. d4 d6) 4. c3 Nf6 5. d4');
-  end;
-
-  procedure NProcessData;
-  begin
   end;
 
   procedure NCheckOutputData(const strlData: TStringList);
@@ -110,8 +108,9 @@ begin // .FormattedC4NOutputTest
     CheckTrue(Parse(strlData), 'Incorrect input data!');
     m_PGNWriter.WriteInChess4NetFormat(Tree);
     strlData.Assign(m_PGNWriter.Data);
-
+{$IFDEF DEVELOP}
     strlData.SaveToFile('FormattedC4NOutputTest.txt');
+{$ENDIF}    
 
     NCheckOutputData(strlData);
 

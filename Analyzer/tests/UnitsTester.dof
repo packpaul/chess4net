@@ -90,6 +90,7 @@ ImageBase=4194304
 OutputDir=..\..\bin
 UnitOutputDir=.\dcu
 SearchPath=..\..\lib\DUnit\src
+Conditionals=xDEVELOP
 UsePackages=0
 [Parameters]
 UseLauncher=0

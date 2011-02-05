@@ -26,7 +26,8 @@ type
     function FGetNextLine: string;
     function FIsEndOfData: boolean;
 
-    procedure FParseHeader;
+    function  FIsTag(const str: string): boolean;
+    procedure FParseTags;
     procedure FParseGame;
     procedure FParseGameStr(const strGame: string; bIncludeVariants: boolean);
 
@@ -88,7 +89,7 @@ begin
     m_bParseResult := TRUE;
     try
       m_bInC4NFormat := FALSE;
-      FParseHeader;
+      FParseTags;
       FParseGame;
     except
       on EPGNParser do
@@ -115,11 +116,10 @@ end;
 
 function TPGNParser.FGetNextLine: string;
 begin
-  if (m_iDataLine < (m_Data.Count - 1)) then
-  begin
-    inc(m_iDataLine);
-    Result := m_Data[m_iDataLine];
-  end
+  inc(m_iDataLine);
+  
+  if (m_iDataLine < (m_Data.Count)) then
+    Result := m_Data[m_iDataLine]
   else
     Result := '';
 end;
@@ -131,7 +131,7 @@ begin
 end;
 
 
-procedure TPGNParser.FParseHeader;
+procedure TPGNParser.FParseTags;
 
   function NProcessLine(const s: string): boolean;
   const
@@ -142,7 +142,7 @@ procedure TPGNParser.FParseHeader;
   begin
     Result := FALSE;
 
-    if ((s[1] <> '[') or (s[length(s)] <> ']')) then
+    if (not FIsTag(s)) then
       exit;
 
     if ((LeftStr(s, length(WHITE_PREFIX)) = WHITE_PREFIX) and
@@ -189,6 +189,12 @@ begin // .FParseHeader
 end;
 
 
+function  TPGNParser.FIsTag(const str: string): boolean;
+begin
+  Result := ((str <> '') and ((str[1] = '[') and (str[length(str)] = ']')));
+end;
+
+
 procedure TPGNParser.FCheckAgainstC4NVersionSupport(const strVersion: string);
 begin
   m_bInC4NFormat := (strVersion = '1');
@@ -209,7 +215,7 @@ begin
   s := FGetLine;
   repeat
     s := TrimRight(s);
-    if (s = '') then
+    if (FIsTag(s)) then
       break;
 
     ss := ss + ' ' + s;
