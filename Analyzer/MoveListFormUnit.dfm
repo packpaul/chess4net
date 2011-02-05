@@ -26,7 +26,7 @@ object MoveListForm: TMoveListForm
   PixelsPerInch = 96
   TextHeight = 13
   object BackSpeedButton: TSpeedButton
-    Left = 96
+    Left = 80
     Top = 359
     Width = 23
     Height = 22
@@ -50,7 +50,7 @@ object MoveListForm: TMoveListForm
     ShowHint = True
   end
   object ForthSpeedButton: TSpeedButton
-    Left = 122
+    Left = 106
     Top = 359
     Width = 23
     Height = 22
@@ -74,7 +74,7 @@ object MoveListForm: TMoveListForm
     ShowHint = True
   end
   object SelectLineSpeedButton: TSpeedButton
-    Left = 148
+    Left = 132
     Top = 359
     Width = 23
     Height = 22
@@ -98,7 +98,7 @@ object MoveListForm: TMoveListForm
     ShowHint = True
   end
   object InitialSpeedButton: TSpeedButton
-    Left = 44
+    Left = 28
     Top = 359
     Width = 23
     Height = 22
@@ -122,7 +122,7 @@ object MoveListForm: TMoveListForm
     ShowHint = True
   end
   object ReturnFromLineSpeedButton: TSpeedButton
-    Left = 70
+    Left = 54
     Top = 359
     Width = 23
     Height = 22
@@ -140,6 +140,30 @@ object MoveListForm: TMoveListForm
       DDDDDDDD77DD77DDDDDDDD77722D74DDDDDDDD77777D77DDDDDDD772222774DD
       DDDDD777777777DDDDDDDD22222444DDDDDDDD77777777DDDDDDDDD2222DDDDD
       DDDDDDD7777DDDDDDDDDDDDDD22DDDDDDDDDDDDDD77DDDDDDDDDDDDDDDDDDDDD
+      DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD}
+    NumGlyphs = 2
+    ParentShowHint = False
+    ShowHint = True
+  end
+  object DeleteLineSpeedButton: TSpeedButton
+    Left = 164
+    Top = 359
+    Width = 23
+    Height = 22
+    Action = AnalyseChessBoard.DeleteLineAction
+    Anchors = [akLeft, akBottom]
+    Glyph.Data = {
+      76010000424D7601000000000000760000002800000020000000100000000100
+      0400000000000001000000000000000000001000000000000000000000000000
+      8000008000000080800080000000800080008080000080808000C0C0C0000000
+      FF0000FF000000FFFF00FF000000FF00FF00FFFF0000FFFFFF00DDDDDDDDDDDD
+      DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD
+      DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD
+      DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD99DDD
+      D99DDDDDDDD77DDDD77DD7777777997799DDD7777777777777DDD74444444999
+      944DD77777777777777DDD4444444499444DDD7777777777777DDDDDDDDDD999
+      9DDDDDDDDDDDD7777DDDDDDDDDDD99DD99DDDDDDDDDD77DD77DDDDDDDDD99DDD
+      D99DDDDDDDD77DDDD77DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD
       DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD}
     NumGlyphs = 2
     ParentShowHint = False

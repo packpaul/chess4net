@@ -64,6 +64,11 @@ type
     SaveAction: TAction;
     SaveAsAction: TAction;
     SaveDialog: TSaveDialog;
+    EditMenuItem: TTntMenuItem;
+    DeleteLineAction: TAction;
+    EditDeleteLineMenuItem: TTntMenuItem;
+    N7: TTntMenuItem;
+    PopupDeleteLineMenuItem: TTntMenuItem;
     procedure FileExitMenuItemClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormCanResize(Sender: TObject; var NewWidth,
@@ -98,6 +103,9 @@ type
     procedure SaveActionUpdate(Sender: TObject);
     procedure SaveAsActionExecute(Sender: TObject);
     procedure SaveAsActionUpdate(Sender: TObject);
+    procedure DeleteLineActionExecute(Sender: TObject);
+    procedure DeleteLineActionUpdate(Sender: TObject);
+    procedure PopupMenuPopup(Sender: TObject);
   private
     m_ChessBoard: TPosBaseChessBoard;
     m_ResizingType: (rtNo, rtHoriz, rtVert);
@@ -177,11 +185,14 @@ type
     procedure FTakebackMove;
     procedure FForwardMove;
     procedure FReturnFromCurrentLine;
+    procedure FDeleteLine;
 
     procedure FRefreshMoveListForm;
 
     procedure FOnURLQueryReady(Sender: TURLVersionQuery);
     procedure FOnOpeningsDBManagerChanged(Sender: TObject);
+
+    procedure FSetGameFileName(const AGameFileName: TFileName);
   end;
 
 implementation
@@ -198,6 +209,7 @@ const
   MSG_GAME_CHANGED_SAVE_CHANGES = 'Current game was modified. Save the changes?';
   MSG_INCORRECT_FILE_FORMAT = 'Incorrect file format encountered or data is broken!';
   MSG_FILE_EXISTS_OVERWRITE = 'File %s already exists. Do you want it to be overwritten?';
+  MSG_LINE_TO_BE_DELETED = 'Are you sure you want to delete current line?';
 
 ////////////////////////////////////////////////////////////////////////////////
 // TAnalyseChessBoard
@@ -376,7 +388,7 @@ begin
   m_PlysTree.Add(m_ChessBoard.GetPosition);
 
   m_bGameChanged := FALSE;
-  m_GameFileName := '';
+  FSetGameFileName('');
 
   FSynchronizeChessEngineWithChessBoardAndStartEvaluation;
 end;
@@ -415,9 +427,12 @@ begin
   try
     strlData.LoadFromFile(OpenDialog.FileName);
     if (not FLoadPGNData(strlData)) then
+    begin
       MessageDlg(MSG_INCORRECT_FILE_FORMAT, mtError, [mbOK], 0);
+      exit;
+    end;
 
-    m_GameFileName := OpenDialog.FileName;
+    FSetGameFileName(OpenDialog.FileName);
 
   finally
     strlData.Free;
@@ -698,6 +713,7 @@ begin
   ForwardMoveAction.Update;
   SelectLineAction.Update;
   ReturnFromLineAction.Update;
+  DeleteLineAction.Update;
 end;
 
 
@@ -830,7 +846,8 @@ var
 begin
   Result := TRUE;
 
-  if (not m_bGameChanged) then
+  SaveAction.Update;
+  if (not SaveAction.Enabled) then
     exit;
 
   iRes := MessageDlg(MSG_GAME_CHANGED_SAVE_CHANGES, mtConfirmation, mbYesNoCancel, 0);
@@ -887,7 +904,7 @@ begin
       exit;
   end;
 
-  m_GameFileName := SaveDialog.FileName;
+  FSetGameFileName(SaveDialog.FileName);
   m_bGameFileInC4NFormat := TRUE;
 
   FSavePGNData;
@@ -956,6 +973,67 @@ end;
 procedure TAnalyseChessBoard.SaveAsActionUpdate(Sender: TObject);
 begin
   (Sender as TAction).Enabled := (FGetPlysCount > 0);
+end;
+
+
+procedure TAnalyseChessBoard.DeleteLineActionExecute(Sender: TObject);
+begin
+  FDeleteLine;
+end;
+
+
+procedure TAnalyseChessBoard.FDeleteLine;
+var
+  iPly: integer;
+begin
+  if (MessageDlg(MSG_LINE_TO_BE_DELETED, mtConfirmation, [mbYes, mbNo], 0) = mrNo) then
+    exit;
+
+  iPly := FGetCurrentPlyIndex;
+
+  if (not m_PlysTree.Delete(iPly)) then
+    exit;
+
+  m_bGameChanged := TRUE;
+  inc(m_lwPlysListUpdateID);
+
+  FSetCurrentPlyIndex(iPly - 1);
+end;
+
+
+procedure TAnalyseChessBoard.DeleteLineActionUpdate(Sender: TObject);
+begin
+  (Sender as TAction).Enabled := (FGetCurrentPlyIndex > 0);  
+end;
+
+
+procedure TAnalyseChessBoard.PopupMenuPopup(Sender: TObject);
+var
+  i: integer;
+  Action: TAction;
+begin
+  for i := 0 to PopupMenu.Items.Count - 1 do
+  begin
+    Action := (PopupMenu.Items[i].Action as TAction);
+
+    if (Assigned(Action)) then
+      PopupMenu.Items[i].Visible := Action.Enabled
+    else
+      PopupMenu.Items[i].Visible := PopupMenu.Items[i].Enabled;
+  end;
+
+end;
+
+
+procedure TAnalyseChessBoard.FSetGameFileName(const AGameFileName: TFileName);
+begin
+  if (AGameFileName = m_GameFileName) then
+    exit;
+
+  m_GameFileName := AGameFileName;
+
+  StatusBar.SimpleText := ExtractFileName(AGameFileName);
+  StatusBar.Hint := AGameFileName;
 end;
 
 end.

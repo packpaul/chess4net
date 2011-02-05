@@ -30,6 +30,8 @@ type
 
     function FEquals(Node: TPlysTreeNode): boolean;
 
+    procedure FRemapMainLine;
+
     property Ply: string read m_strPly;
     property Pos: string read m_strPos;
     property PlyStatuses: TPlyStatuses read m_PlyStatuses write m_PlyStatuses;
@@ -46,6 +48,8 @@ type
     function FGetCount: integer;
     function FGetNodeOfDepth(iPlyDepth: integer): TPlysTreeNode;
     function FGetWhiteStarts: boolean;
+    procedure FDelete(iIndex: Integer);
+    
   public
     destructor Destroy; override;
 
@@ -55,7 +59,7 @@ type
       APlyStatuses: TPlyStatuses = []): integer; overload;
 
     procedure Clear;
-    procedure Delete(iIndex: Integer);
+    function Delete(iIndex: Integer): boolean;
 
     function GetPlysCountForPlyIndex(iIndex: integer): integer;
     procedure GetPlysForPlyIndex(iIndex: integer; var List: TStrings);
@@ -91,11 +95,11 @@ end;
 
 procedure TPlysTree.Clear;
 begin
-  Delete(0);
+  FDelete(0);
 end;
 
 
-procedure TPlysTree.Delete(iIndex: Integer);
+procedure TPlysTree.FDelete(iIndex: Integer);
 var
   Node: TPlysTreeNode;
 begin
@@ -289,6 +293,26 @@ begin
   Result := Odd(iPly);
 end;
 
+
+function TPlysTree.Delete(iIndex: Integer): boolean;
+var
+  bRemapMainLine: boolean;
+  Node: TPlysTreeNode;
+begin
+  Result := ((iIndex >= 0) and (iIndex < Count));
+
+  bRemapMainLine := (psMainLine in GetPlyStatus(iIndex));
+
+  FDelete(iIndex);
+
+  if (bRemapMainLine) then
+  begin
+    Node := FGetNodeOfDepth(iIndex - 1);
+    if (Assigned(Node)) then
+      Node.FRemapMainLine;
+  end;
+end;
+
 ////////////////////////////////////////////////////////////////////////////////
 // TPlysTreeNode
 
@@ -385,7 +409,7 @@ var
 begin
   for i := Low(m_arrNextNodes) to High(m_arrNextNodes) do
   begin
-    if (m_arrNextNodes[i].FEquals(Node)) then
+    if (Assigned(m_arrNextNodes[i]) and m_arrNextNodes[i].FEquals(Node)) then
     begin
       m_iNextNodeOfLineIndex := i;
       Node.Free;
@@ -467,6 +491,33 @@ begin
       exit;
     end;
   end;
+end;
+
+
+procedure TPlysTreeNode.FRemapMainLine;
+var
+  i: integer;
+  NextNode: TPlysTreeNode;
+begin
+  Include(m_PlyStatuses, psMainLine);
+
+  for i := Low(m_arrNextNodes) to High(m_arrNextNodes) do
+  begin
+    NextNode := m_arrNextNodes[i];
+    if (Assigned(NextNode)) then
+    begin
+      if (i > Low(m_arrNextNodes)) then
+      begin
+        m_arrNextNodes[i] := nil;
+        m_arrNextNodes[Low(m_arrNextNodes)] := NextNode;
+        if (m_iNextNodeOfLineIndex = i) then
+          m_iNextNodeOfLineIndex := Low(m_arrNextNodes);
+      end;
+      NextNode.FRemapMainLine;
+      exit;
+    end;
+  end; // for i
+  
 end;
 
 end.
