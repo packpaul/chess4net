@@ -21,6 +21,7 @@ type
     class function Create(const Source: TPlysTreeNode): TPlysTreeNode; overload;
 
     function FGetNextNodeOfLine: TPlysTreeNode;
+    function FGetNextNodeOfMainLine: TPlysTreeNode;
     procedure FDeleteNextNodeOfLine;
     procedure FDeleteNextNodes;
     procedure FAddLineNode(Node: TPlysTreeNode);
@@ -31,6 +32,7 @@ type
     function FEquals(Node: TPlysTreeNode): boolean;
 
     procedure FRemapMainLine;
+    procedure FSetLineToMain;
 
     property Ply: string read m_strPly;
     property Pos: string read m_strPos;
@@ -60,6 +62,7 @@ type
 
     procedure Clear;
     function Delete(iIndex: Integer): boolean;
+    procedure SetLineToMain;
 
     function GetPlysCountForPlyIndex(iIndex: integer): integer;
     procedure GetPlysForPlyIndex(iIndex: integer; var List: TStrings);
@@ -313,6 +316,23 @@ begin
   end;
 end;
 
+
+procedure TPlysTree.SetLineToMain;
+var
+  Node: TPlysTreeNode;
+begin
+  if (not Assigned(m_FirstNode)) then
+    exit;
+
+  Node := m_FirstNode;
+  repeat
+    Node.PlyStatuses := Node.PlyStatuses - [psMainLine];
+    Node := Node.FGetNextNodeOfMainLine;
+  until (not Assigned(Node));
+
+  m_FirstNode.FSetLineToMain;
+end;
+
 ////////////////////////////////////////////////////////////////////////////////
 // TPlysTreeNode
 
@@ -376,6 +396,15 @@ function TPlysTreeNode.FGetNextNodeOfLine: TPlysTreeNode;
 begin
   if (m_iNextNodeOfLineIndex >= Low(m_arrNextNodes)) then
     Result := m_arrNextNodes[m_iNextNodeOfLineIndex]
+  else
+    Result := nil;
+end;
+
+
+function TPlysTreeNode.FGetNextNodeOfMainLine: TPlysTreeNode;
+begin
+  if (Length(m_arrNextNodes) > 0) then
+    Result := m_arrNextNodes[Low(m_arrNextNodes)]
   else
     Result := nil;
 end;
@@ -517,7 +546,29 @@ begin
       exit;
     end;
   end; // for i
-  
+
+end;
+
+
+procedure TPlysTreeNode.FSetLineToMain;
+var
+  NextNode, TmpNode: TPlysTreeNode;
+begin // .FRemapMainLine
+  Include(m_PlyStatuses, psMainLine);
+
+  NextNode := FGetNextNodeOfLine;
+  if (Assigned(NextNode)) then
+  begin
+    if (m_iNextNodeOfLineIndex > Low(m_arrNextNodes)) then
+    begin
+      TmpNode := m_arrNextNodes[m_iNextNodeOfLineIndex];
+      m_arrNextNodes[m_iNextNodeOfLineIndex] := m_arrNextNodes[Low(m_arrNextNodes)];
+      m_arrNextNodes[Low(m_arrNextNodes)] := TmpNode;
+      m_iNextNodeOfLineIndex := Low(m_arrNextNodes);
+    end;
+    NextNode.FSetLineToMain;
+  end;
+
 end;
 
 end.

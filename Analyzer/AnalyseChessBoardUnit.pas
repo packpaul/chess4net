@@ -69,6 +69,8 @@ type
     EditDeleteLineMenuItem: TTntMenuItem;
     N7: TTntMenuItem;
     PopupDeleteLineMenuItem: TTntMenuItem;
+    EditSetLineToMainMenuItem: TTntMenuItem;
+    SetLineToMainAction: TAction;
     procedure FileExitMenuItemClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormCanResize(Sender: TObject; var NewWidth,
@@ -106,6 +108,8 @@ type
     procedure DeleteLineActionExecute(Sender: TObject);
     procedure DeleteLineActionUpdate(Sender: TObject);
     procedure PopupMenuPopup(Sender: TObject);
+    procedure SetLineToMainActionUpdate(Sender: TObject);
+    procedure SetLineToMainActionExecute(Sender: TObject);
   private
     m_ChessBoard: TPosBaseChessBoard;
     m_ResizingType: (rtNo, rtHoriz, rtVert);
@@ -186,6 +190,7 @@ type
     procedure FForwardMove;
     procedure FReturnFromCurrentLine;
     procedure FDeleteLine;
+    procedure FSetLineToMain;
 
     procedure FRefreshMoveListForm;
 
@@ -210,6 +215,7 @@ const
   MSG_INCORRECT_FILE_FORMAT = 'Incorrect file format encountered or data is broken!';
   MSG_FILE_EXISTS_OVERWRITE = 'File %s already exists. Do you want it to be overwritten?';
   MSG_LINE_TO_BE_DELETED = 'Are you sure you want to delete current line?';
+  MSG_SET_LINE_TO_MAIN = 'Are you sure you want current line be set to main?';
 
 ////////////////////////////////////////////////////////////////////////////////
 // TAnalyseChessBoard
@@ -259,9 +265,9 @@ begin
 
   m_ChessBoard.Mode := mAnalyse;
 
-  FOnOpeningsDBManagerChanged(nil);
-
   m_ChessBoard.InitPosition;
+
+  FOnOpeningsDBManagerChanged(nil);
 end;
 
 
@@ -626,8 +632,8 @@ end;
 
 procedure TAnalyseChessBoard.FOnOpeningsDBManagerChanged(Sender: TObject);
 begin
-  m_ChessBoard.pTrainingMode := ((m_OpeningsDBManager.DB <> '') and (m_OpeningsDBManager.Enabled));
   m_ChessBoard.SetExternalBase(m_OpeningsDBManager.DB);
+  m_ChessBoard.pTrainingMode := ((m_OpeningsDBManager.DB <> '') and (m_OpeningsDBManager.Enabled));  
 end;
 
 
@@ -1034,6 +1040,30 @@ begin
 
   StatusBar.SimpleText := ExtractFileName(AGameFileName);
   StatusBar.Hint := AGameFileName;
+end;
+
+
+procedure TAnalyseChessBoard.SetLineToMainActionUpdate(Sender: TObject);
+begin
+  (Sender as TAction).Enabled := (FGetPlysCount > 0)
+end;
+
+
+procedure TAnalyseChessBoard.SetLineToMainActionExecute(Sender: TObject);
+begin
+  FSetLineToMain;
+end;
+
+
+procedure TAnalyseChessBoard.FSetLineToMain;
+begin
+  if (MessageDlg(MSG_SET_LINE_TO_MAIN, mtConfirmation, [mbYes, mbNo], 0) = mrNo) then
+    exit;
+
+  m_PlysTree.SetLineToMain;
+
+  inc(m_lwPlysListUpdateID);
+  FRefreshMoveListForm;
 end;
 
 end.

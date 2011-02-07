@@ -116,7 +116,11 @@ object AnalyseChessBoard: TAnalyseChessBoard
       Caption = '&Edit'
       object EditDeleteLineMenuItem: TTntMenuItem
         Action = DeleteLineAction
-        Caption = '&Delete Line...'
+        Caption = '&Delete Line'
+      end
+      object EditSetLineToMainMenuItem: TTntMenuItem
+        Action = SetLineToMainAction
+        Caption = 'Set Line To &Main'
       end
     end
     object PositionMenuItem: TTntMenuItem
@@ -284,6 +288,12 @@ object AnalyseChessBoard: TAnalyseChessBoard
       ShortCut = 46
       OnExecute = DeleteLineActionExecute
       OnUpdate = DeleteLineActionUpdate
+    end
+    object SetLineToMainAction: TAction
+      Category = 'Edit'
+      Hint = 'Set line to main'
+      OnExecute = SetLineToMainActionExecute
+      OnUpdate = SetLineToMainActionUpdate
     end
   end
   object ImageList: TImageList
