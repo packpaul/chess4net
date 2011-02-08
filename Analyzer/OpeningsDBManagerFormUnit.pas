@@ -45,6 +45,7 @@ type
     m_OpeningsDBManagerProvider: IOpeningsDBManagerProvider;
     procedure FRefresh;
     procedure FSetOpeningsDBManagerProvider(Value: IOpeningsDBManagerProvider);
+    procedure FShowDBRequestMessage;
   public
     property OpeningsDBManagerProvider: IOpeningsDBManagerProvider
       read m_OpeningsDBManagerProvider write FSetOpeningsDBManagerProvider;
@@ -52,10 +53,14 @@ type
 
 implementation
 
+uses
+  IniSettingsUnit, DontShowMessageDlgUnit;
+
 {$R *.dfm}
 
 const
   MSG_DB_REMOVE = 'Do you really want to remove Opening DB "%s"?';
+  MSG_OPENING_DB_REQUEST = 'Additional openings DBs can be requested over http://chess4net.ru';  
 
 ////////////////////////////////////////////////////////////////////////////////
 // TOpeningsDBManagerForm
@@ -106,7 +111,10 @@ var
   DBFileName: TFileName;
 begin
   if (not DBOpenDialog.Execute) then
+  begin
+    FShowDBRequestMessage;
     exit;
+  end;
 
   if (Assigned(m_OpeningsDBManagerProvider)) then
   begin
@@ -115,6 +123,19 @@ begin
       FRefresh;
   end;
 
+end;
+
+
+procedure TOpeningsDBManagerForm.FShowDBRequestMessage;
+var
+  bDontShowFlag: boolean;
+begin
+  if (not TIniSettings.Instance.OpeningDBRequestShow) then
+    exit;
+
+  TDontShowMessageDlg.Show(MSG_OPENING_DB_REQUEST, bDontShowFlag);
+
+  TIniSettings.Instance.OpeningDBRequestShow := (not bDontShowFlag);
 end;
 
 

@@ -6,7 +6,8 @@ uses
   Classes, IniFiles;
 
 type
-  TIniSettingsID = (isidDontShowLastVersion, isidDB, isidDBIndex, isidDBEnabled);
+  TIniSettingsID = (isidDontShowLastVersion, isidDB, isidDBIndex, isidDBEnabled,
+    isidOpeningDBRequestShow);
 
   TIniSettings = class
   private
@@ -37,6 +38,8 @@ type
     property DontShowLastVersion: integer index isidDontShowLastVersion
       read FGetIntegerValue write FSetIntegerValue;
     property DBEnabled: boolean index isidDBEnabled
+      read FGetBooleanValue write FSetBooleanValue;
+    property OpeningDBRequestShow: boolean index isidOpeningDBRequestShow
       read FGetBooleanValue write FSetBooleanValue;
   end;
 
@@ -132,6 +135,8 @@ begin
       Result := 'DBIndex';
     isidDBEnabled:
       Result := 'DBEnabled';
+    isidOpeningDBRequestShow:
+      Result := 'OpeningDBRequestShow';
   else
     Result := '';
   end;
@@ -145,7 +150,7 @@ begin
   case ID of
     isidDontShowLastVersion:
       Result := CHESS4NET_VERSION;
-    isidDBEnabled:
+    isidDBEnabled, isidOpeningDBRequestShow:
       Result := TRUE;
   else
     Result := Unassigned;

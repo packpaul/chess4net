@@ -34,7 +34,9 @@ uses
   OpeningsDBManagerFormUnit in 'OpeningsDBManagerFormUnit.pas' {OpeningsDBSelectionForm},
   OpeningsDBManagerUnit in 'OpeningsDBManagerUnit.pas',
   NonRefInterfacedObjectUnit in '..\NonRefInterfacedObjectUnit.pas',
-  PGNWriterUnit in 'PGNWriterUnit.pas';
+  PGNWriterUnit in 'PGNWriterUnit.pas',
+  SplashFormUnit in 'SplashFormUnit.pas' {SplashForm},
+  InfoUnit in 'InfoUnit.pas' {InfoForm};
 
 {$R ..\Chess4Net.res}
 
@@ -44,7 +46,16 @@ var
 begin
   Application.Initialize;
   Application.Title := 'Chess4Net Analyzer';
-  Application.CreateForm(TAnalyseChessBoard, AnalyseChessBoard);
+
+  with TSplashForm.Create(Application) do
+  try
+    Splash;
+    Application.CreateForm(TAnalyseChessBoard, AnalyseChessBoard);
+    WaitSplashShowing;
+  finally
+    Free;
+  end;
+
   Application.Run;
 end.
 

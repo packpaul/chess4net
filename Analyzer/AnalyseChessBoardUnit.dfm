@@ -154,13 +154,14 @@ object AnalyseChessBoard: TAnalyseChessBoard
       object HelpContentsMenuItem: TTntMenuItem
         Caption = 'Contents...'
         Enabled = False
+        Visible = False
       end
       object N3: TTntMenuItem
         Caption = '-'
       end
       object HelpAboutMenuItem: TTntMenuItem
         Caption = 'About...'
-        Enabled = False
+        OnClick = HelpAboutMenuItemClick
       end
     end
   end

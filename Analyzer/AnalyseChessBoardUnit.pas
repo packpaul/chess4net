@@ -110,6 +110,7 @@ type
     procedure PopupMenuPopup(Sender: TObject);
     procedure SetLineToMainActionUpdate(Sender: TObject);
     procedure SetLineToMainActionExecute(Sender: TObject);
+    procedure HelpAboutMenuItemClick(Sender: TObject);
   private
     m_ChessBoard: TPosBaseChessBoard;
     m_ResizingType: (rtNo, rtHoriz, rtVert);
@@ -206,7 +207,7 @@ uses
   Windows, Clipbrd,
   //
   PGNParserUnit, ChessRulesEngine, GlobalsLocalUnit, DontShowMessageDlgUnit,
-  IniSettingsUnit, PGNWriterUnit;
+  IniSettingsUnit, PGNWriterUnit, InfoUnit;
 
 {$R *.dfm}
 
@@ -917,7 +918,6 @@ begin
 end;
 
 
-
 procedure TAnalyseChessBoard.InitialPositionActionExecute(Sender: TObject);
 begin
   FSetToInitialPosition;
@@ -1064,6 +1064,12 @@ begin
 
   inc(m_lwPlysListUpdateID);
   FRefreshMoveListForm;
+end;
+
+
+procedure TAnalyseChessBoard.HelpAboutMenuItemClick(Sender: TObject);
+begin
+  ShowInfo;
 end;
 
 end.
