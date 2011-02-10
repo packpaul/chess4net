@@ -33,6 +33,13 @@ dcc32 -B -R..\res\Delphi -E%PROJ_DIR% Chess4Net_Analyzer.dpr
 
 rem -= Build =-
 
+unzip -o ..\Build\ChessEngines\%ROBBOLITO_ENGINE%.zip -d %ENGINES_DIR%
+REN %ENGINES_DIR%\%ROBBOLITO_ENGINE%.exe Robbolito.exe
+
+COPY build\*.* %PROJ_DIR%\ /Y
+
+COPY ReadMe.txt %PROJ_DIR%\ /Y
+
 IF '%OPENINGS_DBS_REBUILD%'=='y' (
   PUSHD ..\PosDB 
   
@@ -45,10 +52,3 @@ IF '%OPENINGS_DBS_REBUILD%'=='y' (
   
   POPD
 )
-
-unzip -o ..\Build\ChessEngines\%ROBBOLITO_ENGINE%.zip -d %ENGINES_DIR%
-REN %ENGINES_DIR%\%ROBBOLITO_ENGINE%.exe Robbolito.exe
-
-COPY build\*.* %PROJ_DIR%\ /Y
-
-COPY ReadMe.txt %PROJ_DIR%\ /Y
