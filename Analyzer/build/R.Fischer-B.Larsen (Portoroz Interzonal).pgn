@@ -1,0 +1,46 @@
+[Event "Portoroz Interzonal"]
+[Site "Portoroz"]
+[Date "1958.??.??"]
+[Round "8"]
+[White "Fischer, Robert James"]
+[Black "Larsen, Bent"]
+[Result "1-0"]
+[ECO "B77"]
+[Annotator "Ftacnik"]
+[PlyCount "61"]
+[EventDate "1958.08.05"]
+[Source "ChessBase"]
+
+1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 g6 6. Be3 Bg7 (6... Ng4 $2 7.
+Bb5+ $18) 7. f3 O-O 8. Qd2 Nc6 9. Bc4 Nxd4 (9... a5 $5 {Byrne,D} 10. g4 Ne5 11.
+Be2 11... d5 $2 12. g5 $1 $18) 10. Bxd4 Be6 11. Bb3 Qa5 12. O-O-O b5 (12...
+Bxb3 13. cxb3 $1 $40) 13. Kb1 b4 14. Nd5 (14. Ne2 $2 14... Bxb3 15. cxb3 Rfd8)
+14... Bxd5 (14... Nxd5 15. Bxg7 Kxg7 16. exd5 Bd7 17. Rde1 $16 {
+Suetin,A-Kortschnoj,V/URS-ch/1953/}) 15. Bxd5 (15. exd5 $1 15... Qb5 16. Rhe1
+a5 17. Qe2 $1 $16 {Tal,M-Larsen,B  Zuerich 1959}) 15... Rac8 $2 (15... Nxd5 16.
+Bxg7 (16. exd5 Qxd5 17. Qxb4 $13) 16... Nc3+ 17. bxc3 (17. Bxc3 bxc3 18. Qxc3
+Qxc3 19. bxc3 19... Rfc8 $10) 17... Rab8 $1 18. cxb4 Qxb4+ 19. Qxb4 Rxb4+ 20.
+Bb2 20... Rfb8 $10) 16. Bb3 $1 16... Rc7 (16... Qb5 17. Bxa7) 17. h4 Qb5 (17...
+h5 18. g4 $1 18... hxg4 (18... Rfc8 19. Rdg1 hxg4 20. h5 gxh5 21. fxg4 Nxe4 22.
+Qf4 e5 23. Qxe4 exd4 24. gxh5 Kh8 25. h6 Bf6 26. Rg7 $18) 19. h5 gxh5 (19...
+Nxh5 20. Bxg7 Kxg7 21. fxg4 Nf6 22. Qh6+ $18) 20. fxg4 Nxe4 (20... hxg4 21.
+Rdg1 e5 22. Be3 Rd8 23. Bh6 $18) (20... Nxg4 21. Rdg1 Bxd4 22. Rxg4+ hxg4 23.
+Qh6 $18) 21. Qe3 Nf6 (21... Bxd4 22. Qxe4 Bg7 23. Rxh5 $18) 22. gxh5 e5 23. h6
+$18) 18. h5 $1 18... Rfc8 (18... gxh5 19. g4 $1 19... hxg4 20. fxg4 Nxe4 21.
+Qh2 Ng5 22. Bxg7 Kxg7 23. Rd5 Rc5 24. Qh6+ Kg8 25. Rxg5+ Rxg5 26. Qxh7#) 19.
+hxg6 hxg6 20. g4 (20. Bxf6 $2 20... Bxf6 21. Qh6 21... e6 $1 $10) 20... a5 21.
+g5 Nh5 (21... Ne8 {Vasiukov,E} 22. Bxg7 Nxg7 (22... Kxg7 $2 23. Qh2 $18) 23.
+Rh6 $1 23... e6 (23... a4 24. Qh2 Nh5 25. Rxg6+ $18) 24. Qh2 Nh5 25. Bxe6 $1
+25... fxe6 (25... Qxg5 26. Rxg6+ $1 26... Qxg6 27. Bxc8 $18) 26. Rxg6+ Ng7 27.
+Rh1 $18) (21... a4 $2 22. gxf6 axb3 23. fxg7 $1 23... bxc2+ 24. Qxc2 $1 24...
+e5 25. Qh2 $18) 22. Rxh5 $1 22... gxh5 (22... Bxd4 23. Qxd4 gxh5 24. g6 Qe5 (
+24... e6 25. Qxd6) 25. gxf7+ Kh7 (25... Kf8 26. Qxe5 dxe5 27. Rg1 e6 28. Bxe6
+Ke7 29. Bxc8 Rxc8 30. Rg5 $18) 26. Qd3 $18 {  f3-f4}) 23. g6 e5 (23... e6 24.
+gxf7+ Kxf7 (24... Rxf7 25. Bxe6) 25. Bxg7 Kxg7 26. Rg1+ Kh7 27. Qg2 Qe5 28.
+Qg6+ Kh8 29. Rg5 Rg7 30. Rxh5+ Kg8 31. Bxe6+ Kf8 32. Rf5+ Ke7 33. Rf7+ $18) 24.
+gxf7+ Kf8 25. Be3 d5 (25... a4 26. Qxd6+ Re7 27. Qd8+ $1 27... Rxd8 28. Rxd8+
+Re8 29. Bc5+ $18) (25... Rd8 26. Bh6 $18) 26. exd5 (26. Bxd5 26... Rxc2 $1)
+26... Rxf7 (26... a4 27. d6 $1 27... axb3 28. dxc7 $18) 27. d6 Rf6 (27... Rd7
+28. Be6 $18 (28. Bh6 $40)) (27... Rxf3 28. d7 $18 {  Qd6+}) 28. Bg5 Qb7 (28...
+Qd7 29. Qd5 $1 29... Qf7 (29... Rf7 30. Be7+ $1) 30. Bxf6 $18) 29. Bxf6 Bxf6
+30. d7 Rd8 31. Qd6+ (31. Qh6+ $1) 1-0

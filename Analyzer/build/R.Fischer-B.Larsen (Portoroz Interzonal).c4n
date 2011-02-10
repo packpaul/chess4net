@@ -1,0 +1,98 @@
+[C4N "1"]
+
+1. e4 c5 2. Nf3 d6 3. d4 cd 4. Nd4 Nf6 5. Nc3 g6 6. Be3 Bg7
+  (6. ... Ng4 7. Bb5+)
+
+7. f3 0-0 8. Qd2 Nc6 9. Bc4 Nd4
+  (9. ... a5 10. g4 Ne5 11. Be2 d5 12. g5)
+
+10. Bd4 Be6 11. Bb3 Qa5 12. 0-0-0 b5
+  (12. ... Bb3 13. cb)
+
+13. Kb1 b4 14. Nd5
+  (14. Ne2 Bb3 15. cb Rfd8)
+
+14. ... Bd5
+  (14. ... Nd5 15. Bg7 Kg7 16. ed Bd7 17. Rde1)
+
+15. Bd5
+  (15. ed Qb5 16. Rhe1 a5 17. Qe2)
+
+15. ... Rac8
+  (15. ... Nd5 16. Bg7
+    (16. ed Qd5 17. Qb4)
+   16. ... Nc3+ 17. bc
+    (17. Bc3 bc 18. Qc3 Qc3 19. bc Rfc8)
+   17. ... Rab8 18. cb Qb4+ 19. Qb4 Rb4+ 20. Bb2 Rfb8)
+
+16. Bb3 Rc7
+  (16. ... Qb5 17. Ba7)
+
+17. h4 Qb5
+  (17. ... h5 18. g4 hg
+    (18. ... Rfc8 19. Rdg1 hg 20. h5 gh 21. fg Ne4 22. Qf4 e5 23. Qe4 ed 24. gh
+     Kh8 25. h6 Bf6 26. Rg7)
+   19. h5 gh
+    (19. ... Nh5 20. Bg7 Kg7 21. fg Nf6 22. Qh6+)
+   20. fg Ne4
+    (20. ... hg 21. Rdg1 e5 22. Be3 Rd8 23. Bh6)
+    (20. ... Ng4 21. Rdg1 Bd4 22. Rg4+ hg 23. Qh6)
+   21. Qe3 Nf6
+    (21. ... Bd4 22. Qe4 Bg7 23. Rh5)
+   22. gh e5 23. h6)
+
+18. h5 Rfc8
+  (18. ... gh 19. g4 hg 20. fg Ne4 21. Qh2 Ng5 22. Bg7 Kg7 23. Rd5 Rc5 24. Qh6+
+   Kg8 25. Rg5+ Rg5 26. Qh7#)
+
+19. hg hg 20. g4
+  (20. Bf6 Bf6 21. Qh6 e6)
+
+20. ... a5 21. g5 Nh5
+  (21. ... Ne8 22. Bg7 Ng7
+    (22. ... Kg7 23. Qh2)
+   23. Rh6 e6
+    (23. ... a4 24. Qh2 Nh5 25. Rg6+)
+   24. Qh2 Nh5 25. Be6 fe
+    (25. ... Qg5 26. Rg6+ Qg6 27. Bc8)
+   26. Rg6+ Ng7 27. Rh1)
+  (21. ... a4 22. gf ab 23. fg bc+ 24. Qc2 e5 25. Qh2)
+
+22. Rh5 gh
+  (22. ... Bd4 23. Qd4 gh 24. g6 Qe5
+    (24. ... e6 25. Qd6)
+   25. gf+ Kh7
+    (25. ... Kf8 26. Qe5 de 27. Rg1 e6 28. Be6 Ke7 29. Bc8 Rc8 30. Rg5)
+   26. Qd3)
+
+23. g6 e5
+  (23. ... e6 24. gf+ Kf7
+    (24. ... Rf7 25. Be6)
+   25. Bg7 Kg7 26. Rg1+ Kh7 27. Qg2 Qe5 28. Qg6+ Kh8 29. Rg5 Rg7 30. Rh5+ Kg8
+   31. Be6+ Kf8 32. Rf5+ Ke7 33. Rf7+)
+
+24. gf+ Kf8 25. Be3 d5
+  (25. ... a4 26. Qd6+ Re7 27. Qd8+ Rd8 28. Rd8+ Re8 29. Bc5+)
+  (25. ... Rd8 26. Bh6)
+
+26. ed
+  (26. Bd5 Rc2)
+
+26. ... Rf7
+  (26. ... a4 27. d6 ab 28. dc)
+
+27. d6 Rf6
+  (27. ... Rd7 28. Be6
+    (28. Bh6)
+   )
+  (27. ... Rf3 28. d7)
+
+28. Bg5 Qb7
+  (28. ... Qd7 29. Qd5 Qf7
+    (29. ... Rf7 30. Be7+)
+   30. Bf6)
+
+29. Bf6 Bf6 30. d7 Rd8 31. Qd6+
+  (31. Qh6+)
+
+

@@ -77,7 +77,7 @@ uses
   Forms, SysUtils, StrUtils, Math;
 
 const
-  ENGINE_FILE = 'RobboLito_0085e4_w32.exe';
+  ENGINE_FILE = 'RobboLito.exe';
 
 ////////////////////////////////////////////////////////////////////////////////
 // TChessEngine

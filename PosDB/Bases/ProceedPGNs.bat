@@ -45,5 +45,3 @@ del Chigorin.mov
 
 del tmp.pos
 del tmp.mov
-
-PAUSE
