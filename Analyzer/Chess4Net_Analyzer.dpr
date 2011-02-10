@@ -35,8 +35,7 @@ uses
   OpeningsDBManagerUnit in 'OpeningsDBManagerUnit.pas',
   NonRefInterfacedObjectUnit in '..\NonRefInterfacedObjectUnit.pas',
   PGNWriterUnit in 'PGNWriterUnit.pas',
-  SplashFormUnit in 'SplashFormUnit.pas' {SplashForm},
-  InfoUnit in 'InfoUnit.pas' {InfoForm};
+  SplashFormUnit in 'SplashFormUnit.pas' {SplashForm};
 
 {$R ..\Chess4Net.res}
 

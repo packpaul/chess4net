@@ -207,7 +207,7 @@ uses
   Windows, Clipbrd,
   //
   PGNParserUnit, ChessRulesEngine, GlobalsLocalUnit, DontShowMessageDlgUnit,
-  IniSettingsUnit, PGNWriterUnit, InfoUnit;
+  IniSettingsUnit, PGNWriterUnit, SplashFormUnit;
 
 {$R *.dfm}
 
@@ -217,6 +217,8 @@ const
   MSG_FILE_EXISTS_OVERWRITE = 'File %s already exists. Do you want it to be overwritten?';
   MSG_LINE_TO_BE_DELETED = 'Are you sure you want to delete current line?';
   MSG_SET_LINE_TO_MAIN = 'Are you sure you want current line be set to main?';
+
+  LBL_CHESS4NET_ANALYZER_VER = 'Chess4Net Analyzer %s';
 
 ////////////////////////////////////////////////////////////////////////////////
 // TAnalyseChessBoard
@@ -228,6 +230,8 @@ end;
 
 procedure TAnalyseChessBoard.FormCreate(Sender: TObject);
 begin
+  Caption := Format(LBL_CHESS4NET_ANALYZER_VER, [CHESS4NET_VERSION_TXT]);
+
   m_PlysTree := TPlysTree.Create;
 
   m_OpeningsDBManager := TOpeningsDBManager.Create;
@@ -1069,7 +1073,12 @@ end;
 
 procedure TAnalyseChessBoard.HelpAboutMenuItemClick(Sender: TObject);
 begin
-  ShowInfo;
+  with TSplashForm.Create(Application) do
+  try
+    ShowModal;
+  finally
+    Free;
+  end;
 end;
 
 end.
