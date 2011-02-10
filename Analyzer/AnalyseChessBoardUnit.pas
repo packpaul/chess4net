@@ -95,7 +95,7 @@ type
     procedure SelectLineFromMoveListActionUpdate(Sender: TObject);
     procedure OpeningsDBManagerActionExecute(Sender: TObject);
     procedure OpeningsDBManagerActionUpdate(Sender: TObject);
-    procedure TntFormCloseQuery(Sender: TObject; var CanClose: Boolean);
+    procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
     procedure InitialPositionActionExecute(Sender: TObject);
     procedure InitialPositionActionUpdate(Sender: TObject);
     procedure FileNewMenuItemClick(Sender: TObject);
@@ -111,6 +111,7 @@ type
     procedure SetLineToMainActionUpdate(Sender: TObject);
     procedure SetLineToMainActionExecute(Sender: TObject);
     procedure HelpAboutMenuItemClick(Sender: TObject);
+    procedure FormActivate(Sender: TObject);
   private
     m_ChessBoard: TPosBaseChessBoard;
     m_ResizingType: (rtNo, rtHoriz, rtVert);
@@ -151,6 +152,7 @@ type
     procedure FOnChessEngineCalculationInfo(Sender: TObject; rEvaluation: real; strMovesLine: string);
     procedure FSynchronizeChessEngineWithChessBoardAndStartEvaluation;
 
+    procedure FLoadPGNDataFromFile(AFileName: TFileName);
     function FLoadPGNData(const PGNData: TStrings): boolean;
     function FSavePGNData: boolean;
     procedure FSavePGNDataAs;
@@ -425,30 +427,33 @@ end;
 
 
 procedure TAnalyseChessBoard.FileOpenMenuItemClick(Sender: TObject);
-var
-  strlData: TStringList;
 begin
   if (not FAskAndSavePGNData) then
     exit;
 
-  if (not OpenDialog.Execute) then
-    exit;
+  if (OpenDialog.Execute) then
+    FLoadPGNDataFromFile(OpenDialog.FileName);
+end;
 
+
+procedure TAnalyseChessBoard.FLoadPGNDataFromFile(AFileName: TFileName);
+var
+  strlData: TStringList;
+begin
   strlData := TStringList.Create;
   try
-    strlData.LoadFromFile(OpenDialog.FileName);
+    strlData.LoadFromFile(AFileName);
     if (not FLoadPGNData(strlData)) then
     begin
       MessageDlg(MSG_INCORRECT_FILE_FORMAT, mtError, [mbOK], 0);
       exit;
     end;
 
-    FSetGameFileName(OpenDialog.FileName);
+    FSetGameFileName(AFileName);
 
   finally
     strlData.Free;
   end;
-
 end;
 
 
@@ -844,7 +849,7 @@ begin
 end;
 
 
-procedure TAnalyseChessBoard.TntFormCloseQuery(Sender: TObject; var CanClose: Boolean);
+procedure TAnalyseChessBoard.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
 begin
   if (not FAskAndSavePGNData) then
     CanClose := FALSE;
@@ -1079,6 +1084,20 @@ begin
   finally
     Free;
   end;
+end;
+
+
+procedure TAnalyseChessBoard.FormActivate(Sender: TObject);
+const
+  FIRST_ACTIVATED: boolean = FALSE;
+begin
+  if (FIRST_ACTIVATED) then
+    exit;
+
+  FIRST_ACTIVATED := TRUE;
+
+  if (ParamCount > 0) then
+    FLoadPGNDataFromFile(ParamStr(1));
 end;
 
 end.

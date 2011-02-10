@@ -16,8 +16,9 @@ object AnalyseChessBoard: TAnalyseChessBoard
   Menu = MainMenu
   OldCreateOrder = False
   PopupMenu = PopupMenu
+  OnActivate = FormActivate
   OnCanResize = FormCanResize
-  OnCloseQuery = TntFormCloseQuery
+  OnCloseQuery = FormCloseQuery
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   OnShow = FormShow

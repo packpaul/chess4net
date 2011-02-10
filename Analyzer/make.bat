@@ -1,4 +1,4 @@
-rem @ECHO OFF
+@ECHO OFF
 
 SET PROJ_DIR=%CD%\..\bin\Chess4Net_Analyzer
 SET OPENINGS_DBS_DIR=%PROJ_DIR%\DBs
