@@ -167,7 +167,7 @@ begin
 
   if (not m_IniFile.SectionExists(DBS_SECTION)) then
   begin
-    iDBIndex := Data.Add(ExpandFileName('.\DBs\Sicilian'));
+    iDBIndex := Data.Add(ExtractFilePath(Application.ExeName) + 'DBs\Sicilian');
     exit;
   end;
 

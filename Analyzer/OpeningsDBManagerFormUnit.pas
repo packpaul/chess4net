@@ -133,8 +133,8 @@ begin
   if (not TIniSettings.Instance.OpeningDBRequestShow) then
     exit;
 
+  bDontShowFlag := FALSE;
   TDontShowMessageDlg.Show(MSG_OPENING_DB_REQUEST, bDontShowFlag);
-
   TIniSettings.Instance.OpeningDBRequestShow := (not bDontShowFlag);
 end;
 
