@@ -45,6 +45,7 @@ type
     BlackFlagButton: TSpeedButton;
     WhitePanel: TPanel;
     BlackPanel: TPanel;
+    ChessBoardPanel: TPanel;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure GameTimerTimer(Sender: TObject);
@@ -132,6 +133,8 @@ type
   public
     constructor Create(Owner: TComponent; AHandler: TGameChessBoardHandler = nil;
       const strPosBaseName: string = ''); reintroduce;
+
+    procedure FCreateChessBoard(const strPosBaseName: string);
 
     procedure TakeBack; // взятие хода обратно
     procedure SwitchClock(clock_color: TFigureColor);
@@ -309,13 +312,6 @@ begin
   // Clock initialization
   FSetUnlimited(fcWhite, TRUE);
   FSetUnlimited(fcBlack, TRUE);
-
-  m_ChessBoard.BorderStyle := bsNone;
-  m_ChessBoard.Align := alClient;
-  m_ChessBoard.Parent := self;
-  m_ChessBoard.Visible := TRUE;
-
-  InitPosition;
 end;
 
 
@@ -323,8 +319,24 @@ constructor TGameChessBoard.Create(Owner: TComponent;
   AHandler: TGameChessBoardHandler = nil; const strPosBaseName: string = '');
 begin
   FHandler := AHandler;
-  m_ChessBoard := TPosBaseChessBoard.Create(self, FChessBoardHandler, strPosBaseName);
   inherited Create(Owner);
+  FCreateChessBoard(strPosBaseName);  
+end;
+
+
+procedure TGameChessBoard.FCreateChessBoard(const strPosBaseName: string);
+begin
+  m_ChessBoard := TPosBaseChessBoard.Create(self, FChessBoardHandler, strPosBaseName);
+
+  with ChessBoardPanel do
+    SetBounds(Left, Top, m_ChessBoard.ClientWidth, m_ChessBoard.ClientHeight);
+
+  m_ChessBoard.BorderStyle := bsNone;
+  m_ChessBoard.Align := alClient;
+  m_ChessBoard.Parent := ChessBoardPanel;
+  m_ChessBoard.Visible := TRUE;
+
+  InitPosition;
 end;
 
 

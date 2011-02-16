@@ -1,8 +1,8 @@
 object GameChessBoard: TGameChessBoard
   Left = 429
   Top = 209
-  Width = 364
-  Height = 412
+  Width = 372
+  Height = 421
   BorderIcons = [biSystemMenu]
   Color = clBtnFace
   TransparentColorValue = clBackground
@@ -19,12 +19,24 @@ object GameChessBoard: TGameChessBoard
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   OnKeyDown = FormKeyDown
+  DesignSize = (
+    356
+    385)
   PixelsPerInch = 96
   TextHeight = 16
+  object ChessBoardPanel: TPanel
+    Left = 0
+    Top = 32
+    Width = 354
+    Height = 352
+    Anchors = [akLeft, akTop, akRight, akBottom]
+    BevelOuter = bvNone
+    TabOrder = 1
+  end
   object TimePanel: TPanel
     Left = 0
     Top = 0
-    Width = 348
+    Width = 356
     Height = 33
     Align = alTop
     BevelInner = bvLowered
