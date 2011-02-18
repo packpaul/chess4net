@@ -8,7 +8,7 @@ uses
   ChessRulesEngine, BitmapResUnit, PromotionUnit;
 
 type
-  TMode = (mView, mGame, mAnalyse); // Board mode
+  TMode = (mView, mGame, mAnalyse, mEdit); // Board mode
 
   TAnimation = (aNo, aSlow, aQuick);
 
@@ -103,6 +103,8 @@ type
     function FGetPositionColor: TFigureColor;
     function FGetMoveNotationFormat: TMoveNotationFormat;
     procedure FSetMoveNotationFormat(Value: TMoveNotationFormat);
+    function FGetFENFormat: boolean;
+    procedure FSetFENFormat(bValue: boolean);
 
     procedure WMSizing(var Msg: TMessage); message WM_SIZING;
 
@@ -149,6 +151,7 @@ type
     property PositionColor: TFigureColor read FGetPositionColor; // Whos move it is in the current position
     property MoveNotationFormat: TMoveNotationFormat
       read FGetMoveNotationFormat write FSetMoveNotationFormat;
+    property FENFormat: boolean read FGetFENFormat write FSetFENFormat;
   end;
 
 var
@@ -1043,6 +1046,18 @@ end;
 procedure TChessBoard.FSetMoveNotationFormat(Value: TMoveNotationFormat);
 begin
   m_ChessRulesEngine.MoveNotationFormat := Value;
+end;
+
+
+function TChessBoard.FGetFENFormat: boolean;
+begin
+  Result := m_ChessRulesEngine.FENFormat;
+end;
+
+
+procedure TChessBoard.FSetFENFormat(bValue: boolean);
+begin
+  m_ChessRulesEngine.FENFormat := bValue;
 end;
 
 end.

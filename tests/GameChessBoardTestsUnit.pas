@@ -40,11 +40,11 @@ class function TGameChessBoardTests.Suite: ITestSuite;
 var
   TestSuite: TTestSuite;
 begin
-  TestSuite := TTestSuite.Create('TGameChessBoard');
+  TestSuite := TTestSuite.Create(TGameChessBoard.ClassName);
 
   TestSuite.AddTests(self);
   // or
-  // TestSuite.AddTest(TChessRulesEngineTests.Create(<method name>));
+  // TestSuite.AddTest(TGameChessBoardTests.Create(<method name>));
 
   Result := TestSuite;
 end;
@@ -73,7 +73,6 @@ end;
 
 procedure TGameChessBoardTests.TearDown;
 begin
-  m_ChessBoard.Release;
   inherited;
 end;
 

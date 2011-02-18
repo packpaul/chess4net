@@ -9,7 +9,11 @@ uses
   PlysProviderIntfUnit in '..\PlysProviderIntfUnit.pas',
   PGNParserUnit in '..\PGNParserUnit.pas',
   ChessRulesEngine in '..\..\ChessRulesEngine.pas',
-  PGNParserTestsUnit in 'PGNParserTestsUnit.pas';
+  PGNParserTestsUnit in 'PGNParserTestsUnit.pas',
+  PositionEditingFormTestsUnit in 'PositionEditingFormTestsUnit.pas',
+  PositionEditingFormUnit in '..\PositionEditingFormUnit.pas' {PositionEditingForm},
+  BitmapResUnit in '..\..\BitmapResUnit.pas',
+  ChessBoardHeaderUnit in '..\..\ChessBoardHeaderUnit.pas';
 
 {$R *.res}
 

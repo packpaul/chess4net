@@ -8,10 +8,11 @@ uses
   //
   ChessBoardUnit, PosBaseChessBoardUnit, ChessEngineInfoUnit, ChessEngine,
   MoveListFormUnit, PlysTreeUnit, PlysProviderIntfUnit, URLVersionQueryUnit,
-  SelectLineFormUnit, OpeningsDBManagerFormUnit, OpeningsDBManagerUnit;
+  SelectLineFormUnit, OpeningsDBManagerFormUnit, OpeningsDBManagerUnit,
+  PositionEditingFormUnit, ChessRulesEngine;
 
 type
-  TAnalyseChessBoard = class(TTntForm, IPlysProvider)
+  TAnalyseChessBoard = class(TTntForm, IPlysProvider, IPositionEditable)
     MainMenu: TTntMainMenu;
     FileMenuItem: TTntMenuItem;
     FileOpenMenuItem: TTntMenuItem;
@@ -56,7 +57,7 @@ type
     OpeningsDBManagerAction: TAction;
     InitialPositionAction: TAction;
     PopupInitialPositionMenuItem: TTntMenuItem;
-    FileNewMenuItem: TTntMenuItem;
+    FileNewStandardMenuItem: TTntMenuItem;
     N6: TTntMenuItem;
     PositionReturnFromLineMenuItem: TTntMenuItem;
     ReturnFromLineAction: TAction;
@@ -71,6 +72,8 @@ type
     PopupDeleteLineMenuItem: TTntMenuItem;
     EditSetLineToMainMenuItem: TTntMenuItem;
     SetLineToMainAction: TAction;
+    FileNewMenuItem: TTntMenuItem;
+    FileNewCustomMenuItem: TTntMenuItem;
     procedure FileExitMenuItemClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormCanResize(Sender: TObject; var NewWidth,
@@ -98,7 +101,7 @@ type
     procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
     procedure InitialPositionActionExecute(Sender: TObject);
     procedure InitialPositionActionUpdate(Sender: TObject);
-    procedure FileNewMenuItemClick(Sender: TObject);
+    procedure FileNewStandardMenuItemClick(Sender: TObject);
     procedure ReturnFromLineActionExecute(Sender: TObject);
     procedure ReturnFromLineActionUpdate(Sender: TObject);
     procedure SaveActionExecute(Sender: TObject);
@@ -112,6 +115,7 @@ type
     procedure SetLineToMainActionExecute(Sender: TObject);
     procedure HelpAboutMenuItemClick(Sender: TObject);
     procedure FormActivate(Sender: TObject);
+    procedure FileNewCustomMenuItemClick(Sender: TObject);
   private
     m_ChessBoard: TPosBaseChessBoard;
     m_ResizingType: (rtNo, rtHoriz, rtVert);
@@ -124,6 +128,8 @@ type
     m_OpeningsDBManagerForm: TOpeningsDBManagerForm;
     m_MoveListForm: TMoveListForm;
     m_SelectLineForm: TSelectLineForm;
+
+    m_PositionEditingForm: TPositionEditingForm;
 
     m_PlysTree: TPlysTree;
     m_iCurrentPlyIndex: integer;
@@ -188,6 +194,14 @@ type
     function IPlysProvider.GetPlyStatus = FGetPlyStatus;
     function FGetPlyStatus(iPlyIndex: integer): TPlyStatuses;
 
+    procedure IPositionEditable.SetEditPiece = FSetEditPiece;
+    procedure FSetEditPiece(Piece: TFigure);
+
+    function IPositionEditable.SetPosition = FSetPosition;
+    function FSetPosition(const strFEN: string): boolean;
+
+    procedure IPositionEditable.StopEditing = FStopEditing;
+
     procedure FSetToInitialPosition;
     procedure FTakebackMove;
     procedure FForwardMove;
@@ -201,6 +215,12 @@ type
     procedure FOnOpeningsDBManagerChanged(Sender: TObject);
 
     procedure FSetGameFileName(const AGameFileName: TFileName);
+
+    procedure FStartEditing;
+    procedure FStopEditing;
+    function FIsEditing: boolean;
+
+    function FSetNewStandard: boolean;
   end;
 
 implementation
@@ -208,7 +228,7 @@ implementation
 uses
   Windows, Clipbrd,
   //
-  PGNParserUnit, ChessRulesEngine, GlobalsLocalUnit, DontShowMessageDlgUnit,
+  PGNParserUnit, GlobalsLocalUnit, DontShowMessageDlgUnit,
   IniSettingsUnit, PGNWriterUnit, SplashFormUnit;
 
 {$R *.dfm}
@@ -260,6 +280,7 @@ procedure TAnalyseChessBoard.FCreateChessBoard;
 begin
   m_ChessBoard := TPosBaseChessBoard.Create(self, FChessBoardHandler, '');
   m_ChessBoard.MoveNotationFormat := mnfCh4NEx;
+  m_ChessBoard.FENFormat := TRUE;
 
   with ChessBoardPanel do
     SetBounds(Left, Top, m_ChessBoard.ClientWidth, m_ChessBoard.ClientHeight);
@@ -391,7 +412,10 @@ end;
 
 procedure TAnalyseChessBoard.FInitPosition;
 begin
+  FStopEditing;
+
   m_ChessBoard.InitPosition;
+  m_ChessBoard.Flipped := FALSE;
 
   m_iCurrentPlyIndex := 0;
 
@@ -573,7 +597,7 @@ end;
 
 procedure TAnalyseChessBoard.FSynchronizeChessEngineWithChessBoardAndStartEvaluation;
 begin
-  if (not Assigned(m_ChessEngine)) then
+  if (FIsEditing or (not Assigned(m_ChessEngine))) then
     exit;
   m_ChessEngine.SetPosition(m_ChessBoard.GetPosition);
   m_ChessEngine.CalculateReplyNonBlocking;
@@ -939,9 +963,16 @@ begin
 end;
 
 
-procedure TAnalyseChessBoard.FileNewMenuItemClick(Sender: TObject);
+procedure TAnalyseChessBoard.FileNewStandardMenuItemClick(Sender: TObject);
 begin
-  if (not FAskAndSavePGNData) then
+  FSetNewStandard;
+end;
+
+
+function TAnalyseChessBoard.FSetNewStandard: boolean;
+begin
+  Result := FAskAndSavePGNData;
+  if (not Result) then
     exit;
 
   FInitPosition;
@@ -1099,5 +1130,79 @@ begin
   if (ParamCount > 0) then
     FLoadPGNDataFromFile(ParamStr(1));
 end;
+
+
+procedure TAnalyseChessBoard.FileNewCustomMenuItemClick(Sender: TObject);
+begin
+  if (not FSetNewStandard) then
+    exit;
+
+  FStartEditing;
+end;
+
+
+procedure TAnalyseChessBoard.FStartEditing;
+begin
+  if (Assigned(m_ChessEngine)) then
+    m_ChessEngine.StopCalculation;
+
+  if (Assigned(m_ChessEngine)) then
+    m_ChessEngineInfoForm.Clear;
+
+  if (not Assigned(m_PositionEditingForm)) then
+  begin
+    m_PositionEditingForm := TPositionEditingForm.Create(self);
+    m_PositionEditingForm.PositionEditable := self;
+  end;
+
+  m_ChessBoard.Mode := mEdit;
+
+  m_PositionEditingForm.Show;
+end;
+
+
+procedure TAnalyseChessBoard.FSetEditPiece(Piece: TFigure);
+begin
+  // TODO:
+end;
+
+
+function TAnalyseChessBoard.FSetPosition(const strFEN: string): boolean;
+begin
+  Result := m_ChessBoard.SetPosition(strFEN);
+  if (Result and Assigned(m_PositionEditingForm)) then
+  begin
+    m_PositionEditingForm.FEN := m_ChessBoard.GetPosition;
+    m_ChessBoard.Position
+
+  end;
+end;
+
+
+procedure TAnalyseChessBoard.FStopEditing;
+begin
+  if (Assigned(m_PositionEditingForm)) then
+  begin
+    m_PositionEditingForm.Release;
+    m_PositionEditingForm := nil;
+  end;
+
+  if (not FIsEditing) then
+    exit;
+
+  m_ChessBoard.Mode := mAnalyse;
+
+  m_PlysTree.Clear;
+  m_PlysTree.Add(m_ChessBoard.GetPosition);
+
+  FSynchronizeChessEngineWithChessBoardAndStartEvaluation;
+end;
+
+
+function TAnalyseChessBoard.FIsEditing: boolean;
+begin
+  Result := (m_ChessBoard.Mode = mEdit);
+end;
+
 
 end.

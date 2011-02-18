@@ -16,6 +16,7 @@ type
     procedure FDoShow;
     procedure FDoHide;
   public
+    procedure Clear;
     procedure SetInfo(const rEvaluation: real; const strMovesLine: string);
     property OnShow: TNotifyEvent read FOnShow write FOnShow;
     property OnHide: TNotifyEvent read FOnHide write FOnHide;
@@ -51,6 +52,12 @@ begin // .SetInfo
   finally
     InfoMemo.Lines.EndUpdate;
   end;
+end;
+
+
+procedure TChessEngineInfoForm.Clear;
+begin
+  InfoMemo.Clear;
 end;
 
 

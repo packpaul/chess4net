@@ -52,8 +52,15 @@ object AnalyseChessBoard: TAnalyseChessBoard
       Caption = '&File'
       object FileNewMenuItem: TTntMenuItem
         Caption = '&New'
-        ShortCut = 16462
-        OnClick = FileNewMenuItemClick
+        object FileNewStandardMenuItem: TTntMenuItem
+          Caption = '&Standard'
+          ShortCut = 16462
+          OnClick = FileNewStandardMenuItemClick
+        end
+        object FileNewCustomMenuItem: TTntMenuItem
+          Caption = '&Custom...'
+          OnClick = FileNewCustomMenuItemClick
+        end
       end
       object N6: TTntMenuItem
         Caption = '-'
@@ -97,7 +104,7 @@ object AnalyseChessBoard: TAnalyseChessBoard
       Caption = '&View'
       object ViewFlipBoardMenuItem: TTntMenuItem
         Caption = '&Flip Board'
-        ShortCut = 70
+        ShortCut = 16454
         OnClick = ViewFlipBoardMenuItemClick
       end
       object N5: TTntMenuItem

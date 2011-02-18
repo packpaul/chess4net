@@ -89,7 +89,7 @@ ImageBase=4194304
 [Directories]
 OutputDir=..\..\bin
 UnitOutputDir=.\dcu
-SearchPath=..\..\lib\DUnit\src
+SearchPath=..\..\lib\DUnit\src;..\..\lib\PNGImage
 Conditionals=xDEVELOP
 UsePackages=0
 [Parameters]

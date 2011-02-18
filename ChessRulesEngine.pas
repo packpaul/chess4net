@@ -43,6 +43,7 @@ type
     m_lastMove: TMoveAbs; // Last move done
     m_strLastMoveStr: string; // last move in algebraic notation
     m_MoveNotationFormat: TMoveNotationFormat;
+    m_bFENFormat: boolean;
     m_lstPosition: TList;
 
     function FGetPosition: PChessPosition;
@@ -88,6 +89,7 @@ type
     property PositionsList: TList read m_lstPosition;
     property MoveNotationFormat: TMoveNotationFormat
       read m_MoveNotationFormat write m_MoveNotationFormat;
+    property FENFormat: boolean read m_bFENFormat write m_bFENFormat;
   end;
 
   PPosMove = ^TPosMove;
@@ -982,58 +984,75 @@ begin
 
         ' ': break;  // Позиция прочитана - выход из цикла
 
-        else exit; // ошибка в posstr
+        else
+          exit; // Error in posstr
       end;
       inc(i); inc(l);
     until (posstr[l] = '/') or (i > 8); // Повтор до появления '/' или пока на горизонтали
     inc(l);
   end;
 
-  case posstr[l] of
-    'w': pos.color:= fcWhite;
-    'b': pos.color:= fcBlack;
-    else exit;
-  end;
+  Result:= TRUE;
 
-  inc(l,2);
-  pos.castling:= [];
-  while posstr[l] <> ' ' do
+  // Defaults
+  pos.color:= fcWhite;
+  pos.castling := [];
+  pos.en_passant:= 0;
+
+  try
+    if (l > Length(posstr)) then
+      exit;
+
+    case posstr[l] of
+      'w':
+        pos.color:= fcWhite;
+      'b':
+        pos.color:= fcBlack;
+      else
+        exit;
+    end;
+
+    inc(l, 2);
+    if (l > Length(posstr)) then
+      exit;
+
+    while ((l <= Length(posstr)) and (posstr[l] <> ' ')) do
     begin
       with pos do
         case posstr[l] of
-          'K': castling:= castling + [WhiteKingSide];
-          'Q': castling:= castling + [WhiteQueenSide];
-          'k': castling:= castling + [BlackKingSide];
-          'q': castling:= castling + [BlackQueenSide];
+          'K':
+            Include(castling, WhiteKingSide);
+          'Q':
+            Include(castling, WhiteQueenSide);
+          'k':
+            Include(castling, BlackKingSide);
+          'q':
+            Include(castling, BlackQueenSide);
           '-':
-            if castling <> [] then exit
-              else
-                begin
-                  inc(l);
-                  break;
-                end;
+            castling := [];
         else
           exit;
         end;
       inc(l);
     end;
 
-  inc(l);
-  with pos do
-    case posstr[l] of
-      'a'..'h': en_passant:= ord(posstr[l]) - ord('a') + 1;
-      '-': en_passant:= 0;
-    else
+    inc(l);
+    if (l > Length(posstr)) then
       exit;
-    end;
 
-  if (Trim(RightStr(posstr, length(posstr) - l)) <> '') then
-    exit;
+    with pos do
+      case posstr[l] of
+        'a'..'h': en_passant:= ord(posstr[l]) - ord('a') + 1;
+        '-': en_passant:= 0;
+      else
+        exit;
+      end;
 
-  Position^ := pos;
-  lastMove.i0 := 0; // предыдущего хода ещё не было
-
-  Result := TRUE;
+  finally
+    Position^ := pos;
+    lastMove.i0 := 0; // There was no last move yet
+  end;
+  
 end;
 
 
@@ -1055,72 +1074,106 @@ end;
 
 
 function TChessRulesEngine.GetPosition: string;
-var
-  i,j: Integer;
-  k: byte;
-  chFig: char;
-begin
-  Result:= '';
 
-  with Position^ do
+  function NGetPlacingOfPieces: string;
+  var
+    i, j: Integer;
+    k: byte;
+    chFig: char;
+  begin
+    Result := '';
+
+    // Placing of pieces
+    for j := 8 downto 1 do
     begin
-      // Расстановка фигур
-      for j := 8 downto 1 do
-        begin
-          k:= 0;
-          for i:= 1 to 8 do
-            begin
-              case board[i,j] of
-                WK: chFig := 'K';
-                WQ: chFig := 'Q';
-                WR: chFig := 'R';
-                WB: chFig := 'B';
-                WN: chFig := 'N';
-                WP: chFig := 'P';
-                BK: chFig := 'k';
-                BQ: chFig := 'q';
-                BR: chFig := 'r';
-                BB: chFig := 'b';
-                BN: chFig := 'n';
-                BP: chFig := 'p';
-                ES:
-                  begin
-                    inc(k);
-                    continue;
-                  end;
-              end;
+      k := 0;
 
-              if k > 0 then
-                begin
-                  Result:= Result + IntToStr(k);
-                  k:= 0;
-                end;
-
-              Result := Result + chFig;
-            end;
-
-          if k > 0 then Result:= Result + IntToStr(k);
-          if j = 1 then Result:= Result + ' '
-            else Result:= Result + '/'; // i <= 7
+      for i := 1 to 8 do
+      begin
+        case Position.board[i, j] of
+          WK: chFig := 'K';
+          WQ: chFig := 'Q';
+          WR: chFig := 'R';
+          WB: chFig := 'B';
+          WN: chFig := 'N';
+          WP: chFig := 'P';
+          BK: chFig := 'k';
+          BQ: chFig := 'q';
+          BR: chFig := 'r';
+          BB: chFig := 'b';
+          BN: chFig := 'n';
+          BP: chFig := 'p';
+          ES:
+          begin
+            inc(k);
+            continue;
+          end;
         end;
 
-        if color = fcWhite then Result:= Result + 'w '
-          else Result:= Result + 'b '; // color = fcBlack
-        // Рокировка
-        if castling = [] then Result:= Result + '-'
-          else
-            begin
-              if WhiteKingSide in castling then Result:= Result + 'K';
-              if WhiteQueenSide in castling then Result:= Result + 'Q';
-              if BlackKingSide in castling then Result:= Result + 'k';
-              if BlackQueenSide in castling then Result:= Result + 'q';
-            end;
-        // en-passant
-        if (en_passant = 0) then
-          Result := Result + ' -'
-        else
-          Result := Result + ' ' + Chr(Ord('a') - 1 + en_passant);
-    end;
+        if (k > 0) then
+        begin
+          Result := Result + IntToStr(k);
+          k := 0;
+        end;
+
+        Result := Result + chFig;
+      end; // for i
+
+      if (k > 0) then
+        Result := Result + IntToStr(k);
+      if (j = 1) then
+        Result := Result + ' '
+      else
+        Result := Result + '/'; // i <= 7
+    end; // for j
+
+  end;
+
+begin // .GetPosition
+  Result := NGetPlacingOfPieces;
+
+  if (Position.color = fcWhite) then
+    Result := Result + 'w '
+  else
+    Result:= Result + 'b '; // color = fcBlack
+
+  // Castling
+  if (Position.castling = []) then
+    Result := Result + '-'
+  else
+  begin
+    if (WhiteKingSide in Position.castling) then
+      Result := Result + 'K';
+    if (WhiteQueenSide in Position.castling) then
+      Result := Result + 'Q';
+    if (BlackKingSide in Position.castling) then
+      Result := Result + 'k';
+    if (BlackQueenSide in Position.castling) then
+      Result := Result + 'q';
+  end;
+
+  // en-passant
+  if (Position.en_passant = 0) then
+    Result := Result + ' -'
+  else
+  begin
+    Result := Result + ' ' + Chr(Ord('a') - 1 + Position.en_passant);
+  end;
+
+  if (not FENFormat) then
+    exit;
+
+  if (Position.en_passant <> 0) then
+  begin
+    if (Position.color = fcWhite) then
+      Result := Result + '6'
+    else
+      Result := Result + '3'; // Black    
+  end;
+
+  Result := Result + ' 0'; // TODO: 50-moves rule
+
+  Result := Result + ' ' + IntToStr(NMovesDone + 1);
 end;
 
 
