@@ -47,7 +47,7 @@ type
     dx, dy: integer;  // Расстояние от курсора до верхнего левого угла
     x0, y0: integer; // Предыдущие координаты курсора
     _flipped: boolean; // Доска перевёрнута или нет
-    hilighted: boolean; // Hilight the move that is being done
+    m_bHilighted: boolean; // Hilight the move that is being done
 
     m_i0, m_j0: integer;
     m_fig: TFigure;
@@ -65,7 +65,7 @@ type
     m_bWillBeAnimatedFlag: boolean;
 
     m_PlayerColor: TFigureColor; // Color of player client
-    dragged_moved: boolean; // Flag for switching of dragging
+    m_bDraggedMoved: boolean; // Flag for switching of dragging
     last_hilight: boolean; // Flag for hilighting of the last move done
     coord_show: boolean; // Flag for showing coordinates
 
@@ -75,6 +75,8 @@ type
     m_bDeltaWidthHeightFlag: boolean;
 
     m_PromotionForm: TPromotionForm;
+
+    m_EditPiece: TFigure;
 
     procedure HilightLastMove;
     procedure Evaluate;
@@ -96,7 +98,6 @@ type
     procedure FTogglePlayerColor;
     procedure FCancelAnimationDragging; // Caneling of animation and dragging for trace removal after draw
     procedure FSetFlipped(Value: boolean); // Flips chess position
-    procedure FSetMode(const Value: TMode);
     procedure FSetCoordinatesShown(Value: boolean);
     procedure FSetLastMoveHilighted(Value: boolean);
     function FGetPositionsList: TList;
@@ -124,6 +125,7 @@ type
     procedure ROnAfterSetPosition; virtual;
     function RDoMove(i, j: integer; prom_fig: TFigureName = K): boolean;
     function RIsAnimating: boolean;
+    procedure RSetMode(const Value: TMode); virtual;
 
     property PositionsList: TList read FGetPositionsList;
 
@@ -142,7 +144,7 @@ type
     function NPlysDone: integer;
 
     property PlayerColor: TFigureColor read m_PlayerColor write FSetPlayerColor;
-    property Mode: TMode read m_Mode write FSetMode;
+    property Mode: TMode read m_Mode write RSetMode;
     property CoordinatesShown: boolean read coord_show write FSetCoordinatesShown;
     property Flipped: boolean read _flipped write FSetFlipped;
     property LastMoveHilighted: boolean read last_hilight write FSetLastMoveHilighted;
@@ -152,6 +154,7 @@ type
     property MoveNotationFormat: TMoveNotationFormat
       read FGetMoveNotationFormat write FSetMoveNotationFormat;
     property FENFormat: boolean read FGetFENFormat write FSetFENFormat;
+    property EditPiece: TFigure read m_EditPiece write m_EditPiece;
   end;
 
 var
@@ -236,7 +239,10 @@ var
   i, j, l,
   _i0, _j0, x, y: integer;
 begin
-  // вывод последнего сделанного хода
+  if (not (m_Mode in [mGame, mAnalyse])) then
+    exit;
+    
+  // Output the last move done
   if (last_hilight  and (lastMove.i0 <> 0)) then
   begin
     if (_flipped) then
@@ -422,7 +428,7 @@ begin
   end;
   if (PBoxBoard.Dragging) then
   begin
-    dragged_moved := FALSE;
+    m_bDraggedMoved := FALSE;
     PBoxBoard.EndDrag(FALSE);
   end;
 end;
@@ -436,14 +442,14 @@ begin
 end;
 
 
-procedure TChessBoard.FSetMode(const Value: TMode);
+procedure TChessBoard.RSetMode(const Value: TMode);
 begin
   if (m_Mode = Value) then
     exit;
 
   m_Mode := Value;
 
-  if ((m_Mode = mView) and (Assigned(m_PromotionForm))) then
+  if ((m_Mode in [mView, mEdit]) and (Assigned(m_PromotionForm))) then
     m_PromotionForm.Close;
 
   RDrawBoard;
@@ -639,10 +645,15 @@ var
   i, j: Integer;
 begin
   FWhatSquare(Point(X, Y), i, j);
-  if (Mode in [mGame, mAnalyse]) then
-  begin
-    if (RDoMove(i, j)) then
-      dragged_moved := TRUE;
+  case m_Mode of
+    mGame, mAnalyse:
+    begin
+      if (RDoMove(i, j)) then
+        m_bDraggedMoved := TRUE;
+    end;
+
+    mEdit:
+      m_bDraggedMoved := TRUE;
   end;
 end;
 
@@ -679,7 +690,7 @@ var
 begin
   case State of
     dsDragEnter:
-      hilighted := FALSE;
+      m_bHilighted := FALSE;
 
     dsDragMove:
       begin
@@ -707,32 +718,61 @@ end;
 
 
 procedure TChessBoard.PBoxBoardEndDrag(Sender, Target: TObject; X, Y: Integer);
+var
+  i, j: integer;
+  bRes: boolean;
 begin
-  if (hilighted) then
-    with bmHiddenBoard.Canvas do
+  case m_Mode of
+    mGame, mAnalyse:
     begin
-      Pen.Color:= HILIGHT_COLOR;
-      Pen.Width := HILIGHT_WIDTH;
-      x0:= x0 - dx;
-      y0:= y0 - dy;
-      MoveTo(x0,y0);
-      LineTo(x0 + iSquareSize - 1, y0);
-      LineTo(x0 + iSquareSize - 1, y0 + iSquareSize - 1);
-      LineTo(x0, y0 + iSquareSize - 1);
-      LineTo(x0, y0);
+      if (m_bHilighted) then
+      begin
+        with bmHiddenBoard.Canvas do
+        begin
+          Pen.Color:= HILIGHT_COLOR;
+          Pen.Width := HILIGHT_WIDTH;
+          x0:= x0 - dx;
+          y0:= y0 - dy;
+          MoveTo(x0,y0);
+          LineTo(x0 + iSquareSize - 1, y0);
+          LineTo(x0 + iSquareSize - 1, y0 + iSquareSize - 1);
+          LineTo(x0, y0 + iSquareSize - 1);
+          LineTo(x0, y0);
 
-      PBoxBoardPaint(nil);
-    end
-  else
-  begin
-    RDrawBoard;
-    if (dragged_moved) then
-    begin
-      HilightLastMove;
-      Evaluate;
-      dragged_moved:= FALSE;
+          PBoxBoardPaint(nil);
+        end;
+      end
+      else
+      begin
+        RDrawBoard;
+        if (m_bDraggedMoved) then
+        begin
+          HilightLastMove;
+          Evaluate;
+          m_bDraggedMoved := FALSE;
+        end;
+      end;
     end;
-  end;
+
+    mEdit:
+    begin
+      if (m_bDraggedMoved) then
+      begin
+        FWhatSquare(Point(X, Y), i, j);
+        bRes := Position.SetPiece(i, j, m_fig);
+      end
+      else
+        bRes := TRUE;
+
+      if (bRes) then
+      begin
+        Position.SetPiece(m_i0, m_j0, ES);
+        lastMove.i0 := 0;
+      end;
+
+      RDrawBoard;      
+    end;
+  end; // case
 end;
 
 
@@ -742,36 +782,48 @@ var
   i, j: Integer;
   f: TFigure;
 begin
+  if (Button <> mbLeft) then
+    exit;
+
   FWhatSquare(Point(X, Y), i, j);
   if (not ((i in [1..8]) and (j in [1..8]))) then
     exit;
 
+  m_bDraggedMoved := FALSE;
+
   f := Position.board[i,j];
 
-  case Mode of
+  case m_Mode of
     mGame, mAnalyse:
     begin
       if (m_bViewGaming) then
         exit;
-      if (Button <> mbLeft) or (Position.color <> m_PlayerColor) or
-         (((Position.color <> fcWhite) or (f >= ES)) and
-          ((Position.color <> fcBlack) or (f <= ES))) then
+      if ((Position.color <> m_PlayerColor) or
+          (((Position.color <> fcWhite) or (f >= ES)) and
+           ((Position.color <> fcBlack) or (f <= ES)))) then
         exit;
+
+      if ((i = m_i0) and (j = m_j0)) then
+        m_bHilighted := (m_bHilighted xor TRUE)
+      else
+        m_bHilighted := TRUE;
     end;
+
+    mEdit:
+    begin
+      if (f = ES) then
+        exit;    
+    end;
+
   else
     exit;
   end;
 
   if (anim_step < anim_step_num) then
-    begin
-      anim_step:= anim_step_num;
-      AnimateTimerTimer(nil);
-    end;
-
-  if ((i = m_i0) and (j = m_j0)) then
-    hilighted := (hilighted xor TRUE)
-  else
-    hilighted:= TRUE;
+  begin
+    anim_step := anim_step_num;
+    AnimateTimerTimer(nil);
+  end;
 
   m_fig := f;
   m_i0 := i;
@@ -782,7 +834,7 @@ begin
   x0 := X;
   y0 := Y;
 
-  dragged_moved := TRUE;
+  m_bDraggedMoved := TRUE;
   PBoxBoard.BeginDrag(FALSE);
 end;
 
@@ -802,7 +854,7 @@ begin
 
   f := Position.board[i,j];
 
-  case Mode of
+  case m_Mode of
     mGame, mAnalyse:
     begin
       if (m_bViewGaming) then
@@ -816,8 +868,16 @@ begin
         PBoxBoard.Cursor:= crDefault;
     end;
 
-    else
-      PBoxBoard.Cursor:= crDefault;
+    mEdit:
+    begin
+      if (f <> ES) then
+        PBoxBoard.Cursor:= crHandPoint
+      else
+        PBoxBoard.Cursor:= crDefault;
+    end;
+
+  else
+    PBoxBoard.Cursor := crDefault;
   end;
 end;
 
@@ -836,23 +896,37 @@ begin
   case Button of
     mbLeft:
     begin
-      case Mode of
+      case m_Mode of
         mGame, mAnalyse:
         begin
-          if (not hilighted) then
+          if (not m_bHilighted) then
             exit;
           FWhatSquare(Point(X, Y), i, j);
-          if (dragged_moved) then
+          if (m_bDraggedMoved) then
             RDrawBoard
           else
           begin
-            hilighted:= FALSE;
+            m_bHilighted := FALSE;
             if (RDoMove(i, j)) then
               FAnimate(i, j)
             else
               RDrawBoard;
           end;
         end;
+
+        mEdit:
+        begin
+          if (m_bDraggedMoved) then
+            exit;
+          // Assert(empty field)
+          FWhatSquare(Point(X, Y), i, j);
+          if (Position.SetPiece(i, j, m_EditPiece)) then
+          begin
+            lastMove.i0 := 0;
+            RDrawBoard;
+          end;
+        end;
+
       end; // case
     end;
 
@@ -877,7 +951,7 @@ begin
     m_bmBuf.Canvas.CopyRect(Bounds(0,0, iSquareSize, iSquareSize),
       m_bmFigure[ES].Canvas, Bounds(iSquareSize,0, iSquareSize, iSquareSize));
 
-  dragged_moved:= FALSE;
+  m_bDraggedMoved := FALSE;
 end;
 
 

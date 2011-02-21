@@ -81,6 +81,7 @@ begin
   m_ChessRulesEngine := TChessRulesEngine.Create;
   try
     m_ChessRulesEngine.MoveNotationFormat := mnfCh4NEx;
+    m_ChessRulesEngine.FENFormat := TRUE; 
 
     m_Data := AData;
 

@@ -26,12 +26,17 @@ type
 
   published
     procedure TestResizing;
+    procedure TestGamingMode;
+    procedure TestAnalysisMode;
+    procedure TestEditingMode;
   end;
 
 implementation
 
 uses
-  Forms, SysUtils;
+  Forms, SysUtils,
+  //
+  ChessBoardUnit;
 
 ////////////////////////////////////////////////////////////////////////////////
 // TGameChessBoardTests
@@ -82,6 +87,62 @@ begin
 {$IFNDEF DEVELOP}
   exit;
 {$ENDIF}
+
+  while m_ChessBoard.Showing do
+  begin
+    Sleep(1);
+    Application.ProcessMessages;
+    if (FWasStopped) then
+      break;
+  end;
+end;
+
+
+procedure TGameChessBoardTests.TestEditingMode;
+begin
+{$IFNDEF DEVELOP}
+  exit;
+{$ENDIF}
+
+  m_ChessBoard.Mode := mEdit;
+
+  while m_ChessBoard.Showing do
+  begin
+    Sleep(1);
+    Application.ProcessMessages;
+    if (FWasStopped) then
+      break;
+  end;
+end;
+
+
+procedure TGameChessBoardTests.TestGamingMode;
+begin
+{$IFNDEF DEVELOP}
+  exit;
+{$ENDIF}
+
+  m_ChessBoard.Mode := mGame;
+  m_ChessBoard.LastMoveHilighted := TRUE;
+
+  while m_ChessBoard.Showing do
+  begin
+    Sleep(1);
+    Application.ProcessMessages;
+    if (FWasStopped) then
+      break;
+  end;
+end;
+
+
+procedure TGameChessBoardTests.TestAnalysisMode;
+begin
+{$IFNDEF DEVELOP}
+  exit;
+{$ENDIF}
+
+  m_ChessBoard.Mode := mAnalyse;
+  m_ChessBoard.LastMoveHilighted := TRUE;
 
   while m_ChessBoard.Showing do
   begin

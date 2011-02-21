@@ -12,12 +12,14 @@ type
   TFigureColor = (fcWhite, fcBlack);
 
   PChessPosition = ^TChessPosition;
-  TChessPosition = record // шахматная позиция
+  TChessPosition = object // Chess position
     board: array[1..8, 1..8] of TFigure;
-    color: TFigureColor; // Чей ход
-    castling: set of (WhiteKingSide, WhiteQueenSide,  // Возможность рокировки
+    color: TFigureColor; // Who moves
+    castling: set of (WhiteKingSide, WhiteQueenSide,  // castling possibility
                       BlackKingSide, BlackQueenSide);
-    en_passant: 0..8; // Вертикаль возможности взятия e.p. 0 - нету e.p.
+    en_passant: 0..8; // possibility of e.p 0 - no e.p.
+  public
+    function SetPiece(i, j: integer; APiece: TFigure): boolean;
   end;
 
   PMoveAbs = ^TMoveAbs;
@@ -1229,6 +1231,15 @@ begin
   end;
   // TODO: Evaluate position for possible technical draw
 end;
+
+
+function TChessPosition.SetPiece(i, j: integer; APiece: TFigure): boolean;
+begin
+  Result := ((i in [1..8]) and (j in [1..8]));
+  if (Result) then
+    board[i, j] := APiece;
+end;
+
 
 initialization
 

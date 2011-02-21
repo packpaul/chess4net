@@ -28,6 +28,8 @@ type
     procedure ROnAfterSetPosition; override;
     procedure RDrawHiddenBoard; override;
 
+    procedure RSetMode(const Value: TMode); override;
+
   public
     constructor Create(voOwner: TComponent; vfHandler: TChessBoardHandler;
       const strPosBaseName: string = '');
@@ -58,11 +60,16 @@ type
   private
     _enuOperation: (opRead, opWrite);
     _oChessBoard: TPosBaseChessBoard;
+    constructor FCreateRead(voChessBoard: TPosBaseChessBoard;
+      vbHidden: boolean; vbFreeOnTerminate: boolean = TRUE);
+    constructor FCreateWrite(voChessBoard: TPosBaseChessBoard);
   protected
     procedure Execute; override;
   public
-    constructor CreateRead(voChessBoard: TPosBaseChessBoard; vbHidden: boolean; vbFreeOnTerminate: boolean = TRUE);
-    constructor CreateWrite(voChessBoard: TPosBaseChessBoard);
+    class function CreateRead(voChessBoard: TPosBaseChessBoard;
+      vbHidden: boolean; vbFreeOnTerminate: boolean = TRUE): TPosBaseOperator;
+    class function CreateWrite(voChessBoard: TPosBaseChessBoard): TPosBaseOperator;
+    procedure WaitFor;
   end;
 
 var
@@ -197,8 +204,8 @@ begin
 
   inherited;
 
-  if ((not m_bTrainingMode) or (not (Mode in [mGame, mAnalyse])) or
-      (PlayerColor <> PositionColor)) then
+  if (not (m_bTrainingMode and (Mode in [mGame, mAnalyse]) and
+      (PlayerColor = PositionColor))) then
     exit;
 
   bmHiddenBoard.Canvas.Pen.Style := psSolid;
@@ -521,10 +528,27 @@ begin
   end;
 end;
 
+
+procedure TPosBaseChessBoard.RSetMode(const Value: TMode);
+var
+  SavedMode: TMode;
+begin
+  if (Value = Mode) then
+    exit;
+
+  SavedMode := Mode;
+
+  inherited;
+
+  if (SavedMode = mEdit) then
+    ROnAfterSetPosition;
+end;
+
+
 ////////////////////////////////////////////////////////////////////////////////
 // TPosBaseOperator
 
-constructor TPosBaseOperator.CreateRead(voChessBoard: TPosBaseChessBoard; vbHidden: boolean; vbFreeOnTerminate: boolean = TRUE);
+constructor TPosBaseOperator.FCreateRead(voChessBoard: TPosBaseChessBoard; vbHidden: boolean; vbFreeOnTerminate: boolean = TRUE);
 begin
   _enuOperation := opRead;
   _oChessBoard := voChessBoard;
@@ -536,7 +560,7 @@ begin
 end;
 
 
-constructor TPosBaseOperator.CreateWrite(voChessBoard: TPosBaseChessBoard);
+constructor TPosBaseOperator.FCreateWrite(voChessBoard: TPosBaseChessBoard);
 begin
   _oChessBoard := voChessBoard;
   _enuOperation := opWrite;
@@ -547,6 +571,27 @@ begin
 end;
 
 
+class function TPosBaseOperator.CreateRead(voChessBoard: TPosBaseChessBoard;
+  vbHidden: boolean; vbFreeOnTerminate: boolean = TRUE): TPosBaseOperator;
+begin
+  Result := nil;
+  if (voChessBoard.Mode = mEdit) then
+    exit;
+
+  Result := TPosBaseOperator.FCreateRead(voChessBoard, vbHidden, vbFreeOnTerminate);
+end;
+
+
+class function TPosBaseOperator.CreateWrite(voChessBoard: TPosBaseChessBoard): TPosBaseOperator;
+begin
+  Result := nil;
+  if (voChessBoard.Mode = mEdit) then
+    exit;
+
+  Result := TPosBaseOperator.FCreateWrite(voChessBoard);
+end;
+
+                                
 procedure TPosBaseOperator.Execute;
 begin
   case _enuOperation of
@@ -561,6 +606,13 @@ begin
   end;
 end;
 
+
+procedure TPosBaseOperator.WaitFor;
+begin
+  if (not Assigned(self)) then
+    exit;
+  inherited WaitFor;
+end;
 
 initialization
   Randomize;
