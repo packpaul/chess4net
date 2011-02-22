@@ -50,8 +50,12 @@ type
     MoveNEdit: TEdit;
     MoveNUpDown: TUpDown;
     MoveNStaticText: TStaticText;
+    CastlingGroupBox: TGroupBox;
+    CCWhiteStaticText: TStaticText;
+    CCWhiteComboBox: TComboBox;
+    CCBlackStaticText: TStaticText;
+    CCBlackComboBox: TComboBox;
     procedure FormCreate(Sender: TObject);
-    procedure PieceImageClick(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure CloseButtonClick(Sender: TObject);
@@ -62,10 +66,14 @@ type
     procedure EmptyButtonClick(Sender: TObject);
     procedure InitialButtonClick(Sender: TObject);
     procedure MoveNEditChange(Sender: TObject);
+    procedure PieceImageMouseDown(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
   private
     m_PositionEditable: IPositionEditable;
     m_SelectedPiece: TFigure;
     m_bFENChanged: boolean;
+    m_ChessRulesEngine: TChessRulesEngine;
+    m_wFENUpdating: Word;
     function FGetPieceImage(Piece: TFigure): TImage;
     procedure FLoadPieces;
     procedure FDrawPieceSelection(Piece: TFigure);
@@ -108,6 +116,10 @@ procedure TPositionEditingForm.FormCreate(Sender: TObject);
 begin
   FLoadPieces;
   FDrawPieceSelection(m_SelectedPiece);
+
+  m_ChessRulesEngine := TChessRulesEngine.Create;
+  m_ChessRulesEngine.MoveNotationFormat := mnfCh4NEx;
+  m_ChessRulesEngine.FENFormat := TRUE;
 end;
 
 
@@ -179,7 +191,8 @@ begin
 end;
 
 
-procedure TPositionEditingForm.PieceImageClick(Sender: TObject);
+procedure TPositionEditingForm.PieceImageMouseDown(Sender: TObject;
+  Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
   NewSelectedPiece: TFigure;
 begin
@@ -232,6 +245,7 @@ end;
 procedure TPositionEditingForm.FormDestroy(Sender: TObject);
 begin
   m_PositionEditable := nil;
+  m_ChessRulesEngine.Free;
 end;
 
 
@@ -296,6 +310,8 @@ end;
 
 procedure TPositionEditingForm.FENLabeledEditChange(Sender: TObject);
 begin
+  if (m_wFENUpdating > 0) then
+    exit;
   m_bFENChanged := TRUE;
 end;
 
@@ -307,11 +323,52 @@ end;
 
 
 procedure TPositionEditingForm.FSetFEN(const strValue: string);
-begin
-  FENLabeledEdit.Text := strValue;
-  m_bFENChanged := FALSE;
 
-  // TODO: parse FEN and fill other fields
+  procedure NSetCastlingCapabilityToControls;
+  begin
+    with m_ChessRulesEngine.Position^ do
+    begin
+      if ((WhiteKingSide in castling) and (WhiteQueenSide in castling)) then
+        CCWhiteComboBox.ItemIndex := 0 // <both>
+      else if (WhiteKingSide in castling) then
+        CCWhiteComboBox.ItemIndex := 1 // 0-0
+      else if (WhiteQueenSide in castling) then
+        CCWhiteComboBox.ItemIndex := 2 // 0-0-0
+      else
+        CCWhiteComboBox.ItemIndex := 3; // <no>
+
+      if ((BlackKingSide in castling) and (BlackQueenSide in castling)) then
+        CCBlackComboBox.ItemIndex := 0 // <both>
+      else if (BlackKingSide in castling) then
+        CCBlackComboBox.ItemIndex := 1 // 0-0
+      else if (BlackQueenSide in castling) then
+        CCBlackComboBox.ItemIndex := 2 // 0-0-0
+      else
+        CCBlackComboBox.ItemIndex := 3; // <no>
+    end;
+  end;
+
+begin // .FSetFEN
+  inc(m_wFENUpdating);
+  try
+    FENLabeledEdit.Text := strValue;
+    m_bFENChanged := FALSE;
+
+    if (not m_ChessRulesEngine.SetPosition(strValue)) then
+      exit;
+
+    if (m_ChessRulesEngine.Position.color = fcWhite) then
+      ColorRadioGroup.ItemIndex := 0
+    else
+      ColorRadioGroup.ItemIndex := 1;
+
+    NSetCastlingCapabilityToControls;
+
+    EPFileComboBox.ItemIndex := m_ChessRulesEngine.Position.en_passant;
+
+  finally
+    dec(m_wFENUpdating);
+  end;
 end;
 
 
@@ -389,6 +446,5 @@ begin
   end;
   
 end;
-
 
 end.

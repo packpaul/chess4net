@@ -1072,6 +1072,8 @@ begin
   for i := 0 to PositionsList.Count - 1 do
     Dispose(PositionsList[i]);
   PositionsList.Clear;
+
+  lastMove.i0 := 0;
 end;
 
 

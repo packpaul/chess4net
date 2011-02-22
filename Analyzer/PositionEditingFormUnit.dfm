@@ -36,7 +36,7 @@ object PositionEditingForm: TPositionEditingForm
     EditLabel.Height = 13
     EditLabel.Caption = 'FEN:'
     LabelPosition = lpLeft
-    TabOrder = 3
+    TabOrder = 11
     OnChange = FENLabeledEditChange
     OnExit = FENLabeledEditExit
     OnKeyPress = FENLabeledEditKeyPress
@@ -47,7 +47,7 @@ object PositionEditingForm: TPositionEditingForm
     Width = 139
     Height = 25
     Caption = '&Empty'
-    TabOrder = 5
+    TabOrder = 0
     OnClick = EmptyButtonClick
   end
   object InitialButton: TButton
@@ -56,16 +56,16 @@ object PositionEditingForm: TPositionEditingForm
     Width = 139
     Height = 25
     Caption = '&Initial'
-    TabOrder = 6
+    TabOrder = 1
     OnClick = InitialButtonClick
   end
   object CloseButton: TButton
     Left = 360
-    Top = 156
+    Top = 157
     Width = 75
     Height = 25
     Caption = '&Close'
-    TabOrder = 4
+    TabOrder = 12
     OnClick = CloseButtonClick
   end
   object SpecialButton: TButton
@@ -74,7 +74,7 @@ object PositionEditingForm: TPositionEditingForm
     Width = 139
     Height = 25
     Caption = '&Special...'
-    TabOrder = 7
+    TabOrder = 2
   end
   object PieceSelectionPanel: TPanel
     Left = 8
@@ -83,13 +83,13 @@ object PositionEditingForm: TPositionEditingForm
     Height = 100
     BevelInner = bvRaised
     BevelOuter = bvLowered
-    TabOrder = 0
+    TabOrder = 3
     object WKImage: TImage
       Left = 8
       Top = 8
       Width = 40
       Height = 40
-      OnClick = PieceImageClick
+      OnMouseDown = PieceImageMouseDown
     end
     object BQImage: TImage
       Tag = 8
@@ -97,7 +97,7 @@ object PositionEditingForm: TPositionEditingForm
       Top = 52
       Width = 40
       Height = 40
-      OnClick = PieceImageClick
+      OnMouseDown = PieceImageMouseDown
     end
     object WQImage: TImage
       Tag = 1
@@ -105,7 +105,7 @@ object PositionEditingForm: TPositionEditingForm
       Top = 8
       Width = 40
       Height = 40
-      OnClick = PieceImageClick
+      OnMouseDown = PieceImageMouseDown
     end
     object BRImage: TImage
       Tag = 9
@@ -113,7 +113,7 @@ object PositionEditingForm: TPositionEditingForm
       Top = 52
       Width = 40
       Height = 40
-      OnClick = PieceImageClick
+      OnMouseDown = PieceImageMouseDown
     end
     object WRImage: TImage
       Tag = 2
@@ -121,7 +121,7 @@ object PositionEditingForm: TPositionEditingForm
       Top = 8
       Width = 40
       Height = 40
-      OnClick = PieceImageClick
+      OnMouseDown = PieceImageMouseDown
     end
     object BBImage: TImage
       Tag = 10
@@ -129,7 +129,7 @@ object PositionEditingForm: TPositionEditingForm
       Top = 52
       Width = 40
       Height = 40
-      OnClick = PieceImageClick
+      OnMouseDown = PieceImageMouseDown
     end
     object WBImage: TImage
       Tag = 3
@@ -137,7 +137,7 @@ object PositionEditingForm: TPositionEditingForm
       Top = 8
       Width = 40
       Height = 40
-      OnClick = PieceImageClick
+      OnMouseDown = PieceImageMouseDown
     end
     object BNImage: TImage
       Tag = 11
@@ -145,7 +145,7 @@ object PositionEditingForm: TPositionEditingForm
       Top = 52
       Width = 40
       Height = 40
-      OnClick = PieceImageClick
+      OnMouseDown = PieceImageMouseDown
     end
     object WNImage: TImage
       Tag = 4
@@ -153,7 +153,7 @@ object PositionEditingForm: TPositionEditingForm
       Top = 8
       Width = 40
       Height = 40
-      OnClick = PieceImageClick
+      OnMouseDown = PieceImageMouseDown
     end
     object BPImage: TImage
       Tag = 12
@@ -161,7 +161,7 @@ object PositionEditingForm: TPositionEditingForm
       Top = 52
       Width = 40
       Height = 40
-      OnClick = PieceImageClick
+      OnMouseDown = PieceImageMouseDown
     end
     object WPImage: TImage
       Tag = 5
@@ -169,7 +169,7 @@ object PositionEditingForm: TPositionEditingForm
       Top = 8
       Width = 40
       Height = 40
-      OnClick = PieceImageClick
+      OnMouseDown = PieceImageMouseDown
     end
     object BKImage: TImage
       Tag = 7
@@ -177,7 +177,7 @@ object PositionEditingForm: TPositionEditingForm
       Top = 52
       Width = 40
       Height = 40
-      OnClick = PieceImageClick
+      OnMouseDown = PieceImageMouseDown
     end
   end
   object ColorRadioGroup: TRadioGroup
@@ -189,20 +189,20 @@ object PositionEditingForm: TPositionEditingForm
     Columns = 2
     ItemIndex = 0
     Items.Strings = (
-      'White'
-      'Black')
-    TabOrder = 1
+      'white'
+      'black')
+    TabOrder = 4
   end
   object EPFileComboBox: TComboBox
-    Left = 188
-    Top = 124
+    Left = 387
+    Top = 105
     Width = 49
     Height = 21
     Style = csDropDownList
     DropDownCount = 9
     ItemHeight = 13
     ItemIndex = 0
-    TabOrder = 2
+    TabOrder = 7
     Text = '<no>'
     Items.Strings = (
       '<no>'
@@ -216,39 +216,98 @@ object PositionEditingForm: TPositionEditingForm
       'h')
   end
   object EPFileStaticText: TStaticText
-    Left = 145
-    Top = 126
+    Left = 344
+    Top = 107
     Width = 41
     Height = 17
     Caption = 'e.p. file:'
-    TabOrder = 8
+    TabOrder = 6
   end
   object MoveNEdit: TEdit
-    Left = 288
-    Top = 124
+    Left = 388
+    Top = 129
     Width = 30
     Height = 21
-    TabOrder = 9
+    TabOrder = 10
     Text = '1'
     OnChange = MoveNEditChange
   end
   object MoveNUpDown: TUpDown
-    Left = 318
-    Top = 124
+    Left = 418
+    Top = 129
     Width = 16
     Height = 21
     Associate = MoveNEdit
     Min = 1
     Max = 299
     Position = 1
-    TabOrder = 10
+    TabOrder = 9
   end
   object MoveNStaticText: TStaticText
-    Left = 242
-    Top = 126
+    Left = 343
+    Top = 131
     Width = 43
     Height = 17
     Caption = 'move #:'
-    TabOrder = 11
+    TabOrder = 8
+  end
+  object CastlingGroupBox: TGroupBox
+    Left = 142
+    Top = 112
+    Width = 195
+    Height = 41
+    Caption = 'Castling capability'
+    TabOrder = 5
+    object CCWhiteStaticText: TStaticText
+      Left = 4
+      Top = 18
+      Width = 32
+      Height = 17
+      Caption = 'white:'
+      TabOrder = 0
+    end
+    object CCWhiteComboBox: TComboBox
+      Left = 36
+      Top = 15
+      Width = 60
+      Height = 21
+      Style = csDropDownList
+      DropDownCount = 9
+      ItemHeight = 13
+      ItemIndex = 0
+      TabOrder = 1
+      Text = '<both>'
+      Items.Strings = (
+        '<both>'
+        '0-0'
+        '0-0-0'
+        '<no>')
+    end
+    object CCBlackStaticText: TStaticText
+      Left = 98
+      Top = 18
+      Width = 33
+      Height = 17
+      Caption = 'black:'
+      TabOrder = 2
+    end
+    object CCBlackComboBox: TComboBox
+      Tag = 1
+      Left = 130
+      Top = 15
+      Width = 60
+      Height = 21
+      Style = csDropDownList
+      DropDownCount = 9
+      ItemHeight = 13
+      ItemIndex = 0
+      TabOrder = 3
+      Text = '<both>'
+      Items.Strings = (
+        '<both>'
+        '0-0'
+        '0-0-0'
+        '<no>')
+    end
   end
 end

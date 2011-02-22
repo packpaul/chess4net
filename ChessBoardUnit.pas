@@ -12,7 +12,7 @@ type
 
   TAnimation = (aNo, aSlow, aQuick);
 
-  TChessBoardEvent = (cbeMate, cbeStaleMate, cbeMoved, cbeMenu);
+  TChessBoardEvent = (cbeMate, cbeStaleMate, cbeMoved, cbePosSet, cbeMenu);
   TChessBoardHandler = procedure(e: TChessBoardEvent;
                                  d1: pointer = nil; d2: pointer = nil) of object;
 
@@ -134,7 +134,7 @@ type
       const strPosBaseName: string = ''); reintroduce;
 
     function DoMove(const strMove: string): boolean;
-    procedure ResetMoveList;
+    procedure ResetMoveList; virtual;
     function SetPosition(const strPosition: string): boolean;
     function GetPosition: string;
     procedure InitPosition;
@@ -475,6 +475,11 @@ end;
 
 function TChessBoard.DoMove(const strMove: string): boolean;
 begin
+  Result := FALSE;
+
+  if (m_Mode = mEdit) then
+    exit;
+
   // Animation canceling
   if (AnimateTimer.Enabled) then
   begin
@@ -602,9 +607,19 @@ end;
 
 
 procedure TChessBoard.ROnAfterSetPosition;
+var
+  strPosition: string;
 begin
-  if (m_Mode = mAnalyse) then
-    m_PlayerColor := PositionColor;
+  case m_Mode of
+    mAnalyse:
+      m_PlayerColor := PositionColor;
+
+    mEdit:
+      ResetMoveList;
+  end;
+
+  strPosition := GetPosition;
+  FDoHandler(cbePosSet, @strPosition, self);
 end;
 
 
@@ -759,7 +774,7 @@ begin
       if (m_bDraggedMoved) then
       begin
         FWhatSquare(Point(X, Y), i, j);
-        bRes := Position.SetPiece(i, j, m_fig);
+        bRes := (((i <> m_i0) or (j <> m_j0)) and  Position.SetPiece(i, j, m_fig));
       end
       else
         bRes := TRUE;
@@ -767,7 +782,7 @@ begin
       if (bRes) then
       begin
         Position.SetPiece(m_i0, m_j0, ES);
-        lastMove.i0 := 0;
+        ROnAfterSetPosition;
       end;
 
       RDrawBoard;      
@@ -922,7 +937,7 @@ begin
           FWhatSquare(Point(X, Y), i, j);
           if (Position.SetPiece(i, j, m_EditPiece)) then
           begin
-            lastMove.i0 := 0;
+            ROnAfterSetPosition;
             RDrawBoard;
           end;
         end;
@@ -974,6 +989,9 @@ end;
 
 procedure TChessBoard.TakeBack;
 begin
+  if (m_Mode = mEdit) then
+    exit;
+
   if (not m_ChessRulesEngine.TakeBack) then
     exit;
 

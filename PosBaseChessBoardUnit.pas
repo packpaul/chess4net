@@ -22,6 +22,7 @@ type
     procedure FUseUserBase(bUseUserBase: boolean);
     procedure FReadFromBase;
     procedure FWriteGameToBase;
+    procedure FClearMovePriorList;
 
   protected
     procedure ROnAfterMoveDone; override;
@@ -37,6 +38,7 @@ type
     procedure WriteGameToBase(AGameResult: TGameResult);
     procedure SetExternalBase(const strExtPosBaseName: string);
     procedure UnsetExternalBase;
+    procedure ResetMoveList; override;
     property pTrainingMode: boolean read m_bTrainingMode write FSetTrainingMode;
     property pUseUserBase: boolean read m_bUseUserBase write FUseUserBase;
     procedure PPRandom; reintroduce;
@@ -99,16 +101,23 @@ end;
 
 
 destructor TPosBaseChessBoard.Destroy;
-var
-  i: integer;
 begin
-  for i := 0 to _lstMovePrior.Count - 1 do
-    dispose(_lstMovePrior[i]);
+  FClearMovePriorList;
   _lstMovePrior.Free;
 
   pTrainingMode := FALSE;
 
   inherited;
+end;
+
+
+procedure TPosBaseChessBoard.FClearMovePriorList;
+var
+  i: integer;
+begin
+  for i := 0 to _lstMovePrior.Count - 1 do
+    Dispose(_lstMovePrior[i]);
+  _lstMovePrior.Clear;
 end;
 
 
@@ -393,7 +402,7 @@ procedure TPosBaseChessBoard.FReadFromBase;
           p := Succ(p); 
         mp.move := PMoveEst(rlstMove[i]).move;
         mp.prior := p;
-        dispose(rlstMove[i]);
+        Dispose(rlstMove[i]);
         rlstMove[i] := mp;
       end;
 
@@ -434,7 +443,7 @@ var
             begin
               PMovePrior(_lstMovePrior[j]).prior :=
                 PRIOR_CALC[PMovePrior(_lstMovePrior[j]).prior, PMovePrior(lstExtMove[j]).prior];
-              dispose(lstExtMove[i]);
+              Dispose(lstExtMove[i]);
               break;
             end;
           dec(j);
@@ -446,10 +455,8 @@ var
 
 var
   i: integer;
-begin
-  for i := 0 to _lstMovePrior.Count - 1 do
-    dispose(_lstMovePrior[i]);
-  _lstMovePrior.Clear;
+begin // .FReadFromBase
+  FClearMovePriorList;
 
   lstExtMove := nil;
   lstUsrMove := TList.Create;
@@ -544,6 +551,13 @@ begin
     ROnAfterSetPosition;
 end;
 
+
+procedure TPosBaseChessBoard.ResetMoveList;
+begin
+  inherited;
+  if (Mode = mEdit) then
+    FClearMovePriorList;
+end;
 
 ////////////////////////////////////////////////////////////////////////////////
 // TPosBaseOperator

@@ -335,6 +335,12 @@ begin // .FChessBoardHandler
       NAdjustPlysList;
       FSynchronizeChessEngineWithChessBoardAndStartEvaluation;
     end;
+
+    cbePosSet:
+    begin
+      if (FIsEditing and Assigned(m_PositionEditingForm)) then
+        m_PositionEditingForm.FEN := PString(d1)^;
+    end;
   end;
 end;
 
@@ -1158,12 +1164,13 @@ begin
   m_ChessBoard.Mode := mEdit;
 
   m_PositionEditingForm.Show;
+  m_PositionEditingForm.FEN := m_ChessBoard.GetPosition;  
 end;
 
 
 procedure TAnalyseChessBoard.FSetEditPiece(Piece: TFigure);
 begin
-  // TODO:
+  m_ChessBoard.EditPiece := Piece; 
 end;
 
 
@@ -1174,7 +1181,6 @@ begin
   begin
     m_PositionEditingForm.FEN := m_ChessBoard.GetPosition;
     m_ChessBoard.Position
-
   end;
 end;
 
