@@ -81,15 +81,19 @@ object AnalyseChessBoard: TAnalyseChessBoard
       object N2: TTntMenuItem
         Caption = '-'
       end
+      object FileCopyMenuItem: TTntMenuItem
+        Action = CopyAction
+        Caption = '&Copy'
+      end
       object FilePasteMenuItem: TTntMenuItem
         Caption = '&Paste'
         ShortCut = 16470
         OnClick = FilePasteMenuItemClick
       end
-      object FileCopyMenuItem: TTntMenuItem
-        Caption = '&Copy'
-        Enabled = False
-        ShortCut = 16451
+      object FileCopyFENMenuItem: TTntMenuItem
+        Caption = 'Copy &FEN'
+        ShortCut = 32835
+        OnClick = FileCopyFENMenuItemClick
       end
       object N1: TTntMenuItem
         Caption = '-'
@@ -303,6 +307,12 @@ object AnalyseChessBoard: TAnalyseChessBoard
       Hint = 'Set line to main'
       OnExecute = SetLineToMainActionExecute
       OnUpdate = SetLineToMainActionUpdate
+    end
+    object CopyAction: TAction
+      Category = 'File'
+      ShortCut = 16451
+      OnExecute = CopyActionExecute
+      OnUpdate = CopyActionUpdate
     end
   end
   object ImageList: TImageList

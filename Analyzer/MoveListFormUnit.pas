@@ -11,8 +11,10 @@ type
   TStringGrid = class(Grids.TStringGrid)
   private
     m_bPlyLineSelection: boolean;
-    class procedure FPlyIndexToGridPos(const PlysProvider: IPlysProvider; out iCol, iRow: integer);
-    class function FGridPosToPlyIndex(iCol, iRow: integer): integer;
+    class procedure FPlyIndexToGridPos(iPlyIndex: integer; bWhiteStarts: boolean;
+      out iCol, iRow: integer);
+    class function FGridPosToPlyIndex(iCol, iRow: integer;
+      bWhiteStarts: boolean): integer;
     function FGetPlysProvider: IPlysProvider;
     procedure FSetPlyLineSelection(bValue: boolean);
     property PlysProvider: IPlysProvider read FGetPlysProvider;
@@ -100,7 +102,10 @@ end;
 procedure TMoveListForm.FOnGetPickListItems(ACol, ARow: Integer; Items: TStrings);
 begin
   if (Assigned(m_PlysProvider)) then
-    m_PlysProvider.GetPlysForPlyIndex(TStringGrid.FGridPosToPlyIndex(ACol, ARow), Items)
+  begin
+    m_PlysProvider.GetPlysForPlyIndex(TStringGrid.FGridPosToPlyIndex(ACol, ARow,
+      m_PlysProvider.WhiteStarts), Items)
+  end
   else
     Items.Clear;
 end;
@@ -138,7 +143,9 @@ begin
   if (not Assigned(m_PlysProvider)) then
     exit;
 
-  TStringGrid.FPlyIndexToGridPos(m_PlysProvider, m_iPlyIndexCol, m_iPlyIndexRow);
+  TStringGrid.FPlyIndexToGridPos(
+    m_PlysProvider.CurrentPlyIndex, m_PlysProvider.WhiteStarts, 
+    m_iPlyIndexCol, m_iPlyIndexRow);
 
   MovesStringGrid.FocusCell(m_iPlyIndexCol, m_iPlyIndexRow, TRUE);
 
@@ -150,26 +157,20 @@ begin
   for i := 0 to 2 do
     MovesStringGrid.Cells[i, 1] := '';
 
-  iRow := 1;
-  iCol := 1;
+  if (m_PlysProvider.PlysCount = 0) then
+    exit;
 
   for i := 1 to m_PlysProvider.PlysCount do
   begin
+    TStringGrid.FPlyIndexToGridPos(i, m_PlysProvider.WhiteStarts, iCol, iRow);
+
     MovesStringGrid.Cells[0, iRow] := Format('%d.',
       [TPlysTree.ConvertPlyToMove(i, m_PlysProvider.WhiteStarts)]);
     MovesStringGrid.Cells[iCol, iRow] := m_PlysProvider.Plys[i];
-
-    if (iCol = 2) then
-    begin
-      iCol := 1;
-      inc(iRow);
-    end
-    else
-      inc(iCol);
   end;
 
-  if (iRow < MovesStringGrid.RowCount) then
-    MovesStringGrid.Cells[iCol, iRow] := '';
+  if (iCol < 2) then
+    MovesStringGrid.Cells[2, iRow] := '';
 end;
 
 
@@ -193,8 +194,8 @@ procedure TMoveListForm.MovesStringGridDrawCell(Sender: TObject; ACol,
     if (not Assigned(m_PlysProvider)) then
       exit;
 
-    if (m_PlysProvider.HasSeveralPlysForPlyIndex(
-        TStringGrid.FGridPosToPlyIndex(ACol, ARow))) then
+    if (m_PlysProvider.HasSeveralPlysForPlyIndex(TStringGrid.FGridPosToPlyIndex(
+        ACol, ARow, m_PlysProvider.WhiteStarts))) then
       Result := Result + '...';
   end;
 
@@ -203,7 +204,7 @@ procedure TMoveListForm.MovesStringGridDrawCell(Sender: TObject; ACol,
     iPly: integer;
     PlyStatuses: TPlyStatuses;
   begin
-    iPly := TStringGrid.FGridPosToPlyIndex(ACol, ARow);
+    iPly := TStringGrid.FGridPosToPlyIndex(ACol, ARow, m_PlysProvider.WhiteStarts);
 
     if ((m_iPlyIndexCol = ACol) and (m_iPlyIndexRow = ARow)) then
     begin
@@ -283,7 +284,7 @@ begin
   if (not Assigned(m_PlysProvider)) then
     exit;
 
-  iPly := TStringGrid.FGridPosToPlyIndex(ACol, ARow);
+  iPly := TStringGrid.FGridPosToPlyIndex(ACol, ARow, m_PlysProvider.WhiteStarts);
 
   strOldPly := m_PlysProvider.Plys[iPly];
   if (Value = strOldPly) then
@@ -312,7 +313,10 @@ begin
     exit;
 
   if (Assigned(m_PlysProvider)) then
-    m_PlysProvider.CurrentPlyIndex := TStringGrid.FGridPosToPlyIndex(ACol, ARow);
+  begin
+    m_PlysProvider.CurrentPlyIndex := TStringGrid.FGridPosToPlyIndex(ACol, ARow,
+      m_PlysProvider.WhiteStarts);
+  end;
 
   m_bCellFirstSelected := TRUE;
 end;
@@ -420,19 +424,17 @@ begin
   if (not Result) then
     exit;
 
-  Result := (PlysProvider.HasSeveralPlysForPlyIndex(FGridPosToPlyIndex(Col, Row)));
+  Result := (PlysProvider.HasSeveralPlysForPlyIndex(FGridPosToPlyIndex(Col, Row,
+    PlysProvider.WhiteStarts)));
 end;
 
 
-class procedure TStringGrid.FPlyIndexToGridPos(const PlysProvider: IPlysProvider; out iCol, iRow: integer);
-var
-  iPlyIndex: integer;
+class procedure TStringGrid.FPlyIndexToGridPos(
+  iPlyIndex: integer; bWhiteStarts: boolean; out iCol, iRow: integer);
 begin
-  iPlyIndex := PlysProvider.CurrentPlyIndex;
-
   if (iPlyIndex > 0) then
   begin
-    if (not PlysProvider.WhiteStarts) then
+    if (not bWhiteStarts) then
       inc(iPlyIndex);
     iRow := ((iPlyIndex - 1) div 2) + 1;
     iCol := ((iPlyIndex - 1) mod 2) + 1;
@@ -445,12 +447,13 @@ begin
 end;
 
 
-class function TStringGrid.FGridPosToPlyIndex(iCol, iRow: integer): integer;
+class function TStringGrid.FGridPosToPlyIndex(iCol, iRow: integer;
+  bWhiteStarts: boolean): integer;
 begin
   if (iCol = 0) then
     Result := 0
   else
-    Result := 2 * (iRow - 1) + iCol;
+    Result := 2 * (iRow - 1) + iCol - IfThen(bWhiteStarts, 0, 1);
 end;
 
 

@@ -11,13 +11,18 @@ type
               BK, BQ, BR, BB, BN, BP); // ES - Empty Square
   TFigureColor = (fcWhite, fcBlack);
 
+  TCastlingCapability = set of (
+    WhiteKingSide, WhiteQueenSide, BlackKingSide, BlackQueenSide);
+
   PChessPosition = ^TChessPosition;
   TChessPosition = object // Chess position
     board: array[1..8, 1..8] of TFigure;
     color: TFigureColor; // Who moves
-    castling: set of (WhiteKingSide, WhiteQueenSide,  // castling possibility
-                      BlackKingSide, BlackQueenSide);
+    castling: TCastlingCapability;
     en_passant: 0..8; // possibility of e.p 0 - no e.p.
+  private
+    procedure FUpdateKingSideCastling(AColor: TFigureColor);
+    procedure FUpdateQueenSideCastling(AColor: TFigureColor);
   public
     function SetPiece(i, j: integer; APiece: TFigure): boolean;
   end;
@@ -1236,12 +1241,110 @@ end;
 
 
 function TChessPosition.SetPiece(i, j: integer; APiece: TFigure): boolean;
+var
+  SavedPiece: TFigure;
 begin
   Result := ((i in [1..8]) and (j in [1..8]));
-  if (Result) then
-    board[i, j] := APiece;
+  if (not Result) then
+    exit;
+
+  SavedPiece := board[i, j];
+  board[i, j] := APiece;
+
+  if (SavedPiece = APiece) then
+    exit;
+
+  if ((i = 5) and (j = 1)) then
+  begin
+    FUpdateKingSideCastling(fcWhite);
+    FUpdateQueenSideCastling(fcWhite);
+  end
+  else if ((i = 8) and (j = 1)) then
+    FUpdateKingSideCastling(fcWhite)
+  else if ((i = 1) and (j = 1)) then
+    FUpdateQueenSideCastling(fcWhite)
+  else if ((i = 5) and (j = 8)) then
+  begin
+    FUpdateKingSideCastling(fcBlack);
+    FUpdateQueenSideCastling(fcBlack);
+  end
+  else if ((i = 8) and (j = 8)) then
+    FUpdateKingSideCastling(fcBlack)
+  else if ((i = 1) and (j = 8)) then
+    FUpdateQueenSideCastling(fcBlack);
 end;
 
+
+procedure TChessPosition.FUpdateKingSideCastling(AColor: TFigureColor);
+var
+  j: integer;
+  King, Rook: TFigure;
+begin
+  if (AColor = fcWhite) then
+  begin
+    j := 1;
+    King := WK;
+    Rook := WR;
+  end
+  else // fcBlack
+  begin
+    j := 8;
+    King := BK;
+    Rook := BR;
+  end;
+
+  if ((board[5, j] = King) and (board[8, j] = Rook)) then
+  begin
+    if (AColor = fcWhite) then
+      Include(castling, WhiteKingSide)
+    else
+      Include(castling, BlackKingSide);
+  end
+  else
+  begin
+    if (AColor = fcWhite) then
+      Exclude(castling, WhiteKingSide)
+    else
+      Exclude(castling, BlackKingSide);
+  end;
+
+end;
+
+
+procedure TChessPosition.FUpdateQueenSideCastling(AColor: TFigureColor);
+var
+  j: integer;
+  King, Rook: TFigure;
+begin
+  if (AColor = fcWhite) then
+  begin
+    j := 1;
+    King := WK;
+    Rook := WR;
+  end
+  else // fcBlack
+  begin
+    j := 8;
+    King := BK;
+    Rook := BR;
+  end;
+
+  if ((board[5, j] = King) and (board[1, j] = Rook)) then
+  begin
+    if (AColor = fcWhite) then
+      Include(castling, WhiteQueenSide)
+    else
+      Include(castling, BlackQueenSide);
+  end
+  else
+  begin
+    if (AColor = fcWhite) then
+      Exclude(castling, WhiteQueenSide)
+    else
+      Exclude(castling, BlackQueenSide);
+  end;
+
+end;
 
 initialization
 

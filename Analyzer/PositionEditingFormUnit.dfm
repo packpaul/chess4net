@@ -38,8 +38,9 @@ object PositionEditingForm: TPositionEditingForm
     LabelPosition = lpLeft
     TabOrder = 11
     OnChange = FENLabeledEditChange
+    OnDblClick = FENLabeledEditDblClick
     OnExit = FENLabeledEditExit
-    OnKeyPress = FENLabeledEditKeyPress
+    OnKeyDown = FENLabeledEditKeyDown
   end
   object EmptyButton: TButton
     Left = 296
@@ -192,6 +193,7 @@ object PositionEditingForm: TPositionEditingForm
       'white'
       'black')
     TabOrder = 4
+    OnClick = ColorRadioGroupClick
   end
   object EPFileComboBox: TComboBox
     Left = 387
@@ -204,6 +206,7 @@ object PositionEditingForm: TPositionEditingForm
     ItemIndex = 0
     TabOrder = 7
     Text = '<no>'
+    OnChange = EPFileComboBoxChange
     Items.Strings = (
       '<no>'
       'a'
@@ -277,6 +280,7 @@ object PositionEditingForm: TPositionEditingForm
       ItemIndex = 0
       TabOrder = 1
       Text = '<both>'
+      OnChange = CCComboBoxChange
       Items.Strings = (
         '<both>'
         '0-0'
@@ -292,7 +296,6 @@ object PositionEditingForm: TPositionEditingForm
       TabOrder = 2
     end
     object CCBlackComboBox: TComboBox
-      Tag = 1
       Left = 130
       Top = 15
       Width = 60
@@ -303,6 +306,7 @@ object PositionEditingForm: TPositionEditingForm
       ItemIndex = 0
       TabOrder = 3
       Text = '<both>'
+      OnChange = CCComboBoxChange
       Items.Strings = (
         '<both>'
         '0-0'

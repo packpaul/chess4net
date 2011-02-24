@@ -45,14 +45,15 @@ type
   TPlysTree = class
   private
     m_FirstNode: TPlysTreeNode;
+    m_bWhiteStarts: boolean;
     function FGetPosition(iIndex: integer): string;
     function FGetPly(iIndex: integer): string;
     function FGetCount: integer;
     function FGetNodeOfDepth(iPlyDepth: integer): TPlysTreeNode;
-    function FGetWhiteStarts: boolean;
     procedure FDelete(iIndex: Integer);
     
   public
+    constructor Create;
     destructor Destroy; override;
 
     function Add(iPlyIndex: integer; const strPos: string;
@@ -78,7 +79,7 @@ type
     property Position[iIndex: integer]: string read FGetPosition;
 
     property Count: integer read FGetCount;
-    property WhiteStarts: boolean read FGetWhiteStarts;
+    property WhiteStarts: boolean read m_bWhiteStarts write m_bWhiteStarts;
   end;
 
 implementation
@@ -88,6 +89,13 @@ uses
 
 ////////////////////////////////////////////////////////////////////////////////
 // TPlysTree
+
+constructor TPlysTree.Create;
+begin
+  inherited Create;
+  m_bWhiteStarts := TRUE;
+end;
+
 
 destructor TPlysTree.Destroy;
 begin
@@ -271,13 +279,8 @@ begin
   Assert(Assigned(Source));
 
   Clear;
+  m_bWhiteStarts := Source.WhiteStarts; 
   m_FirstNode := TPlysTreeNode.Create(Source.m_FirstNode);
-end;
-
-
-function TPlysTree.FGetWhiteStarts: boolean;
-begin
-  Result := TRUE;
 end;
 
 

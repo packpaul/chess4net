@@ -60,7 +60,6 @@ type
     procedure FormShow(Sender: TObject);
     procedure CloseButtonClick(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
-    procedure FENLabeledEditKeyPress(Sender: TObject; var Key: Char);
     procedure FENLabeledEditExit(Sender: TObject);
     procedure FENLabeledEditChange(Sender: TObject);
     procedure EmptyButtonClick(Sender: TObject);
@@ -68,21 +67,42 @@ type
     procedure MoveNEditChange(Sender: TObject);
     procedure PieceImageMouseDown(Sender: TObject; Button: TMouseButton;
       Shift: TShiftState; X, Y: Integer);
+    procedure ColorRadioGroupClick(Sender: TObject);
+    procedure CCComboBoxChange(Sender: TObject);
+    procedure EPFileComboBoxChange(Sender: TObject);
+    procedure FENLabeledEditKeyDown(Sender: TObject; var Key: Word;
+      Shift: TShiftState);
+    procedure FENLabeledEditDblClick(Sender: TObject);
   private
     m_PositionEditable: IPositionEditable;
     m_SelectedPiece: TFigure;
     m_bFENChanged: boolean;
     m_ChessRulesEngine: TChessRulesEngine;
-    m_wFENUpdating: Word;
+    m_bFENUpdating: boolean;
     function FGetPieceImage(Piece: TFigure): TImage;
     procedure FLoadPieces;
     procedure FDrawPieceSelection(Piece: TFigure);
     procedure FErasePieceSelection(Piece: TFigure);
     procedure FSetEditPiece;
-    function FSetPosition: boolean;
+    function FSetUserFEN: boolean;
+    procedure FSetPosition;
     procedure FStopEditing;
+
     function FGetFEN: string;
     procedure FSetFEN(const strValue: string);
+    function FGetPositionColor: TFigureColor;
+    procedure FSetPositionColor(Value: TFigureColor);
+    function FGetCastlingCapability: TCastlingCapability;
+    procedure FSetCastlingCapability(const Value: TCastlingCapability);
+    function FGetEnPassant: integer;
+    procedure FSetEnPassant(iValue: integer);
+
+    property PositionColor: TFigureColor
+      read FGetPositionColor write FSetPositionColor;
+    property CastlingCapability: TCastlingCapability
+      read FGetCastlingCapability write FSetCastlingCapability;
+    property EnPassant: integer read FGetEnPassant write FSetEnPassant;
+
   public
     property SelectedPiece: TFigure read m_SelectedPiece;
     property PositionEditable: IPositionEditable
@@ -275,42 +295,71 @@ begin
 end;
 
 
-procedure TPositionEditingForm.FENLabeledEditKeyPress(Sender: TObject;
-  var Key: Char);
+procedure TPositionEditingForm.FENLabeledEditKeyDown(Sender: TObject;
+  var Key: Word; Shift: TShiftState);
 begin
-  if (Ord(Key) = VK_RETURN) then
+  case Key of
+    VK_RETURN:
+    begin
+      if (FSetUserFEN) then
+        ActiveControl := CloseButton;
+    end;
+
+    Ord('A'), Ord('a'):
+    begin
+      FENLabeledEdit.SelectAll;
+    end;
+  end;
+
+end;
+
+
+procedure TPositionEditingForm.FENLabeledEditDblClick(Sender: TObject);
+begin
+  if (not m_bFENChanged) then
+    FENLabeledEdit.SelectAll;
+end;
+
+
+procedure TPositionEditingForm.FSetPosition;
+var
+  bRes: boolean;
+begin
+  if (Assigned(m_PositionEditable)) then
   begin
-    if (FSetPosition) then
-      ActiveControl := CloseButton;
+    bRes := m_PositionEditable.SetPosition(m_ChessRulesEngine.GetPosition);
+    Assert(bRes);
   end;
 end;
 
 
-function TPositionEditingForm.FSetPosition: boolean;
+function TPositionEditingForm.FSetUserFEN: boolean;
 begin
+  Result := TRUE;
+
   if (Assigned(m_PositionEditable)) then
-    Result := m_PositionEditable.SetPosition(FGetFEN)
-  else
-    Result := TRUE;
+  begin
+    Result := m_ChessRulesEngine.SetPosition(FGetFEN);
+    if (Result) then
+      FSetPosition;
+  end;
 
-  if (Result) then
-    exit;
-
-  MessageDlg(MSG_FEN_WRONG, mtError, [mbOK], 0);
+  if (not Result) then
+    MessageDlg(MSG_FEN_WRONG, mtError, [mbOK], 0);
 end;
 
 
 procedure TPositionEditingForm.FENLabeledEditExit(Sender: TObject);
 begin
   if (m_bFENChanged) then
-    FSetPosition;
+    FSetUserFEN;
   m_bFENChanged := FALSE;
 end;
 
 
 procedure TPositionEditingForm.FENLabeledEditChange(Sender: TObject);
 begin
-  if (m_wFENUpdating > 0) then
+  if (m_bFENUpdating) then
     exit;
   m_bFENChanged := TRUE;
 end;
@@ -323,33 +372,8 @@ end;
 
 
 procedure TPositionEditingForm.FSetFEN(const strValue: string);
-
-  procedure NSetCastlingCapabilityToControls;
-  begin
-    with m_ChessRulesEngine.Position^ do
-    begin
-      if ((WhiteKingSide in castling) and (WhiteQueenSide in castling)) then
-        CCWhiteComboBox.ItemIndex := 0 // <both>
-      else if (WhiteKingSide in castling) then
-        CCWhiteComboBox.ItemIndex := 1 // 0-0
-      else if (WhiteQueenSide in castling) then
-        CCWhiteComboBox.ItemIndex := 2 // 0-0-0
-      else
-        CCWhiteComboBox.ItemIndex := 3; // <no>
-
-      if ((BlackKingSide in castling) and (BlackQueenSide in castling)) then
-        CCBlackComboBox.ItemIndex := 0 // <both>
-      else if (BlackKingSide in castling) then
-        CCBlackComboBox.ItemIndex := 1 // 0-0
-      else if (BlackQueenSide in castling) then
-        CCBlackComboBox.ItemIndex := 2 // 0-0-0
-      else
-        CCBlackComboBox.ItemIndex := 3; // <no>
-    end;
-  end;
-
-begin // .FSetFEN
-  inc(m_wFENUpdating);
+begin
+  m_bFENUpdating := TRUE;
   try
     FENLabeledEdit.Text := strValue;
     m_bFENChanged := FALSE;
@@ -357,18 +381,96 @@ begin // .FSetFEN
     if (not m_ChessRulesEngine.SetPosition(strValue)) then
       exit;
 
-    if (m_ChessRulesEngine.Position.color = fcWhite) then
-      ColorRadioGroup.ItemIndex := 0
-    else
-      ColorRadioGroup.ItemIndex := 1;
-
-    NSetCastlingCapabilityToControls;
-
-    EPFileComboBox.ItemIndex := m_ChessRulesEngine.Position.en_passant;
+    PositionColor := m_ChessRulesEngine.Position.color;
+    CastlingCapability := m_ChessRulesEngine.Position.castling;
+    EnPassant := m_ChessRulesEngine.Position.en_passant;
 
   finally
-    dec(m_wFENUpdating);
+    m_bFENUpdating := FALSE;
   end;
+end;
+
+
+function TPositionEditingForm.FGetPositionColor: TFigureColor;
+begin
+  if (ColorRadioGroup.ItemIndex = 0) then
+    Result := fcWhite
+  else
+    Result := fcBlack;
+end;
+
+
+procedure TPositionEditingForm.FSetPositionColor(Value: TFigureColor);
+begin
+  if (Value = fcWhite) then
+    ColorRadioGroup.ItemIndex := 0
+  else
+    ColorRadioGroup.ItemIndex := 1;
+end;
+
+
+function TPositionEditingForm.FGetCastlingCapability: TCastlingCapability;
+begin
+  Result := [];
+
+  case CCWhiteComboBox.ItemIndex of
+    0:
+      Result := Result + [WhiteKingSide, WhiteQueenSide];
+    1: // 0-0
+      Include(Result, WhiteKingSide);
+    2: // 0-0-0
+      Include(Result, WhiteQueenSide);
+    3:
+      ;
+  end;
+
+  case CCBlackComboBox.ItemIndex of
+    0:
+      Result := Result + [BlackKingSide, BlackQueenSide];
+    1: // 0-0
+      Include(Result, BlackKingSide);
+    2: // 0-0-0
+      Include(Result, BlackQueenSide);
+    3:
+      ;
+  end;
+  
+end;
+
+
+procedure TPositionEditingForm.FSetCastlingCapability(const Value: TCastlingCapability);
+begin
+  if ((WhiteKingSide in Value) and (WhiteQueenSide in Value)) then
+    CCWhiteComboBox.ItemIndex := 0 // <both>
+  else if (WhiteKingSide in Value) then
+    CCWhiteComboBox.ItemIndex := 1 // 0-0
+  else if (WhiteQueenSide in Value) then
+    CCWhiteComboBox.ItemIndex := 2 // 0-0-0
+  else
+    CCWhiteComboBox.ItemIndex := 3; // <no>
+
+  if ((BlackKingSide in Value) and (BlackQueenSide in Value)) then
+    CCBlackComboBox.ItemIndex := 0 // <both>
+  else if (BlackKingSide in Value) then
+    CCBlackComboBox.ItemIndex := 1 // 0-0
+  else if (BlackQueenSide in Value) then
+    CCBlackComboBox.ItemIndex := 2 // 0-0-0
+  else
+    CCBlackComboBox.ItemIndex := 3; // <no>
+end;
+
+
+function TPositionEditingForm.FGetEnPassant: integer;
+begin
+  Result := EPFileComboBox.ItemIndex;
+  Assert(Result in [0..8]);
+end;
+
+
+procedure TPositionEditingForm.FSetEnPassant(iValue: integer);
+begin
+  Assert(iValue in [0..8]);
+  EPFileComboBox.ItemIndex := iValue;
 end;
 
 
@@ -389,6 +491,36 @@ end;
 procedure TPositionEditingForm.MoveNEditChange(Sender: TObject);
 begin
   MoveNEdit.Text := IntToStr(MoveNUpDown.Position);
+end;
+
+
+procedure TPositionEditingForm.ColorRadioGroupClick(Sender: TObject);
+begin
+  if (m_bFENUpdating) then
+    exit;
+
+  m_ChessRulesEngine.Position.color := PositionColor;
+  FSetPosition;
+end;
+
+
+procedure TPositionEditingForm.CCComboBoxChange(Sender: TObject);
+begin
+  if (m_bFENUpdating) then
+    exit;
+
+  m_ChessRulesEngine.Position.castling := CastlingCapability;
+  FSetPosition;
+end;
+
+
+procedure TPositionEditingForm.EPFileComboBoxChange(Sender: TObject);
+begin
+  if (m_bFENUpdating) then
+    exit;
+
+  m_ChessRulesEngine.Position.en_passant := EnPassant;
+  FSetPosition;
 end;
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -577,6 +577,7 @@ begin // .FParseGameStr
   m_ChessRulesEngine.InitNewGame;
 
   m_Tree.Clear;
+  m_Tree.WhiteStarts := (m_ChessRulesEngine.Position.color = fcWhite);
   m_Tree.Add(m_ChessRulesEngine.GetPosition);
 
   moveEsts := nil;

@@ -74,6 +74,8 @@ type
     SetLineToMainAction: TAction;
     FileNewMenuItem: TTntMenuItem;
     FileNewCustomMenuItem: TTntMenuItem;
+    FileCopyFENMenuItem: TTntMenuItem;
+    CopyAction: TAction;
     procedure FileExitMenuItemClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormCanResize(Sender: TObject; var NewWidth,
@@ -116,6 +118,9 @@ type
     procedure HelpAboutMenuItemClick(Sender: TObject);
     procedure FormActivate(Sender: TObject);
     procedure FileNewCustomMenuItemClick(Sender: TObject);
+    procedure FileCopyFENMenuItemClick(Sender: TObject);
+    procedure CopyActionExecute(Sender: TObject);
+    procedure CopyActionUpdate(Sender: TObject);
   private
     m_ChessBoard: TPosBaseChessBoard;
     m_ResizingType: (rtNo, rtHoriz, rtVert);
@@ -428,6 +433,7 @@ begin
   inc(m_lwPlysListUpdateID);
 
   m_PlysTree.Clear;
+  m_PlysTree.WhiteStarts := (m_ChessBoard.PositionColor = fcWhite);
   m_PlysTree.Add(m_ChessBoard.GetPosition);
 
   m_bGameChanged := FALSE;
@@ -909,20 +915,18 @@ end;
 
 
 function TAnalyseChessBoard.FSavePGNData: boolean;
-var
-  Writer: TPGNWriter;
 begin
   Result := FALSE;
 
   if ((m_GameFileName = '') or (not m_bGameFileInC4NFormat)) then
     exit;
 
-  Writer := TPGNWriter.Create;
+  with TPGNWriter.Create do
   try
-    Writer.WriteInChess4NetFormat(m_PlysTree);
-    Writer.Data.SaveToFile(m_GameFileName);
+    WriteInChess4NetFormat(m_PlysTree);
+    Data.SaveToFile(m_GameFileName);
   finally
-    Writer.Free;
+    Free;
   end;
 
   m_bGameChanged := FALSE;
@@ -1178,10 +1182,7 @@ function TAnalyseChessBoard.FSetPosition(const strFEN: string): boolean;
 begin
   Result := m_ChessBoard.SetPosition(strFEN);
   if (Result and Assigned(m_PositionEditingForm)) then
-  begin
     m_PositionEditingForm.FEN := m_ChessBoard.GetPosition;
-    m_ChessBoard.Position
-  end;
 end;
 
 
@@ -1199,6 +1200,7 @@ begin
   m_ChessBoard.Mode := mAnalyse;
 
   m_PlysTree.Clear;
+  m_PlysTree.WhiteStarts := (m_ChessBoard.PositionColor = fcWhite);
   m_PlysTree.Add(m_ChessBoard.GetPosition);
 
   FSynchronizeChessEngineWithChessBoardAndStartEvaluation;
@@ -1210,5 +1212,28 @@ begin
   Result := (m_ChessBoard.Mode = mEdit);
 end;
 
+
+procedure TAnalyseChessBoard.FileCopyFENMenuItemClick(Sender: TObject);
+begin
+  Clipboard.AsText := m_ChessBoard.GetPosition;
+end;
+
+
+procedure TAnalyseChessBoard.CopyActionExecute(Sender: TObject);
+begin
+  with TPGNWriter.Create do
+  try
+    WriteInChess4NetFormat(m_PlysTree);
+    Clipboard.AsText := Data.Text;
+  finally
+    Free;
+  end;
+end;
+
+
+procedure TAnalyseChessBoard.CopyActionUpdate(Sender: TObject);
+begin
+  (Sender as TAction).Enabled := (FGetPlysCount > 0);
+end;
 
 end.
