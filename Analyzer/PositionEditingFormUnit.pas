@@ -96,18 +96,20 @@ type
     procedure FSetCastlingCapability(const Value: TCastlingCapability);
     function FGetEnPassant: integer;
     procedure FSetEnPassant(iValue: integer);
+    procedure FSetSelectedPiece(Value: TFigure);
 
-    property PositionColor: TFigureColor
-      read FGetPositionColor write FSetPositionColor;
     property CastlingCapability: TCastlingCapability
       read FGetCastlingCapability write FSetCastlingCapability;
     property EnPassant: integer read FGetEnPassant write FSetEnPassant;
 
   public
-    property SelectedPiece: TFigure read m_SelectedPiece;
+    property SelectedPiece: TFigure
+      read m_SelectedPiece write FSetSelectedPiece;
     property PositionEditable: IPositionEditable
       read m_PositionEditable write m_PositionEditable;
     property FEN: string read FGetFEN write FSetFEN;
+    property PositionColor: TFigureColor
+      read FGetPositionColor write FSetPositionColor;
   end;
 
 implementation
@@ -213,19 +215,8 @@ end;
 
 procedure TPositionEditingForm.PieceImageMouseDown(Sender: TObject;
   Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-var
-  NewSelectedPiece: TFigure;
 begin
-  NewSelectedPiece := TFigure((Sender as TImage).Tag);
-  if (NewSelectedPiece = m_SelectedPiece) then
-    exit;
-
-  FErasePieceSelection(m_SelectedPiece);
-  FDrawPieceSelection(NewSelectedPiece);
-
-  m_SelectedPiece := NewSelectedPiece;
-
-  FSetEditPiece;
+  FSetSelectedPiece(TFigure((Sender as TImage).Tag));
 end;
 
 
@@ -522,6 +513,21 @@ begin
   m_ChessRulesEngine.Position.en_passant := EnPassant;
   FSetPosition;
 end;
+
+
+procedure TPositionEditingForm.FSetSelectedPiece(Value: TFigure);
+begin
+  if (Value = m_SelectedPiece) then
+    exit;
+
+  FErasePieceSelection(m_SelectedPiece);
+  FDrawPieceSelection(Value);
+
+  m_SelectedPiece := Value;
+
+  FSetEditPiece;
+end;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // TLabeledEdit

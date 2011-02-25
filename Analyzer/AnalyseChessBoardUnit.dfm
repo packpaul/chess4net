@@ -15,7 +15,6 @@ object AnalyseChessBoard: TAnalyseChessBoard
   KeyPreview = True
   Menu = MainMenu
   OldCreateOrder = False
-  PopupMenu = PopupMenu
   OnActivate = FormActivate
   OnCanResize = FormCanResize
   OnCloseQuery = FormCloseQuery
@@ -53,13 +52,12 @@ object AnalyseChessBoard: TAnalyseChessBoard
       object FileNewMenuItem: TTntMenuItem
         Caption = '&New'
         object FileNewStandardMenuItem: TTntMenuItem
+          Action = NewStandardAction
           Caption = '&Standard'
-          ShortCut = 16462
-          OnClick = FileNewStandardMenuItemClick
         end
         object FileNewCustomMenuItem: TTntMenuItem
-          Caption = '&Custom...'
-          OnClick = FileNewCustomMenuItemClick
+          Action = NewCustomAction
+          Caption = 'Custom...'
         end
       end
       object N6: TTntMenuItem
@@ -187,7 +185,7 @@ object AnalyseChessBoard: TAnalyseChessBoard
     end
     object PopupSelectLineMenuItem: TTntMenuItem
       Action = SelectLineAction
-      Caption = 'Select &Line...'
+      Caption = 'Select Line...'
     end
     object PopupTakebackMoveMenuItem: TTntMenuItem
       Action = TakebackMoveAction
@@ -214,7 +212,7 @@ object AnalyseChessBoard: TAnalyseChessBoard
   end
   object ActionList: TActionList
     Images = ImageList
-    Left = 64
+    Left = 96
     object ChessEngineInfoAction: TAction
       Category = 'Views'
       Caption = 'Chess &Engine Info'
@@ -313,6 +311,18 @@ object AnalyseChessBoard: TAnalyseChessBoard
       ShortCut = 16451
       OnExecute = CopyActionExecute
       OnUpdate = CopyActionUpdate
+    end
+    object NewStandardAction: TAction
+      Category = 'File'
+      ShortCut = 16462
+      OnExecute = NewStandardActionExecute
+      OnUpdate = NewActionUpdate
+    end
+    object NewCustomAction: TAction
+      Category = 'File'
+      ShortCut = 32846
+      OnExecute = NewCustomActionExecute
+      OnUpdate = NewActionUpdate
     end
   end
   object ImageList: TImageList
@@ -732,5 +742,100 @@ object AnalyseChessBoard: TAnalyseChessBoard
     Filter = 'Chess4Net Files (*.c4n)|*.c4n'
     Left = 32
     Top = 32
+  end
+  object EditPopupMenu: TTntPopupMenu
+    OnPopup = EditPopupMenuPopup
+    Left = 64
+    object EditPopupWhiteMenuItem: TTntMenuItem
+      Tag = -1
+      Caption = 'White'
+      OnClick = EditPopupColorMenuItemClick
+    end
+    object N8: TTntMenuItem
+      Caption = '-'
+    end
+    object EditPopupWhiteKingMenuItem: TTntMenuItem
+      Tag = 1
+      Caption = 'King'
+      RadioItem = True
+      OnClick = EditPopupPieceMenuItemClick
+    end
+    object EditPopupWhiteQueenMenuItem: TTntMenuItem
+      Tag = 2
+      Caption = 'Queen'
+      RadioItem = True
+      OnClick = EditPopupPieceMenuItemClick
+    end
+    object EditPopupWhiteRookMenuItem: TTntMenuItem
+      Tag = 3
+      Caption = 'Rook'
+      RadioItem = True
+      OnClick = EditPopupPieceMenuItemClick
+    end
+    object EditPopupWhiteBishopMenuItem: TTntMenuItem
+      Tag = 4
+      Caption = 'Bishop'
+      RadioItem = True
+      OnClick = EditPopupPieceMenuItemClick
+    end
+    object EditPopupWhiteKnightMenuItem: TTntMenuItem
+      Tag = 5
+      Caption = 'Knight'
+      RadioItem = True
+      OnClick = EditPopupPieceMenuItemClick
+    end
+    object EditPopupWhitePawnMenuItem: TTntMenuItem
+      Tag = 6
+      Caption = 'Pawn'
+      RadioItem = True
+      OnClick = EditPopupPieceMenuItemClick
+    end
+    object EditPopupBlackMenuItem: TTntMenuItem
+      Tag = -2
+      AutoCheck = True
+      Break = mbBarBreak
+      Caption = 'Black'
+      OnClick = EditPopupColorMenuItemClick
+    end
+    object N9: TTntMenuItem
+      Caption = '-'
+    end
+    object EditPopupBlackKingMenuItem: TTntMenuItem
+      Tag = 7
+      Caption = 'King'
+      RadioItem = True
+      OnClick = EditPopupPieceMenuItemClick
+    end
+    object EditPopupBlackQueenMenuItem: TTntMenuItem
+      Tag = 8
+      Caption = 'Queen'
+      RadioItem = True
+      OnClick = EditPopupPieceMenuItemClick
+    end
+    object EditPopupBlackRookMenuItem: TTntMenuItem
+      Tag = 9
+      Caption = 'Rook'
+      RadioItem = True
+      OnClick = EditPopupPieceMenuItemClick
+    end
+    object EditPopupBlackBishopMenuItem: TTntMenuItem
+      Tag = 10
+      Caption = 'Bishop'
+      RadioItem = True
+      OnClick = EditPopupPieceMenuItemClick
+    end
+    object EditPopupBlackKnightMenuItem: TTntMenuItem
+      Tag = 11
+      Caption = 'Knight'
+      RadioItem = True
+      OnClick = EditPopupPieceMenuItemClick
+    end
+    object EditPopupBlackPawnMenuItem: TTntMenuItem
+      Tag = 12
+      AutoCheck = True
+      Caption = 'Pawn'
+      RadioItem = True
+      OnClick = EditPopupPieceMenuItemClick
+    end
   end
 end

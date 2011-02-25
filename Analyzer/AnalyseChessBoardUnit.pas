@@ -76,6 +76,25 @@ type
     FileNewCustomMenuItem: TTntMenuItem;
     FileCopyFENMenuItem: TTntMenuItem;
     CopyAction: TAction;
+    NewStandardAction: TAction;
+    NewCustomAction: TAction;
+    EditPopupMenu: TTntPopupMenu;
+    EditPopupWhiteMenuItem: TTntMenuItem;
+    EditPopupWhiteKingMenuItem: TTntMenuItem;
+    EditPopupWhiteQueenMenuItem: TTntMenuItem;
+    EditPopupWhiteRookMenuItem: TTntMenuItem;
+    EditPopupWhiteBishopMenuItem: TTntMenuItem;
+    EditPopupWhitePawnMenuItem: TTntMenuItem;
+    EditPopupBlackMenuItem: TTntMenuItem;
+    EditPopupBlackKingMenuItem: TTntMenuItem;
+    EditPopupBlackQueenMenuItem: TTntMenuItem;
+    EditPopupBlackRookMenuItem: TTntMenuItem;
+    EditPopupBlackBishopMenuItem: TTntMenuItem;
+    EditPopupBlackPawnMenuItem: TTntMenuItem;
+    N8: TTntMenuItem;
+    N9: TTntMenuItem;
+    EditPopupWhiteKnightMenuItem: TTntMenuItem;
+    EditPopupBlackKnightMenuItem: TTntMenuItem;
     procedure FileExitMenuItemClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormCanResize(Sender: TObject; var NewWidth,
@@ -103,7 +122,6 @@ type
     procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
     procedure InitialPositionActionExecute(Sender: TObject);
     procedure InitialPositionActionUpdate(Sender: TObject);
-    procedure FileNewStandardMenuItemClick(Sender: TObject);
     procedure ReturnFromLineActionExecute(Sender: TObject);
     procedure ReturnFromLineActionUpdate(Sender: TObject);
     procedure SaveActionExecute(Sender: TObject);
@@ -117,10 +135,15 @@ type
     procedure SetLineToMainActionExecute(Sender: TObject);
     procedure HelpAboutMenuItemClick(Sender: TObject);
     procedure FormActivate(Sender: TObject);
-    procedure FileNewCustomMenuItemClick(Sender: TObject);
     procedure FileCopyFENMenuItemClick(Sender: TObject);
     procedure CopyActionExecute(Sender: TObject);
     procedure CopyActionUpdate(Sender: TObject);
+    procedure NewStandardActionExecute(Sender: TObject);
+    procedure NewCustomActionExecute(Sender: TObject);
+    procedure NewActionUpdate(Sender: TObject);
+    procedure EditPopupColorMenuItemClick(Sender: TObject);
+    procedure EditPopupMenuPopup(Sender: TObject);
+    procedure EditPopupPieceMenuItemClick(Sender: TObject);
   private
     m_ChessBoard: TPosBaseChessBoard;
     m_ResizingType: (rtNo, rtHoriz, rtVert);
@@ -345,6 +368,14 @@ begin // .FChessBoardHandler
     begin
       if (FIsEditing and Assigned(m_PositionEditingForm)) then
         m_PositionEditingForm.FEN := PString(d1)^;
+    end;
+
+    cbeMenu:
+    begin
+      if (FIsEditing) then
+        EditPopupMenu.Popup(Mouse.CursorPos.X, Mouse.CursorPos.Y)
+      else
+        PopupMenu.Popup(Mouse.CursorPos.X, Mouse.CursorPos.Y);
     end;
   end;
 end;
@@ -973,12 +1004,6 @@ begin
 end;
 
 
-procedure TAnalyseChessBoard.FileNewStandardMenuItemClick(Sender: TObject);
-begin
-  FSetNewStandard;
-end;
-
-
 function TAnalyseChessBoard.FSetNewStandard: boolean;
 begin
   Result := FAskAndSavePGNData;
@@ -1142,15 +1167,6 @@ begin
 end;
 
 
-procedure TAnalyseChessBoard.FileNewCustomMenuItemClick(Sender: TObject);
-begin
-  if (not FSetNewStandard) then
-    exit;
-
-  FStartEditing;
-end;
-
-
 procedure TAnalyseChessBoard.FStartEditing;
 begin
   if (Assigned(m_ChessEngine)) then
@@ -1234,6 +1250,116 @@ end;
 procedure TAnalyseChessBoard.CopyActionUpdate(Sender: TObject);
 begin
   (Sender as TAction).Enabled := (FGetPlysCount > 0);
+end;
+
+
+procedure TAnalyseChessBoard.NewStandardActionExecute(Sender: TObject);
+begin
+  FSetNewStandard;
+end;
+
+
+procedure TAnalyseChessBoard.NewCustomActionExecute(Sender: TObject);
+begin
+  if (not FSetNewStandard) then
+    exit;
+
+  FStartEditing;
+end;
+
+
+procedure TAnalyseChessBoard.NewActionUpdate(Sender: TObject);
+begin
+  (Sender as TAction).Enabled := (not FIsEditing);
+end;
+
+
+procedure TAnalyseChessBoard.EditPopupColorMenuItemClick(Sender: TObject);
+begin
+  if (not Assigned(m_PositionEditingForm)) then
+    exit;
+
+  case (Sender as TMenuItem).Tag of
+    -1:
+    begin
+      m_PositionEditingForm.PositionColor := fcWhite;
+      EditPopupWhiteMenuItem.Checked := TRUE;
+      EditPopupBlackMenuItem.Checked := FALSE;
+    end;
+
+    -2:
+    begin
+      m_PositionEditingForm.PositionColor := fcBlack;
+      EditPopupWhiteMenuItem.Checked := FALSE;
+      EditPopupBlackMenuItem.Checked := TRUE;
+    end;
+
+  else
+    Assert(FALSE);
+  end;
+
+end;
+
+
+procedure TAnalyseChessBoard.EditPopupMenuPopup(Sender: TObject);
+
+  function NFindMenuItemByTag(iTag: integer): TMenuItem;
+  var
+    i: integer;
+  begin
+    with Sender as TPopupMenu do
+    begin
+      for i := 0 to Items.Count - 1 do
+      begin
+        Result := Items[i];
+        if (Result.Tag = iTag) then
+          exit;
+      end;
+    end;
+
+    Result := nil;
+  end;
+
+const
+  PIECES_TAGS: array[TFigure] of integer = (
+    1, 2, 3, 4, 5, 6, 0, 7, 8, 9, 10, 11, 12);
+begin
+  if (not Assigned(m_PositionEditingForm)) then
+    exit;
+
+  NFindMenuItemByTag(PIECES_TAGS[m_PositionEditingForm.SelectedPiece]).Checked := TRUE;
+
+  case m_PositionEditingForm.PositionColor of
+    fcWhite:
+    begin
+      NFindMenuItemByTag(-1).Checked := TRUE;
+      NFindMenuItemByTag(-2).Checked := FALSE;
+    end;
+
+    fcBlack:
+    begin
+      NFindMenuItemByTag(-1).Checked := FALSE;
+      NFindMenuItemByTag(-2).Checked := TRUE;
+    end;
+  end;
+
+end;
+
+
+procedure TAnalyseChessBoard.EditPopupPieceMenuItemClick(
+  Sender: TObject);
+const
+  PIECES: array[1..12] of TFigure = (
+    WK, WQ, WR, WB, WN, WP, BK, BQ, BR, BB, BN, BP);
+begin
+  if (not Assigned(m_PositionEditingForm)) then
+    exit;
+
+  with Sender as TMenuItem do
+  begin
+    Checked := TRUE;
+    m_PositionEditingForm.SelectedPiece := PIECES[Tag];
+  end;
 end;
 
 end.
