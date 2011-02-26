@@ -34,7 +34,9 @@ type
 implementation
 
 uses
-  SysUtils, StrUtils, Math;
+  SysUtils, StrUtils, Math,
+  //
+  ChessRulesEngine;
 
 ////////////////////////////////////////////////////////////////////////////////
 // TPGNWriter
@@ -54,7 +56,21 @@ end;
 
 
 procedure TPGNWriter.WriteInChess4NetFormat(const SourceTree: TPlysTree);
-begin
+
+  procedure NWriteFENTag;
+  var
+    strStartPosition: string;
+  begin
+    if (m_Tree.Count = 0) then
+      exit;
+
+    strStartPosition := m_Tree.Position[0];
+
+    if (strStartPosition <> INITIAL_FEN) then
+      FWriteTag('FEN', strStartPosition);
+  end;
+
+begin // .WriteInChess4NetFormat
   FClear;
 
   if ((not Assigned(SourceTree)) or (SourceTree.Count = 0)) then
@@ -64,7 +80,8 @@ begin
   try
     m_Tree.Assign(SourceTree);
 
-    FWriteTag('C4N', '1'); // versionning for future uses
+    FWriteTag('C4N', '2'); // versionning for future uses
+    NWriteFENTag;
     FWriteLine;
     FWriteTreeInChess4NetFormat;
     

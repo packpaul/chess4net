@@ -22,6 +22,8 @@ type
 
     m_bInC4NFormat: boolean;
 
+    m_strStartPosition: string;
+
     function FGetLine: string;
     function FGetNextLine: string;
     function FIsEndOfData: boolean;
@@ -32,6 +34,7 @@ type
     procedure FParseGameStr(const strGame: string; bIncludeVariants: boolean);
 
     procedure FCheckAgainstC4NVersionSupport(const strVersion: string);
+    procedure FSetupStartPosition(const strPosition: string);
 
   public
     constructor Create;
@@ -87,6 +90,8 @@ begin
 
     m_iDataLine := 0;
 
+    m_strStartPosition := '';
+
     m_bParseResult := TRUE;
     try
       m_bInC4NFormat := FALSE;
@@ -139,6 +144,7 @@ procedure TPGNParser.FParseTags;
     WHITE_PREFIX = '[White "';
     BLACK_PREFIX = '[Black "';
     C4N_PREFIX = '[C4N "';
+    FEN_PREFIX = '[FEN "';
     POSTFIX = '"]';
   begin
     Result := FALSE;
@@ -163,6 +169,12 @@ procedure TPGNParser.FParseTags;
     begin
       FCheckAgainstC4NVersionSupport(Copy(s, length(C4N_PREFIX) + 1,
         length(s) - length(C4N_PREFIX) - length(POSTFIX)));
+    end
+    else if ((LeftStr(s, length(FEN_PREFIX)) = FEN_PREFIX) and
+        (RightStr(s, length(POSTFIX)) = POSTFIX)) then
+    begin
+      FSetupStartPosition(Copy(s, length(FEN_PREFIX) + 1,
+        length(s) - length(FEN_PREFIX) - length(POSTFIX)));
     end;
 
     Result := TRUE;
@@ -190,6 +202,12 @@ begin // .FParseHeader
 end;
 
 
+procedure TPGNParser.FSetupStartPosition(const strPosition: string);
+begin
+  m_strStartPosition := strPosition;
+end;
+
+
 function  TPGNParser.FIsTag(const str: string): boolean;
 begin
   Result := ((str <> '') and ((str[1] = '[') and (str[length(str)] = ']')));
@@ -197,8 +215,11 @@ end;
 
 
 procedure TPGNParser.FCheckAgainstC4NVersionSupport(const strVersion: string);
+var
+  iC4NFormatVer: integer;
 begin
-  m_bInC4NFormat := (strVersion = '1');
+  iC4NFormatVer := StrToIntDef(strVersion, 0);
+  m_bInC4NFormat := (iC4NFormatVer in [1, 2]);
 end;
 
 
@@ -575,6 +596,11 @@ begin // .FParseGameStr
 //  inc(n_game);
 
   m_ChessRulesEngine.InitNewGame;
+  if (m_strStartPosition <> '') then
+  begin
+    if (not m_ChessRulesEngine.SetPosition(m_strStartPosition)) then
+      raise EPGNParser.Create;
+  end;
 
   m_Tree.Clear;
   m_Tree.WhiteStarts := (m_ChessRulesEngine.Position.color = fcWhite);

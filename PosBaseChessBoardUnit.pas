@@ -453,8 +453,6 @@ var
     end; { for }
   end;
 
-var
-  i: integer;
 begin // .FReadFromBase
   FClearMovePriorList;
 

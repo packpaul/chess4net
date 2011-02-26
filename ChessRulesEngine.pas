@@ -108,6 +108,8 @@ type
 const
   INITIAL_CHESS_POSITION = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -';
   EMPTY_CHESS_POSITION = '8/8/8/8/8/8/8/8 w - -';
+  INITIAL_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+  EMPTY_FEN = '8/8/8/8/8/8/8/8 w - - 0 1';
 
 implementation
 

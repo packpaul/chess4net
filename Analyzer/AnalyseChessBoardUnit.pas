@@ -447,8 +447,7 @@ end;
 
 procedure TAnalyseChessBoard.FSetToInitialPosition;
 begin
-  if (FGetCurrentPlyIndex > 0) then
-    FSetCurrentPlyIndex(0);
+  FSetCurrentPlyIndex(0);
 end;
 
 
@@ -565,6 +564,8 @@ begin
   finally
     PGNParser.Free;
   end;
+
+  FSetToInitialPosition;
 
   FRefreshMoveListForm;
 
@@ -946,7 +947,24 @@ end;
 
 
 function TAnalyseChessBoard.FSavePGNData: boolean;
-begin
+
+  procedure NMakeBackup;
+  var
+    strExt: string;
+    FileName: TFileName;
+  begin
+    strExt := ExtractFileExt(m_GameFileName);
+    if (strExt = '') then
+      strExt := '.~'
+    else
+      Insert('~', strExt, 2);
+
+    FileName := ChangeFileExt(m_GameFileName, strExt);
+
+    CopyFile(PChar(m_GameFileName), PChar(FileName), FALSE);
+  end;
+
+begin // .FSavePGNData
   Result := FALSE;
 
   if ((m_GameFileName = '') or (not m_bGameFileInC4NFormat)) then
@@ -955,6 +973,8 @@ begin
   with TPGNWriter.Create do
   try
     WriteInChess4NetFormat(m_PlysTree);
+    if (FileExists(m_GameFileName)) then
+      NMakeBackup;
     Data.SaveToFile(m_GameFileName);
   finally
     Free;
@@ -973,7 +993,7 @@ begin
   if (m_bGameFileInC4NFormat) then
     SaveDialog.FileName := m_GameFileName
   else
-    SaveDialog.FileName := ChangeFileExt(m_GameFileName, '');  
+    SaveDialog.FileName := ChangeFileExt(m_GameFileName, '');
 
   if (not SaveDialog.Execute) then
     exit;
