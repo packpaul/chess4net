@@ -97,6 +97,8 @@ type
     function FGetEnPassant: integer;
     procedure FSetEnPassant(iValue: integer);
     procedure FSetSelectedPiece(Value: TFigure);
+    function FGetMoveNumber: integer;
+    procedure FSetMoveNumber(iValue: integer);
 
     property CastlingCapability: TCastlingCapability
       read FGetCastlingCapability write FSetCastlingCapability;
@@ -110,6 +112,8 @@ type
     property FEN: string read FGetFEN write FSetFEN;
     property PositionColor: TFigureColor
       read FGetPositionColor write FSetPositionColor;
+    property MoveNumber: integer
+      read FGetMoveNumber write FSetMoveNumber;
   end;
 
 implementation
@@ -375,6 +379,7 @@ begin
     PositionColor := m_ChessRulesEngine.Position.color;
     CastlingCapability := m_ChessRulesEngine.Position.castling;
     EnPassant := m_ChessRulesEngine.Position.en_passant;
+    MoveNumber := m_ChessRulesEngine.GetFENMoveNumber;
 
   finally
     m_bFENUpdating := FALSE;
@@ -465,23 +470,42 @@ begin
 end;
 
 
+function TPositionEditingForm.FGetMoveNumber: integer;
+begin
+  Result := MoveNUpDown.Position;
+end;
+
+
+procedure TPositionEditingForm.FSetMoveNumber(iValue: integer);
+begin
+  Assert(iValue >= 1);
+  MoveNUpDown.Position := iValue;
+end;
+
+
 procedure TPositionEditingForm.EmptyButtonClick(Sender: TObject);
 begin
-  FSetFEN(EMPTY_CHESS_POSITION);
+  FSetFEN(EMPTY_FEN);
   FSetPosition;
 end;
 
 
 procedure TPositionEditingForm.InitialButtonClick(Sender: TObject);
 begin
-  FSetFEN(INITIAL_CHESS_POSITION);
+  FSetFEN(INITIAL_FEN);
   FSetPosition;
 end;
 
 
 procedure TPositionEditingForm.MoveNEditChange(Sender: TObject);
 begin
-  MoveNEdit.Text := IntToStr(MoveNUpDown.Position);
+  if (m_bFENUpdating) then
+    exit;
+
+  MoveNEdit.Text := IntToStr(MoveNumber);
+
+  m_ChessRulesEngine.MovesOffset := MoveNumber - 1;
+  FSetPosition;
 end;
 
 
@@ -527,7 +551,6 @@ begin
 
   FSetEditPiece;
 end;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 // TLabeledEdit

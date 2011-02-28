@@ -501,7 +501,7 @@ begin
 
   gameID := Random($FFFF) + 1;
 
-  if (PlayerColor = fcWhite) then
+  if (PlayerColor = RGetColorStarts) then
     ply := 0
   else
     ply := 1;

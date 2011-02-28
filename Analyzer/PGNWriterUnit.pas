@@ -218,12 +218,15 @@ var
   procedure NWritePly(iPly: integer; const wstrPly: WideString);
   var
     bWhiteToMove: boolean;
+    iMoveNumber: integer;
     wstrMoveNumber: WideString;
   begin // \NWritePly
     bWhiteToMove := TPlysTree.IsWhiteToMove(iPly, m_Tree.WhiteStarts);
     if (bExplicitNumberingFormatting or bWhiteToMove) then
     begin
-      wstrMoveNumber := Format('%d.', [TPlysTree.ConvertPlyToMove(iPly, m_Tree.WhiteStarts)]) +
+      iMoveNumber := TPlysTree.ConvertPlyToMove(
+        m_Tree.PlysOffset + iPly, m_Tree.WhiteStarts);
+      wstrMoveNumber := Format('%d.', [iMoveNumber]) +
         IfThen((not bWhiteToMove), ' ...');
     end
     else

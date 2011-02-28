@@ -136,6 +136,7 @@ procedure TMoveListForm.Refresh;
 var
   i: integer;
   iCol, iRow: integer;
+  iMoveNumber: integer;
 begin
   MovesStringGrid.PlyLineSelection := FALSE;
   MovesStringGrid.RowCount := Max(2, FGetMovesCount + 1);
@@ -164,8 +165,10 @@ begin
   begin
     TStringGrid.FPlyIndexToGridPos(i, m_PlysProvider.WhiteStarts, iCol, iRow);
 
-    MovesStringGrid.Cells[0, iRow] := Format('%d.',
-      [TPlysTree.ConvertPlyToMove(i, m_PlysProvider.WhiteStarts)]);
+    iMoveNumber := TPlysTree.ConvertPlyToMove(
+      m_PlysProvider.PlysOffset + i, m_PlysProvider.WhiteStarts);
+    MovesStringGrid.Cells[0, iRow] := Format('%d.', [iMoveNumber]);
+
     MovesStringGrid.Cells[iCol, iRow] := m_PlysProvider.Plys[i];
   end;
 

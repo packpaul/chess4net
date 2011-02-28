@@ -78,6 +78,8 @@ type
 
     m_EditPiece: TFigure;
 
+    m_iUpdateCounter: integer;
+
     procedure HilightLastMove;
     procedure Evaluate;
 
@@ -107,6 +109,8 @@ type
     function FGetFENFormat: boolean;
     procedure FSetFENFormat(bValue: boolean);
 
+    function FGetMovesOffset: integer;
+
     procedure WMSizing(var Msg: TMessage); message WM_SIZING;
 
     procedure FDoHandler(e: TChessBoardEvent; d1: pointer = nil; d2: pointer = nil);
@@ -126,6 +130,7 @@ type
     function RDoMove(i, j: integer; prom_fig: TFigureName = K): boolean;
     function RIsAnimating: boolean;
     procedure RSetMode(const Value: TMode); virtual;
+    function RGetColorStarts: TFigureColor;
 
     property PositionsList: TList read FGetPositionsList;
 
@@ -143,6 +148,9 @@ type
     function NMoveDone: integer;
     function NPlysDone: integer;
 
+    procedure BeginUpdate;
+    procedure EndUpdate;
+
     property PlayerColor: TFigureColor read m_PlayerColor write FSetPlayerColor;
     property Mode: TMode read m_Mode write RSetMode;
     property CoordinatesShown: boolean read coord_show write FSetCoordinatesShown;
@@ -153,6 +161,7 @@ type
     property PositionColor: TFigureColor read FGetPositionColor; // Whos move it is in the current position
     property MoveNotationFormat: TMoveNotationFormat
       read FGetMoveNotationFormat write FSetMoveNotationFormat;
+    property MovesOffset: integer read FGetMovesOffset;
     property FENFormat: boolean read FGetFENFormat write FSetFENFormat;
     property EditPiece: TFigure read m_EditPiece write m_EditPiece;
   end;
@@ -229,6 +238,10 @@ procedure TChessBoard.RDrawBoard;
 begin
   if (csDestroying in ComponentState) then
     exit;
+
+  if (m_iUpdateCounter > 0) then
+    exit;
+
   RDrawHiddenBoard;
   PBoxBoardPaint(nil);
 end;
@@ -903,6 +916,12 @@ begin
 end;
 
 
+function TChessBoard.RGetColorStarts: TFigureColor;
+begin
+  Result := m_ChessRulesEngine.GetColorStarts;
+end;
+
+
 procedure TChessBoard.PBoxBoardMouseUp(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
 var
@@ -1013,6 +1032,12 @@ end;
 function TChessBoard.NPlysDone: integer;
 begin
   Result := m_ChessRulesEngine.NPlysDone;
+end;
+
+
+function TChessBoard.FGetMovesOffset: integer;
+begin
+  Result := m_ChessRulesEngine.MovesOffset;
 end;
 
 
@@ -1150,6 +1175,23 @@ end;
 procedure TChessBoard.FSetFENFormat(bValue: boolean);
 begin
   m_ChessRulesEngine.FENFormat := bValue;
+end;
+
+
+procedure TChessBoard.BeginUpdate;
+begin
+  inc(m_iUpdateCounter);
+end;
+
+
+procedure TChessBoard.EndUpdate;
+begin
+  if (m_iUpdateCounter > 0) then
+  begin
+    dec(m_iUpdateCounter);
+    if (m_iUpdateCounter = 0) then
+      RDrawBoard;
+  end;
 end;
 
 end.

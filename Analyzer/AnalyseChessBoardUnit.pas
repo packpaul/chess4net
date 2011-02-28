@@ -9,7 +9,7 @@ uses
   ChessBoardUnit, PosBaseChessBoardUnit, ChessEngineInfoUnit, ChessEngine,
   MoveListFormUnit, PlysTreeUnit, PlysProviderIntfUnit, URLVersionQueryUnit,
   SelectLineFormUnit, OpeningsDBManagerFormUnit, OpeningsDBManagerUnit,
-  PositionEditingFormUnit, ChessRulesEngine;
+  PositionEditingFormUnit, ChessRulesEngine, PGNParserUnit;
 
 type
   TAnalyseChessBoard = class(TTntForm, IPlysProvider, IPositionEditable)
@@ -188,6 +188,7 @@ type
 
     procedure FLoadPGNDataFromFile(AFileName: TFileName);
     function FLoadPGNData(const PGNData: TStrings): boolean;
+    procedure FLoadPGNDataFromParser(const PGNParser: TPGNParser);
     function FSavePGNData: boolean;
     procedure FSavePGNDataAs;
     function FAskAndSavePGNData: boolean;
@@ -197,6 +198,9 @@ type
 
     function IPlysProvider.GetPlysCount = FGetPlysCount;
     function FGetPlysCount: integer;
+
+    function IPlysProvider.GetPlysOffset = FGetPlysOffset;
+    function FGetPlysOffset: integer;
 
     function IPlysProvider.GetPly = FGetPly;
     function FGetPly(iIndex: integer): string;
@@ -249,6 +253,10 @@ type
     function FIsEditing: boolean;
 
     function FSetNewStandard: boolean;
+
+    function FGetChessBoardFlipped: boolean;
+    procedure FSetChessBoardFlipped(bValue: boolean);
+    property ChessBoardFlipped: boolean read FGetChessBoardFlipped write FSetChessBoardFlipped;
   end;
 
 implementation
@@ -256,7 +264,7 @@ implementation
 uses
   Windows, Clipbrd,
   //
-  PGNParserUnit, GlobalsLocalUnit, DontShowMessageDlgUnit,
+  GlobalsLocalUnit, DontShowMessageDlgUnit,
   IniSettingsUnit, PGNWriterUnit, SplashFormUnit;
 
 {$R *.dfm}
@@ -456,7 +464,7 @@ begin
   FStopEditing;
 
   m_ChessBoard.InitPosition;
-  m_ChessBoard.Flipped := FALSE;
+  ChessBoardFlipped := FALSE;
 
   m_iCurrentPlyIndex := 0;
 
@@ -487,8 +495,20 @@ end;
 
 procedure TAnalyseChessBoard.ViewFlipBoardMenuItemClick(Sender: TObject);
 begin
-  m_ChessBoard.Flipped := (not m_ChessBoard.Flipped);
-  ViewFlipBoardMenuItem.Checked := m_ChessBoard.Flipped;
+  ChessBoardFlipped := (not ChessBoardFlipped);
+end;
+
+
+function TAnalyseChessBoard.FGetChessBoardFlipped: boolean;
+begin
+  Result := m_ChessBoard.Flipped;
+end;
+
+
+procedure TAnalyseChessBoard.FSetChessBoardFlipped(bValue: boolean);
+begin
+  m_ChessBoard.Flipped := bValue;
+  ViewFlipBoardMenuItem.Checked := bValue;
 end;
 
 
@@ -526,18 +546,28 @@ end;
 procedure TAnalyseChessBoard.FilePasteMenuItemClick(Sender: TObject);
 var
   strlData: TStringList;
+  PGNParser: TPGNParser;
 begin
   if (not Clipboard.HasFormat(CF_TEXT)) then
     exit;
 
-  if (not FAskAndSavePGNData) then
-    exit;
+  PGNParser := nil;
 
   strlData := TStringList.Create;
   try
     strlData.Text := Clipboard.AsText;
-    FLoadPGNData(strlData);
+
+    PGNParser := TPGNParser.Create;
+    if (not PGNParser.Parse(strlData)) then
+      exit;
+
+    if (not FAskAndSavePGNData) then
+      exit;
+
+    FLoadPGNDataFromParser(PGNParser);
+
   finally
+    PGNParser.Free;
     strlData.Free;
   end;
 
@@ -555,21 +585,33 @@ begin
     if (not PGNParser.Parse(PGNData)) then
       exit;
 
+    FLoadPGNDataFromParser(PGNParser);      
+
+  finally
+    PGNParser.Free;
+  end;
+
+  Result := TRUE;
+end;
+
+
+procedure TAnalyseChessBoard.FLoadPGNDataFromParser(const PGNParser: TPGNParser);
+begin
+  m_ChessBoard.BeginUpdate;
+  try
     FInitPosition;
 
     m_PlysTree.Assign(PGNParser.Tree);
 
     m_bGameFileInC4NFormat := PGNParser.InC4NFormat;
 
+    FSetToInitialPosition;
+
+    FRefreshMoveListForm;
+
   finally
-    PGNParser.Free;
+    m_ChessBoard.EndUpdate;
   end;
-
-  FSetToInitialPosition;
-
-  FRefreshMoveListForm;
-
-  Result := TRUE;
 end;
 
 
@@ -1217,8 +1259,6 @@ end;
 function TAnalyseChessBoard.FSetPosition(const strFEN: string): boolean;
 begin
   Result := m_ChessBoard.SetPosition(strFEN);
-  if (Result and Assigned(m_PositionEditingForm)) then
-    m_PositionEditingForm.FEN := m_ChessBoard.GetPosition;
 end;
 
 
@@ -1237,6 +1277,7 @@ begin
 
   m_PlysTree.Clear;
   m_PlysTree.WhiteStarts := (m_ChessBoard.PositionColor = fcWhite);
+  m_PlysTree.PlysOffset := 2 * m_ChessBoard.MovesOffset; 
   m_PlysTree.Add(m_ChessBoard.GetPosition);
 
   FSynchronizeChessEngineWithChessBoardAndStartEvaluation;
@@ -1380,6 +1421,12 @@ begin
     Checked := TRUE;
     m_PositionEditingForm.SelectedPiece := PIECES[Tag];
   end;
+end;
+
+
+function TAnalyseChessBoard.FGetPlysOffset: integer;
+begin
+  Result := m_PlysTree.PlysOffset;
 end;
 
 end.

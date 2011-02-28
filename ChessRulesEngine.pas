@@ -45,6 +45,7 @@ type
   private
     m_ChessRulesEngineable: IChessRulesEngineable;
     m_Position: TChessPosition;
+    m_iMovesOffset: integer;
     m_i0, m_j0: integer;  // Previous position of piece
     m_fig: TFigure;    // Piece that moves
     m_lastMove: TMoveAbs; // Last move done
@@ -55,20 +56,22 @@ type
 
     function FGetPosition: PChessPosition;
     function FAskPromotionFigure(FigureColor: TFigureColor): TFigureName;
-    procedure FAddPosMoveToList; // Добавляет позицию и ход из неё в список
+    procedure FAddPosMoveToList; // Add position and its move to the list
     function FMove2Str(const pos: TChessPosition): string;
 
     function FCheckMove(const chp: TChessPosition; var chp_res: TChessPosition;
       i0, j0, i, j: integer; var prom_fig: TFigureName): boolean;
 
     function FGetLastMove: PMoveAbs;
-    procedure FDelPosList; // Удаляет текущую позицию из списка
+    procedure FDeleteLastPositionFromPositionList;
 
     function FDoMove(i, j: integer; prom_fig: TFigureName = K): boolean;
 
-    class function FFieldUnderAttack(const pos: TChessPosition; i0,j0: integer): boolean; // TODO: -> private ?
+    class function FFieldUnderAttack(const pos: TChessPosition; i0,j0: integer): boolean;
     class function FCheckCheck(const pos: TChessPosition): boolean;
     function FCanMove(pos: TChessPosition): boolean;
+
+    procedure FSetMovesOffset(iValue: integer);
 
     property i0: integer read m_i0 write m_i0;
     property j0: integer read m_j0 write m_j0;
@@ -81,18 +84,21 @@ type
     function DoMove(move_str: string): boolean; overload;
     function DoMove(i0, j0, i, j: integer; prom_fig: TFigureName = K): boolean; overload;
     function TakeBack: boolean;
-    function SetPosition(const posstr: string): boolean;
+    function SetPosition(strValue: string): boolean;
     function GetPosition: string;
+    function GetColorStarts: TFigureColor;
     procedure InitNewGame;
     procedure InitNewPPRandomGame;
-    procedure ResetMoveList; // Clears positions list 
+    procedure ResetMoveList; // Clears positions list
     function NMovesDone: integer; // amount of moves done
     function NPlysDone: integer; // amount of plys done
+    function GetFENMoveNumber: integer;
     function GetEvaluation: TEvaluation;
 
     property Position: PChessPosition read FGetPosition;
     property lastMove: PMoveAbs read FGetLastMove;
     property lastMoveStr: string read m_strLastMoveStr;
+    property MovesOffset: integer read m_iMovesOffset write FSetMovesOffset;
     property PositionsList: TList read m_lstPosition;
     property MoveNotationFormat: TMoveNotationFormat
       read m_MoveNotationFormat write m_MoveNotationFormat;
@@ -145,21 +151,19 @@ const
 constructor TChessRulesEngine.Create(ChessRulesEngineable: IChessRulesEngineable = nil);
 begin
   inherited Create;
-  m_ChessRulesEngineable := ChessRulesEngineable;
 
-  // Инициализация списка позиций
+  m_ChessRulesEngineable := ChessRulesEngineable;
   m_lstPosition := TList.Create;
+
+  InitNewGame;
 end;
 
 
 destructor TChessRulesEngine.Destroy;
-var
-  i: integer;
 begin
-  for i := 0 to m_lstPosition.Count - 1 do
-    Dispose(m_lstPosition[i]);
+  ResetMoveList;
   m_lstPosition.Free;
-
+  
   inherited;
 end;
 
@@ -608,7 +612,7 @@ begin
     end;
   end;
 
-  with Position^ do
+  with m_Position do
   begin
     fig := TFigure(ord(f) + ord(Position.color) * ord(BK));
 
@@ -722,7 +726,7 @@ function TChessRulesEngine.FDoMove(i, j: integer; prom_fig: TFigureName = K): bo
 var
   newPosition: TChessPosition;
 begin
-  Result := FCheckMove(Position^, newPosition, i0, j0, i, j, prom_fig);
+  Result := FCheckMove(m_Position, newPosition, i0, j0, i, j, prom_fig);
   if (Result) then
   begin
     // Store the move done
@@ -736,7 +740,7 @@ begin
 
     m_strLastMoveStr := FMove2Str(newPosition);
     
-    Position^ := newPosition;
+    m_Position := newPosition;
   end;
 end;
 
@@ -760,7 +764,7 @@ var
   pm: PPosMove;
 begin
   new(pm);
-  pm.pos := Position^;
+  pm.pos := m_Position;
   pm.move := lastMove^;
   PositionsList.Add(pm);
 end;
@@ -825,7 +829,7 @@ begin // .FMove2Str
                ((Position.en_passant = lastMove.i) and (l = 4)))) and (color = fcWhite))) then
           begin
             if ((MoveNotationFormat <> mnfCh4NEx) or
-                FCheckMove(Position^, DummyPosition, lastMove.i0, l, lastMove.i, tj,
+                FCheckMove(m_Position, DummyPosition, lastMove.i0, l, lastMove.i, tj,
                            lastMove.prom_fig)) then
             begin
               Result := Result + IntToStr(lastMove.j);
@@ -891,7 +895,7 @@ begin // .FMove2Str
           break;
 
         if ((m_MoveNotationFormat <> mnfCh4NEx) or
-            FCheckMove(Position^, DummyPosition, ti, tj, lastMove.i, lastMove.j,
+            FCheckMove(m_Position, DummyPosition, ti, tj, lastMove.i, lastMove.j,
                        lastMove.prom_fig)) then
         begin
           ambig := TRUE;
@@ -935,100 +939,155 @@ function TChessRulesEngine.TakeBack: boolean;
 begin
   Result := (PositionsList.Count > 0);
   if (Result) then
-    FDelPosList;
+  begin
+    FDeleteLastPositionFromPositionList;
+    lastMove.i0 := 0;
+  end;
 end;
 
 
-procedure TChessRulesEngine.FDelPosList;
+procedure TChessRulesEngine.FDeleteLastPositionFromPositionList;
 var
   i: integer;
 begin
   i := PositionsList.Count - 1;
   if (i >= 0) then
   begin
-    Position^ := PPosMove(PositionsList[i]).pos;
+    m_Position := PPosMove(PositionsList[i]).pos;
     Dispose(PositionsList[i]);
     PositionsList.Delete(i);
   end;
 end;
 
 
-function TChessRulesEngine.SetPosition(const posstr: string): boolean;
-var
-  i, j, k: integer;
-  l: byte;
-  pos: TChessPosition;
-begin
-  Result:= FALSE;
+function TChessRulesEngine.SetPosition(strValue: string): boolean;
 
-  l := 1;
-  for j := 8 downto 1 do
+  function NNextToken(var str: string): string;
+  var
+    iPos: integer;
   begin
-    i := 1;
-    repeat
-      case posstr[l] of
-        'K': pos.board[i,j]:= WK;
-        'Q': pos.board[i,j]:= WQ;
-        'R': pos.board[i,j]:= WR;
-        'B': pos.board[i,j]:= WB;
-        'N': pos.board[i,j]:= WN;
-        'P': pos.board[i,j]:= WP;
-
-        'k': pos.board[i,j]:= BK;
-        'q': pos.board[i,j]:= BQ;
-        'r': pos.board[i,j]:= BR;
-        'b': pos.board[i,j]:= BB;
-        'n': pos.board[i,j]:= BN;
-        'p': pos.board[i,j]:= BP;
-
-        '1'..'8':      // Вставка пустых полей
-          begin
-            k:= StrToInt(posstr[l]);
-            repeat
-              pos.board[i,j]:= ES;
-              dec(k); inc(i);
-            until k = 0;
-            dec(i);
-          end;
-
-        ' ': break;  // Позиция прочитана - выход из цикла
-
-        else
-          exit; // Error in posstr
+    str := TrimLeft(str);
+    if (str = '') then
+      Result := ''
+    else
+    begin
+      iPos := Pos(' ', str);
+      if (iPos > 0) then
+      begin
+        Result := LeftStr(str, Pred(iPos));
+        str := Copy(str, iPos, MaxInt);
+      end
+      else
+      begin
+        Result := str;
+        str := '';
       end;
-      inc(i); inc(l);
-    until (posstr[l] = '/') or (i > 8); // Повтор до появления '/' или пока на горизонтали
-    inc(l);
+    end;
   end;
 
-  Result:= TRUE;
+var
+  pos: TChessPosition;
+
+  function NSetPlacingOfPieces: boolean;
+  var
+    strPos: string;
+    iPos: integer;
+    j, i, k: integer;
+  begin
+    Result := FALSE;
+
+    strPos := NNextToken(strValue);
+
+    iPos := 1;
+
+    for j := 8 downto 1 do
+    begin
+      i := 1;
+      repeat
+        if (iPos > Length(strPos)) then
+          exit;
+
+        case strPos[iPos] of
+          'K': pos.board[i,j]:= WK;
+          'Q': pos.board[i,j]:= WQ;
+          'R': pos.board[i,j]:= WR;
+          'B': pos.board[i,j]:= WB;
+          'N': pos.board[i,j]:= WN;
+          'P': pos.board[i,j]:= WP;
+
+          'k': pos.board[i,j]:= BK;
+          'q': pos.board[i,j]:= BQ;
+          'r': pos.board[i,j]:= BR;
+          'b': pos.board[i,j]:= BB;
+          'n': pos.board[i,j]:= BN;
+          'p': pos.board[i,j]:= BP;
+
+          '1'..'8': // Insert empty fields
+            begin
+              k := StrToInt(strPos[iPos]);
+              repeat
+                pos.board[i,j]:= ES;
+                dec(k); inc(i);
+              until k = 0;
+              dec(i);
+            end;
+
+          ' ': break; // Position is read -> exit from loop
+
+          else
+            exit; // Error in strPos
+        end;
+
+        inc(i);
+        inc(iPos);
+
+      until ((strPos[iPos] = '/') or (i > 8)); // Repeat until '/' or if not on the row
+
+      inc(iPos);
+      
+    end; // for j
+
+    Result := TRUE;
+  end;
+
+var
+  i: integer;
+  iMovesOffset: integer;
+  strToken: string;
+begin // .SetPosition
+  Result := NSetPlacingOfPieces;
+  if (not Result) then
+    exit;
 
   // Defaults
-  pos.color:= fcWhite;
+  pos.color := fcWhite;
   pos.castling := [];
-  pos.en_passant:= 0;
+  pos.en_passant := 0;
+  iMovesOffset := 0;
 
   try
-    if (l > Length(posstr)) then
+    strToken := NNextToken(strValue);
+    if (strToken = '') then
       exit;
 
-    case posstr[l] of
+    case strToken[1] of
       'w':
-        pos.color:= fcWhite;
+        pos.color := fcWhite;
       'b':
-        pos.color:= fcBlack;
+        pos.color := fcBlack;
       else
         exit;
     end;
 
-    inc(l, 2);
-    if (l > Length(posstr)) then
+    strToken := NNextToken(strValue);
+    if (strToken = '') then
       exit;
 
-    while ((l <= Length(posstr)) and (posstr[l] <> ' ')) do
+    for i := 1 to Length(strToken) do
     begin
       with pos do
-        case posstr[l] of
+      begin
+        case strToken[i] of
           'K':
             Include(castling, WhiteKingSide);
           'Q':
@@ -1042,33 +1101,51 @@ begin
         else
           exit;
         end;
-      inc(l);
-    end;
+      end;
 
-    inc(l);
-    if (l > Length(posstr)) then
+    end; // for
+
+    strToken := NNextToken(strValue);
+    if (strToken = '') then
       exit;
 
     with pos do
-      case posstr[l] of
-        'a'..'h': en_passant:= ord(posstr[l]) - ord('a') + 1;
-        '-': en_passant:= 0;
-      else
-        exit;
+    begin
+      case strToken[1] of
+        'a'..'h':
+          en_passant := ord(strToken[1]) - ord('a') + 1;
       end;
+    end;
+
+    strToken := NNextToken(strValue);
+    if (strToken = '') then
+      exit;
+
+    // Skip 50-moves counter
+
+    strToken := NNextToken(strValue);
+    if (strToken = '') then
+      exit;
+
+    iMovesOffset := StrToIntDef(strToken, 1) - 1;
+    if (iMovesOffset < 0) then
+      iMovesOffset := 0;
 
   finally
-    Position^ := pos;
-    lastMove.i0 := 0; // There was no last move yet
+    ResetMoveList;
+    m_Position := pos;
+    m_iMovesOffset := iMovesOffset;
   end;
-  
+
 end;
 
 
 procedure TChessRulesEngine.InitNewGame;
+var
+  bRes: boolean;
 begin
-  SetPosition(INITIAL_CHESS_POSITION);
-  ResetMoveList;
+  bRes := SetPosition(INITIAL_CHESS_POSITION);
+  Assert(bRes);
 end;
 
 
@@ -1146,7 +1223,7 @@ begin // .GetPosition
   if (Position.color = fcWhite) then
     Result := Result + 'w '
   else
-    Result:= Result + 'b '; // color = fcBlack
+    Result := Result + 'b '; // color = fcBlack
 
   // Castling
   if (Position.castling = []) then
@@ -1179,12 +1256,27 @@ begin // .GetPosition
     if (Position.color = fcWhite) then
       Result := Result + '6'
     else
-      Result := Result + '3'; // Black    
+      Result := Result + '3'; // Black
   end;
 
   Result := Result + ' 0'; // TODO: 50-moves rule
 
-  Result := Result + ' ' + IntToStr(NMovesDone + 1);
+  Result := Result + ' ' + IntToStr(GetFENMoveNumber);
+end;
+
+
+function TChessRulesEngine.GetFENMoveNumber: integer;
+begin
+  Result := NMovesDone;
+  if ((m_Position.color = fcWhite) or (Result = 0)) then
+    inc(Result);
+end;
+
+
+procedure TChessRulesEngine.FSetMovesOffset(iValue: integer);
+begin
+  Assert(iValue >= 0);
+  m_iMovesOffset := iValue;
 end;
 
 
@@ -1198,6 +1290,7 @@ var
   f: boolean;
 begin
   InitNewGame;
+
   if (Random(2) = 0) then
     SQR[5] := 1 // с какой стороны оставляем ладью
   else
@@ -1210,30 +1303,52 @@ begin
       f := FALSE;
       for j := 0 to i-1 do f := f or (rnd_sqr[i] = rnd_sqr[j]);
     until not (f or ((i = 1) and (((rnd_sqr[0] xor rnd_sqr[1]) and 1) = 0)));
-    Position.board[rnd_sqr[i], 1] := TFigure(ord(FIG[i]));
-    Position.board[rnd_sqr[i], 8] := TFigure(ord(BK) + ord(FIG[i]));
+    m_Position.board[rnd_sqr[i], 1] := TFigure(ord(FIG[i]));
+    m_Position.board[rnd_sqr[i], 8] := TFigure(ord(BK) + ord(FIG[i]));
   end;
 end;
 
 
 function TChessRulesEngine.NMovesDone: integer;
+var
+  iMovesCount: integer;
 begin
-  Result := (PositionsList.Count + 1) shr 1; // div 2
+  if ((PositionsList.Count = 0) and (m_iMovesOffset = 0)) then
+    iMovesCount := 0
+  else
+  begin
+    if (GetColorStarts = fcWhite) then
+      iMovesCount := ((PositionsList.Count + 1) div 2)
+    else // GetColorStarts = fcBlack
+      iMovesCount := ((PositionsList.Count + 2) div 2);
+  end;
+
+  Result := m_iMovesOffset + iMovesCount;
+end;
+
+
+function TChessRulesEngine.GetColorStarts: TFigureColor;
+begin
+  if (Odd(PositionsList.Count) and (m_Position.color = fcBlack)) or
+      (not Odd(PositionsList.Count) and (m_Position.color = fcWhite)) then
+    Result := fcWhite
+  else
+    Result := fcBlack;
 end;
 
 
 function TChessRulesEngine.NPlysDone: integer; // amount of plys done
 begin
-  Result := PositionsList.Count;
+  Result := (2 * m_iMovesOffset) + PositionsList.Count;
 end;
 
 
 function TChessRulesEngine.GetEvaluation: TEvaluation;
 begin
   Result := evInGame;
-  if (not FCanMove(Position^)) then
+  if (not FCanMove(m_Position)) then
   begin
-    if (FCheckCheck(Position^)) then
+    if (FCheckCheck(m_Position)) then
       Result := evMate
     else
       Result := evStaleMate;

@@ -46,9 +46,11 @@ type
   private
     m_FirstNode: TPlysTreeNode;
     m_bWhiteStarts: boolean;
+    m_iPlysOffset: integer;
     function FGetPosition(iIndex: integer): string;
     function FGetPly(iIndex: integer): string;
     function FGetCount: integer;
+    procedure FSetPlysOffset(iValue: integer);
     function FGetNodeOfDepth(iPlyDepth: integer): TPlysTreeNode;
     procedure FDelete(iIndex: Integer);
     
@@ -80,6 +82,7 @@ type
 
     property Count: integer read FGetCount;
     property WhiteStarts: boolean read m_bWhiteStarts write m_bWhiteStarts;
+    property PlysOffset: integer read m_iPlysOffset write FSetPlysOffset;
   end;
 
 implementation
@@ -93,7 +96,7 @@ uses
 constructor TPlysTree.Create;
 begin
   inherited Create;
-  m_bWhiteStarts := TRUE;
+  Clear;
 end;
 
 
@@ -107,6 +110,9 @@ end;
 procedure TPlysTree.Clear;
 begin
   FDelete(0);
+
+  m_bWhiteStarts := TRUE;
+  m_iPlysOffset := 0;
 end;
 
 
@@ -160,7 +166,7 @@ begin
 
   if (iPlyIndex = 0) then
   begin
-    Clear;
+    FDelete(0);
     m_FirstNode := TPlysTreeNode.Create(strPos, strMove, APlyStatuses);
     m_FirstNode.PlyStatuses := m_FirstNode.PlyStatuses + [psMainLine];
     exit;
@@ -223,6 +229,13 @@ begin
 end;
 
 
+procedure TPlysTree.FSetPlysOffset(iValue: integer);
+begin
+  Assert((iValue >= 0) and (not Odd(iValue)));
+  m_iPlysOffset := iValue;
+end;
+
+
 function TPlysTree.GetPlysCountForPlyIndex(iIndex: integer): integer;
 var
   Node: TPlysTreeNode;
@@ -279,7 +292,10 @@ begin
   Assert(Assigned(Source));
 
   Clear;
-  m_bWhiteStarts := Source.WhiteStarts; 
+
+  m_bWhiteStarts := Source.WhiteStarts;
+  m_iPlysOffset := Source.PlysOffset;
+  
   m_FirstNode := TPlysTreeNode.Create(Source.m_FirstNode);
 end;
 

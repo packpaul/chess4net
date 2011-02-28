@@ -462,7 +462,7 @@ var
 
       if m_ChessRulesEngine.DoMove(movePly.move) then
       begin
-        m_Tree.SetPlyForPlyIndex(m_ChessRulesEngine.NPlysDone,
+        m_Tree.SetPlyForPlyIndex(m_ChessRulesEngine.NPlysDone - m_Tree.PlysOffset,
           m_ChessRulesEngine.lastMoveStr);
         inc(n_ply);
 //        addPos := (genOpening = openNo) or PosBase.Find(ChessRulesEngine.Position^); // Opening
@@ -605,6 +605,8 @@ begin // .FParseGameStr
   m_Tree.Clear;
   m_Tree.WhiteStarts := (m_ChessRulesEngine.Position.color = fcWhite);
   m_Tree.Add(m_ChessRulesEngine.GetPosition);
+  m_Tree.PlysOffset := 2 * m_ChessRulesEngine.MovesOffset; 
+
 
   moveEsts := nil;
   posMoveStack := nil;
@@ -613,7 +615,7 @@ begin // .FParseGameStr
     moveEsts := TList.Create;
     posMoveStack := TStack.Create;
 
-    n_ply := 0;
+    n_ply := m_Tree.PlysOffset;
     bkpMove := '';
     lastInvalidMove := TRUE;
     addPos := TRUE;

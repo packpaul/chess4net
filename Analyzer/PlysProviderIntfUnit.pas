@@ -14,6 +14,7 @@ type
 
     function GetPlysCount: integer;
     function GetPly(iIndex: integer): string;
+    function GetPlysOffset: integer;
     function GetPlyStatus(iIndex: integer): TPlyStatuses;
 
     function GetCurrentPlyIndex: integer;
@@ -29,8 +30,10 @@ type
     property Plys[iIndex: integer]: string read GetPly;
     property CurrentPlyIndex: integer read GetCurrentPlyIndex
                                       write SetCurrentPlyIndex;
-    property InvalidationID: LongWord read GetInvalidationID;
+    property PlysOffset: integer read GetPlysOffset;
     property WhiteStarts: boolean read GetWhiteStarts;
+
+    property InvalidationID: LongWord read GetInvalidationID;
   end;
 
 implementation
