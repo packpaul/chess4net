@@ -21,8 +21,10 @@ type
     procedure EMailLabelClick(Sender: TObject);
     procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
     procedure DoClick(Sender: TObject);
+    procedure FormKeyDown(Sender: TObject; var Key: Word;
+      Shift: TShiftState);
   private
-    { Private declarations }
+    function FIsSplashing: boolean;
   public
     procedure Splash;
     procedure WaitSplashShowing;
@@ -104,12 +106,26 @@ end;
 procedure TSplashForm.FormCloseQuery(Sender: TObject;
   var CanClose: Boolean);
 begin
-  CanClose := (not ShowingTimer.Enabled);
+  CanClose := (not FIsSplashing);
+end;
+
+
+function TSplashForm.FIsSplashing: boolean;
+begin
+  Result := ShowingTimer.Enabled; 
 end;
 
 
 procedure TSplashForm.DoClick(Sender: TObject);
 begin
+  Close;
+end;
+
+
+procedure TSplashForm.FormKeyDown(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+begin
+  Key := 0;
   Close;
 end;
 
