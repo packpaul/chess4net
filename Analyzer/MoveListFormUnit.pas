@@ -3,9 +3,9 @@ unit MoveListFormUnit;
 interface
 
 uses
-  Forms, Classes, Windows, Controls, Grids, Buttons,
+  Classes, Windows, Controls, Grids, Buttons,
   //
-  PlysProviderIntfUnit;
+  PlysProviderIntfUnit, FloatingFormsUnit;
 
 type
   TStringGrid = class(Grids.TStringGrid)
@@ -29,7 +29,7 @@ type
   end;
 
   
-  TMoveListForm = class(TForm)
+  TMoveListForm = class(TChildFloatingForm)
     MovesStringGrid: TStringGrid;
     BackSpeedButton: TSpeedButton;
     ForthSpeedButton: TSpeedButton;

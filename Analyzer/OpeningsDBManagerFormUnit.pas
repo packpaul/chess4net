@@ -3,8 +3,10 @@ unit OpeningsDBManagerFormUnit;
 interface
 
 uses
-   Forms, Dialogs, StdCtrls, Classes, Controls, SysUtils, ActnList,
-  AppEvnts;
+  Forms, Dialogs, StdCtrls, Classes, Controls, SysUtils, ActnList,
+  AppEvnts,
+  //
+  FloatingFormsUnit;
 
 type
   IOpeningsDBManagerProvider = interface
@@ -24,7 +26,7 @@ type
     property DBNames[iIndex: integer]: WideString read GetDBNames;    
   end;
 
-  TOpeningsDBManagerForm = class(TForm)
+  TOpeningsDBManagerForm = class(TChildFloatingForm)
     OpeningsDBListBox: TListBox;
     AddDBButton: TButton;
     RemoveDBButton: TButton;

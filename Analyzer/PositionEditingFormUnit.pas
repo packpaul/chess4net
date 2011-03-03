@@ -3,9 +3,9 @@ unit PositionEditingFormUnit;
 interface
 
 uses
-  Forms, StdCtrls, Controls, ExtCtrls, Classes, Messages,
+  Forms, StdCtrls, Controls, ExtCtrls, Classes, Messages, ComCtrls,
   //
-  ChessRulesEngine, AppEvnts, ComCtrls;
+  ChessRulesEngine, FloatingFormsUnit;
 
 type
   IPositionEditable = interface
@@ -24,7 +24,7 @@ type
     procedure CNKeyDown(var Message: TWMKeyDown); message CN_KEYDOWN;
   end;
 
-  TPositionEditingForm = class(TForm)
+  TPositionEditingForm = class(TChildFloatingForm)
     FENLabeledEdit: TLabeledEdit;
     EmptyButton: TButton;
     InitialButton: TButton;

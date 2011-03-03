@@ -3,16 +3,16 @@ unit AnalyseChessBoardUnit;
 interface
 
 uses
-  Forms, TntForms, TntMenus, Menus, Classes, Controls, ExtCtrls, Messages,
+  Forms, TntMenus, Menus, Classes, Controls, ExtCtrls, Messages,
   ComCtrls, Dialogs, ActnList, ImgList, AppEvnts, SysUtils,
   //
   ChessBoardUnit, PosBaseChessBoardUnit, ChessEngineInfoUnit, ChessEngine,
   MoveListFormUnit, PlysTreeUnit, PlysProviderIntfUnit, URLVersionQueryUnit,
   SelectLineFormUnit, OpeningsDBManagerFormUnit, OpeningsDBManagerUnit,
-  PositionEditingFormUnit, ChessRulesEngine, PGNParserUnit;
+  PositionEditingFormUnit, ChessRulesEngine, PGNParserUnit, FloatingFormsUnit;
 
 type
-  TAnalyseChessBoard = class(TTntForm, IPlysProvider, IPositionEditable)
+  TAnalyseChessBoard = class(TMainFloatingForm, IPlysProvider, IPositionEditable)
     MainMenu: TTntMainMenu;
     FileMenuItem: TTntMenuItem;
     FileOpenMenuItem: TTntMenuItem;
@@ -629,7 +629,7 @@ end;
 
 procedure TAnalyseChessBoard.FCreateChessEngineInfoForm;
 begin
-  m_ChessEngineInfoForm := TChessEngineInfoForm.Create(self);
+  m_ChessEngineInfoForm := TChessEngineInfoForm.Create(self, self);
   m_ChessEngineInfoForm.OnShow := FOnChessEngineInfoFormShow;
   m_ChessEngineInfoForm.OnHide := FOnChessEngineInfoFormHide;
 end;
@@ -694,7 +694,7 @@ procedure TAnalyseChessBoard.MoveListActionExecute(Sender: TObject);
 begin
   if (not Assigned(m_MoveListForm)) then
   begin
-    m_MoveListForm := TMoveListForm.Create(self);
+    m_MoveListForm := TMoveListForm.Create(self, self);
     m_MoveListForm.PlysProvider := self;
   end;
 
@@ -940,7 +940,7 @@ procedure TAnalyseChessBoard.OpeningsDBManagerActionExecute(
 begin
   if (not Assigned(m_OpeningsDBManagerForm)) then
   begin
-    m_OpeningsDBManagerForm := TOpeningsDBManagerForm.Create(self);
+    m_OpeningsDBManagerForm := TOpeningsDBManagerForm.Create(self, self);
     m_OpeningsDBManagerForm.OpeningsDBManagerProvider := m_OpeningsDBManager;
   end;
 
@@ -1239,7 +1239,7 @@ begin
 
   if (not Assigned(m_PositionEditingForm)) then
   begin
-    m_PositionEditingForm := TPositionEditingForm.Create(self);
+    m_PositionEditingForm := TPositionEditingForm.Create(self, self);
     m_PositionEditingForm.PositionEditable := self;
   end;
 

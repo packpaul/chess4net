@@ -3,10 +3,12 @@ unit ChessEngineInfoUnit;
 interface
 
 uses
-  Forms, Classes, Controls, StdCtrls;
+  Classes, Controls, StdCtrls,
+  //
+  FloatingFormsUnit;
 
 type
-  TChessEngineInfoForm = class(TForm)
+  TChessEngineInfoForm = class(TChildFloatingForm)
     InfoMemo: TMemo;
     procedure FormShow(Sender: TObject);
     procedure FormHide(Sender: TObject);

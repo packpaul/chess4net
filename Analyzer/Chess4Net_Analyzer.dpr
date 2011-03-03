@@ -36,7 +36,8 @@ uses
   NonRefInterfacedObjectUnit in '..\NonRefInterfacedObjectUnit.pas',
   PGNWriterUnit in 'PGNWriterUnit.pas',
   SplashFormUnit in 'SplashFormUnit.pas' {SplashForm},
-  PositionEditingFormUnit in 'PositionEditingFormUnit.pas' {PositionEditingForm};
+  PositionEditingFormUnit in 'PositionEditingFormUnit.pas' {PositionEditingForm},
+  FloatingFormsUnit in 'FloatingFormsUnit.pas';
 
 {$R ..\Chess4Net.res}
 
