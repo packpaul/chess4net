@@ -11,10 +11,13 @@ type
   TMainFloatingForm = class(TForm)
   private
     m_lstChilds: TList;
+    m_InitialPos: TPoint;
     procedure FAddChild(AChild: TChildFloatingForm);
     procedure FRemoveChild(AChild: TChildFloatingForm);
     procedure WMMoving(var Msg: TWMMoving); message WM_MOVING;
     procedure WMSize(var Message: TWMSize); message WM_SIZE;
+    property InitialLeft: integer read m_InitialPos.X;
+    property InitialTop: integer read m_InitialPos.Y;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -25,6 +28,7 @@ type
     m_Main: TMainFloatingForm;
     m_OffsetPoint: TPoint;
     procedure FRecalculateOffset;
+    procedure FCalculateInitialOffset;
     procedure FUpdateOffsetedPosition(const NewMainPos: TPoint);
     procedure WMMoving(var Msg: TWMMoving); message WM_MOVING;
     procedure WMSize(var Message: TWMSize); message WM_SIZE;
@@ -46,6 +50,9 @@ begin
   inherited Create(AOwner);
 
   m_Main.FAddChild(self);
+
+  FCalculateInitialOffset;
+  FUpdateOffsetedPosition(Point(m_Main.Left, m_Main.Top));
 end;
 
 
@@ -60,6 +67,13 @@ procedure TChildFloatingForm.FRecalculateOffset;
 begin
   m_OffsetPoint.X := Left - m_Main.Left;
   m_OffsetPoint.Y := Top - m_Main.Top;
+end;
+
+
+procedure TChildFloatingForm.FCalculateInitialOffset;
+begin
+  m_OffsetPoint.X := Left - m_Main.InitialLeft;
+  m_OffsetPoint.Y := Top - m_Main.InitialTop;
 end;
 
 
@@ -122,6 +136,7 @@ constructor TMainFloatingForm.Create(AOwner: TComponent);
 begin
   inherited;
   m_lstChilds := TList.Create;
+  m_InitialPos := Point(Left, Top);
 end;
 
 
