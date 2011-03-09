@@ -69,7 +69,7 @@ procedure TPositionEditingFormTests.SetUp;
 begin
   inherited;
 
-  m_PositionEditingForm := TPositionEditingForm.Create(nil);
+  m_PositionEditingForm := TPositionEditingForm.Create(nil, nil);
   GUI := m_PositionEditingForm;
   ActionDelay := 100;
   m_PositionEditingForm.Show;

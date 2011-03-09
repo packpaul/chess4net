@@ -3,13 +3,14 @@ unit AnalyseChessBoardUnit;
 interface
 
 uses
-  Forms, TntMenus, Menus, Classes, Controls, ExtCtrls, Messages,
+  Forms, TntMenus, Menus, Classes, TntClasses, Controls, ExtCtrls, Messages,
   ComCtrls, Dialogs, ActnList, ImgList, AppEvnts, SysUtils,
   //
   ChessBoardUnit, PosBaseChessBoardUnit, ChessEngineInfoUnit, ChessEngine,
   MoveListFormUnit, PlysTreeUnit, PlysProviderIntfUnit, URLVersionQueryUnit,
   SelectLineFormUnit, OpeningsDBManagerFormUnit, OpeningsDBManagerUnit,
-  PositionEditingFormUnit, ChessRulesEngine, PGNParserUnit, FloatingFormsUnit;
+  PositionEditingFormUnit, ChessRulesEngine, PGNParserUnit, FloatingFormsUnit,
+  CommentsFormUnit;
 
 type
   TAnalyseChessBoard = class(TMainFloatingForm, IPlysProvider, IPositionEditable)
@@ -95,6 +96,8 @@ type
     N9: TTntMenuItem;
     EditPopupWhiteKnightMenuItem: TTntMenuItem;
     EditPopupBlackKnightMenuItem: TTntMenuItem;
+    CommentsMenuItem: TTntMenuItem;
+    CommentsAction: TAction;
     procedure FileExitMenuItemClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormCanResize(Sender: TObject; var NewWidth,
@@ -144,6 +147,8 @@ type
     procedure EditPopupColorMenuItemClick(Sender: TObject);
     procedure EditPopupMenuPopup(Sender: TObject);
     procedure EditPopupPieceMenuItemClick(Sender: TObject);
+    procedure CommentsActionExecute(Sender: TObject);
+    procedure CommentsActionUpdate(Sender: TObject);
   private
     m_ChessBoard: TPosBaseChessBoard;
     m_ResizingType: (rtNo, rtHoriz, rtVert);
@@ -155,6 +160,7 @@ type
 
     m_OpeningsDBManagerForm: TOpeningsDBManagerForm;
     m_MoveListForm: TMoveListForm;
+    m_CommentsForm: TCommentsForm;
     m_SelectLineForm: TSelectLineForm;
 
     m_PositionEditingForm: TPositionEditingForm;
@@ -187,7 +193,7 @@ type
     procedure FSynchronizeChessEngineWithChessBoardAndStartEvaluation;
 
     procedure FLoadPGNDataFromFile(AFileName: TFileName);
-    function FLoadPGNData(const PGNData: TStrings): boolean;
+    function FLoadPGNData(const PGNData: TTntStrings): boolean;
     procedure FLoadPGNDataFromParser(const PGNParser: TPGNParser);
     function FSavePGNData: boolean;
     procedure FSavePGNDataAs;
@@ -204,6 +210,12 @@ type
 
     function IPlysProvider.GetPly = FGetPly;
     function FGetPly(iIndex: integer): string;
+
+    function IPlysProvider.GetComments = FGetComments;
+    function FGetComments(iIndex: integer): WideString;
+
+    procedure IPlysProvider.SetComments = FSetComments;
+    procedure FSetComments(iIndex: integer; const wstrValue: WideString);
 
     function IPlysProvider.GetInvalidationID = FGetInvalidationID;
     function FGetInvalidationID: LongWord;
@@ -262,7 +274,7 @@ type
 implementation
 
 uses
-  Windows, Clipbrd,
+  Windows, TntClipbrd,
   //
   GlobalsLocalUnit, DontShowMessageDlgUnit,
   IniSettingsUnit, PGNWriterUnit, SplashFormUnit;
@@ -524,12 +536,12 @@ end;
 
 procedure TAnalyseChessBoard.FLoadPGNDataFromFile(AFileName: TFileName);
 var
-  strlData: TStringList;
+  wstrlData: TTntStringList;
 begin
-  strlData := TStringList.Create;
+  wstrlData := TTntStringList.Create;
   try
-    strlData.LoadFromFile(AFileName);
-    if (not FLoadPGNData(strlData)) then
+    wstrlData.LoadFromFile(AFileName);
+    if (not FLoadPGNData(wstrlData)) then
     begin
       MessageDlg(MSG_INCORRECT_FILE_FORMAT, mtError, [mbOK], 0);
       exit;
@@ -538,27 +550,27 @@ begin
     FSetGameFileName(AFileName);
 
   finally
-    strlData.Free;
+    wstrlData.Free;
   end;
 end;
 
 
 procedure TAnalyseChessBoard.FilePasteMenuItemClick(Sender: TObject);
 var
-  strlData: TStringList;
+  wstrlData: TTntStringList;
   PGNParser: TPGNParser;
 begin
-  if (not Clipboard.HasFormat(CF_TEXT)) then
+  if (not TntClipboard.HasFormat(CF_TEXT)) then // TODO: CF_UNICODETEXT - ?
     exit;
 
   PGNParser := nil;
 
-  strlData := TStringList.Create;
+  wstrlData := TTntStringList.Create;
   try
-    strlData.Text := Clipboard.AsText;
+    wstrlData.Text := TntClipboard.AsText;
 
     PGNParser := TPGNParser.Create;
-    if (not PGNParser.Parse(strlData)) then
+    if (not PGNParser.Parse(wstrlData)) then
       exit;
 
     if (not FAskAndSavePGNData) then
@@ -568,13 +580,13 @@ begin
 
   finally
     PGNParser.Free;
-    strlData.Free;
+    wstrlData.Free;
   end;
 
 end;
 
 
-function TAnalyseChessBoard.FLoadPGNData(const PGNData: TStrings): boolean;
+function TAnalyseChessBoard.FLoadPGNData(const PGNData: TTntStrings): boolean;
 var
   PGNParser: TPGNParser;
 begin
@@ -715,6 +727,7 @@ procedure TAnalyseChessBoard.FormShow(Sender: TObject);
 begin
   MoveListAction.Execute;
   OpeningsDBManagerAction.Execute;
+  CommentsAction.Execute;
 {$IFDEF RELEASE}
   with TURLVersionQuery.Create do
   begin
@@ -775,6 +788,19 @@ begin
 end;
 
 
+function TAnalyseChessBoard.FGetComments(iIndex: integer): WideString;
+begin
+  Result := m_PlysTree.Comments[iIndex];
+end;
+
+
+procedure TAnalyseChessBoard.FSetComments(iIndex: integer; const wstrValue: WideString);
+begin
+  m_PlysTree.Comments[iIndex] := wstrValue;
+  m_bGameChanged := TRUE;
+end;
+
+
 procedure TAnalyseChessBoard.TakebackMoveActionExecute(Sender: TObject);
 begin
   FTakebackMove;
@@ -828,6 +854,8 @@ end;
 procedure TAnalyseChessBoard.FRefreshMoveListForm;
 begin
   m_MoveListForm.Refresh;
+  if (Assigned(m_CommentsForm)) then
+    m_CommentsForm.Refresh;
 end;
 
 
@@ -1265,10 +1293,7 @@ end;
 procedure TAnalyseChessBoard.FStopEditing;
 begin
   if (Assigned(m_PositionEditingForm)) then
-  begin
-    m_PositionEditingForm.Release;
-    m_PositionEditingForm := nil;
-  end;
+    m_PositionEditingForm.Hide;
 
   if (not FIsEditing) then
     exit;
@@ -1292,7 +1317,7 @@ end;
 
 procedure TAnalyseChessBoard.FileCopyFENMenuItemClick(Sender: TObject);
 begin
-  Clipboard.AsText := m_ChessBoard.GetPosition;
+  TntClipboard.AsText := m_ChessBoard.GetPosition;
 end;
 
 
@@ -1301,7 +1326,7 @@ begin
   with TPGNWriter.Create do
   try
     WriteInChess4NetFormat(m_PlysTree);
-    Clipboard.AsText := Data.Text;
+    TntClipboard.AsText := Data.Text;
   finally
     Free;
   end;
@@ -1427,6 +1452,28 @@ end;
 function TAnalyseChessBoard.FGetPlysOffset: integer;
 begin
   Result := m_PlysTree.PlysOffset;
+end;
+
+
+procedure TAnalyseChessBoard.CommentsActionExecute(Sender: TObject);
+begin
+  if (not Assigned(m_CommentsForm)) then
+  begin
+    m_CommentsForm := TCommentsForm.Create(self, self);
+    m_CommentsForm.PlysProvider := self;
+  end;
+
+  if (m_CommentsForm.Showing) then
+    m_CommentsForm.Hide
+  else
+    m_CommentsForm.Show;
+end;
+
+
+procedure TAnalyseChessBoard.CommentsActionUpdate(Sender: TObject);
+begin
+  (Sender as TAction).Checked := (Assigned(m_CommentsForm) and
+    m_CommentsForm.Showing);
 end;
 
 end.

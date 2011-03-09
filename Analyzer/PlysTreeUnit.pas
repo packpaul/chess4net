@@ -13,6 +13,7 @@ type
     m_strPly: string;
     m_strPos: string;
     m_PlyStatuses: TPlyStatuses;
+    m_wstrComment: WideString;
 
     m_arrNextNodes: array of TPlysTreeNode;
     m_iNextNodeOfLineIndex: integer;
@@ -37,6 +38,7 @@ type
     property Ply: string read m_strPly;
     property Pos: string read m_strPos;
     property PlyStatuses: TPlyStatuses read m_PlyStatuses write m_PlyStatuses;
+    property Comment: WideString read m_wstrComment write m_wstrComment;
 
   public
     destructor Destroy; override;
@@ -53,7 +55,9 @@ type
     procedure FSetPlysOffset(iValue: integer);
     function FGetNodeOfDepth(iPlyDepth: integer): TPlysTreeNode;
     procedure FDelete(iIndex: Integer);
-    
+    function FGetComments(iIndex: integer): WideString;
+    procedure FSetComments(iIndex: integer; const wstrValue: WideString);
+
   public
     constructor Create;
     destructor Destroy; override;
@@ -79,6 +83,7 @@ type
 
     property Plys[iIndex: integer]: string read FGetPly; default;
     property Position[iIndex: integer]: string read FGetPosition;
+    property Comments[iIndex: integer]: WideString read FGetComments write FSetComments;
 
     property Count: integer read FGetCount;
     property WhiteStarts: boolean read m_bWhiteStarts write m_bWhiteStarts;
@@ -295,7 +300,7 @@ begin
 
   m_bWhiteStarts := Source.WhiteStarts;
   m_iPlysOffset := Source.PlysOffset;
-  
+
   m_FirstNode := TPlysTreeNode.Create(Source.m_FirstNode);
 end;
 
@@ -352,6 +357,28 @@ begin
   m_FirstNode.FSetLineToMain;
 end;
 
+
+function TPlysTree.FGetComments(iIndex: integer): WideString;
+var
+  Node: TPlysTreeNode;
+begin
+  Node := FGetNodeOfDepth(iIndex);
+  if (Assigned(Node)) then
+    Result := Node.Comment
+  else
+    Result := '';
+end;
+
+
+procedure TPlysTree.FSetComments(iIndex: integer; const wstrValue: WideString);
+var
+  Node: TPlysTreeNode;
+begin
+  Node := FGetNodeOfDepth(iIndex);
+  if (Assigned(Node)) then
+    Node.Comment := wstrValue;
+end;
+
 ////////////////////////////////////////////////////////////////////////////////
 // TPlysTreeNode
 
@@ -384,6 +411,7 @@ begin
     m_strPos := Source.m_strPos;
     m_strPly := Source.m_strPly;
     m_PlyStatuses := Source.m_PlyStatuses;
+    m_wstrComment := Source.m_wstrComment;
 
     SetLength(m_arrNextNodes, Length(Source.m_arrNextNodes));
     for i := Low(Source.m_arrNextNodes) to High(Source.m_arrNextNodes) do

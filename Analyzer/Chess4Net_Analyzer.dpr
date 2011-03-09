@@ -37,7 +37,9 @@ uses
   PGNWriterUnit in 'PGNWriterUnit.pas',
   SplashFormUnit in 'SplashFormUnit.pas' {SplashForm},
   PositionEditingFormUnit in 'PositionEditingFormUnit.pas' {PositionEditingForm},
-  FloatingFormsUnit in 'FloatingFormsUnit.pas';
+  FloatingFormsUnit in 'FloatingFormsUnit.pas',
+  CommentsFormUnit in 'CommentsFormUnit.pas' {CommentsForm},
+  CommentsEditFormUnit in 'CommentsEditFormUnit.pas' {CommentsEditForm};
 
 {$R ..\Chess4Net.res}
 

@@ -114,12 +114,19 @@ object AnalyseChessBoard: TAnalyseChessBoard
       end
       object ViewMoveListMenuItem: TTntMenuItem
         Action = MoveListAction
+        Caption = '&Move List'
+      end
+      object CommentsMenuItem: TTntMenuItem
+        Action = CommentsAction
+        Caption = '&Comments'
       end
       object ViewOpeningsDBManagerMenuItem: TTntMenuItem
         Action = OpeningsDBManagerAction
+        Caption = '&Openings DB Manager'
       end
       object ViewChessEngineInfoMenuItem: TTntMenuItem
         Action = ChessEngineInfoAction
+        Caption = 'Chess &Engine Info'
       end
     end
     object EditMenuItem: TTntMenuItem
@@ -215,13 +222,11 @@ object AnalyseChessBoard: TAnalyseChessBoard
     Left = 96
     object ChessEngineInfoAction: TAction
       Category = 'Views'
-      Caption = 'Chess &Engine Info'
       OnExecute = ChessEngineInfoActionExecute
       OnUpdate = ChessEngineInfoActionUpdate
     end
     object MoveListAction: TAction
       Category = 'Views'
-      Caption = '&Move List'
       OnExecute = MoveListActionExecute
       OnUpdate = MoveListActionUpdate
     end
@@ -261,7 +266,6 @@ object AnalyseChessBoard: TAnalyseChessBoard
     end
     object OpeningsDBManagerAction: TAction
       Category = 'Views'
-      Caption = '&Openings DB Manager'
       OnExecute = OpeningsDBManagerActionExecute
       OnUpdate = OpeningsDBManagerActionUpdate
     end
@@ -323,6 +327,11 @@ object AnalyseChessBoard: TAnalyseChessBoard
       ShortCut = 32846
       OnExecute = NewCustomActionExecute
       OnUpdate = NewActionUpdate
+    end
+    object CommentsAction: TAction
+      Category = 'Views'
+      OnExecute = CommentsActionExecute
+      OnUpdate = CommentsActionUpdate
     end
   end
   object ImageList: TImageList

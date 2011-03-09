@@ -13,7 +13,8 @@ uses
   PositionEditingFormTestsUnit in 'PositionEditingFormTestsUnit.pas',
   PositionEditingFormUnit in '..\PositionEditingFormUnit.pas' {PositionEditingForm},
   BitmapResUnit in '..\..\BitmapResUnit.pas',
-  ChessBoardHeaderUnit in '..\..\ChessBoardHeaderUnit.pas';
+  ChessBoardHeaderUnit in '..\..\ChessBoardHeaderUnit.pas',
+  FloatingFormsUnit in '..\FloatingFormsUnit.pas';
 
 {$R *.res}
 

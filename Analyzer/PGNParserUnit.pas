@@ -3,14 +3,14 @@ unit PGNParserUnit;
 interface
 
 uses
-  Classes,
+  TntClasses, Classes,
   //
   ChessRulesEngine, PlysTreeUnit;
 
 type
   TPGNParser = class
   private
-    m_Data: TStrings;
+    m_Data: TTntStrings;
     m_iDataLine: integer;
     m_bParseResult: boolean;
 
@@ -40,7 +40,7 @@ type
     constructor Create;
     destructor Destroy; override;
 
-    function Parse(const AData: TStrings): boolean;
+    function Parse(const AData: TTntStrings): boolean;
 
     property Tree: TPlysTree read m_Tree;
     property InC4NFormat: boolean read m_bInC4NFormat;
@@ -74,7 +74,7 @@ begin
 end;
 
 
-function TPGNParser.Parse(const AData: TStrings): boolean;
+function TPGNParser.Parse(const AData: TTntStrings): boolean;
 begin
   Result := FALSE;
 
@@ -325,22 +325,36 @@ var
         addPos := FALSE;
     end;
 }
-    function NCutOutComments(const s: string): boolean;
+    function NParseComment(const s: string; out wstrComment: WideString): boolean;
     var
       i: integer;
     begin
+      wstrComment := '';
       Result := TRUE;
 
       str := s + ' ' + str;
-      for i := 1 to length(str) do
+      i := 0;
+
+      while (i < length(str)) do
       begin
+        inc(i);
+        
         if (str[i] = '}') then
         begin
+          if ((i < length(str)) and (str[i + 1] = '}')) then
+          begin
+            Delete(str, i, 1);
+            continue;
+          end;
+
+          wstrComment := Trim(Copy(str, 2, i - 2));
+
           str := RightStr(str, length(str) - i);
           exit;
         end;
 //       writeln(' n_pos: ', n_pos);
-      end;
+      end; // while
+      
 //      Assert(FALSE);
       raise EPGNParser.Create;
 
@@ -491,6 +505,7 @@ var
     posMove: TPosMove;
 //    p_posMove: PPosMove;
     bTakebackLineFlag: boolean;
+    wstrComment: WideString;
   begin // \NProceedInner
     s := NextWord;
 
@@ -499,8 +514,11 @@ var
 
     if (s[1] = '{') then // Cuts out comments
     begin
-      if (NCutOutComments(s)) then
+      if (NParseComment(s, wstrComment)) then
+      begin
+        m_Tree.Comments[m_ChessRulesEngine.NPlysDone] := wstrComment;
         exit;
+      end;
     end;
 
     if (s[1] = '(') then

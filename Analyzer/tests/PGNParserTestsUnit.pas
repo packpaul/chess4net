@@ -3,7 +3,7 @@ unit PGNParserTestsUnit;
 interface
 
 uses
-  TestFrameWork,
+  Classes, TntClasses, TestFrameWork,
   //
   PGNParserUnit;
 
@@ -12,6 +12,7 @@ type
   TPGNParserTests = class(TTestCase)
   private
     m_PGNParser: TPGNParser;
+    procedure FFillInputData(var wstrlData: TTntStringList);
   public
     class function Suite: ITestSuite; override;
 
@@ -24,7 +25,7 @@ type
 implementation
 
 uses
-  SysUtils, Classes,
+  SysUtils,
   //
   PlysTreeUnit;
 
@@ -56,21 +57,23 @@ begin
 end;
 
 
+procedure TPGNParserTests.FFillInputData(var wstrlData: TTntStringList);
+begin
+  wstrlData.Clear;
+
+  wstrlData.Append('[C4N "1"]');
+  wstrlData.Append('');
+  wstrlData.Append('{Comment for the initial position}');
+  wstrlData.Append('1. e4 {Second comment} 1. ... c5 2. Nf3 d6 3. d4 cd 4. Nd4 Nf6 5. Nc3 g6 6. Be3 Bg7');
+  wstrlData.Append('  (6. ... Ng4 7. Bb5+)');
+  wstrlData.Append('');
+  wstrlData.Append('7. f3 0-0 8. Qd2 Nc6 9. Bc4 Nd4 {Last move in the main line comment}');
+  wstrlData.Append('  (9. ... a5 10. g4 Ne5 11. Be2 d5 12. g5 {Last move in a subline comment}}})');
+  wstrlData.Append('');
+end;
+
+
 procedure TPGNParserTests.C4NLoadTest;
-
-  procedure NFillInputData(var strlData: TStringList);
-  begin
-    strlData.Clear;
-
-    strlData.Append('[C4N "1"]');
-    strlData.Append('');
-    strlData.Append('1. e4 c5 2. Nf3 d6 3. d4 cd 4. Nd4 Nf6 5. Nc3 g6 6. Be3 Bg7');
-    strlData.Append('  (6. ... Ng4 7. Bb5+)');
-    strlData.Append('');
-    strlData.Append('7. f3 0-0 8. Qd2 Nc6 9. Bc4 Nd4');
-    strlData.Append('  (9. ... a5 10. g4 Ne5 11. Be2 d5 12. g5)');
-    strlData.Append('');
-  end;
 
   procedure NCheckOutputTree(Tree: TPlysTree);
   const
@@ -128,15 +131,15 @@ procedure TPGNParserTests.C4NLoadTest;
   end;
 
 var
-  strlData: TStringList;
+  wstrlData: TTntStringList;
 begin // .C4NLoadTest
-  strlData := TStringList.Create;
+  wstrlData := TTntStringList.Create;
   try
-    NFillInputData(strlData);
-    CheckTrue(m_PGNParser.Parse(strlData));
+    FFillInputData(wstrlData);
+    CheckTrue(m_PGNParser.Parse(wstrlData));
     NCheckOutputTree(m_PGNParser.Tree);
   finally
-    strlData.Free;
+    wstrlData.Free;
   end;
 end;
 

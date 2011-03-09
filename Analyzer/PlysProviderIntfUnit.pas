@@ -17,6 +17,9 @@ type
     function GetPlysOffset: integer;
     function GetPlyStatus(iIndex: integer): TPlyStatuses;
 
+    function GetComments(iIndex: integer): WideString;
+    procedure SetComments(iIndex: integer; const wstrValue: WideString);
+
     function GetCurrentPlyIndex: integer;
     procedure SetCurrentPlyIndex(iValue: integer);
 
@@ -28,6 +31,8 @@ type
 
     property PlysCount: integer read GetPlysCount;
     property Plys[iIndex: integer]: string read GetPly;
+    property Comments[iIndex: integer]: WideString read GetComments
+                                                   write SetComments;
     property CurrentPlyIndex: integer read GetCurrentPlyIndex
                                       write SetCurrentPlyIndex;
     property PlysOffset: integer read GetPlysOffset;
