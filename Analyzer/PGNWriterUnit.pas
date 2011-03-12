@@ -20,7 +20,7 @@ type
     procedure FWriteLine;
     procedure FWriteText(const wstr: WideString; iIndent: integer = 0);
     procedure FWriteWrappedText(const wstr: WideString; iIndent: integer = 0;
-      bSplit: boolean = FALSE);
+      bSplit: boolean = FALSE; bLeaveSpacesWhenWrapped: boolean = FALSE);
 
     procedure FWriteTreeInChess4NetFormat;
 
@@ -139,41 +139,84 @@ end;
 
 
 procedure TPGNWriter.FWriteWrappedText(const wstr: WideString; iIndent: integer = 0;
-  bSplit: boolean = FALSE);
+  bSplit: boolean = FALSE; bLeaveSpacesWhenWrapped: boolean = FALSE);
 const
   TEXT_WIDTH = 80;
 
   procedure NWriteSplitted;
+
+    function NFindSplitPosition(const wstr: WideString; iRestLen: integer): integer;
+    var
+      iPos: integer;
+    begin
+      Assert(Length(wstr) > TEXT_WIDTH);
+
+      iPos := TEXT_WIDTH;
+
+      try
+        if (bLeaveSpacesWhenWrapped) then
+        begin
+          if ((wstr[iPos] = ' ') and (wstr[iPos + 1] <> ' ')) then
+            exit;
+        end;
+
+        while ((iPos > 0) and (wstr[iPos] = ' ')) do
+          dec(iPos);
+
+        if (bLeaveSpacesWhenWrapped) then
+        begin
+          while ((iPos > 0) and (wstr[iPos] <> ' ')) do
+            dec(iPos);
+        end;
+
+      finally
+        if (iPos <= iRestLen) then
+          iPos := TEXT_WIDTH;
+        Result := iPos;
+      end;
+
+    end;
+
   var
     wstrLine: WideString;
     iPos: integer;
-  begin
+    iOldLineLen: integer;
+  begin // NWriteSplitted
+    wstrLine := m_wstrlData[m_wstrlData.Count - 1];
+
+    iPos := Pos(' ', wstr) - 1;
+    if (iPos < 0) then
+      iPos := Length(wstr);
+
+    if (((Length(wstrLine) + iPos) > TEXT_WIDTH) and
+        ((iPos + iIndent) <= TEXT_WIDTH)) then
+      FWriteLine;
+
+    if (m_wstrlData.Count >= 0) then
+      iOldLineLen := Length(m_wstrlData[m_wstrlData.Count - 1])
+    else
+      iOldLineLen := 0;
     FWriteText(wstr, iIndent);
 
     wstrLine := m_wstrlData[m_wstrlData.Count - 1];
 
-    if (Length(wstrLine) <= TEXT_WIDTH) then
-      exit;
-
-    repeat
-      iPos := TEXT_WIDTH;
-
-      while ((iPos > 0) and (wstrLine[iPos] = ' ')) do
-        dec(iPos);
-
-      if (iPos = 0) then
-        iPos := TEXT_WIDTH;
+    while (Length(wstrLine) > TEXT_WIDTH) do
+    begin
+      iPos := NFindSplitPosition(wstrLine, iOldLineLen);
 
       m_wstrlData[m_wstrlData.Count - 1] := Copy(wstrLine, 1, iPos);
+      iOldLineLen := Length(m_wstrlData[m_wstrlData.Count - 1]);
 
       wstrLine := TrimLeft(Copy(wstrLine, iPos + 1, MaxInt));
       if (wstrLine <> '') then
       begin
         FWriteLine;
-        FWriteText(wstrLine, iIndent);        
+        FWriteText(wstrLine, iIndent);
       end;
 
-     until (Length(wstrLine) <= TEXT_WIDTH);
+      wstrLine := m_wstrlData[m_wstrlData.Count - 1];
+    end; // while
+
   end;
 
   procedure NWriteNonSplitted;
@@ -188,7 +231,7 @@ const
       FWriteText(wstr, iIndent);
   end;
 
-begin
+begin // .FWriteWrappedText
   if (wstr = '') then
     exit;
 
@@ -239,7 +282,7 @@ var
       else
         wstr := Copy(wstrComment, iPosLeft, MaxInt);
 
-      FWriteWrappedText(wstr, iIndent + 1, TRUE);
+      FWriteWrappedText(wstr, iIndent + 1, TRUE, TRUE);
       if (iPos >= 1) then
         FWriteWrappedText('}', iIndent + 1);
 
@@ -326,11 +369,10 @@ var
 
           m_Tree.SetPlyForPlyIndex(iPly, strlPlys[i]);
 
-          NWritePly(iPly, strlPlys[i]);
-          NWriteComment(m_Tree.Comments[iPly]);
-
           inc(iTreeDepth);
           try
+            NWritePly(iPly, strlPlys[i]);
+            NWriteComment(m_Tree.Comments[iPly]);
             NFConvertTreeToText(iPly);
           finally
             dec(iTreeDepth);

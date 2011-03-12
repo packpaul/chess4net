@@ -145,6 +145,7 @@ procedure TPGNWriterTests.CommentsOutputTest;
     Tree.Comments[7] := 'This is a very very long comment for 4. Ng5 move of the 1-st subline! It should be indeed very long in order to check the formated output of it!';
     Tree.Comments[9] := 'This_is_a_very_long_comment_for_5._ed_move_of_the_1-st_subline!_It_has_no_spaces_in_order_to_check_splitting_functionality!';
     Tree.Comments[10] := '{ } is tested!';
+    Tree.Comments[18] := 'Some_not_so_long_comment_but_without_any_spaces!';
 
     // Switch back to 3. ... Bc5 of main line
     CheckTrue(Tree.SetPlyForPlyIndex(6,  'Bc5'), MSG_CANNOT_SWITCH_LINE);
