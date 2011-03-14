@@ -40,10 +40,17 @@ object AnalyseChessBoard: TAnalyseChessBoard
     Top = 358
     Width = 356
     Height = 19
-    Panels = <>
+    AutoHint = True
+    Panels = <
+      item
+        Width = 265
+      end
+      item
+        Width = 50
+      end>
     ParentShowHint = False
     ShowHint = True
-    SimplePanel = True
+    OnHint = StatusBarHint
   end
   object MainMenu: TTntMainMenu
     Images = ImageList

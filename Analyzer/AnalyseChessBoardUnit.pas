@@ -149,6 +149,7 @@ type
     procedure EditPopupPieceMenuItemClick(Sender: TObject);
     procedure CommentsActionExecute(Sender: TObject);
     procedure CommentsActionUpdate(Sender: TObject);
+    procedure StatusBarHint(Sender: TObject);
   private
     m_ChessBoard: TPosBaseChessBoard;
     m_ResizingType: (rtNo, rtHoriz, rtVert);
@@ -264,10 +265,15 @@ type
     procedure FStopEditing;
     function FIsEditing: boolean;
 
+    procedure FSetGameChanged(bValue: boolean);
+
     function FSetNewStandard: boolean;
 
     function FGetChessBoardFlipped: boolean;
     procedure FSetChessBoardFlipped(bValue: boolean);
+
+    procedure FRefreshStatusBar;
+
     property ChessBoardFlipped: boolean read FGetChessBoardFlipped write FSetChessBoardFlipped;
   end;
 
@@ -290,6 +296,9 @@ const
 
   LBL_CHESS4NET_ANALYZER_VER = 'Chess4Net Analyzer %s';
 
+  LBL_EDITING = 'Editing';
+  LBL_CHANGED = 'Changed';
+
 ////////////////////////////////////////////////////////////////////////////////
 // TAnalyseChessBoard
 
@@ -309,6 +318,22 @@ begin
 
   FCreateChessBoard;
   FInitPosition;
+
+  FRefreshStatusBar;
+end;
+
+
+procedure TAnalyseChessBoard.FRefreshStatusBar;
+begin
+  if (FIsEditing) then
+    StatusBar.Panels[1].Text := LBL_EDITING
+  else
+  begin
+    if (m_bGameChanged) then
+      StatusBar.Panels[1].Text := LBL_CHANGED
+    else
+      StatusBar.Panels[1].Text := '';
+  end;
 end;
 
 
@@ -369,7 +394,7 @@ procedure TAnalyseChessBoard.FChessBoardHandler(e: TChessBoardEvent; d1: pointer
     end;
 
     m_PlysTree.Add(iPly, m_ChessBoard.GetPosition, strMove, [psUserLine]);
-    m_bGameChanged := TRUE;
+    FSetGameChanged(TRUE);
 
     inc(m_lwPlysListUpdateID);
     FRefreshMoveListForm;
@@ -398,6 +423,17 @@ begin // .FChessBoardHandler
         PopupMenu.Popup(Mouse.CursorPos.X, Mouse.CursorPos.Y);
     end;
   end;
+end;
+
+
+procedure TAnalyseChessBoard.FSetGameChanged(bValue: boolean);
+begin
+  if (m_bGameChanged = bValue) then
+    exit;
+
+  m_bGameChanged := bValue;
+
+  FRefreshStatusBar;
 end;
 
 
@@ -450,6 +486,8 @@ begin
   begin
     NewWidth := self.Width + (iNewChessBoardWidth - m_ChessBoard.Width);
     NewHeight := self.Height + (iNewChessBoardHeight - m_ChessBoard.Height);
+
+    StatusBar.Panels[0].Width := StatusBar.Panels[0].Width + (iNewChessBoardWidth - m_ChessBoard.Width);
   end;
 
 end;
@@ -486,8 +524,8 @@ begin
   m_PlysTree.WhiteStarts := (m_ChessBoard.PositionColor = fcWhite);
   m_PlysTree.Add(m_ChessBoard.GetPosition);
 
-  m_bGameChanged := FALSE;
   FSetGameFileName('');
+  FSetGameChanged(FALSE);
 
   FSynchronizeChessEngineWithChessBoardAndStartEvaluation;
 end;
@@ -797,7 +835,7 @@ end;
 procedure TAnalyseChessBoard.FSetComments(iIndex: integer; const wstrValue: WideString);
 begin
   m_PlysTree.Comments[iIndex] := wstrValue;
-  m_bGameChanged := TRUE;
+  FSetGameChanged(TRUE);
 end;
 
 
@@ -1050,7 +1088,7 @@ begin // .FSavePGNData
     Free;
   end;
 
-  m_bGameChanged := FALSE;
+  FSetGameChanged(FALSE);
 
   Result := TRUE;
 end;
@@ -1165,7 +1203,7 @@ begin
   if (not m_PlysTree.Delete(iPly)) then
     exit;
 
-  m_bGameChanged := TRUE;
+  FSetGameChanged(TRUE);
   inc(m_lwPlysListUpdateID);
 
   FSetCurrentPlyIndex(iPly - 1);
@@ -1203,8 +1241,8 @@ begin
 
   m_GameFileName := AGameFileName;
 
-  StatusBar.SimpleText := ExtractFileName(AGameFileName);
-  StatusBar.Hint := AGameFileName;
+  StatusBar.Panels[0].Text := ExtractFileName(m_GameFileName);
+  StatusBar.Hint := m_GameFileName;
 end;
 
 
@@ -1274,7 +1312,9 @@ begin
   m_ChessBoard.Mode := mEdit;
 
   m_PositionEditingForm.Show;
-  m_PositionEditingForm.FEN := m_ChessBoard.GetPosition;  
+  m_PositionEditingForm.FEN := m_ChessBoard.GetPosition;
+
+  FRefreshStatusBar;    
 end;
 
 
@@ -1306,6 +1346,8 @@ begin
   m_PlysTree.Add(m_ChessBoard.GetPosition);
 
   FSynchronizeChessEngineWithChessBoardAndStartEvaluation;
+
+  FRefreshStatusBar;
 end;
 
 
@@ -1474,6 +1516,22 @@ procedure TAnalyseChessBoard.CommentsActionUpdate(Sender: TObject);
 begin
   (Sender as TAction).Checked := (Assigned(m_CommentsForm) and
     m_CommentsForm.Showing);
+end;
+
+
+procedure TAnalyseChessBoard.StatusBarHint(Sender: TObject);
+var
+  Pos: TPoint;
+begin
+  Pos := StatusBar.ScreenToClient(Mouse.CursorPos);
+
+  if (Pos.X < StatusBar.Panels[0].Width) then
+  begin
+    StatusBar.Hint := m_GameFileName;
+    StatusBar.ShowHint := TRUE;
+  end
+  else
+    StatusBar.ShowHint := FALSE;
 end;
 
 end.
