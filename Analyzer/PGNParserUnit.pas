@@ -17,24 +17,24 @@ type
     m_strWhite: string;
     m_strBlack: string;
 
-    m_ChessRulesEngine: TChessRulesEngine;
     m_Tree: TPlysTree;
 
     m_bInC4NFormat: boolean;
 
     m_strStartPosition: string;
 
-    function FGetLine: string;
-    function FGetNextLine: string;
+    function FGetLine: WideString;
+    function FGetNextLine: WideString;
     function FIsEndOfData: boolean;
 
-    function  FIsTag(const str: string): boolean;
+    function  FIsTag(const wstr: WideString): boolean;
     procedure FParseTags;
     procedure FParseGame;
-    procedure FParseGameStr(const strGame: string; bIncludeVariants: boolean);
 
     procedure FCheckAgainstC4NVersionSupport(const strVersion: string);
     procedure FSetupStartPosition(const strPosition: string);
+
+    property StartPosition: string read m_strStartPosition;
 
   public
     constructor Create;
@@ -55,6 +55,53 @@ type
   EPGNParser = class(Exception)
   public
     constructor Create;
+  end;
+
+  TGameParser = class
+  private
+    m_wstrlData: TTntStringList;
+    m_iDataLine: integer;
+
+    m_ChessRulesEngine: TChessRulesEngine;
+
+    m_Tree: TPlysTree;
+    m_bInC4NFormat: boolean;
+    m_strStartPosition: string;
+
+    m_strBkpMove: string;
+    m_iPly: integer;
+    m_bAddPos: boolean;
+    m_PosMoveStack, m_MovePlyStack: TStack;
+
+    m_bLastInvalidMove: boolean;
+
+    procedure FParse;
+    procedure FParseNextToken;
+    function FHasNoTokens: boolean;
+    function FParseComment(const wstrToken: WideString; out wstrComment: WideString): boolean;
+
+    function FStartLine(const strToken: string): boolean;
+    procedure FTakeBackLine;
+
+    function FNextToken: WideString;
+    procedure FAppendDataLeft(const wstr: WideString);
+
+  public
+    constructor Create(APGNParser: TPGNParser);
+    destructor Destroy; override;
+
+    procedure Parse(const GameData: TTntStrings);
+
+    property InC4NFormat: boolean read m_bInC4NFormat;
+  end;
+
+
+  PMovePly = ^TMovePly;
+  TMovePly = record
+    move: string;
+    ply: integer;
+    addPos: boolean; // ??. genOpening
+    posMoveCount: integer;
   end;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -81,11 +128,7 @@ begin
   if (not (Assigned(AData))) then
     exit;
 
-  m_ChessRulesEngine := TChessRulesEngine.Create;
   try
-    m_ChessRulesEngine.MoveNotationFormat := mnfCh4NEx;
-    m_ChessRulesEngine.FENFormat := TRUE; 
-
     m_Data := AData;
 
     m_iDataLine := 0;
@@ -104,14 +147,13 @@ begin
 
   finally
     m_Data := nil;
-    FreeAndNil(m_ChessRulesEngine);
   end;
 
   Result := m_bParseResult;
 end;
 
 
-function TPGNParser.FGetLine: string;
+function TPGNParser.FGetLine: WideString;
 begin
   if (m_iDataLine < m_Data.Count) then
     Result := m_Data[m_iDataLine]
@@ -120,7 +162,7 @@ begin
 end;
 
 
-function TPGNParser.FGetNextLine: string;
+function TPGNParser.FGetNextLine: WideString;
 begin
   inc(m_iDataLine);
   
@@ -139,7 +181,7 @@ end;
 
 procedure TPGNParser.FParseTags;
 
-  function NProcessLine(const s: string): boolean;
+  function NProcessLine(const wstr: WideString): boolean;
   const
     WHITE_PREFIX = '[White "';
     BLACK_PREFIX = '[Black "';
@@ -149,54 +191,54 @@ procedure TPGNParser.FParseTags;
   begin
     Result := FALSE;
 
-    if (not FIsTag(s)) then
+    if (not FIsTag(wstr)) then
       exit;
 
-    if ((LeftStr(s, length(WHITE_PREFIX)) = WHITE_PREFIX) and
-        (RightStr(s, length(POSTFIX)) = POSTFIX)) then
+    if ((LeftStr(wstr, length(WHITE_PREFIX)) = WHITE_PREFIX) and
+        (RightStr(wstr, length(POSTFIX)) = POSTFIX)) then
     begin
-      m_strWhite := Copy(s, length(WHITE_PREFIX) + 1,
-        length(s) - length(WHITE_PREFIX) - length(POSTFIX));
+      m_strWhite := Copy(wstr, length(WHITE_PREFIX) + 1,
+        length(wstr) - length(WHITE_PREFIX) - length(POSTFIX));
     end
-    else if ((LeftStr(s, length(BLACK_PREFIX)) = BLACK_PREFIX) and
-        (RightStr(s, length(POSTFIX)) = POSTFIX)) then
+    else if ((LeftStr(wstr, length(BLACK_PREFIX)) = BLACK_PREFIX) and
+        (RightStr(wstr, length(POSTFIX)) = POSTFIX)) then
     begin
-      m_strBlack := Copy(s, length(BLACK_PREFIX) + 1,
-        length(s) - length(BLACK_PREFIX) - length(POSTFIX));
+      m_strBlack := Copy(wstr, length(BLACK_PREFIX) + 1,
+        length(wstr) - length(BLACK_PREFIX) - length(POSTFIX));
     end
-    else if ((LeftStr(s, length(C4N_PREFIX)) = C4N_PREFIX) and
-        (RightStr(s, length(POSTFIX)) = POSTFIX)) then
+    else if ((LeftStr(wstr, length(C4N_PREFIX)) = C4N_PREFIX) and
+        (RightStr(wstr, length(POSTFIX)) = POSTFIX)) then
     begin
-      FCheckAgainstC4NVersionSupport(Copy(s, length(C4N_PREFIX) + 1,
-        length(s) - length(C4N_PREFIX) - length(POSTFIX)));
+      FCheckAgainstC4NVersionSupport(Copy(wstr, length(C4N_PREFIX) + 1,
+        length(wstr) - length(C4N_PREFIX) - length(POSTFIX)));
     end
-    else if ((LeftStr(s, length(FEN_PREFIX)) = FEN_PREFIX) and
-        (RightStr(s, length(POSTFIX)) = POSTFIX)) then
+    else if ((LeftStr(wstr, length(FEN_PREFIX)) = FEN_PREFIX) and
+        (RightStr(wstr, length(POSTFIX)) = POSTFIX)) then
     begin
-      FSetupStartPosition(Copy(s, length(FEN_PREFIX) + 1,
-        length(s) - length(FEN_PREFIX) - length(POSTFIX)));
+      FSetupStartPosition(Copy(wstr, length(FEN_PREFIX) + 1,
+        length(wstr) - length(FEN_PREFIX) - length(POSTFIX)));
     end;
 
     Result := TRUE;
   end;
 
 var
-  s: string;
-begin // .FParseHeader
+  wstr: WideString;
+begin // .FParseTags
   m_bParseResult := (m_bParseResult and (not FIsEndOfData));
   if (not m_bParseResult) then
     exit;
 
-  s := FGetLine;
+  wstr := FGetLine;
   repeat
-    s := TrimRight(s);
-    if (s <> '') then
+    wstr := TrimRight(wstr);
+    if (wstr <> '') then
     begin
-      if (not NProcessLine(s)) then
+      if (not NProcessLine(wstr)) then
         exit;
     end;
 
-    s := FGetNextLine;
+    wstr := FGetNextLine;
 
   until (FIsEndOfData);
 end;
@@ -208,9 +250,9 @@ begin
 end;
 
 
-function  TPGNParser.FIsTag(const str: string): boolean;
+function  TPGNParser.FIsTag(const wstr: WideString): boolean;
 begin
-  Result := ((str <> '') and ((str[1] = '[') and (str[length(str)] = ']')));
+  Result := ((wstr <> '') and ((wstr[1] = '[') and (wstr[length(wstr)] = ']')));
 end;
 
 
@@ -225,393 +267,96 @@ end;
 
 procedure TPGNParser.FParseGame;
 var
-  s: string;
-  ss: string;
+  wstr: WideString;
+  wstrlGameData: TTntStringList;
 begin
   m_bParseResult := (m_bParseResult and (not FIsEndOfData));
   if (not m_bParseResult) then
     exit;
 
-  ss := '';
+  wstrlGameData := TTntStringList.Create;
+  try
+    wstr := FGetLine;
+    repeat
+      if (FIsTag(TrimRight(wstr))) then
+        break;
 
-  s := FGetLine;
-  repeat
-    s := TrimRight(s);
-    if (FIsTag(s)) then
-      break;
+      if (wstr <> '') then
+        wstrlGameData.Append(wstr);
 
-    ss := ss + ' ' + s;
+      wstr := FGetNextLine;
+    until (FIsEndOfData);
 
-    s := FGetNextLine;
-  until (FIsEndOfData);
+    m_bParseResult := (wstrlGameData.Count > 0);
+    if (not m_bParseResult) then
+      exit;
 
-  m_bParseResult := (ss <> '');
-  if (not m_bParseResult) then
-    exit;
+    with TGameParser.Create(self) do
+    try
+      Parse(wstrlGameData);
 
-  FParseGameStr(ss, TRUE);
+      self.m_bInC4NFormat := InC4NFormat;
+
+    finally
+      Free;
+    end;
+
+  finally
+    wstrlGameData.Free;
+  end;
+  
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// EPGNParser
+
+constructor EPGNParser.Create;
+begin
+  inherited Create('');
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TGameParser
+
+constructor TGameParser.Create(APGNParser: TPGNParser);
+begin
+  inherited Create;
+
+  m_Tree := APGNParser.Tree;
+  m_bInC4NFormat := APGNParser.InC4NFormat;
+  m_strStartPosition := APGNParser.StartPosition;
+
+  m_wstrlData := TTntStringList.Create;
+
+  m_ChessRulesEngine := TChessRulesEngine.Create;
+  m_ChessRulesEngine.MoveNotationFormat := mnfCh4NEx;
+  m_ChessRulesEngine.FENFormat := TRUE;
 end;
 
 
-procedure TPGNParser.FParseGameStr(const strGame: string; bIncludeVariants: boolean);
+destructor TGameParser.Destroy;
+begin
+  m_ChessRulesEngine.Free;
+  m_wstrlData.Free;
+  
+  inherited;
+end;
+
+
+procedure TGameParser.Parse(const GameData: TTntStrings);
+begin
+  m_iDataLine := 0;
+  m_wstrlData.Assign(GameData);
+
+  FParse;
+end;
+
+
+procedure TGameParser.FParse;
 var
-  n_ply: integer;
-  bkpMove: string;
-  movePlyStack, posMoveStack: TStack;
   moveEsts: TList;
-  lastInvalidMove: boolean;
-  addPos: boolean;
-//  addSimplePosMove: boolean;
-//  SimplePosMove: TPosMove;
-
-  procedure NProceedInner(var str: string);
-{
-    procedure NProcessExtendedOpeningLine(const posMove: TPosMove);
-    var
-      p_posMove: PPosMove;
-    begin
-      if (addPos) then
-      begin
-        // Adding previous positions, which hadn't been added to DB before
-        while (posMoveStack.Count > 0) do
-        begin
-          PosBase.Add(PPosMove(posMoveStack.Peek)^);
-          Dispose(posMoveStack.Pop);
-        end;
-        addSimplePosMove := FALSE;
-      end
-      else
-      begin
-        New(p_posMove);
-        p_posMove^ := posMove;
-        posMoveStack.Push(p_posMove);
-        if ((genOpening = openExtendedPlus) and (not addSimplePosMove)) then
-        begin
-          addSimplePosMove := TRUE;
-          SimplePosMove := posMove;
-        end;
-      end;
-    end;
-}
-{
-    procedure NProcessOpeningLine(const posMove: TPosMove);
-    var
-      i: integer;
-    begin
-      if (Assigned(RefPosBase)) then
-        addPos := RefPosBase.Find(posMove.pos, moveEsts)
-      else
-        addPos := PosBase.Find(posMove.pos, moveEsts);
-
-      if (not addPos) then
-        exit;
-
-      i := moveEsts.Count - 1;
-      while (i >= 0) do
-      begin
-        with PMoveEst(moveEsts[i]).move, posMove do
-          addPos := (i0 = move.i0) and (j0 = move.j0) and (i = move.i) and
-                    (j = move.j) and (prom_fig = move.prom_fig);
-        if (addPos) then
-        begin
-          if (useStatPrunning) then
-            addPos := ((PMoveEst(moveEsts[i]).estimate and $FFFF) >= 2);
-          if (addPos) then
-            break;
-        end;
-        dec(i);
-      end;
-      if (i < 0) then
-        addPos := FALSE;
-    end;
-}
-    function NParseComment(const s: string; out wstrComment: WideString): boolean;
-    var
-      i: integer;
-    begin
-      wstrComment := '';
-      Result := TRUE;
-
-      str := s + ' ' + str;
-      i := 0;
-
-      while (i < length(str)) do
-      begin
-        inc(i);
-        
-        if (str[i] = '}') then
-        begin
-          if ((i < length(str)) and (str[i + 1] = '}')) then
-          begin
-            Delete(str, i, 1);
-            continue;
-          end;
-
-          wstrComment := Trim(Copy(str, 2, i - 2));
-
-          str := RightStr(str, length(str) - i);
-          exit;
-        end;
-//       writeln(' n_pos: ', n_pos);
-      end; // while
-      
-//      Assert(FALSE);
-      raise EPGNParser.Create;
-
-      Result := FALSE;
-    end; // \NCutOutComments
-
-    type
-      PMovePly = ^TMovePly;
-      TMovePly = record
-        move: string;
-        ply: integer;
-        addPos: boolean; // ??. genOpening
-        posMoveCount: integer;
-      end;
-
-    function NStartLine(const s: string): boolean;
-    var
-      n: integer;
-      i: integer;
-      movePly: PMovePly;
-    begin
-      Result := TRUE;
-
-      if ((length(s) > 1) and (s[2] = '{')) then
-      begin
-        str := '( {' + str;
-        exit;
-      end;
-
-      if (not bIncludeVariants) then
-      begin
-        n := 1;
-        i := 1;
-        repeat
-          case str[i] of
-            '{':
-            begin
-              repeat
-                inc(i);
-              until (i > length(str)) or (str[i] = '}');
-            end;
-
-            '(':
-              inc(n);
-
-            ')':
-            begin
-              dec(n);
-              if (n = 0) then
-              begin
-                str := RightStr(str, length(str) - i);
-                exit;
-              end;
-            end;
-
-          end; { case }
-
-          inc(i);
-
-        until (i > length(str));
-
-  //      Assert(FALSE);
-        raise EPGNParser.Create;
-
-      end; // if (not incVariants)
-
-      New(movePly);
-      movePly.move := bkpMove;
-      movePly.ply := n_ply;
-      movePly.addPos := addPos;
-      movePly.posMoveCount := posMoveStack.Count;
-
-      if (not lastInvalidMove) then
-      begin
-        movePly.ply := n_ply;
-        m_ChessRulesEngine.TakeBack;
-        dec(n_ply);
-      end
-      else
-        movePly.ply := n_ply + 1;
-
-      movePlyStack.Push(movePly);
-
-      if (RightStr(s, length(s) - 1) = '') then
-        exit;
-
-      Result := FALSE;
-    end; // \NStartLine
-
-    function NextWord: string;
-    var
-      l : integer;
-    begin
-      str := TrimLeft(str);
-      l := pos(' ', str);
-      if (l = 0) then
-      begin
-        Result := str;
-        str := '';
-      end
-      else
-      begin
-        Result := LeftStr(str, l - 1);
-        str := RightStr(str, length(str) - l);
-      end;
-    end; // \NextWord
-
-    procedure NTakeBackLine;
-    var
-      movePly: PMovePly;
-      n: integer;
-    begin
-      movePly := PMovePly(movePlyStack.Pop);
-      while (movePly.ply <= n_ply) do
-      begin
-        m_ChessRulesEngine.TakeBack;
-        dec(n_ply);
-      end;
-
-      if m_ChessRulesEngine.DoMove(movePly.move) then
-      begin
-        m_Tree.SetPlyForPlyIndex(m_ChessRulesEngine.NPlysDone - m_Tree.PlysOffset,
-          m_ChessRulesEngine.lastMoveStr);
-        inc(n_ply);
-//        addPos := (genOpening = openNo) or PosBase.Find(ChessRulesEngine.Position^); // Opening
-      end
-      else
-      begin
-        lastInvalidMove := TRUE;
-        addPos := movePly.addPos; // Opening
-      end;
-
-      n := movePly.posMoveCount;
-      while (n < posMoveStack.Count) do // Deletion of subline stack
-        Dispose(posMoveStack.Pop);
-
-      bkpMove := movePly.move;
-
-      movePly.move := '';
-      Dispose(movePly);
-    end; // \NTakeBackLine
-
-  var
-    s, strOriginalMove: string;
-    i: integer;
-    n: integer;
-//    movePly: PMovePly;
-    posMove: TPosMove;
-//    p_posMove: PPosMove;
-    bTakebackLineFlag: boolean;
-    wstrComment: WideString;
-  begin // \NProceedInner
-    s := NextWord;
-
-    if (s = '') or (s = '*') or (s = '1-0') or (s = '0-1') or (s = '1/2-1/2') then
-      exit;
-
-    if (s[1] = '{') then // Cuts out comments
-    begin
-      if (NParseComment(s, wstrComment)) then
-      begin
-        m_Tree.Comments[m_ChessRulesEngine.NPlysDone] := wstrComment;
-        exit;
-      end;
-    end;
-
-    if (s[1] = '(') then
-    begin
-      if (NStartLine(s)) then
-        exit;
-    end;
-
-    if (s = ')') then
-    begin
-      bTakebackLineFlag := TRUE;
-      s := '';
-    end
-    else
-    begin
-      bTakebackLineFlag := FALSE;
-      while ((s <> '') and (s[length(s)] = ')')) do
-      begin
-        str := ') ' + str;
-        s := LeftStr(s, length(s) - 1);
-      end;
-    end;
-
-    if (s = '...') then
-      exit;
-
-    for i := length(s) downto 1 do
-    begin
-      if (s[i] = '.') then
-      begin
-        str := RightStr(s, length(s) - i) + ' ' + str;
-        s := LeftStr(s, i);
-        break;
-      end;
-    end;
-
-    if (RightStr(s, 2) = '..') then // 21... => 21.
-      s := LeftStr(s, length(s) - 2);
-
-    if (s <> '') and
-       (not ((s[length(s)] = '.') and TryStrToInt(LeftStr(s, length(s) - 1), n) and
-             (n = (n_ply shr 1) + 1))) and
-       (s[1] <> '$') then
-    begin
-      strOriginalMove := s;
-
-      s := StringReplace(s, 'O-O-O', '0-0-0', []);
-      s := StringReplace(s, 'O-O', '0-0', []);
-      s := StringReplace(s, 'x', '', []);
-      s := StringReplace(s, '=', '', []);
-//      s := StringReplace(s, '+', '', []);
-//      s := StringReplace(s, '#', '', []);
-
-      posMove.pos := m_ChessRulesEngine.Position^;
-      if (m_ChessRulesEngine.DoMove(s)) then
-      begin
-        m_Tree.Add(m_ChessRulesEngine.NPlysDone, m_ChessRulesEngine.GetPosition,
-          m_ChessRulesEngine.lastMoveStr);
-
-        m_bInC4NFormat := (m_bInC4NFormat and (strOriginalMove = m_ChessRulesEngine.lastMoveStr));
-
-        bkpMove := s;
-
-        inc(n_ply);
-//        inc(n_pos);
-
-        lastInvalidMove := FALSE;
-
-//        writeln(n_ply, 'p. ' + s + #9 + ChessBoard.GetPosition); // DEBUG:
-      end
-      else
-      begin
-//        writeln(s, ' n_pos: ', n_pos); // DEBUG:
-//        Assert(not lastInvalidMove);
-        if (lastInvalidMove) then
-          raise EPGNParser.Create;
-
-        lastInvalidMove := TRUE;
-      end; // if (ChessRulesEngine.DoMove(s))
-
-      bkpMove := s;
-    end; { if (s <> '') ...}
-
-    if (bTakebackLineFlag) then
-      NTakeBackLine;
-
-  end; // \NProceedInner
-
-var
-  str: string;
   i: integer;
-begin // .FParseGameStr
-//  inc(n_game);
+begin
 
   m_ChessRulesEngine.InitNewGame;
   if (m_strStartPosition <> '') then
@@ -623,50 +368,317 @@ begin // .FParseGameStr
   m_Tree.Clear;
   m_Tree.WhiteStarts := (m_ChessRulesEngine.Position.color = fcWhite);
   m_Tree.Add(m_ChessRulesEngine.GetPosition);
-  m_Tree.PlysOffset := 2 * m_ChessRulesEngine.MovesOffset; 
-
+  m_Tree.PlysOffset := 2 * m_ChessRulesEngine.MovesOffset;
 
   moveEsts := nil;
-  posMoveStack := nil;
-  movePlyStack := TStack.Create;
+  m_PosMoveStack := nil;
+  m_MovePlyStack := TStack.Create;
   try
     moveEsts := TList.Create;
-    posMoveStack := TStack.Create;
+    m_PosMoveStack := TStack.Create;
 
-    n_ply := m_Tree.PlysOffset;
-    bkpMove := '';
-    lastInvalidMove := TRUE;
-    addPos := TRUE;
-//    addSimplePosMove := FALSE;
+    m_iPly := m_Tree.PlysOffset;
+    m_strBkpMove := '';
+    m_bLastInvalidMove := TRUE;
+    m_bAddPos := TRUE;
 
-    str := strGame;
     repeat
-      NProceedInner(str);
-    until (str = '');
+      FParseNextToken;
+    until FHasNoTokens;
 
-//    Assert(movePlyStack.Count = 0);
-      if (movePlyStack.Count <> 0) then
-        raise EPGNParser.Create;
+    if (m_MovePlyStack.Count <> 0) then
+      raise EPGNParser.Create;
 
   finally
     for i := 0 to moveEsts.Count - 1 do
       Dispose(moveEsts[i]);
     moveEsts.Free;
 
-    while (posMoveStack.Count > 0) do
-      Dispose(posMoveStack.Pop);
-    posMoveStack.Free;
+    while (m_PosMoveStack.Count > 0) do
+      Dispose(m_PosMoveStack.Pop);
+    m_PosMoveStack.Free;
 
-    movePlyStack.Free;
+    m_MovePlyStack.Free;
   end;
+
 end;
 
-////////////////////////////////////////////////////////////////////////////////
-// EPGNParser
 
-constructor EPGNParser.Create;
+function TGameParser.FHasNoTokens: boolean;
 begin
-  inherited Create('');
+  Result := (m_iDataLine >= m_wstrlData.Count);
 end;
+
+
+procedure TGameParser.FParseNextToken;
+var
+  wstrToken, wstr: WideString;
+  strOriginalMove: string;
+  i: integer;
+  n: integer;
+  posMove: TPosMove;
+  bTakebackLineFlag: boolean;
+  wstrComment: WideString;
+begin
+  wstrToken := FNextToken;
+
+  wstr := TrimRight(wstrToken);
+
+  if ((wstr = '') or (wstr = '*') or (wstr = '1-0') or (wstr = '0-1') or (wstr = '1/2-1/2')) then
+    exit;
+
+  if (wstr[1] = '{') then
+  begin
+    if (FParseComment(wstrToken, wstrComment)) then
+    begin
+      m_Tree.Comments[m_ChessRulesEngine.NPlysDone] := wstrComment;
+      exit;
+    end;
+  end;
+
+  if (wstr[1] = '(') then
+  begin
+    if (FStartLine(wstr)) then
+      exit;
+  end;
+
+  if (wstr = ')') then
+  begin
+    bTakebackLineFlag := TRUE;
+    wstr := '';
+  end
+  else
+  begin
+    bTakebackLineFlag := FALSE;
+    while ((wstr <> '') and (wstr[length(wstr)] = ')')) do
+    begin
+      FAppendDataLeft(') ');
+      wstr := LeftStr(wstr, length(wstr) - 1);
+    end;
+  end;
+
+  if (wstr = '...') then
+    exit;
+
+  for i := length(wstr) downto 1 do
+  begin
+    if (wstr[i] = '.') then
+    begin
+      FAppendDataLeft(RightStr(wstr, length(wstr) - i) + ' ');
+      wstr := LeftStr(wstr, i);
+      break;
+    end;
+  end;
+
+  if (RightStr(wstr, 2) = '..') then // 21... => 21.
+    wstr := LeftStr(wstr, length(wstr) - 2);
+
+  if (wstr <> '') and
+     (not ((wstr[length(wstr)] = '.') and TryStrToInt(LeftStr(wstr, length(wstr) - 1), n) and
+           (n = (m_iPly shr 1) + 1))) and
+     (wstr[1] <> '$') then
+  begin
+    strOriginalMove := wstr;
+
+    wstr := StringReplace(wstr, 'O-O-O', '0-0-0', []);
+    wstr := StringReplace(wstr, 'O-O', '0-0', []);
+    wstr := StringReplace(wstr, 'x', '', []);
+    wstr := StringReplace(wstr, '=', '', []);
+//      s := StringReplace(s, '+', '', []);
+//      s := StringReplace(s, '#', '', []);
+
+    posMove.pos := m_ChessRulesEngine.Position^;
+    if (m_ChessRulesEngine.DoMove(wstr)) then
+    begin
+      m_Tree.Add(m_ChessRulesEngine.NPlysDone, m_ChessRulesEngine.GetPosition,
+        m_ChessRulesEngine.lastMoveStr);
+
+      m_bInC4NFormat := (m_bInC4NFormat and (strOriginalMove = m_ChessRulesEngine.lastMoveStr));
+
+      m_strBkpMove := wstr;
+
+      inc(m_iPly);
+
+      m_bLastInvalidMove := FALSE;
+
+//      writeln(n_ply, 'p. ' + s + #9 + ChessBoard.GetPosition); // DEBUG:
+    end
+    else
+    begin
+//      writeln(s, ' n_pos: ', n_pos); // DEBUG:
+      if (m_bLastInvalidMove) then
+        raise EPGNParser.Create;
+
+      m_bLastInvalidMove := TRUE;
+    end; // if (ChessRulesEngine.DoMove(s))
+
+    m_strBkpMove := wstr;
+  end; { if (s <> '') ...}
+
+  if (bTakebackLineFlag) then
+    FTakeBackLine;
+end;
+
+
+procedure TGameParser.FAppendDataLeft(const wstr: WideString);
+begin
+  m_wstrlData[m_iDataLine] := wstr + m_wstrlData[m_iDataLine];
+end;
+
+
+function TGameParser.FNextToken: WideString;
+var
+  wstr: WideString;
+  iPos: integer;
+  bTokenFound: boolean;
+begin
+  Result := '';
+
+  repeat
+    if (FHasNoTokens) then
+      exit;
+
+    wstr := TrimLeft(m_wstrlData[m_iDataLine]);
+
+    if (wstr = '') then
+      inc(m_iDataLine);
+  until (wstr <> '');
+
+  iPos := Pos(' ', wstr);
+
+  if (iPos = 0) then
+  begin
+    Result := wstr;
+    m_wstrlData[m_iDataLine] := '';
+    exit;
+  end;
+
+  repeat
+    inc(iPos);
+  until ((iPos > Length(wstr)) or (wstr[iPos] <> ' '));
+
+  Result := Copy(wstr, 1, iPos - 1);
+  m_wstrlData[m_iDataLine] := Copy(wstr, iPos, MaxInt);
+end;
+
+
+function TGameParser.FParseComment(const wstrToken: WideString; out wstrComment: WideString): boolean;
+var
+  wstr: WideString;
+  iPos: integer;
+  bEndOfComment: boolean;
+begin
+  wstrComment := '';
+  Result := TRUE;
+
+  Assert((wstrToken <> '') and (wstrToken[1] = '{'));
+
+  wstr := Copy(wstrToken, 2, MaxInt);
+
+  bEndOfComment := FALSE;
+
+  while (not FHasNoTokens) do
+  begin
+    iPos := 0;
+    repeat
+      inc(iPos);
+      iPos := PosEx('}', wstr, iPos);
+      if (iPos > 0) then
+      begin
+        if ((iPos < Length(wstr)) and (wstr[iPos + 1] = '}')) then
+          Delete(wstr, iPos, 1) // TODO: check
+        else
+        begin
+          bEndOfComment := TRUE;
+          FAppendDataLeft(Copy(wstr, iPos + 1, MaxInt));
+          wstr := Copy(wstr, 1, iPos - 1);
+        end;
+      end;
+    until (iPos = 0);
+
+    wstrComment := wstrComment + wstr;
+
+    if (bEndOfComment) then
+      exit;
+
+    wstr := FNextToken;
+  end;
+
+  Result := FALSE;
+
+  raise EPGNParser.Create;
+end;
+
+
+function TGameParser.FStartLine(const strToken: string): boolean;
+var
+  movePly: PMovePly;
+begin
+  Result := TRUE;
+
+  if ((length(strToken) > 1) and (strToken[2] = '{')) then
+  begin
+    FAppendDataLeft('( {');
+    exit;
+  end;
+
+  New(movePly);
+  movePly.move := m_strBkpMove;
+  movePly.ply := m_iPly;
+  movePly.addPos := m_bAddPos;
+  movePly.posMoveCount := m_PosMoveStack.Count;
+
+  if (not m_bLastInvalidMove) then
+  begin
+    movePly.ply := m_iPly;
+    m_ChessRulesEngine.TakeBack;
+    dec(m_iPly);
+  end
+  else
+    movePly.ply := m_iPly + 1;
+
+  m_MovePlyStack.Push(movePly);
+
+  if (RightStr(strToken, length(strToken) - 1) = '') then
+    exit;
+
+  Result := FALSE;
+end;
+
+
+procedure TGameParser.FTakeBackLine;
+var
+  movePly: PMovePly;
+  n: integer;
+begin
+  movePly := PMovePly(m_MovePlyStack.Pop);
+  while (movePly.ply <= m_iPly) do
+  begin
+    m_ChessRulesEngine.TakeBack;
+    dec(m_iPly);
+  end;
+
+  if m_ChessRulesEngine.DoMove(movePly.move) then
+  begin
+    m_Tree.SetPlyForPlyIndex(m_ChessRulesEngine.NPlysDone - m_Tree.PlysOffset,
+      m_ChessRulesEngine.lastMoveStr);
+    inc(m_iPly);
+  end
+  else
+  begin
+    m_bLastInvalidMove := TRUE;
+    m_bAddPos := movePly.addPos; // Opening
+  end;
+
+  n := movePly.posMoveCount;
+  while (n < m_PosMoveStack.Count) do // Deletion of subline stack
+    Dispose(m_PosMoveStack.Pop);
+
+  m_strBkpMove := movePly.move;
+
+  movePly.move := '';
+  Dispose(movePly);
+end;
+
 
 end.
