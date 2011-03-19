@@ -57,7 +57,6 @@ type
     PopupSelectLineMenuItem: TTntMenuItem;
     OpeningsDBManagerAction: TAction;
     InitialPositionAction: TAction;
-    PopupInitialPositionMenuItem: TTntMenuItem;
     FileNewStandardMenuItem: TTntMenuItem;
     N6: TTntMenuItem;
     PositionReturnFromLineMenuItem: TTntMenuItem;
@@ -98,6 +97,9 @@ type
     EditPopupBlackKnightMenuItem: TTntMenuItem;
     CommentsMenuItem: TTntMenuItem;
     CommentsAction: TAction;
+    ReturnFromLine: TTntMenuItem;
+    EndPositionAction: TAction;
+    PositionEndMenuItem: TTntMenuItem;
     procedure FileExitMenuItemClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormCanResize(Sender: TObject; var NewWidth,
@@ -150,6 +152,8 @@ type
     procedure CommentsActionExecute(Sender: TObject);
     procedure CommentsActionUpdate(Sender: TObject);
     procedure StatusBarHint(Sender: TObject);
+    procedure EndPositionActionExecute(Sender: TObject);
+    procedure EndPositionActionUpdate(Sender: TObject);
   private
     m_ChessBoard: TPosBaseChessBoard;
     m_ResizingType: (rtNo, rtHoriz, rtVert);
@@ -248,6 +252,7 @@ type
     procedure IPositionEditable.StopEditing = FStopEditing;
 
     procedure FSetToInitialPosition;
+    procedure FSetToEndPosition;
     procedure FTakebackMove;
     procedure FForwardMove;
     procedure FReturnFromCurrentLine;
@@ -506,6 +511,12 @@ end;
 procedure TAnalyseChessBoard.FSetToInitialPosition;
 begin
   FSetCurrentPlyIndex(0);
+end;
+
+
+procedure TAnalyseChessBoard.FSetToEndPosition;
+begin
+  FSetCurrentPlyIndex(FGetPlysCount);
 end;
 
 
@@ -906,6 +917,8 @@ begin
   SelectLineAction.Update;
   ReturnFromLineAction.Update;
   DeleteLineAction.Update;
+  InitialPositionAction.Update;
+  EndPositionAction.Update;
 end;
 
 
@@ -1532,6 +1545,18 @@ begin
   end
   else
     StatusBar.ShowHint := FALSE;
+end;
+
+
+procedure TAnalyseChessBoard.EndPositionActionExecute(Sender: TObject);
+begin
+  FSetToEndPosition;
+end;
+
+
+procedure TAnalyseChessBoard.EndPositionActionUpdate(Sender: TObject);
+begin
+  (Sender as TAction).Enabled := (FGetCurrentPlyIndex < FGetPlysCount);
 end;
 
 end.

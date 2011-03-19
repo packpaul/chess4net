@@ -37,6 +37,7 @@ type
     InitialSpeedButton: TSpeedButton;
     ReturnFromLineSpeedButton: TSpeedButton;
     DeleteLineSpeedButton: TSpeedButton;
+    EndSpeedButton: TSpeedButton;
     procedure FormCreate(Sender: TObject);
     procedure FormDeactivate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
