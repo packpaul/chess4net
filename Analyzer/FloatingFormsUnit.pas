@@ -16,6 +16,9 @@ type
     procedure FRemoveChild(AChild: TChildFloatingForm);
     procedure WMMoving(var Msg: TWMMoving); message WM_MOVING;
     procedure WMSize(var Message: TWMSize); message WM_SIZE;
+
+    procedure FRecalculateOffsetForEachChild;
+
     property InitialLeft: integer read m_InitialPos.X;
     property InitialTop: integer read m_InitialPos.Y;
   public
@@ -38,6 +41,9 @@ type
   end;
 
 implementation
+
+uses
+  Windows;
 
 ////////////////////////////////////////////////////////////////////////////////
 //  TChildFloatingForm
@@ -163,15 +169,27 @@ procedure TMainFloatingForm.WMMoving(var Msg: TWMMoving);
 var
   i: integer;
 begin
-  for i := 0 to m_lstChilds.Count - 1 do
-    TChildFloatingForm(m_lstChilds[i]).FUpdateOffsetedPosition(
-      Point(Msg.DragRect.Left, Msg.DragRect.Top));
+  if ((GetKeyState(VK_CONTROL) and (not $7FFF)) = 0) then
+  begin
+    for i := 0 to m_lstChilds.Count - 1 do
+      TChildFloatingForm(m_lstChilds[i]).FUpdateOffsetedPosition(
+        Point(Msg.DragRect.Left, Msg.DragRect.Top));
+  end
+  else
+    FRecalculateOffsetForEachChild;        
 
   inherited;
 end;
 
 
 procedure TMainFloatingForm.WMSize(var Message: TWMSize);
+begin
+  FRecalculateOffsetForEachChild;
+  inherited;
+end;
+
+
+procedure TMainFloatingForm.FRecalculateOffsetForEachChild;
 var
   i: integer;
 begin
@@ -180,8 +198,6 @@ begin
     for i := 0 to m_lstChilds.Count - 1 do
       TChildFloatingForm(m_lstChilds[i]).FRecalculateOffset;
   end;
-
-  inherited;
 end;
 
 end.
