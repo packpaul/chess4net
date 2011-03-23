@@ -146,6 +146,13 @@ object AnalyseChessBoard: TAnalyseChessBoard
         Action = SetLineToMainAction
         Caption = 'Set Line To &Main'
       end
+      object N10: TTntMenuItem
+        Caption = '-'
+      end
+      object EditCommentMenuItem: TTntMenuItem
+        Action = EditCommentAction
+        Caption = '&Edit Comment'
+      end
     end
     object PositionMenuItem: TTntMenuItem
       Caption = '&Position'
@@ -351,6 +358,12 @@ object AnalyseChessBoard: TAnalyseChessBoard
       ShortCut = 35
       OnExecute = EndPositionActionExecute
       OnUpdate = EndPositionActionUpdate
+    end
+    object EditCommentAction: TAction
+      Category = 'Edit'
+      Hint = 'Edit comment'
+      ShortCut = 16453
+      OnExecute = EditCommentActionExecute
     end
   end
   object ImageList: TImageList

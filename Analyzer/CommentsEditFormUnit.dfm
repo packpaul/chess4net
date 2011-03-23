@@ -1,12 +1,12 @@
 object CommentsEditForm: TCommentsEditForm
   Left = 454
   Top = 338
-  Width = 382
-  Height = 190
+  Width = 391
+  Height = 203
   BorderIcons = [biSystemMenu]
   Caption = 'Edit Comments'
   Color = clBtnFace
-  Constraints.MinHeight = 90
+  Constraints.MinHeight = 110
   Constraints.MinWidth = 200
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -18,26 +18,30 @@ object CommentsEditForm: TCommentsEditForm
   Position = poMainFormCenter
   OnShow = FormShow
   DesignSize = (
-    374
-    163)
+    375
+    167)
   PixelsPerInch = 96
   TextHeight = 13
   object OkButton: TButton
-    Left = 293
-    Top = 132
+    Left = 294
+    Top = 135
     Width = 75
     Height = 25
+    Hint = 'OK (Ctrl+Enter)'
     Anchors = [akRight, akBottom]
     Caption = '&OK'
     Default = True
     ModalResult = 1
+    ParentShowHint = False
+    ShowHint = True
     TabOrder = 2
   end
   object CommentsMemo: TTntMemo
     Left = 0
     Top = 0
-    Width = 374
+    Width = 375
     Height = 125
+    Align = alTop
     Anchors = [akLeft, akTop, akRight, akBottom]
     Font.Charset = RUSSIAN_CHARSET
     Font.Color = clWindowText
@@ -50,8 +54,8 @@ object CommentsEditForm: TCommentsEditForm
     OnChange = CommentsMemoChange
   end
   object CancelButton: TButton
-    Left = 215
-    Top = 132
+    Left = 216
+    Top = 135
     Width = 75
     Height = 25
     Anchors = [akRight, akBottom]

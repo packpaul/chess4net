@@ -12,13 +12,11 @@ type
     EditButton: TButton;
     CommentsMemo: TTntMemo;
     procedure FormCreate(Sender: TObject);
-    procedure EditButtonClick(Sender: TObject);
     procedure FormShow(Sender: TObject);
   private
     m_PlysProvider: IPlysProvider;
     procedure FSetPlysProvider(APlysProvider: IPlysProvider);
     function FGetComments: WideString;
-    procedure FSetComments(const wstrComments: WideString);
   public
     procedure Refresh;
     property PlysProvider: IPlysProvider read m_PlysProvider write FSetPlysProvider;
@@ -29,7 +27,10 @@ implementation
 {$R *.dfm}
 
 uses
-  CommentsEditFormUnit;
+  AnalyseChessBoardUnit;
+
+const
+  LBL_EDIT_BTN = '&Edit';
 
 ////////////////////////////////////////////////////////////////////////////////
 // TCommentsForm
@@ -51,20 +52,7 @@ end;
 procedure TCommentsForm.FormCreate(Sender: TObject);
 begin
   m_PlysProvider := nil;
-end;
-
-
-procedure TCommentsForm.EditButtonClick(Sender: TObject);
-var
-  wstrComments: WideString;
-begin
-  wstrComments := FGetComments;
-
-  if (TCommentsEditForm.Edit(wstrComments)) then
-  begin
-    FSetComments(wstrComments);
-    Refresh;
-  end;
+  EditButton.Caption := LBL_EDIT_BTN; // if action is associated with a button control the custom caption gets erased -> fix
 end;
 
 
@@ -74,13 +62,6 @@ begin
     Result := m_PlysProvider.Comments[m_PlysProvider.CurrentPlyIndex]
   else
     Result := '';
-end;
-
-
-procedure TCommentsForm.FSetComments(const wstrComments: WideString);
-begin
-  if (Assigned(m_PlysProvider)) then
-    m_PlysProvider.Comments[m_PlysProvider.CurrentPlyIndex] := wstrComments;
 end;
 
 

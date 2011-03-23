@@ -100,6 +100,9 @@ type
     ReturnFromLine: TTntMenuItem;
     EndPositionAction: TAction;
     PositionEndMenuItem: TTntMenuItem;
+    EditCommentAction: TAction;
+    N10: TTntMenuItem;
+    EditCommentMenuItem: TTntMenuItem;
     procedure FileExitMenuItemClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormCanResize(Sender: TObject; var NewWidth,
@@ -154,6 +157,7 @@ type
     procedure StatusBarHint(Sender: TObject);
     procedure EndPositionActionExecute(Sender: TObject);
     procedure EndPositionActionUpdate(Sender: TObject);
+    procedure EditCommentActionExecute(Sender: TObject);
   private
     m_ChessBoard: TPosBaseChessBoard;
     m_ResizingType: (rtNo, rtHoriz, rtVert);
@@ -288,7 +292,7 @@ uses
   Windows, TntClipbrd,
   //
   GlobalsLocalUnit, DontShowMessageDlgUnit,
-  IniSettingsUnit, PGNWriterUnit, SplashFormUnit;
+  IniSettingsUnit, PGNWriterUnit, SplashFormUnit, CommentsEditFormUnit;
 
 {$R *.dfm}
 
@@ -1557,6 +1561,21 @@ end;
 procedure TAnalyseChessBoard.EndPositionActionUpdate(Sender: TObject);
 begin
   (Sender as TAction).Enabled := (FGetCurrentPlyIndex < FGetPlysCount);
+end;
+
+
+procedure TAnalyseChessBoard.EditCommentActionExecute(Sender: TObject);
+var
+  wstrComments: WideString;
+begin
+  wstrComments := FGetComments(FGetCurrentPlyIndex);
+
+  if (TCommentsEditForm.Edit(wstrComments)) then
+  begin
+    FSetComments(FGetCurrentPlyIndex, wstrComments);
+    if (Assigned(m_CommentsForm)) then
+      m_CommentsForm.Refresh;
+  end;
 end;
 
 end.

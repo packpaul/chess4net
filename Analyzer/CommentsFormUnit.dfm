@@ -1,14 +1,14 @@
 object CommentsForm: TCommentsForm
   Left = 429
   Top = 635
-  Width = 601
-  Height = 122
+  Width = 591
+  Height = 128
   BorderIcons = [biSystemMenu]
   BorderStyle = bsSizeToolWin
   Caption = 'Comments'
   Color = clBtnFace
-  Constraints.MinHeight = 90
-  Constraints.MinWidth = 100
+  Constraints.MinHeight = 110
+  Constraints.MinWidth = 150
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
   Font.Height = -11
@@ -19,25 +19,28 @@ object CommentsForm: TCommentsForm
   OnCreate = FormCreate
   OnShow = FormShow
   DesignSize = (
-    593
-    95)
+    575
+    92)
   PixelsPerInch = 96
   TextHeight = 13
   object EditButton: TButton
-    Left = 512
-    Top = 64
+    Left = 495
+    Top = 62
     Width = 75
     Height = 25
+    Action = AnalyseChessBoard.EditCommentAction
     Anchors = [akRight, akBottom]
     Caption = '&Edit'
+    ParentShowHint = False
+    ShowHint = True
     TabOrder = 1
-    OnClick = EditButtonClick
   end
   object CommentsMemo: TTntMemo
     Left = 0
     Top = 0
-    Width = 593
+    Width = 575
     Height = 57
+    Align = alTop
     Anchors = [akLeft, akTop, akRight, akBottom]
     Font.Charset = RUSSIAN_CHARSET
     Font.Color = clWindowText

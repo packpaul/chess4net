@@ -6,9 +6,13 @@ uses
   Forms, StdCtrls, TntStdCtrls, Classes, Controls, Messages;
 
 type
+  TCommentsEditForm = class;
+  
   TTntMemo = class(TntStdCtrls.TTntMemo)
   private
+    function FGetCommentsEditForm: TCommentsEditForm;
     procedure CNKeyDown(var Message: TWMKeyDown); message CN_KEYDOWN;
+    property CommentsEditForm: TCommentsEditForm read FGetCommentsEditForm;
   end;
 
   TCommentsEditForm = class(TForm)
@@ -28,6 +32,8 @@ type
 implementation
 
 uses
+  Windows,
+  //
   WinControlHlpUnit;
 
 {$R *.dfm}
@@ -125,7 +131,32 @@ end;
 
 procedure TTntMemo.CNKeyDown(var Message: TWMKeyDown);
 begin
-  TWinControlHlp.CNKeyDown(self, Message);
+  case Message.CharCode of
+    VK_RETURN:
+    begin
+      if ((GetKeyState(VK_CONTROL) and (not $7FFF)) <> 0) then
+      begin
+        Message.Result := 1;
+        CommentsEditForm.OkButton.Click;
+      end;
+    end;
+
+    VK_ESCAPE:
+    begin
+      Message.Result := 1;
+      CommentsEditForm.CancelButton.Click;
+      exit;
+    end;
+
+  end;
+
+  TWinControlHlp.CNKeyDown(self, Message);  
+end;
+
+
+function TTntMemo.FGetCommentsEditForm: TCommentsEditForm;
+begin
+  Result := Owner as TCommentsEditForm;
 end;
 
 end.
