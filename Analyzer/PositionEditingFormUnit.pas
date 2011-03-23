@@ -121,16 +121,9 @@ implementation
 uses
   Windows, Graphics, SysUtils, Dialogs,
   //
-  BitmapResUnit;
+  BitmapResUnit, WinControlHlpUnit;
 
 {$R *.dfm}
-
-type
-  TWinControlHlp = class(TWinControl)
-  public
-    class procedure CNKeyDown(WinControl: TWinControl;
-      var Message: TWMKeyDown);
-  end;
 
 const
   MSG_FEN_WRONG = 'FEN format is wrong!';
@@ -566,46 +559,6 @@ end;
 procedure TEdit.CNKeyDown(var Message: TWMKeyDown);
 begin
   TWinControlHlp.CNKeyDown(self, Message);
-end;
-
-////////////////////////////////////////////////////////////////////////////////
-// TWinControlHlp
-
-class procedure TWinControlHlp.CNKeyDown(WinControl: TWinControl;
-  var Message: TWMKeyDown);
-var
-  WCHlp: TWinControlHlp;
-  Mask: Integer;
-begin
-  WCHlp := TWinControlHlp(WinControl);
-
-  with Message do
-  begin
-    Result := 1;
-    WCHlp.UpdateUIState(Message.CharCode);
-//    if IsMenuKey(Message) then Exit;
-    if not (csDesigning in WCHlp.ComponentState) then
-    begin
-      if (WCHlp.Perform(CM_CHILDKEY, CharCode, Integer(Self)) <> 0) then
-        Exit;
-      Mask := 0;
-      case CharCode of
-        VK_TAB:
-          Mask := DLGC_WANTTAB;
-        VK_LEFT, VK_RIGHT, VK_UP, VK_DOWN:
-          Mask := DLGC_WANTARROWS;
-        VK_RETURN, VK_EXECUTE, VK_ESCAPE, VK_CANCEL:
-          Mask := DLGC_WANTALLKEYS;
-      end;
-      if (Mask <> 0) and
-         (WCHlp.Perform(CM_WANTSPECIALKEY, CharCode, 0) = 0) and
-         (WCHlp.Perform(WM_GETDLGCODE, 0, 0) and Mask = 0) and
-         (GetParentForm(WCHlp).Perform(CM_DIALOGKEY, CharCode, KeyData) <> 0) then
-        Exit;
-    end;
-    Result := 0;
-  end;
-  
 end;
 
 end.

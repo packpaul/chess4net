@@ -39,7 +39,8 @@ uses
   PositionEditingFormUnit in 'PositionEditingFormUnit.pas' {PositionEditingForm},
   FloatingFormsUnit in 'FloatingFormsUnit.pas',
   CommentsFormUnit in 'CommentsFormUnit.pas' {CommentsForm},
-  CommentsEditFormUnit in 'CommentsEditFormUnit.pas' {CommentsEditForm};
+  CommentsEditFormUnit in 'CommentsEditFormUnit.pas' {CommentsEditForm},
+  WinControlHlpUnit in 'WinControlHlpUnit.pas';
 
 {$R ..\Chess4Net.res}
 

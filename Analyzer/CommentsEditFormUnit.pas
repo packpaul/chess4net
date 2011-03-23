@@ -3,9 +3,14 @@ unit CommentsEditFormUnit;
 interface
 
 uses
-  Forms, StdCtrls, TntStdCtrls, Classes, Controls;
+  Forms, StdCtrls, TntStdCtrls, Classes, Controls, Messages;
 
 type
+  TTntMemo = class(TntStdCtrls.TTntMemo)
+  private
+    procedure CNKeyDown(var Message: TWMKeyDown); message CN_KEYDOWN;
+  end;
+
   TCommentsEditForm = class(TForm)
     OkButton: TButton;
     CommentsMemo: TTntMemo;
@@ -21,6 +26,9 @@ type
   end;
 
 implementation
+
+uses
+  WinControlHlpUnit;
 
 {$R *.dfm}
 
@@ -110,6 +118,14 @@ end;
 procedure TCommentsEditForm.FormShow(Sender: TObject);
 begin
   OkButton.Enabled := FALSE;
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TTntMemo
+
+procedure TTntMemo.CNKeyDown(var Message: TWMKeyDown);
+begin
+  TWinControlHlp.CNKeyDown(self, Message);
 end;
 
 end.
