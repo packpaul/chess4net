@@ -14,7 +14,8 @@ uses
   PositionEditingFormUnit in '..\PositionEditingFormUnit.pas' {PositionEditingForm},
   BitmapResUnit in '..\..\BitmapResUnit.pas',
   ChessBoardHeaderUnit in '..\..\ChessBoardHeaderUnit.pas',
-  FloatingFormsUnit in '..\FloatingFormsUnit.pas';
+  FloatingFormsUnit in '..\FloatingFormsUnit.pas',
+  WinControlHlpUnit in '..\WinControlHlpUnit.pas';
 
 {$R *.res}
 

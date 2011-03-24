@@ -22,8 +22,6 @@ type
     procedure FWriteWrappedText(const wstr: WideString; iIndent: integer = 0;
       bSplit: boolean = FALSE; bLeaveSpacesWhenWrapped: boolean = FALSE);
 
-    procedure FWriteTreeInChess4NetFormat;
-
   public
     constructor Create;
     destructor Destroy; override;
@@ -34,9 +32,35 @@ type
 implementation
 
 uses
-  SysUtils, StrUtils, Math,
+  SysUtils, TntSysUtils, StrUtils, Math,
   //
   ChessRulesEngine;
+
+type
+  TGameTreeWriter = class
+  private
+    m_Writer: TPGNWriter;
+    m_Tree: TPlysTree;
+
+    m_iTreeDepth: integer;
+    m_bAddIndentFormatting: boolean;
+    m_bExplicitNumberingFormatting: boolean;
+
+    procedure FWriteWrappedText(const wstr: WideString; iIndent: integer = 0;
+      bSplit: boolean = FALSE; bLeaveSpacesWhenWrapped: boolean = FALSE);
+    procedure FWriteLine;
+
+    function FGetTextIndent: integer;
+
+    function FWriteComment(wstrComment: WideString): boolean;
+
+  public
+    procedure WriteInC4NFormat;
+    constructor Create(AWriter: TPGNWriter);
+  end;
+
+const
+  MAX_INDENTED_TREE_DEPTH = 3;
 
 ////////////////////////////////////////////////////////////////////////////////
 // TPGNWriter
@@ -83,8 +107,14 @@ begin // .WriteInChess4NetFormat
     FWriteTag('C4N', '2'); // versionning for future uses
     NWriteFENTag;
     FWriteLine;
-    FWriteTreeInChess4NetFormat;
-    
+
+    with TGameTreeWriter.Create(self) do
+    try
+      WriteInC4NFormat;
+    finally
+      Free;
+    end;
+
   finally
     FreeAndNil(m_Tree);
   end;
@@ -151,8 +181,9 @@ const
     begin
       Assert(Length(wstr) > TEXT_WIDTH);
 
-      iPos := TEXT_WIDTH;
+      Result := TEXT_WIDTH;
 
+      iPos := Result;
       try
         if (bLeaveSpacesWhenWrapped) then
         begin
@@ -242,68 +273,45 @@ begin // .FWriteWrappedText
 end;
 
 
-procedure TPGNWriter.FWriteTreeInChess4NetFormat;
-const
-  MAX_INDENTED_TREE_DEPTH = 3;
+function TPGNWriter.FGetData: TTntStrings;
+begin
+  Result := m_wstrlData as TTntStrings;
+end;
 
-var
-  iTreeDepth: integer;
+////////////////////////////////////////////////////////////////////////////////
+// TGameTreeWriter
 
-  function NGetTextIndent: integer;
-  begin
-    Result := 2 * Min(iTreeDepth, MAX_INDENTED_TREE_DEPTH);
-  end;
+constructor TGameTreeWriter.Create(AWriter: TPGNWriter);
+begin
+  inherited Create;
+  m_Writer := AWriter;
+  m_Tree := AWriter.m_Tree;
+end;
 
-var
-  bAddIndentFormatting: boolean;
-  bExplicitNumberingFormatting: boolean;
 
-  function NWriteComment(wstrComment: WideString): boolean;
-  var
-    iIndent: integer;
-    iPosLeft, iPos: integer;
-    wstr: WideString;
-  begin
-    Result := FALSE;
+procedure TGameTreeWriter.FWriteWrappedText(const wstr: WideString; iIndent: integer = 0;
+  bSplit: boolean = FALSE; bLeaveSpacesWhenWrapped: boolean = FALSE);
+begin
+  m_Writer.FWriteWrappedText(wstr, iIndent, bSplit, bLeaveSpacesWhenWrapped);
+end;
 
-    wstrComment := Trim(wstrComment);
-    if (wstrComment = '') then
-      exit;
 
-    iIndent := IfThen((NGetTextIndent > 0), NGetTextIndent + 1);
+procedure TGameTreeWriter.FWriteLine;
+begin
+  m_Writer.FWriteLine;
+end;
 
-    FWriteWrappedText(IfThen(bAddIndentFormatting, ' ') + '{', iIndent);
 
-    iPosLeft := 1;
-    repeat
-      iPos := PosEx('}', wstrComment, iPosLeft);
-      if (iPos >= 1) then
-        wstr := Copy(wstrComment, iPosLeft, iPos - iPosLeft + 1)
-      else
-        wstr := Copy(wstrComment, iPosLeft, MaxInt);
-
-      FWriteWrappedText(wstr, iIndent + 1, TRUE, TRUE);
-      if (iPos >= 1) then
-        FWriteWrappedText('}', iIndent + 1);
-
-      iPosLeft := iPos + 1;
-    until (not (iPos >= 1));
-
-    FWriteWrappedText('}', iIndent + 1);
-
-    bExplicitNumberingFormatting := TRUE;
-
-    Result := TRUE;
-  end;
+procedure TGameTreeWriter.WriteInC4NFormat;
 
   procedure NWritePly(iPly: integer; const wstrPly: WideString);
   var
     bWhiteToMove: boolean;
     iMoveNumber: integer;
     wstrMoveNumber: WideString;
-  begin // \NWritePly
+  begin
     bWhiteToMove := TPlysTree.IsWhiteToMove(iPly, m_Tree.WhiteStarts);
-    if (bExplicitNumberingFormatting or bWhiteToMove) then
+    if (m_bExplicitNumberingFormatting or bWhiteToMove) then
     begin
       iMoveNumber := TPlysTree.ConvertPlyToMove(
         m_Tree.PlysOffset + iPly, m_Tree.WhiteStarts);
@@ -313,24 +321,24 @@ var
     else
     begin
       wstrMoveNumber := '';
-      bAddIndentFormatting := FALSE;
+      m_bAddIndentFormatting := FALSE;
     end;
 
-    FWriteWrappedText(IfThen(bAddIndentFormatting, ' ') + wstrMoveNumber + ' ' + wstrPly,
-      IfThen((NGetTextIndent > 0), NGetTextIndent + 1));
+    FWriteWrappedText(IfThen(m_bAddIndentFormatting, ' ') + wstrMoveNumber + ' ' + wstrPly,
+      IfThen((FGetTextIndent > 0), FGetTextIndent + 1));
 
-    bExplicitNumberingFormatting := FALSE;
-    bAddIndentFormatting := TRUE;
+    m_bExplicitNumberingFormatting := FALSE;
+    m_bAddIndentFormatting := TRUE;
   end;
 
   procedure NFConvertTreeToText(iPly: integer = 0);
   var
     i: integer;
     strlPlys: TStringList;
-  begin // \NFConvertTreeToText
+  begin
     if (iPly = 0) then
     begin
-      if (NWriteComment(m_Tree.Comments[0])) then
+      if (FWriteComment(m_Tree.Comments[0])) then
         FWriteLine;
     end;
 
@@ -348,53 +356,53 @@ var
           if (i = 0) then
           begin
             NWritePly(iPly, strlPlys[0]);
-            NWriteComment(m_Tree.Comments[iPly]);
+            FWriteComment(m_Tree.Comments[iPly]);
             continue;
           end;
 
           if (i = 1) then
           begin
-            if (iTreeDepth < MAX_INDENTED_TREE_DEPTH) then
+            if (m_iTreeDepth < MAX_INDENTED_TREE_DEPTH) then
             begin
               FWriteLine;
 //              if (iTreeDepth = 0) then
 //                FWriteLine;
             end;
 
-            FWriteWrappedText(' (', NGetTextIndent + 1, TRUE);
+            FWriteWrappedText(' (', FGetTextIndent + 1, TRUE);
 
-            bExplicitNumberingFormatting := TRUE;
-            bAddIndentFormatting := FALSE;
+            m_bExplicitNumberingFormatting := TRUE;
+            m_bAddIndentFormatting := FALSE;
           end;
 
           m_Tree.SetPlyForPlyIndex(iPly, strlPlys[i]);
 
-          inc(iTreeDepth);
+          inc(m_iTreeDepth);
           try
             NWritePly(iPly, strlPlys[i]);
-            NWriteComment(m_Tree.Comments[iPly]);
+            FWriteComment(m_Tree.Comments[iPly]);
             NFConvertTreeToText(iPly);
           finally
-            dec(iTreeDepth);
+            dec(m_iTreeDepth);
           end;
 
-          FWriteWrappedText(')', NGetTextIndent + 3, TRUE);
-          if ((iTreeDepth < MAX_INDENTED_TREE_DEPTH)) then
+          FWriteWrappedText(')', FGetTextIndent + 3, TRUE);
+          if ((m_iTreeDepth < MAX_INDENTED_TREE_DEPTH)) then
           begin
             FWriteLine;
-            bAddIndentFormatting := FALSE;
+            m_bAddIndentFormatting := FALSE;
           end;
 
           if (i = strlPlys.Count - 1) then
           begin
-            if (iTreeDepth = 0) then
+            if (m_iTreeDepth = 0) then
               FWriteLine;
           end;
 
           if (i < strlPlys.Count - 1) then
-            FWriteWrappedText(' (', NGetTextIndent + 1, TRUE);
+            FWriteWrappedText(' (', FGetTextIndent + 1, TRUE);
 
-          bExplicitNumberingFormatting := TRUE;
+          m_bExplicitNumberingFormatting := TRUE;
         end; // for i
 
         m_Tree.SetPlyForPlyIndex(iPly, strlPlys[0]);
@@ -407,19 +415,74 @@ var
 
   end;
 
-begin // .FConvertTreeToText
-  iTreeDepth := 0;
+begin // .WriteInC4NFormat
+  m_iTreeDepth := 0;
 
-  bExplicitNumberingFormatting := TRUE;
-  bAddIndentFormatting := FALSE;
-  
+  m_bExplicitNumberingFormatting := TRUE;
+  m_bAddIndentFormatting := FALSE;
+
   NFConvertTreeToText;
 end;
 
 
-function TPGNWriter.FGetData: TTntStrings;
+function TGameTreeWriter.FGetTextIndent: integer;
 begin
-  Result := m_wstrlData as TTntStrings;
+  Result := 2 * Min(m_iTreeDepth, MAX_INDENTED_TREE_DEPTH);
 end;
+
+
+function TGameTreeWriter.FWriteComment(wstrComment: WideString): boolean;
+var
+  iIndent: integer;
+
+  procedure NWriteCommentLine(const wstrCommentLine: WideString);
+  var
+    iPosLeft, iPos: integer;
+    wstr: WideString;
+  begin
+    wstr := Tnt_WideStringReplace(wstrCommentLine, '}', '}}', [rfReplaceAll]);
+    wstr := Tnt_WideStringReplace(wstr, '|', '||', [rfReplaceAll], TRUE);
+
+    FWriteWrappedText(wstr, iIndent + 1, TRUE, TRUE);
+  end;
+
+var
+  i: integer;
+begin // .FWriteComment
+  Result := FALSE;
+
+  wstrComment := Trim(wstrComment);
+  if (wstrComment = '') then
+    exit;
+
+  iIndent := IfThen((FGetTextIndent > 0), FGetTextIndent + 1);
+
+  FWriteWrappedText(IfThen(m_bAddIndentFormatting, ' ') + '{', iIndent);
+
+  with TTntStringList.Create do
+  try
+    Text := wstrComment;
+
+    NWriteCommentLine(Strings[0]);
+    for i := 1 to Count - 1 do
+    begin
+      if (Strings[i - 1] = '') then
+        FWriteWrappedText('| ', iIndent + 1, TRUE, TRUE)
+      else
+        FWriteWrappedText(' | ', iIndent + 1, FALSE, TRUE);
+      NWriteCommentLine(Strings[i]);
+    end;
+
+  finally
+    Free;
+  end;
+
+  FWriteWrappedText('}', iIndent + 1);
+
+  m_bExplicitNumberingFormatting := TRUE;
+
+  Result := TRUE;
+end;
+
 
 end.

@@ -7,7 +7,7 @@ uses
 
 type
   TCommentsEditForm = class;
-  
+
   TTntMemo = class(TntStdCtrls.TTntMemo)
   private
     function FGetCommentsEditForm: TCommentsEditForm;
@@ -32,7 +32,7 @@ type
 implementation
 
 uses
-  Windows,
+  Windows, SysUtils, StrUtils,
   //
   WinControlHlpUnit;
 
@@ -61,52 +61,27 @@ end;
 
 function TCommentsEditForm.FGetFormattedComments: WideString;
 var
-  iPos: integer;
-  bInsertSpaceFlag: boolean;
-
-  procedure NCollectToWords(var wstrDest: WideString; wchSrc: WideChar);
-  begin
-    if (wchSrc = ' ') then
-    begin
-      bInsertSpaceFlag := (iPos > 1);
-      exit;
-    end;
-
-    if (bInsertSpaceFlag) then
-    begin
-      bInsertSpaceFlag := FALSE;
-      wstrDest[iPos] := ' ';
-      inc(iPos);
-    end;
-
-    wstrDest[iPos] := wchSrc;
-    inc(iPos);
-  end;
-
-var
-  iLen: integer;
-  i, j: integer;
+  i: integer;
   wstrSource: WideString;
-begin // .FGetFormattedComments
+  iLen: integer;
+begin
   iLen := 0;
-  for i := 0 to CommentsMemo.Lines.Count - 1 do
-    inc(iLen, Length(CommentsMemo.Lines[i]));
 
-  SetLength(Result, iLen);
-
-  iPos := 1;
-  bInsertSpaceFlag := FALSE;
-
+  Result := '';
   for i := 0 to CommentsMemo.Lines.Count - 1 do
   begin
-    wstrSource := CommentsMemo.Lines[i];
-    for j := 1 to Length(wstrSource) do
-      NCollectToWords(Result, wstrSource[j]);
-    bInsertSpaceFlag := TRUE;      
+    wstrSource := TrimRight(CommentsMemo.Lines[i]);
+
+    if (Result = '') then
+      Result := wstrSource
+    else
+      Result := Result + sLineBreak + wstrSource;
+
+    if (wstrSource <> '') then
+      iLen := Length(Result);
   end;
 
-  SetLength(Result, iPos - 1);
-
+  Result := LeftStr(Result, iLen);
 end;
 
 
@@ -114,6 +89,7 @@ procedure TCommentsEditForm.FSetComments(const wstrValue: WideString);
 begin
   CommentsMemo.Text := wstrValue;
 end;
+
 
 procedure TCommentsEditForm.CommentsMemoChange(Sender: TObject);
 begin

@@ -49,7 +49,7 @@ type
 implementation
 
 uses
-  SysUtils, StrUtils, Contnrs;
+  SysUtils, TntSysUtils, StrUtils, Contnrs;
 
 type
   EPGNParser = class(Exception)
@@ -567,6 +567,7 @@ var
   wstr: WideString;
   iPos: integer;
   bEndOfComment: boolean;
+  bNeedTrimFlag: boolean;
 begin
   wstrComment := '';
   Result := TRUE;
@@ -576,9 +577,25 @@ begin
   wstr := Copy(wstrToken, 2, MaxInt);
 
   bEndOfComment := FALSE;
+  bNeedTrimFlag := FALSE;
 
   while (not FHasNoTokens) do
   begin
+    if (TrimRight(wstr) = '|') then
+    begin
+      if (bNeedTrimFlag) then
+      begin
+        bNeedTrimFlag := FALSE;
+        wstrComment := TrimRight(wstrComment);
+      end;
+      wstrComment := wstrComment + sLineBreak + RightStr(wstr, Length(wstr) - 2);
+
+      wstr := FNextToken;
+      continue;
+    end;
+
+    bNeedTrimFlag := TRUE;
+
     iPos := 0;
     repeat
       inc(iPos);
@@ -586,7 +603,7 @@ begin
       if (iPos > 0) then
       begin
         if ((iPos < Length(wstr)) and (wstr[iPos + 1] = '}')) then
-          Delete(wstr, iPos, 1) // TODO: check
+          Delete(wstr, iPos, 1)
         else
         begin
           bEndOfComment := TRUE;
@@ -596,6 +613,7 @@ begin
       end;
     until (iPos = 0);
 
+    wstr := Tnt_WideStringReplace(wstr, '||', '|', [rfReplaceAll], TRUE);
     wstrComment := wstrComment + wstr;
 
     if (bEndOfComment) then
