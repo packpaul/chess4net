@@ -56,10 +56,12 @@ type
     m_iPlyIndexRow, m_iPlyIndexCol: integer;
     m_lwInvalidationID: LongWord;
     m_bCellFirstSelected: boolean;
+    m_bRefreshing: boolean;
 
     procedure FOnGetPickListItems(ACol, ARow: Integer; Items: TStrings);
     procedure FSetPlysProvider(APlysProvider: IPlysProvider);
     function FGetMovesCount: integer;
+    procedure FRefresh;
   public
     procedure Refresh;
     procedure SelectLine;
@@ -134,6 +136,17 @@ end;
 
 
 procedure TMoveListForm.Refresh;
+begin
+  m_bRefreshing := TRUE;
+  try
+    FRefresh;
+  finally
+    m_bRefreshing := FALSE;
+  end;
+end;
+
+
+procedure TMoveListForm.FRefresh;
 var
   i: integer;
   iCol, iRow: integer;
@@ -316,7 +329,7 @@ begin
   if (MovesStringGrid.Cells[ACol, ARow] = '') then
     exit;
 
-  if (Assigned(m_PlysProvider)) then
+  if (Assigned(m_PlysProvider) and (not m_bRefreshing)) then
   begin
     m_PlysProvider.CurrentPlyIndex := TStringGrid.FGridPosToPlyIndex(ACol, ARow,
       m_PlysProvider.WhiteStarts);
