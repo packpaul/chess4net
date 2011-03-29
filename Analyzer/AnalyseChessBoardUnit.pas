@@ -158,6 +158,7 @@ type
     procedure EndPositionActionExecute(Sender: TObject);
     procedure EndPositionActionUpdate(Sender: TObject);
     procedure EditCommentActionExecute(Sender: TObject);
+    procedure EditCommentActionUpdate(Sender: TObject);
   private
     m_ChessBoard: TPosBaseChessBoard;
     m_ResizingType: (rtNo, rtHoriz, rtVert);
@@ -188,6 +189,7 @@ type
       d2: pointer = nil);
 
     procedure WMSizing(var Msg: TMessage); message WM_SIZING;
+    procedure WMDropFiles(var Msg : TMessage); message WM_DROPFILES;
 
     procedure FCreateChessBoard;
     procedure FInitPosition;
@@ -289,7 +291,7 @@ type
 implementation
 
 uses
-  Windows, TntClipbrd,
+  Windows, TntClipbrd, ShellAPI,
   //
   GlobalsLocalUnit, DontShowMessageDlgUnit,
   IniSettingsUnit, PGNWriterUnit, SplashFormUnit, CommentsEditFormUnit;
@@ -329,6 +331,8 @@ begin
   FInitPosition;
 
   FRefreshStatusBar;
+
+  DragAcceptFiles(Handle, TRUE);
 end;
 
 
@@ -348,6 +352,8 @@ end;
 
 procedure TAnalyseChessBoard.FormDestroy(Sender: TObject);
 begin
+  DragAcceptFiles(Handle, FALSE);
+
   FDestroyChessEngine;
 
   m_MoveListForm.PlysProvider := nil;
@@ -923,6 +929,7 @@ begin
   DeleteLineAction.Update;
   InitialPositionAction.Update;
   EndPositionAction.Update;
+  CommentsAction.Update; // TODO: In XP this line is not needed. What about Vista?
 end;
 
 
@@ -1576,6 +1583,50 @@ begin
     if (Assigned(m_CommentsForm)) then
       m_CommentsForm.Refresh;
   end;
+end;
+
+
+procedure TAnalyseChessBoard.EditCommentActionUpdate(Sender: TObject);
+begin
+  (Sender as TAction).Enabled := (not FIsEditing);
+end;
+
+
+procedure TAnalyseChessBoard.WMDropFiles(var Msg : TMessage);
+var
+  hDrop: THandle;
+
+  procedure NProcessDroppedFile;
+  var
+    iCount: integer;
+    iLen: integer;
+    FileName: TFileName;
+  begin
+    iCount := DragQueryFile(hDrop, Cardinal(not 0), nil, 0);
+    if (iCount <> 1) then
+      exit;
+
+    iLen := DragQueryFile(hDrop, 0, nil, 0);
+
+    SetLength(FileName, iLen);
+    DragQueryFile(hDrop, 0, @FileName[1], iLen + 1);
+
+    if (not FAskAndSavePGNData) then
+      exit;
+
+    FLoadPGNDataFromFile(FileName);
+  end;
+
+begin // .WMDropFiles
+  hDrop := Msg.WParam;
+  try
+    Msg.Result := 0;
+    NProcessDroppedFile;
+  finally
+    DragFinish(hDrop);
+  end;
+
+  inherited;
 end;
 
 end.

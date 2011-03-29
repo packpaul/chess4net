@@ -174,7 +174,6 @@ object MoveListForm: TMoveListForm
     Top = 359
     Width = 23
     Height = 22
-    Hint = 'End position'
     Action = AnalyseChessBoard.EndPositionAction
     Anchors = [akLeft, akBottom]
     Glyph.Data = {

@@ -364,6 +364,7 @@ object AnalyseChessBoard: TAnalyseChessBoard
       Hint = 'Edit comment'
       ShortCut = 16453
       OnExecute = EditCommentActionExecute
+      OnUpdate = EditCommentActionUpdate
     end
   end
   object ImageList: TImageList

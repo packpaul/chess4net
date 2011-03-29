@@ -17,7 +17,7 @@ type
     procedure WMMoving(var Msg: TWMMoving); message WM_MOVING;
     procedure WMSize(var Message: TWMSize); message WM_SIZE;
 
-    procedure FRecalculateOffsetForEachChild;
+    procedure FRecalculateOffsetForEachChild(const NewPos: TPoint);
 
     property InitialLeft: integer read m_InitialPos.X;
     property InitialTop: integer read m_InitialPos.Y;
@@ -30,9 +30,10 @@ type
   private
     m_Main: TMainFloatingForm;
     m_OffsetPoint: TPoint;
-    procedure FRecalculateOffset;
+    procedure FRecalculateOffset(const NewMainPos: TPoint);
     procedure FCalculateInitialOffset;
-    procedure FUpdateOffsetedPosition(const NewMainPos: TPoint);
+    procedure FUpdateOffsetedPosition; overload;
+    procedure FUpdateOffsetedPosition(const NewMainPos: TPoint); overload;
     procedure WMMoving(var Msg: TWMMoving); message WM_MOVING;
     procedure WMSize(var Message: TWMSize); message WM_SIZE;
   public
@@ -58,7 +59,7 @@ begin
   m_Main.FAddChild(self);
 
   FCalculateInitialOffset;
-  FUpdateOffsetedPosition(Point(m_Main.Left, m_Main.Top));
+  FUpdateOffsetedPosition;
 end;
 
 
@@ -69,10 +70,10 @@ begin
 end;
 
 
-procedure TChildFloatingForm.FRecalculateOffset;
+procedure TChildFloatingForm.FRecalculateOffset(const NewMainPos: TPoint);
 begin
-  m_OffsetPoint.X := Left - m_Main.Left;
-  m_OffsetPoint.Y := Top - m_Main.Top;
+  m_OffsetPoint.X := Left - NewMainPos.X;
+  m_OffsetPoint.Y := Top - NewMainPos.Y;
 end;
 
 
@@ -80,6 +81,12 @@ procedure TChildFloatingForm.FCalculateInitialOffset;
 begin
   m_OffsetPoint.X := Left - m_Main.InitialLeft;
   m_OffsetPoint.Y := Top - m_Main.InitialTop;
+end;
+
+
+procedure TChildFloatingForm.FUpdateOffsetedPosition;
+begin
+  FUpdateOffsetedPosition(Point(m_Main.Left, m_Main.Top))
 end;
 
 
@@ -124,14 +131,14 @@ end;
 
 procedure TChildFloatingForm.WMMoving(var Msg: TWMMoving);
 begin
-  FRecalculateOffset;
+  FRecalculateOffset(Point(m_Main.Left, m_Main.Top));
   inherited;
 end;
 
 
 procedure TChildFloatingForm.WMSize(var Message: TWMSize);
 begin
-  FRecalculateOffset;
+  FRecalculateOffset(Point(m_Main.Left, m_Main.Top));
   inherited;
 end;
 
@@ -172,11 +179,10 @@ begin
   if ((GetKeyState(VK_CONTROL) and (not $7FFF)) = 0) then
   begin
     for i := 0 to m_lstChilds.Count - 1 do
-      TChildFloatingForm(m_lstChilds[i]).FUpdateOffsetedPosition(
-        Point(Msg.DragRect.Left, Msg.DragRect.Top));
+      TChildFloatingForm(m_lstChilds[i]).FUpdateOffsetedPosition;
   end
   else
-    FRecalculateOffsetForEachChild;        
+    FRecalculateOffsetForEachChild(Point(Msg.DragRect.Left, Msg.DragRect.Top));
 
   inherited;
 end;
@@ -184,19 +190,19 @@ end;
 
 procedure TMainFloatingForm.WMSize(var Message: TWMSize);
 begin
-  FRecalculateOffsetForEachChild;
+  FRecalculateOffsetForEachChild(Point(Left, Top));
   inherited;
 end;
 
 
-procedure TMainFloatingForm.FRecalculateOffsetForEachChild;
+procedure TMainFloatingForm.FRecalculateOffsetForEachChild(const NewPos: TPoint);
 var
   i: integer;
 begin
   if (Assigned(m_lstChilds)) then
   begin
     for i := 0 to m_lstChilds.Count - 1 do
-      TChildFloatingForm(m_lstChilds[i]).FRecalculateOffset;
+      TChildFloatingForm(m_lstChilds[i]).FRecalculateOffset(NewPos);
   end;
 end;
 
