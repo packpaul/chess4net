@@ -76,6 +76,7 @@ object PositionEditingForm: TPositionEditingForm
     Height = 25
     Caption = '&Special...'
     TabOrder = 2
+    Visible = False
   end
   object PieceSelectionPanel: TPanel
     Left = 8
