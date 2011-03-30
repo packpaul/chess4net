@@ -1,4 +1,4 @@
-[last updated: 2011-02-10]
+[last updated: 2011-03-30]
 
 Chess4Net Analyzer
 (c) 2007-2011 No rights reserved
