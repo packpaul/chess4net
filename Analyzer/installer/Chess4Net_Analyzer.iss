@@ -54,6 +54,7 @@ Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: 
 
 [Registry]
 Root: HKCR; Subkey: ".c4n"; ValueType: string; ValueName: ""; ValueData: "{#MyAppId}"; Flags: uninsdeletevalue
+Root: HKCR; Subkey: ".pgn"; ValueType: string; ValueName: ""; ValueData: "{#MyAppId}"; Flags: uninsdeletevalue
 Root: HKCR; Subkey: "{#MyAppId}"; ValueType: string; ValueName: ""; ValueData: "{#MyAppName}"; Flags: uninsdeletevalue
 Root: HKCR; Subkey: "{#MyAppId}\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#MyAppExeName},0"
 Root: HKCR; Subkey: "{#MyAppId}\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""
