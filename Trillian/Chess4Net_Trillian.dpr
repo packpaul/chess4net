@@ -35,7 +35,8 @@ uses
   InfoUnit in '..\InfoUnit.pas' {InfoForm},
   BitmapResUnit in '..\BitmapResUnit.pas',
   LocalizerUnit in '..\LocalizerUnit.pas',
-  ChessRulesEngine in '..\ChessRulesEngine.pas';
+  ChessRulesEngine in '..\ChessRulesEngine.pas',
+  ChessClockUnit in '..\ChessClockUnit.pas';
 
 {$R ..\Chess4Net.res}
 

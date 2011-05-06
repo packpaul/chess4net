@@ -40,7 +40,8 @@ uses
   PromotionUnit in '..\PromotionUnit.pas' {PromotionForm},
   ChessRulesEngine in '..\ChessRulesEngine.pas',
   ManagerUnit.MI in 'ManagerUnit.MI.pas',
-  TransmitGameSelectionUnit in 'TransmitGameSelectionUnit.pas' {TransmitGameSelectionForm};
+  TransmitGameSelectionUnit in 'TransmitGameSelectionUnit.pas' {TransmitGameSelectionForm},
+  ChessClockUnit in '..\ChessClockUnit.pas';
 
 {$R ..\Chess4Net.res}
 

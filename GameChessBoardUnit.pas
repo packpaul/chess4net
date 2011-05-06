@@ -186,16 +186,14 @@ implementation
 {$R *.dfm}
 
 uses
-  SysUtils, Types, Windows;
+  SysUtils, Types, Windows,
+  //
+  ChessClockUnit;
 
 const
   TIME_COLOR = clBlack;
-//  FULL_TIME_FORMAT = 'h:n:s"."z';
-  HOUR_TIME_FORMAT = 'h:nn:ss';
-  MIN_TIME_FORMAT = 'n:ss';
-  ZEITNOT_BOARDER = 10; // sec. - zeitnot border
+
   ZEITNOT_COLOR = clMaroon;
-  ZEITNOT_FORMAT = 's"."zzz';
 //  CHEAT_TIME_CONST = 1.5; // > 1
   WHITE_LONG_LABEL: WideString   =   'White   ';
   WHITE_MEDIUM_LABEL: WideString = 'White ';
@@ -262,20 +260,12 @@ begin
       exit;
     end;
 
-  time_label.Font.Color:= TIME_COLOR;
-
-  LongTimeFormat:= MIN_TIME_FORMAT;
-  if player_time[c] >= EncodeTime(1, 0, 0, 0) then
-    LongTimeFormat:= HOUR_TIME_FORMAT
+  if (TChessClock.IsZeitnot(player_time[c])) then
+    time_label.Font.Color := ZEITNOT_COLOR
   else
-    if (player_time[c] < EncodeTime(0, 0, ZEITNOT_BOARDER, 0)) and
-       (player_time[c] > 0) then
-      begin
-        LongTimeFormat:= ZEITNOT_FORMAT;
-        time_label.Font.Color:= ZEITNOT_COLOR;
-      end;
+    time_label.Font.Color := TIME_COLOR;
 
-  time_label.Caption:= TimeToStr(player_time[c]);
+  time_label.Caption := TChessClock.ConvertToStr(player_time[c]);
 end;
 
 

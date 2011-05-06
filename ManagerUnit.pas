@@ -240,7 +240,7 @@ implementation
 uses
   // Chess4Net
   DateUtils, Math, StrUtils, TntIniFiles, Dialogs,
-  LookFeelOptionsUnit, GlobalsLocalUnit, InfoUnit
+  LookFeelOptionsUnit, GlobalsLocalUnit, InfoUnit, ChessClockUnit
 {$IFDEF AND_RQ}
   , CallExec
 {$ENDIF}
@@ -259,8 +259,7 @@ const
   INITIAL_CLOCK_TIME = '5 0 5 0'; // 5:00 5:00
   NO_CLOCK_TIME ='u u';
 
-  FULL_TIME_FORMAT = 'h:n:s"."z';
-  HOUR_TIME_FORMAT = 'h:nn:ss';
+  HOUR_TIME_FORMAT = 'h:mm:ss';
 
   // Command shorthands for Connector
   CMD_ECHO = 'echo';
@@ -510,8 +509,8 @@ begin
           if (ClockColor <> _PlayerColor) then
           begin
             Time[_PlayerColor] := IncSecond(Time[_PlayerColor], you_inc);
-            LongTimeFormat:= FULL_TIME_FORMAT;
-            s := TimeToStr(Time[_PlayerColor]);
+            s := TChessClock.ConvertToFullStr(Time[_PlayerColor]);
+
             if ((not Unlimited[_PlayerColor]) or (m_lwOpponentClientVersion < 200706)) then
             begin
               strSwitchClockCmd := CMD_SWITCH_CLOCK + ' ' + s;
@@ -1756,7 +1755,7 @@ begin
 
   gameLog := '';
 
-  LongTimeFormat:= HOUR_TIME_FORMAT;
+  LongTimeFormat := HOUR_TIME_FORMAT;
   FWriteToGameLog('[' + DateTimeToStr(Now) + ']' + sLineBreak);
 
   FWriteToGameLog(RGetGameName);

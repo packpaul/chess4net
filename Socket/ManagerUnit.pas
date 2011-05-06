@@ -124,7 +124,7 @@ implementation
 uses
   DateUtils, Math, StrUtils, TntIniFiles,
   GameOptionsUnit, ConnectionUnit, LookFeelOptionsUnit, GlobalsLocalUnit,
-  GlobalsUnit, ChessRulesEngine;
+  GlobalsUnit, ChessRulesEngine, ChessClockUnit;
 
 const
   USR_BASE_NAME = 'Chess4Net';
@@ -135,8 +135,8 @@ const
   DEFAULT_PLAYER_NICK = 'NN';
   DEFAULT_IPDOMAIN_PORT_SERVER = '127.0.0.1:5555-S';
 
-  FULL_TIME_FORMAT = 'h:n:s"."z';
-  HOUR_TIME_FORMAT = 'h:nn:ss';
+  HOUR_TIME_FORMAT = 'h:mm:ss';
+
   // сокращение команд для Connector
   CMD_ECHO = 'echo';
   CMD_START_GAME = 'strt';
@@ -280,8 +280,8 @@ begin
           Mode:= mView;
 {$IFDEF GAME_LOG}
           WriteToGameLog('#');
-          if PositionColor = fcWhite then WriteToGameLog(#13#10 + '0 - 1')
-            else WriteToGameLog(#13#10 + '1 - 0');
+          if PositionColor = fcWhite then WriteToGameLog(sLineBreak + '0 - 1')
+            else WriteToGameLog(sLineBreak + '1 - 0');
           FlushGameLog;
 {$ENDIF}
           if PositionColor = fcWhite then
@@ -305,7 +305,7 @@ begin
         ChessBoard.StopClock;
         ChessBoard.Mode:= mView;
 {$IFDEF GAME_LOG}
-        WriteToGameLog('=' + #13#10 + '1/2 - 1/2');
+        WriteToGameLog('=' + sLineBreak + '1/2 - 1/2');
         FlushGameLog;
 {$ENDIF}
         MessageDlg('It''s stalemate. No one wins.', mtCustom, [mbOK]);
@@ -319,8 +319,7 @@ begin
               if ClockColor <> PlayerColor then
                 begin
                   Time[PlayerColor] := IncSecond(Time[PlayerColor], you_inc);
-                  LongTimeFormat:= FULL_TIME_FORMAT;
-                  s := TimeToStr(Time[PlayerColor]);
+                  s := TChessClock.ConvertToFullStr(Time[PlayerColor]);
                   if not Unlimited[PlayerColor] or (opponentClientVersion < 200706) then
                     SendData(CMD_SWITCH_CLOCK + ' ' + s);
                 end
@@ -430,8 +429,8 @@ l:
                 SplitStr(sr, sl, sr);
                 opponentClientVersion := StrToInt(sl);
                 if opponentClientVersion < CHESS4NET_VERSION then
-                MessageDlg('Your opponent is using an older version of Chess4Net.' + #13#10 +
-                           'Most of functionality will be not available.'  + #13#10 +
+                MessageDlg('Your opponent is using an older version of Chess4Net.' + sLineBreak +
+                           'Most of functionality will be not available.'  + sLineBreak +
                            'Please, ask him/her to update the client.', mtWarning, [mbOK]);
                 // 2007.4 первый клиент с обратной совместимостью
                 // Для несовместимых версий:
@@ -453,7 +452,7 @@ l:
             if sl = CMD_GOODBYE then // для будущих версий
               begin
                 CloseConnector;
-                MessageDlg('The current version of Chess4Net is incompatible with the one of you partner.' + #13#10+
+                MessageDlg('The current version of Chess4Net is incompatible with the one of you partner.' + sLineBreak+
                            'Please check the versions.' , mtWarning, [mbOK]);
               end
             else
@@ -557,7 +556,7 @@ l:
                       ChessBoard.StopClock;
                       ChessBoard.Mode:= mView;
 {$IFDEF GAME_LOG}
-                      WriteToGameLog('=' + #13#10 + '1/2 - 1/2');
+                      WriteToGameLog('=' + sLineBreak + '1/2 - 1/2');
                       FlushGameLog;
 {$ENDIF}
                       MessageDlg('The game is drawn.', mtCustom, [mbOK]);
@@ -579,7 +578,7 @@ l:
                         ChessBoard.StopClock;
                         ChessBoard.Mode:= mView;
 {$IFDEF GAME_LOG}
-                        WriteToGameLog('=' + #13#10 + '1/2 - 1/2');
+                        WriteToGameLog('=' + sLineBreak + '1/2 - 1/2');
                         FlushGameLog;
 {$ENDIF}
                         MessageDlg('The game is aborted.', mtCustom, [mbOK]);
@@ -593,9 +592,9 @@ l:
                 ChessBoard.Mode:= mView;
 {$IFDEF GAME_LOG}
                 if ChessBoard.PlayerColor = fcWhite then
-                  WriteToGameLog(#13#10 + 'Black resigns' + #13#10 + '1 - 0')
+                  WriteToGameLog(sLineBreak + 'Black resigns' + sLineBreak + '1 - 0')
                 else
-                  WriteToGameLog(#13#10 + 'White resigns' + #13#10 + '0 - 1');
+                  WriteToGameLog(sLineBreak + 'White resigns' + sLineBreak + '0 - 1');
                 FlushGameLog;
 {$ENDIF}
                 MessageDlg('I resign. You win this game. Congratulations!',
@@ -623,7 +622,7 @@ l:
                 ChessBoard.StopClock;
                 ChessBoard.Mode:= mView;
 {$IFDEF GAME_LOG}
-                WriteToGameLog('=' + #13#10 + '1/2 - 1/2');
+                WriteToGameLog('=' + sLineBreak + '1/2 - 1/2');
                 FlushGameLog;
 {$ENDIF}
                 MessageDlg('The game is drawn.', mtCustom, [mbOK]);
@@ -658,9 +657,9 @@ l:
                       ChessBoard.Mode:= mView;
 {$IFDEF GAME_LOG}
                       if ChessBoard.PlayerColor = fcWhite then
-                        WriteToGameLog(#13#10 + 'White forfeits on time')
+                        WriteToGameLog(sLineBreak + 'White forfeits on time')
                       else
-                        WriteToGameLog(#13#10 + 'Black forfeits on time');
+                        WriteToGameLog(sLineBreak + 'Black forfeits on time');
                       FlushGameLog;
 {$ENDIF}
                       MessageDlg('You forfeit on time.', mtCustom, [mbOK]);
@@ -676,9 +675,9 @@ l:
                 ChessBoard.Mode:= mView;
 {$IFDEF GAME_LOG}
               if ChessBoard.PlayerColor = fcWhite then
-                WriteToGameLog(#13#10 + 'Black forfeits on time')
+                WriteToGameLog(sLineBreak + 'Black forfeits on time')
               else
-                WriteToGameLog(#13#10 + 'White forfeits on time');
+                WriteToGameLog(sLineBreak + 'White forfeits on time');
               FlushGameLog;
 {$ENDIF}
                 MessageDlg('Your opponent forfeits on time.', mtCustom, [mbOK]);
@@ -903,9 +902,9 @@ begin
   ChessBoard.StopClock;
 {$IFDEF GAME_LOG}
   if ChessBoard.PlayerColor = fcWhite then
-    WriteToGameLog(#13#10 + 'White resigns' + #13#10 + '0 - 1')
+    WriteToGameLog(sLineBreak + 'White resigns' + sLineBreak + '0 - 1')
   else
-    WriteToGameLog(#13#10 + 'Black resigns' + #13#10 + '1 - 0');
+    WriteToGameLog(sLineBreak + 'Black resigns' + sLineBreak + '1 - 0');
   FlushGameLog;
 {$ENDIF}
   ChessBoard.Mode:= mView;
@@ -1191,7 +1190,7 @@ begin
   gameLog := '';
 
   LongTimeFormat:= HOUR_TIME_FORMAT;
-  WriteToGameLog('[' + DateTimeToStr(Now) + ']' + #13#10);
+  WriteToGameLog('[' + DateTimeToStr(Now) + ']' + sLineBreak);
 
   if ChessBoard.PlayerColor = fcWhite then
     WriteToGameLog(player_nick + ' - ' + opponent_nick)
@@ -1249,11 +1248,11 @@ begin
     end;
     WriteToGameLog(')');
   end;
-  WriteToGameLog(#13#10);
+  WriteToGameLog(sLineBreak);
 
   s := ChessBoard.GetPosition;
   if s <> INITIAL_CHESS_POSITION then
-    WriteToGameLog(s + #13#10);
+    WriteToGameLog(s + sLineBreak);
 end;
 
 
@@ -1281,7 +1280,7 @@ begin
         writeln(gameLogFile, gameLog);
     end
   else
-    writeln(gameLogFile, #13#10 + gameLog);
+    writeln(gameLogFile, sLineBreak + gameLog);
 
   CloseFile(gameLogFile);
 end;

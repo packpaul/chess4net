@@ -34,7 +34,8 @@ uses
   ContinueUnit in '..\ContinueUnit.pas' {ContinueForm},
   BitmapResUnit in '..\BitmapResUnit.pas',
   ChessRulesEngine in '..\ChessRulesEngine.pas',
-  LocalizerUnit in '..\LocalizerUnit.pas';
+  LocalizerUnit in '..\LocalizerUnit.pas',
+  ChessClockUnit in '..\ChessClockUnit.pas';
 
 {$R ..\Chess4Net.res}
 
