@@ -16,9 +16,9 @@ uses
   SysUtils;
 
 const
-  FULL_TIME_FORMAT = 'h:m:s"."z';
-  HOUR_TIME_FORMAT = 'h:mm:ss';
-  MIN_TIME_FORMAT = 'm:ss';
+  FULL_TIME_FORMAT = 'h":"n":"s"."z';
+  HOUR_TIME_FORMAT = 'h":"nn":"ss';
+  MIN_TIME_FORMAT = 'n":"ss';
   ZEITNOT_FORMAT = 's"."zzz';
   ZEITNOT_BOARDER = 10; // sec. - zeitnot border
 
