@@ -95,7 +95,7 @@ uses
   SkypeTS.MainForm;
 
 const
-  MAX_SKYPES_NUM = 2;
+  MAX_SKYPES_NUM = 4;
   APPLICATION_CONNECTING_USER_TIMEOUT = 700;
 
 type
@@ -308,7 +308,7 @@ end;
 
 procedure TSkype.Attach(Protocol: Integer; Wait: WordBool);
 begin
-  Assert(Protocol = 5);
+  Assert(Protocol >= 5);
 
   m_AttachTimer.Enabled := TRUE;
   if (Wait) then
