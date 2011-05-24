@@ -56,6 +56,7 @@ const
   IID_IChatMessage: TGUID = '{B7AC5083-E161-4307-B49F-E35A4A80E2AD}';
   IID_IApplicationStream: TGUID = '{3453D1C9-CD9B-4704-9BBA-4B5FCFB1AA99}';
   IID_IClient: TGUID = '{A81A3BAF-66E6-46A5-B6E5-C568F1621853}';
+  CLASS_ApplicationStreamCollection: TGUID = '{71AD8787-27D5-446F-A43B-4F9227925B1E}';
 
 // *********************************************************************//
 // Declaration of Enumerations defined in Type Library                    
@@ -103,6 +104,7 @@ type
 // (NOTE: Here we map each CoClass to its Default Interface)              
 // *********************************************************************//
   Skype = ISkype;
+  ApplicationStreamCollection = IApplicationStreamCollection;
 
 
 // *********************************************************************//
@@ -197,6 +199,13 @@ type
 // *********************************************************************//
   IApplicationStreamCollection = interface(IDispatch)
     ['{208F9D07-2B64-4741-B7FB-E5F21E09E8DD}']
+    procedure Add(const pItem: IApplicationStream); safecall;
+    function Get_Count: Integer; safecall;
+    procedure Remove(Index: Integer); safecall;
+    procedure RemoveAll; safecall;
+    function Get_Item(Index: Integer): IApplicationStream; safecall;
+    property Count: Integer read Get_Count;
+    property Item[Index: Integer]: IApplicationStream read Get_Item; default;
   end;
 
 // *********************************************************************//
@@ -206,6 +215,11 @@ type
 // *********************************************************************//
   IApplicationStreamCollectionDisp = dispinterface
     ['{208F9D07-2B64-4741-B7FB-E5F21E09E8DD}']
+    procedure Add(const pItem: IApplicationStream); dispid 2;
+    property Count: Integer readonly dispid 1;
+    procedure Remove(Index: Integer); dispid 3;
+    procedure RemoveAll; dispid 4;
+    property Item[Index: Integer]: IApplicationStream readonly dispid 0; default;
   end;
 
 // *********************************************************************//
@@ -290,6 +304,8 @@ type
 // *********************************************************************//
   IApplicationStream = interface(IDispatch)
     ['{3453D1C9-CD9B-4704-9BBA-4B5FCFB1AA99}']
+    function Get_PartnerHandle: WideString; safecall;
+    property PartnerHandle: WideString read Get_PartnerHandle;
   end;
 
 // *********************************************************************//
@@ -299,11 +315,12 @@ type
 // *********************************************************************//
   IApplicationStreamDisp = dispinterface
     ['{3453D1C9-CD9B-4704-9BBA-4B5FCFB1AA99}']
+    property PartnerHandle: WideString readonly dispid 8;
   end;
 
 // *********************************************************************//
 // Interface: IClient
-// Flags:     (4416) Dual OleAutomation Dispatchable
+// Flags:     (4544) Dual NonExtensible OleAutomation Dispatchable
 // GUID:      {A81A3BAF-66E6-46A5-B6E5-C568F1621853}
 // *********************************************************************//
   IClient = interface(IDispatch)
@@ -315,7 +332,7 @@ type
 
 // *********************************************************************//
 // DispIntf:  IClientDisp
-// Flags:     (4416) Dual OleAutomation Dispatchable
+// Flags:     (4544) Dual NonExtensible OleAutomation Dispatchable
 // GUID:      {A81A3BAF-66E6-46A5-B6E5-C568F1621853}
 // *********************************************************************//
   IClientDisp = dispinterface
@@ -336,6 +353,18 @@ type
     class function CreateRemote(const MachineName: string): ISkype;
   end;
 
+// *********************************************************************//
+// The Class CoApplicationStreamCollection provides a Create and CreateRemote method to          
+// create instances of the default interface IApplicationStreamCollection exposed by              
+// the CoClass ApplicationStreamCollection. The functions are intended to be used by             
+// clients wishing to automate the CoClass objects exposed by the         
+// server of this typelibrary.                                            
+// *********************************************************************//
+  CoApplicationStreamCollection = class
+    class function Create: IApplicationStreamCollection;
+    class function CreateRemote(const MachineName: string): IApplicationStreamCollection;
+  end;
+
 implementation
 
 uses ComObj;
@@ -348,6 +377,16 @@ end;
 class function CoSkype.CreateRemote(const MachineName: string): ISkype;
 begin
   Result := CreateRemoteComObject(MachineName, CLASS_Skype) as ISkype;
+end;
+
+class function CoApplicationStreamCollection.Create: IApplicationStreamCollection;
+begin
+  Result := CreateComObject(CLASS_ApplicationStreamCollection) as IApplicationStreamCollection;
+end;
+
+class function CoApplicationStreamCollection.CreateRemote(const MachineName: string): IApplicationStreamCollection;
+begin
+  Result := CreateRemoteComObject(MachineName, CLASS_ApplicationStreamCollection) as IApplicationStreamCollection;
 end;
 
 end.

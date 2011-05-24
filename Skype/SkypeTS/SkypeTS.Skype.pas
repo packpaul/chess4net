@@ -13,6 +13,12 @@ uses
   SkypeTS_TLB;
 
 type
+  IObject = interface
+    ['{1902F9A6-FAC6-48FE-84C5-320261DA323E}']
+    function GetObject: TObject;
+    property _Object: TObject read GetObject;
+  end;
+
   TSkypeState = (ssAttached);
   TSkypeStates = set of TSkypeState;
 
@@ -53,8 +59,10 @@ type
     procedure FWaitForAllAttached;
 
     procedure FDoReceiveInstantMessage(const ChatMessage: IChatMessage);
-    procedure FDoReceiveApplicationDatagram(const AApplication: IApplication;
-      const wstrText: WideString);
+    procedure FDoReceiveApplicationDatagram(const ASenderSkype: TSkype;
+      const ASenderApplication: IApplication; const wstrText: WideString);
+
+    class procedure FUpdateApplicationsConnectedSkypes;
 
     procedure Attach(Protocol: Integer; Wait: WordBool); safecall;
     function Get_Application(const Name: WideString): IApplication; safecall;
@@ -75,6 +83,8 @@ type
     procedure DoAttach(const wstrHandle, wstrFullName, wstrDisplayName: WideString);
     procedure SendInstantMessge(const wstrSkypeHandle, wstrMessage: WideString);
 
+    class function GetSkypeByID(iID: integer): TSkype;
+
     property ID: integer read m_iID;
     property States: TSkypeStates read m_States;
     property CurrentUserHandle: WideString read Get_CurrentUserHandle;
@@ -83,16 +93,14 @@ type
                                                                  write FOnInstantMessageReceived;
   end;
 
-var
-  g_arrSkypes: array of TSkype;
-
-function GetSkypeByID(iID: integer): TSkype;
-
 implementation
 
 uses
   SysUtils, Forms, ComServ,
   SkypeTS.MainForm;
+
+var
+  g_arrSkypes: array of TSkype;
 
 const
   MAX_SKYPES_NUM = 4;
@@ -127,15 +135,18 @@ type
   end;
 
   EApplication = class(Exception);
-  TApplication = class(TAutoIntfObject, IApplication)
+  TApplication = class(TAutoIntfObject, IApplication, IObject)
   private
     m_Skype: TSkype;
     m_wstrName: WideString;
     m_bHasContext: boolean;
-    m_ConnectingUsers: TInterfaceList;
 
+    m_ConnectingUsers: TInterfaceList;
     m_ConnectableUser: IUser;
+
     m_lstConnectedSkypeIDs: TList;
+    m_Streams: IApplicationStreamCollection;
+
     m_ConnectingUserTimer: TTimer;
 
     procedure FOnConnectingUserTimer(Sender: TObject);
@@ -154,6 +165,10 @@ type
     function Get_ConnectableUsers: IUserCollection; safecall;
     function Get_ConnectingUsers: IUserCollection; safecall;
     function Get_Name: WideString; safecall;
+
+    function GetObject: TObject;
+
+    procedure FUpdateConnectedSkypes;
 
     property ConnectingUserTimer: TTimer read FGetConnectingUserTimer;
 
@@ -182,6 +197,38 @@ type
     constructor Create(const wstrMessageBody: WideString; Sender: IUser);
   end;
 
+  TApplicationStream = class(TAutoIntfObject, IApplicationStream, IObject)
+  private
+    m_iPartnerSkypeID: integer;
+    function Get_PartnerHandle: WideString; safecall;
+    function GetObject: TObject;
+  public
+    constructor Create(iPartnerSkypeID: integer);
+    property PartnerSkypeID: integer read m_iPartnerSkypeID;
+  end;
+
+  TApplicationStreamCollection = class(TAutoIntfObject, IApplicationStreamCollection)
+  private
+    m_ApplicationStreams: TInterfaceList;
+    procedure Add(const pItem: IApplicationStream); safecall;
+    function Get_Count: Integer; safecall;
+    procedure Remove(Index: Integer); safecall;
+    procedure RemoveAll; safecall;
+    function Get_Item(Index: Integer): IApplicationStream; safecall; // Param2 = 1, 2, ...
+  public
+    constructor Create;
+    destructor Destroy; override;
+  end;
+
+  TApplicationStreamCollection_ = class(TAutoObject, IApplicationStreamCollection)
+  private
+    m_ApplicationStreamCollection: IApplicationStreamCollection;
+    property ApplicationStreamCollection: IApplicationStreamCollection
+      read m_ApplicationStreamCollection implements IApplicationStreamCollection;
+  public
+    procedure Initialize; override;
+  end;
+
 ////////////////////////////////////////////////////////////////////////////////
 // Globals
 
@@ -194,15 +241,6 @@ begin
     LoadRegTypeLib(LIBID_SkypeTS, SkypeTSMajorVersion, SkypeTSMinorVersion,
       0, g_TypeLib);
   Result := g_TypeLib;
-end;
-
-
-function GetSkypeByID(iID: integer): TSkype;
-begin
-  if ((iID >= 0) and (iID < Length(g_arrSkypes))) then
-    Result := g_arrSkypes[iID]
-  else
-    Result := nil;
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -232,6 +270,30 @@ begin
     SetLength(g_arrSkypes, m_iID)
   else
     g_arrSkypes[m_iID] := nil;
+
+  FUpdateApplicationsConnectedSkypes;
+end;
+
+
+class procedure TSkype.FUpdateApplicationsConnectedSkypes;
+var
+  i, j: integer;
+  ASkype: TSkype;
+  AApplication: IApplication;
+begin
+  for i := Low(g_arrSkypes) to High(g_arrSkypes) do
+  begin
+    ASkype := g_arrSkypes[i];
+    if (not Assigned(ASkype)) then
+      continue;
+
+    for j := 0 to ASkype.m_Applications.Count - 1 do
+    begin
+      AApplication := ASkype.m_Applications[j] as IApplication;
+      ((AApplication as IObject)._Object as TApplication).FUpdateConnectedSkypes;
+    end; // for j
+
+  end; // for i
 end;
 
 
@@ -244,6 +306,7 @@ end;
 procedure TSkype.Initialize;
 begin
   inherited Initialize;
+
   FConnectionPoints := TConnectionPoints.Create(Self);
   if AutoFactory.EventTypeInfo <> nil then
     FConnectionPoint := FConnectionPoints.CreateConnectionPoint(
@@ -404,10 +467,42 @@ begin
 end;
 
 
-procedure TSkype.FDoReceiveApplicationDatagram(const AApplication: IApplication;
-  const wstrText: WideString);
+procedure TSkype.FDoReceiveApplicationDatagram(const ASenderSkype: TSkype;
+  const ASenderApplication: IApplication; const wstrText: WideString);
+var
+  i: integer;
+  AReceiverApplication: IApplication;
+  AReceiverApplicationStream: IApplicationStream;
 begin
-  FEvents.ApplicationDatagram(AApplication, nil, wstrText);
+  AReceiverApplication := nil;
+
+  for i := 0 to m_Applications.Count - 1 do
+  begin
+    AReceiverApplication := m_Applications[i] as IApplication;
+    if (AReceiverApplication.Name = ASenderApplication.Name) then
+      break;
+    AReceiverApplication := nil;
+  end;
+
+  if (not Assigned(AReceiverApplication)) then
+    exit;
+
+  AReceiverApplicationStream := nil;
+
+  for i := 1 to AReceiverApplication.Streams.Count do
+  begin
+    AReceiverApplicationStream := AReceiverApplication.Streams[i];
+    if (AReceiverApplicationStream.PartnerHandle = ASenderSkype.CurrentUserHandle) then
+      break;
+
+    AReceiverApplicationStream := nil;
+  end;
+
+  if (not Assigned(AReceiverApplicationStream)) then
+    exit;
+
+  FEvents.ApplicationDatagram(AReceiverApplication, AReceiverApplicationStream,
+    wstrText);
 end;
 
 
@@ -429,6 +524,15 @@ end;
 procedure TSkype.SendInstantMessge(const wstrSkypeHandle, wstrMessage: WideString);
 begin
   SendMessage(wstrSkypeHandle, wstrMessage);
+end;
+
+
+class function TSkype.GetSkypeByID(iID: integer): TSkype;
+begin
+  if ((iID >= 0) and (iID < Length(g_arrSkypes))) then
+    Result := g_arrSkypes[iID]
+  else
+    Result := nil;
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -486,11 +590,14 @@ begin
   m_wstrName := wstrName;
   m_ConnectingUsers := TInterfaceList.Create;
   m_lstConnectedSkypeIDs := TList.Create;
+  m_Streams := TApplicationStreamCollection.Create;
 end;
 
 
 destructor TApplication.Destroy;
 begin
+  m_Streams := nil;
+
   m_ConnectingUserTimer.Free;
   m_lstConnectedSkypeIDs.Free;
   m_ConnectingUsers.Free;
@@ -500,8 +607,6 @@ end;
 
 
 procedure TApplication.Delete;
-var
-  i: integer;
 begin
   m_Skype.FDeleteApplication(m_wstrName);
 end;
@@ -517,13 +622,20 @@ end;
 procedure TApplication.FAddUserSkypeToConnected(const wstrHandle: WideString);
 var
   i: integer;
+  AUserSkype: TSkype;
 begin
   for i := Low(g_arrSkypes) to High(g_arrSkypes) do
-    if (Assigned(g_arrSkypes[i]) and (g_arrSkypes[i].CurrentUserHandle = wstrHandle)) then
+  begin
+    AUserSkype := g_arrSkypes[i];
+    if (Assigned(AUserSkype) and (AUserSkype.CurrentUserHandle = wstrHandle)) then
     begin
-      m_lstConnectedSkypeIDs.Add(Pointer(g_arrSkypes[i].ID));
+      m_lstConnectedSkypeIDs.Add(Pointer(AUserSkype.ID));
+      m_Streams.Add(TApplicationStream.Create(AUserSkype.ID));
+
       exit;
     end;
+  end;
+
   Assert(FALSE);
 end;
 
@@ -553,7 +665,7 @@ procedure TApplication.Connect(const Username: WideString; WaitConnected: WordBo
     Result := FALSE;
     for i := 0 to m_lstConnectedSkypeIDs.Count - 1 do
     begin
-      ConnectedSkype := GetSkypeByID(Integer(m_lstConnectedSkypeIDs[i]));
+      ConnectedSkype := TSkype.GetSkypeByID(Integer(m_lstConnectedSkypeIDs[i]));
       Result := (Assigned(ConnectedSkype) and (ConnectedSkype.CurrentUserHandle = wstrHandle));
       if (Result) then
         exit;
@@ -618,32 +730,29 @@ begin
 end;
 
 
-procedure TApplication.SendDatagram(const Text: WideString; const pStreams: IApplicationStreamCollection);
+procedure TApplication.SendDatagram(const Text: WideString;
+  const pStreams: IApplicationStreamCollection);
 var
   i: integer;
-  ReceiverSkype: TSkype;
+  ASenderStream: TApplicationStream;
+  AReceiverSkype: TSkype;
 begin
   FCheckContext;
 
-  i := 0;
-  while (i < m_lstConnectedSkypeIDs.Count) do
+  for i := 1 to pStreams.Count do
   begin
-    ReceiverSkype := GetSkypeByID(Integer(m_lstConnectedSkypeIDs[i]));
-    if (Assigned(ReceiverSkype)) then
-    begin
-      ReceiverSkype.FDoReceiveApplicationDatagram(self, Text);
-      inc(i);
-    end
-    else
-      m_lstConnectedSkypeIDs.Delete(i);
-  end; // while
+    ASenderStream := (pStreams.Item[i] as IObject)._Object as TApplicationStream;
+    AReceiverSkype := TSkype.GetSkypeByID(ASenderStream.PartnerSkypeID);
+    AReceiverSkype.FDoReceiveApplicationDatagram(m_Skype, self, Text);
+  end;
+  
 end;
 
 
 function TApplication.Get_Streams: IApplicationStreamCollection;
 begin
   FCheckContext;
-  Result := nil;
+  Result := m_Streams;
 end;
 
 
@@ -704,7 +813,7 @@ var
   i: integer;
 begin
   ConnectingUserTimer.Enabled := FALSE;
-                                                
+
   Assert(Assigned(m_ConnectableUser));
   try
     FAddUserSkypeToConnected(m_ConnectableUser.Handle);
@@ -714,6 +823,50 @@ begin
   finally
     m_ConnectableUser := nil;
   end;
+end;
+
+
+function TApplication.GetObject: TObject;
+begin
+  Result := self;
+end;
+
+
+procedure TApplication.FUpdateConnectedSkypes;
+var
+  iDeletedSkypeID: integer;
+
+  procedure NUpdateStreams;
+  var
+    i: integer;
+    AStream: TApplicationStream;
+  begin
+    i := m_Streams.Count;
+    while (i >= 1) do
+    begin
+      AStream := ((m_Streams[i] as IObject)._Object as TApplicationStream);
+      if (AStream.PartnerSkypeID = iDeletedSkypeID) then
+        m_Streams.Remove(i);
+      dec(i);
+    end;
+  end;
+
+var
+  i: integer;
+begin // .FUpdateConnectedSkypes
+  i := m_lstConnectedSkypeIDs.Count - 1;
+
+  while (i >= 0) do
+  begin
+    iDeletedSkypeID := Integer(m_lstConnectedSkypeIDs[i]);
+    if (not Assigned(TSkype.GetSkypeByID(iDeletedSkypeID))) then
+    begin
+      m_lstConnectedSkypeIDs.Delete(i);
+      NUpdateStreams;
+    end;
+    dec(i);
+  end;
+  
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -810,9 +963,95 @@ begin
   Result := m_wstrMessageBody;
 end;
 
+////////////////////////////////////////////////////////////////////////////////
+// TApplicationStream
+
+constructor TApplicationStream.Create(iPartnerSkypeID: integer);
+begin
+  inherited Create(GetDataTypeLib, IApplicationStreamDisp);
+
+  m_iPartnerSkypeID := iPartnerSkypeID;
+end;
+
+
+function TApplicationStream.Get_PartnerHandle: WideString; safecall;
+var
+  ASkype: TSkype;
+begin
+  ASkype := TSkype.GetSkypeByID(m_iPartnerSkypeID);
+  if (Assigned(ASkype)) then
+    Result := ASkype.CurrentUserHandle;
+end;
+
+
+function TApplicationStream.GetObject: TObject;
+begin
+  Result := self
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TApplicationStreamCollection
+
+constructor TApplicationStreamCollection.Create;
+begin
+  inherited Create(GetDataTypeLib, IApplicationStreamCollectionDisp);
+  m_ApplicationStreams := TInterfaceList.Create;
+end;
+
+
+destructor TApplicationStreamCollection.Destroy;
+begin
+  RemoveAll;
+  m_ApplicationStreams.Free;
+  
+  inherited;
+end;
+
+
+procedure TApplicationStreamCollection.Add(const pItem: IApplicationStream);
+begin
+  m_ApplicationStreams.Add(pItem);
+end;
+
+
+function TApplicationStreamCollection.Get_Count: Integer;
+begin
+  Result := m_ApplicationStreams.Count;
+end;
+
+
+procedure TApplicationStreamCollection.Remove(Index: Integer); safecall;
+begin
+  m_ApplicationStreams.Delete(Index - 1);
+end;
+
+
+procedure TApplicationStreamCollection.RemoveAll; safecall;
+begin
+  m_ApplicationStreams.Clear;
+end;
+
+
+function TApplicationStreamCollection.Get_Item(Index: Integer): IApplicationStream; safecall;
+begin
+  Result := m_ApplicationStreams[Index - 1] as IApplicationStream;
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TApplicationStreamCollection_
+
+procedure TApplicationStreamCollection_.Initialize;
+begin
+  inherited Initialize;
+  m_ApplicationStreamCollection := TApplicationStreamCollection.Create;
+end;
 
 initialization
   TAutoObjectFactory_.Create(ComServer, TSkype, CLASS_Skype,
+    ciMultiInstance, tmSingle);
+
+  TAutoObjectFactory.Create(ComServer,
+    TApplicationStreamCollection_, CLASS_ApplicationStreamCollection,
     ciMultiInstance, tmSingle);
 
 finalization

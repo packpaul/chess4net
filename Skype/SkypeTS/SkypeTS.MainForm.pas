@@ -54,7 +54,6 @@ var
   SkypeFrame: TSkypeFrame;
   Skype: TSkype;
   iEnabledCount: integer;
-  bEnabled: boolean;
 begin // TMainForm.UpdateGUI
   iEnabledCount := 0;
 
@@ -91,7 +90,7 @@ end;
 
 function TMainForm.FGetSkypeByID(wID: word): TSkype;
 begin
-  Result := GetSkypeByID(wID);
+  Result := TSkype.GetSkypeByID(wID);
 end;
 
 
