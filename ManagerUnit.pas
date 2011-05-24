@@ -50,6 +50,12 @@ type
     N5: TTntMenuItem;
     N6: TTntMenuItem;
 
+    BroadcastAction: TTntAction;
+    N3: TTntMenuItem;
+    BroadcastConnected: TTntMenuItem;
+    N7: TTntMenuItem;
+    Broadcast: TTntMenuItem;
+    
     ConnectorTimer: TTimer;
 
     procedure FormCreate(Sender: TObject);
@@ -72,6 +78,7 @@ type
     procedure StartAdjournedGameConnectedClick(Sender: TObject);
     procedure AdjournGameClick(Sender: TObject);
     procedure GamePopupMenuPopup(Sender: TObject);
+    procedure BroadcastActionExecute(Sender: TObject);
 
   private
     m_strAdjourned: string;
@@ -92,7 +99,6 @@ type
     contactlistEntry: TTtkContactListEntry;
 {$ENDIF}
 {$IFDEF SKYPE}
-    m_bSkypeConnectionError: boolean;
     m_bDontShowCredits: boolean;
 {$ENDIF}
     m_lwOpponentClientVersion: LongWord;
@@ -126,7 +132,7 @@ type
       d1: pointer = nil; d2: pointer = nil);
     procedure SetClock; overload;
     procedure SetClock(var sr: string); overload;
-    procedure DialogFormHandler(modSender: TModalForm; msgDlgID: TModalFormID);
+
     procedure FPopulateExtBaseList;
 
     function FReadCommonSettings(setToOpponent: boolean): boolean;
@@ -189,8 +195,11 @@ type
     procedure RReleaseWithConnectorGracefully;
 
     procedure RRetransmit(const strCmd: string); virtual;
+    procedure RBroadcast; virtual;
 
     procedure RUpdateChessBoardCaption;
+
+    procedure DialogFormHandler(modSender: TModalForm; msgDlgID: TModalFormID); virtual;
 
     property Connector: TConnector read m_Connector write m_Connector;
     property ChessBoard: TGameChessBoard read m_ChessBoard write m_ChessBoard;
@@ -199,13 +208,12 @@ type
     property PlayerNickId: string read m_strPlayerNickId write m_strPlayerNickId;
     property OpponentNick: string read m_strOpponentNick write m_strOpponentNick;
     property OpponentId: string read m_strOpponentId write m_strOpponentId;
-    property OpponentNickId: string read FGetOpponentNickId write m_strOverridedOpponentNickId;    
+    property OpponentNickId: string read FGetOpponentNickId write m_strOverridedOpponentNickId;
 
     property Transmittable: boolean read m_bTransmittable write FSetTransmittable;
 
-{$IFDEF SKYPE}
-    property SkypeConnectionError: boolean read m_bSkypeConnectionError;
-{$ENDIF}
+    property pDialogs: TDialogs read m_Dialogs;
+
   public
 {$IFDEF AND_RQ}
     class function Create: TManager; reintroduce;
@@ -216,16 +224,13 @@ type
 {$IFDEF TRILLIAN}
     class function Create(const vContactlistEntry: TTtkContactListEntry): TManager; reintroduce;
 {$ENDIF}
-{$IFDEF SKYPE}
-    class function Create: TManager; reintroduce;
-{$ENDIF}
   end;
 
 const
-  CMD_DELIMITER = '&&'; // CMD_DELIMITER has to be present in arguments 
+  CMD_DELIMITER = '&&'; // CMD_DELIMITER has to be present in arguments
 
   CMD_VERSION = 'ver';
-  CMD_WELCOME = 'wlcm'; // Accept of connection  
+  CMD_WELCOME = 'wlcm'; // Accept of connection
   CMD_GOODBYE = 'gdb'; // Refusion of connection
   CMD_TRANSMITTING = 'trnsm';
   CMD_NICK_ID = 'nkid';
@@ -248,7 +253,7 @@ uses
   , ControlUnit
 {$ENDIF}
 {$IFDEF SKYPE}
-  , SelectSkypeContactUnit, CreditsFormUnit
+  , CreditsFormUnit
 {$ENDIF}
   ;
 
@@ -334,7 +339,7 @@ const
 {$ENDIF}
 
 type
-  TManagerDefault = class(TManager) // TODO: TRILLIAN, AND_RQ, QIP, SKYPE -> own classes
+  TManagerDefault = class(TManager) // TODO: TRILLIAN, AND_RQ, QIP-> own classes
   protected
     procedure ROnCreate; override;
     procedure ROnDestroy; override;
@@ -364,6 +369,9 @@ end;
 
 procedure TManager.FormCreate(Sender: TObject);
 begin
+{$IFNDEF SKYPE}
+  BroadcastAction.Visible := TRUE;
+{$ENDIF}
   ROnCreate;
 end;
 
@@ -615,11 +623,6 @@ begin
   case e of
     ceConnected:
     begin
-{$IFDEF SKYPE}
-      PlayerNick := Connector.UserHandle;
-      OpponentNick := Connector.ContactHandle;
-      OpponentId := OpponentNick;
-{$ENDIF}
       if (Assigned(m_ConnectingForm)) then
         m_ConnectingForm.Shut;
       RSendData(CMD_VERSION + ' ' + IntToStr(CHESS4NET_VERSION));
@@ -628,12 +631,7 @@ begin
     ceDisconnected:
     begin
       if (not Connector.connected) then
-      begin
-{$IFDEF SKYPE}
-        Application.Terminate; // KLUDGE
-{$ENDIF}
         exit;
-      end;
 
       if (Transmittable) then
       begin
@@ -684,31 +682,6 @@ begin
                          '  3) Protocol doesn''t support multiple channels. OR' + sLineBreak +
                          '  4) Other reasons.' + sLineBreak +
                          'Chess4Net won''t start.', mtWarning, [mbOk], mfMsgLeave);
-    end;
-{$ENDIF}
-{$IFDEF SKYPE}
-    ceSkypeError:
-    begin
-      m_bSkypeConnectionError := TRUE;
-      // TODO: Localize
-      m_Dialogs.MessageDlg('Chess4Net was unable to attach to your Skype application' + sLineBreak +
-                         'This can happen due to the following reasons:' + sLineBreak +
-                         '  1) You have an old version of Skype. OR' + sLineBreak +
-                         '  2) Your Skype is blocking Chess4Net. OR' + sLineBreak +
-                         '  3) Your Skype doesn''t support Skype applications. OR' + sLineBreak +
-                         '  4) Other reasons.' + sLineBreak +
-                         'Chess4Net won''t start.', mtWarning, [mbOk], mfMsgLeave);
-    end;
-
-    ceShowConnectableUsers:
-    begin
-      if (Assigned(ConnectingForm)) then
-        ConnectingForm.ShowSkypeAcceptLogo := FALSE;
-      with m_Dialogs.CreateDialog(TSelectSkypeContactForm) as TSelectSkypeContactForm do
-      begin
-        Init(d1);
-        Show;
-      end;
     end;
 {$ENDIF}
 
@@ -1463,14 +1436,6 @@ begin
 end;
 {$ENDIF}
 
-{$IFDEF SKYPE}
-class function TManager.Create: TManager;
-begin
-  Result := TManagerDefault.Create;
-end;
-{$ENDIF}
-
-
 procedure TManager.DialogFormHandler(modSender: TModalForm; msgDlgID: TModalFormID);
 var
   modRes: TModalResult;
@@ -1562,7 +1527,7 @@ begin
         begin
           RSendData(CMD_DRAW_ACCEPTED);
           RRetransmit(CMD_DRAW_ACCEPTED);
-          
+
           FExitGameMode;
 {$IFDEF GAME_LOG}
             FWriteToGameLog('=' + sLineBreak + '1/2 - 1/2');
@@ -1641,7 +1606,7 @@ begin
             begin
               strCmd := CMD_SET_CLOCK + ' ' + s;
               RSendData(strCmd);
-              RRetransmit(strCmd); 
+              RRetransmit(strCmd);
             end;
             RSendData(CMD_ALLOW_TAKEBACKS + IfThen(TakeBackCheckBox.Checked, ' 1', ' 0'));
           end;
@@ -1723,25 +1688,7 @@ begin
       else // modRes = mrNo
         RSendData(CMD_PAUSE_GAME_NO);
     end;
-{$IFDEF SKYPE}
-    mfSelectSkypeContact:
-    begin
-      if (modRes = mrOk) then
-      begin
-        with modSender as TSelectSkypeContactForm do
-        begin
-          Connector.ConnectToContact(SelectedContactIndex);
-        end;
-      end
-      else
-      begin
-        if (Assigned(ConnectingForm)) then
-          ConnectingForm.Close
-        else
-          Close;
-      end;
-    end;
-{$ENDIF}
+
   end;
 end;
 
@@ -2291,6 +2238,7 @@ begin
     AdjournGame.Caption := GetLabel(61);
     GamePause.Caption := GetLabel(62);
     TakebackGame.Caption := GetLabel(63);
+    BroadcastAction.Caption := GetLabel(69);
   end;
 end;
 
@@ -2313,11 +2261,14 @@ begin
     StartAdjournedGameConnected.Visible := FALSE;
     StartStandartGameConnected.Visible := FALSE;
     StartPPRandomGameConnected.Visible := FALSE;
-    N5.Visible := FALSE;
     ChangeColorConnected.Visible := FALSE;
     GameOptionsConnected.Visible := FALSE;
 
-    ChessBoard.ViewGaming := TRUE;    
+{$IFDEF SKYPE}
+    BroadcastAction.Visible := FALSE;
+{$ENDIF}
+
+    ChessBoard.ViewGaming := TRUE;
   end;
 end;
 
@@ -2374,6 +2325,17 @@ begin
     Result := PlayerNick + ' - ' + OpponentNick
   else // fcBlack
     Result := OpponentNick + ' - ' + PlayerNick;
+end;
+
+
+procedure TManager.BroadcastActionExecute(Sender: TObject);
+begin
+  RBroadcast;
+end;
+
+
+procedure TManager.RBroadcast;
+begin
 end;
 
 ////////////////////////////////////////////////////////////////////////////////

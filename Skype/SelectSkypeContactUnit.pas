@@ -52,11 +52,12 @@ end;
 
 procedure TSelectSkypeContactForm.FLocalize;
 begin
-{
   with TLocalizer.Instance do
   begin
+    Caption := GetLabel(68); // Select Skype contact
+    OkButton.Caption := GetLabel(11);
+    CancelButton.Caption := GetLabel(12);
   end;
-}
 end;
 
 
@@ -77,14 +78,7 @@ end;
 
 function TSelectSkypeContactForm.FSelectedContactIndex: integer;
 begin
-  with ContactsListBox do
-  begin
-    if (ItemIndex >= 0) then
-      Result := Integer(Items.Objects[ItemIndex])
-    else
-      Result := -1;
-  end; // with
-
+  Result := ContactsListBox.ItemIndex;
 end;
 
 

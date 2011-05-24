@@ -69,7 +69,7 @@ begin
   if (ActivateApplicationIfRunning) then
     exit;
 {$ENDIF}
-  Forms.Application.CreateForm(TManagerSkype, Manager);
+  Forms.Application.CreateForm(TGamingManagerSkype, Manager);
   Forms.Application.ShowMainForm := False;
   Forms.Application.Run;
 end.

@@ -14,15 +14,15 @@ uses
 const
   CHESS4NET = 'Chess4Net';
 
-  CHESS4NET_VERSION = 201001; // 2010.1
-  CHESS4NET_TITLE = 'Chess4Net 2010.1 [Skype] (http://chess4net.ru)';
+  CHESS4NET_VERSION = 201101; // 2011.1
+  CHESS4NET_TITLE = 'Chess4Net 2011.1 [Skype] (http://chess4net.ru)';
   MSG_INVITATION = 'Wellcome to Chess4Net. If you don''t have it, please download it from http://chess4net.ru';
 
   DIALOG_CAPTION = CHESS4NET;
 
   PLUGIN_PLAYING_OVER = 'Plugin for playing chess over Skype';
 
-  PLUGIN_INFO_NAME = 'Chess4Net 2010.1.1';
+  PLUGIN_INFO_NAME = 'Chess4Net 2011.1';
   PLUGIN_URL = 'http://chess4net.ru';
   PLUGIN_EMAIL = 'packpaul@mail.ru';
 

@@ -100,6 +100,7 @@ type
   private
     m_GamingManager: TGamingManagerMI;
     m_bReady: boolean; // ready for transmition
+    property Ready: boolean read m_bReady;
   protected
     procedure Start;
     procedure ROnCreate; override;
@@ -189,7 +190,7 @@ end;
 
 procedure TGamingManagerMI.FSetGameContextToTransmitter(ATransmitter: TTransmittingManagerMI);
 begin
-  if (not (Assigned(ATransmitter) and ATransmitter.m_bReady)) then
+  if (not (Assigned(ATransmitter) and ATransmitter.Ready)) then
     exit;
 
   ATransmitter.RSendData(CMD_NICK_ID + ' ' + PlayerNickId + ' ' + OpponentNickId + ' ' + OpponentNick);
@@ -301,12 +302,10 @@ begin
     ceError:
     begin
       Connector.Close;
-      inherited ConnectorHandler(e, d1, d2);
     end;
-
-  else
-    inherited ConnectorHandler(e, d1, d2);
   end; // case
+
+  inherited ConnectorHandler(e, d1, d2);
 end;
 
 
@@ -354,7 +353,7 @@ begin
   for i := 0 to m_lstTransmittingManagers.Count - 1 do
   begin
     ATransmitter := m_lstTransmittingManagers[i];
-    if (Assigned(ATransmitter) and (ATransmitter.m_bReady)) then
+    if (Assigned(ATransmitter) and (ATransmitter.Ready)) then
       ATransmitter.RSendData(strCmd);
   end;
 end;
@@ -774,13 +773,13 @@ begin
   end
   else if (sl = CMD_GOODBYE) then
   begin
-    Stop;  
+    Stop;
   end
   else if (sl = CMD_WELCOME) then
   begin
     RSendData(CMD_WELCOME);
     m_bReady := TRUE;
-    m_GamingManager.FSetGameContextToTransmitter(self);     
+    m_GamingManager.FSetGameContextToTransmitter(self);
   end;
 end;
 

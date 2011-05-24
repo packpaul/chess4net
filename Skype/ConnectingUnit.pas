@@ -10,7 +10,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, TntStdCtrls,
-  Forms, {Dialogs, }ExtCtrls, StdCtrls,
+  Forms, ExtCtrls, StdCtrls,
   DialogUnit, ModalForm;
 
 type
