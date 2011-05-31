@@ -264,7 +264,7 @@ const
   INITIAL_CLOCK_TIME = '5 0 5 0'; // 5:00 5:00
   NO_CLOCK_TIME ='u u';
 
-  HOUR_TIME_FORMAT = 'h:mm:ss';
+  HOUR_TIME_FORMAT = 'h:nn:ss';
 
   // Command shorthands for Connector
   CMD_ECHO = 'echo';
@@ -724,7 +724,6 @@ procedure TManager.RHandleConnectorDataCommand(sl: string);
 var
   AMode: TMode;
   sr: string;
-  ms: string;
   strSavedCmd: string;
   wstrMsg: WideString;
 begin
@@ -969,21 +968,20 @@ begin
       with ChessBoard do
       begin
         RSplitStr(sr, sl, sr);
-        ms := RightStr(sl, length(sl) - LastDelimiter(':.', sl));
-        sl := LeftStr(sl, length(sl) - length(ms) - 1);
+
         if (Transmittable) then
         begin
           if (PositionColor = fcWhite) then
-            Time[fcBlack] := StrToTime(sl) + EncodeTime(0, 0, 0, StrToInt(ms))
+            Time[fcBlack] := TChessClock.ConvertFromFullStr(sl)
           else
-            Time[fcWhite] := StrToTime(sl) + EncodeTime(0, 0, 0, StrToInt(ms));
+            Time[fcWhite] := TChessClock.ConvertFromFullStr(sl);
         end
         else
         begin
           if (_PlayerColor = fcWhite) then
-            Time[fcBlack] := StrToTime(sl) + EncodeTime(0, 0, 0, StrToInt(ms))
+            Time[fcBlack] := TChessClock.ConvertFromFullStr(sl)
           else
-            Time[fcWhite] := StrToTime(sl) + EncodeTime(0, 0, 0, StrToInt(ms));
+            Time[fcWhite] := TChessClock.ConvertFromFullStr(sl);
         end;
       end; // with
       RRetransmit(strSavedCmd);
@@ -2133,8 +2131,8 @@ begin
     // <time control>
     str := str + ClockToStr + '&';
     // <current time>
-    LongTimeFormat := HOUR_TIME_FORMAT;
-    str := str + TimeToStr(Time[fcWhite]) + ' ' + TimeToStr(Time[fcBlack]);
+    str := str + TChessClock.ConvertToFullStr(Time[fcWhite], FALSE) + ' ' +
+                 TChessClock.ConvertToFullStr(Time[fcBlack], FALSE);
   end;
 
   Result := str;
@@ -2179,7 +2177,7 @@ begin
 
   // strValue ::= <position>&<this player's color>&<time control>&<current time>
 
-  str := strValue;  
+  str := strValue;
 
   l := pos('&', str);
   strPosition := LeftStr(str, l - 1);
@@ -2193,7 +2191,7 @@ begin
   strTimeControl := LeftStr(str, l - 1);
   strCurrentTime := RightStr(str, length(str) - l);
 
-  SetClock(strTimeControl);    
+  SetClock(strTimeControl);
 
   if (((_PlayerColor = fcWhite) and (strPlayerColor <> 'w')) or
       ((_PlayerColor = fcBlack) and (strPlayerColor <> 'b'))) then
@@ -2204,9 +2202,9 @@ begin
     SetPosition(strPosition);
 
     RSplitStr(strCurrentTime, str, strCurrentTime);
-    LongTimeFormat := HOUR_TIME_FORMAT;
-    Time[fcWhite] := StrToTime(str);
-    Time[fcBlack] := StrToTime(strCurrentTime);
+
+    Time[fcWhite] := TChessClock.ConvertFromFullStr(str);
+    Time[fcBlack] := TChessClock.ConvertFromFullStr(strCurrentTime);
   end;
 end;
 

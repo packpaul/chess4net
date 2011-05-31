@@ -72,9 +72,6 @@ type
     procedure InitLog;
     procedure WriteToLog(const s: string);
     procedure CloseLog;
-// SkypeLog >
-    procedure LogApplicationStream(AApplicationStream: IApplicationStream);
-// < SkypeLog
 {$ENDIF}
 
     constructor FCreate(h: TConnectorHandler);
@@ -506,19 +503,11 @@ var
   i: integer;
   AApplicationStream: IApplicationStream;
 begin
-{$IFDEF DEBUG_LOG} // SkypeLog >
-  WriteToLog('TConnector.FBuildSkypeApplicationStreams()');
-{$ENDIF} // < SkypeLog
-
   m_SkypeApplicationStreams := CoApplicationStreamCollection.Create;
 
   for i := 1 to SkypeApplication.Streams.Count do
   begin
     AApplicationStream := SkypeApplication.Streams[i];
-{$IFDEF DEBUG_LOG} // SkypeLog >
-    WriteToLog('Stream #' + IntToStr(i) + ':');
-    LogApplicationStream(AApplicationStream);
-{$ENDIF} // < SkypeLog
     if (AApplicationStream.PartnerHandle = ContactHandle) then
     begin
       m_SkypeApplicationStreams.Add(AApplicationStream);
@@ -621,14 +610,6 @@ procedure TConnector.CloseLog;
 begin
   CloseFile(_logFile);
 end;
-
-// SkypeLog >
-procedure TConnector.LogApplicationStream(AApplicationStream: IApplicationStream);
-begin
-  WriteToLog('Addr: $' + IntToHex(Integer(AApplicationStream), 8));
-  WriteToLog('PartnerHandle: ' + AApplicationStream.PartnerHandle);
-end;
-// < SkypeLog
 {$ENDIF}
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -761,11 +742,6 @@ procedure TBaseConnector.FOnSkypeApplicationDatagram(ASender: TObject; const pAp
 var
   i: integer;
 begin
-{$IFDEF DEBUG_LOG} // SkypeLog >
-  WriteToLog('TBaseConnector.FOnSkypeApplicationDatagram()');
-  LogApplicationStream(pStream); 
-{$ENDIF} // < SkypeLog
-
   if (pApp.Name <> SKYPE_APP_NAME) then
     exit;
 

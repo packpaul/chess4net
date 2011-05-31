@@ -7,7 +7,9 @@ type
   public
     class function IsZeitnot(const time: TDateTime): boolean;
     class function ConvertToStr(const time: TDateTime): string;
-    class function ConvertToFullStr(const time: TDateTime): string;
+    class function ConvertToFullStr(const time: TDateTime;
+      bIncludeMSec: boolean = TRUE): string;
+    class function ConvertFromFullStr(const strTime: string): TDateTime;
   end;
 
 implementation
@@ -43,10 +45,69 @@ begin
 end;
 
 
-class function TChessClock.ConvertToFullStr(const time: TDateTime): string;
+class function TChessClock.ConvertToFullStr(const time: TDateTime;
+  bIncludeMSec: boolean = TRUE): string;
 begin
-  LongTimeFormat := FULL_TIME_FORMAT;
+  if (bIncludeMSec) then
+    LongTimeFormat := FULL_TIME_FORMAT
+  else
+    LongTimeFormat := HOUR_TIME_FORMAT;
+
   Result := TimeToStr(time);
+end;
+
+
+class function TChessClock.ConvertFromFullStr(const strTime: string): TDateTime;
+
+  procedure NParse(strTime: string; out Hour, Min, Sec, MSec: Word);
+  const
+    TIME_DELIM = ':';
+    MSEC_DELIM = '.';
+  var
+    iPos: integer;
+    str: string;
+  begin
+    Hour := 0;
+    Min := 0;
+    Sec := 0;
+    MSec := 0;
+
+    iPos := LastDelimiter(MSEC_DELIM, strTime);
+    if (iPos > 0) then
+    begin
+      str := Copy(strTime, iPos + 1, MaxInt);
+      strTime := Copy(strTime, 1, iPos - 1);
+      MSec := StrToInt(str);
+    end;
+
+    strTime := TIME_DELIM + strTime;
+
+    iPos := LastDelimiter(TIME_DELIM, strTime);
+    if (iPos = 0) then
+      exit;
+    str := Copy(strTime, iPos + 1, MaxInt);
+    strTime := Copy(strTime, 1, iPos - 1);
+    Sec := StrToInt(str);
+
+    iPos := LastDelimiter(TIME_DELIM, strTime);
+    if (iPos = 0) then
+      exit;
+    str := Copy(strTime, iPos + 1, MaxInt);
+    strTime := Copy(strTime, 1, iPos - 1);
+    Min := StrToInt(str);
+
+    iPos := LastDelimiter(TIME_DELIM, strTime);
+    if (iPos = 0) then
+      exit;
+    str := Copy(strTime, iPos + 1, MaxInt);
+    Hour := StrToInt(str);
+  end;
+
+var
+  Hour, Min, Sec, MSec: Word;
+begin // .ConvertFromFullStr
+  NParse(strTime, Hour, Min, Sec, MSec);
+  Result := EncodeTime(Hour, Min, Sec, MSec);
 end;
 
 end.
