@@ -11,6 +11,7 @@ uses
   FastMM4,
 {$ENDIF}
   Forms,
+  NonMainFormStayOnTopUnit in '..\NonMainFormStayOnTopUnit.pas',
   ConnectionUnit in '..\ConnectionUnit.pas' {ConnectionForm},
   ConnectingUnit in '..\ConnectingUnit.pas' {ConnectingForm},
   GameOptionsUnit in '..\GameOptionsUnit.pas' {GameOptionsForm},

@@ -1047,7 +1047,7 @@ var
         inc(i);
         inc(iPos);
 
-      until ((strPos[iPos] = '/') or (i > 8)); // Repeat until '/' or if not on the row
+      until ((i > 8) or (strPos[iPos] = '/')); // Repeat until '/' or if not on the row
 
       inc(iPos);
       

@@ -126,6 +126,12 @@ PP
 Change log
 -----------
 
+Chess4Net 2011.1
+[2011-05-23] Broadcast games feature
+[2011-05-30] Incorrect chess clock timing on different locales fix.
+[2011-06-01] Stay on top enabled
+
+
 Chess4Net 2010.0 (MI)
 [2010-05-28] Game retransmition feature added. Dialog handling improved (stay on top, out of screen etc). Majority of crashes fixed. Games numbering if several ones are played.
 

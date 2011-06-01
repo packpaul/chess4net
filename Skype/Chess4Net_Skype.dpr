@@ -20,6 +20,7 @@ uses
   FastMM4,
 {$ENDIF}
   Forms,
+  NonMainFormStayOnTopUnit in '..\NonMainFormStayOnTopUnit.pas',
   ConnectingUnit in 'ConnectingUnit.pas' {ConnectingForm},
   GameOptionsUnit in '..\GameOptionsUnit.pas' {GameOptionsForm},
   ManagerUnit in '..\ManagerUnit.pas' {Manager},

@@ -53,10 +53,6 @@ procedure TLookFeelOptionsForm.FormCreate(Sender: TObject);
 var
   i: integer;
 begin
-{$IFDEF SKYPE}
-  StayOnTopBox.Enabled := FALSE; // TODO: this was done to prevent non-modal dialogs be overlapped by ChessForm. Resolve later
-{$ENDIF}
-
   // Fill GUI Languages combo box
   GUILangComboBox.Clear;
   with TLocalizer.Instance do
