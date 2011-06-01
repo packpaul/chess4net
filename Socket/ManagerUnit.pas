@@ -135,7 +135,7 @@ const
   DEFAULT_PLAYER_NICK = 'NN';
   DEFAULT_IPDOMAIN_PORT_SERVER = '127.0.0.1:5555-S';
 
-  HOUR_TIME_FORMAT = 'h:mm:ss';
+  HOUR_TIME_FORMAT = 'h:nn:ss';
 
   // сокращение команд для Connector
   CMD_ECHO = 'echo';
@@ -352,7 +352,7 @@ end;
 
 procedure TManager.ConnectorHandler(e: TConnectorEvent; d1: pointer = nil; d2: pointer = nil);
 var
-  cmd_str, sl, sr, ms: string;
+  cmd_str, sl, sr: string;
 label
   l;
 begin
@@ -633,19 +633,17 @@ l:
               MessageDlg('No draw, sorry.', mtCustom, [mbOK])
             else
             if sl = CMD_SWITCH_CLOCK then
+            begin
               with ChessBoard do
-                try
-                  SplitStr(sr, sl, sr);
-                  ms:= RightStr(sl, length(sl) - LastDelimiter(':.', sl));
-                  sl:= LeftStr(sl, length(sl) - length(ms) - 1);
+              begin
+                SplitStr(sr, sl, sr);
 
-                  if PlayerColor = fcWhite then
-                    Time[fcBlack]:= StrToTime(sl) + EncodeTime(0,0,0, StrToInt(ms))
-                  else
-                    Time[fcWhite]:= StrToTime(sl) + EncodeTime(0,0,0, StrToInt(ms));
-                except
-                  on Exception do ;
-                end
+                if PlayerColor = fcWhite then
+                  Time[fcBlack] := TChessClock.ConvertFromFullStr(sl)
+                else
+                  Time[fcWhite] := TChessClock.ConvertFromFullStr(sl);
+              end;
+            end
             else
             if sl = CMD_FLAG then
               with ChessBoard do
