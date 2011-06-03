@@ -12,7 +12,7 @@ uses
   Classes;
 
 type
-  TApplicationID = (aidAnalyzer = 1);
+  TApplicationID = (aidAnalyzer = 1, aidSkype = 2);
   TOperatingSystemID = (osidWindows = 1, osidLinux = 2);
 
   TURLVersionQuery = class;

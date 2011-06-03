@@ -19,7 +19,7 @@ uses
   // Chess4Net Units
   ChessBoardHeaderUnit, ChessRulesEngine, ChessBoardUnit, PosBaseChessBoardUnit,
   GameChessBoardUnit, ConnectorUnit, ConnectingUnit, GameOptionsUnit,
-  ModalForm, DialogUnit, ContinueUnit, LocalizerUnit;
+  ModalForm, DialogUnit, ContinueUnit, LocalizerUnit, URLVersionQueryUnit;
 
 type
   TManager = class(TForm, ILocalizable)
@@ -121,6 +121,8 @@ type
 
     m_bTransmittable: boolean;
 
+    m_iDontShowLastVersion: integer;
+
 {$IFDEF GAME_LOG}
     // for game log
     gameLog: string;
@@ -158,6 +160,8 @@ type
 {$ENDIF}
 
     procedure FSetTransmittable(bValue: boolean);
+
+    procedure FOnURLQueryReady(Sender: TURLVersionQuery);
 
     property AdjournedStr: string read m_strAdjourned write m_strAdjourned;
     property _PlayerColor: TFigureColor read FGetPlayerColor write FSetPlayerColor;
@@ -337,6 +341,7 @@ const
 {$IFDEF SKYPE}
   DONT_SHOW_CREDITS = 'DontShowCredits';
 {$ENDIF}
+  DONT_SHOW_LAST_VERSION = 'DontShowLastVersion';
 
 type
   TManagerDefault = class(TManager) // TODO: TRILLIAN, AND_RQ, QIP-> own classes
@@ -710,6 +715,43 @@ end;
 procedure TManager.RSetConnectionOccured;
 begin
   m_bConnectionOccured := TRUE;
+{$IFNDEF TESTING}
+  with TURLVersionQuery.Create do
+  begin
+    OnQueryReady := FOnURLQueryReady;
+    Query(aidSkype, CHESS4NET_VERSION, osidWindows);
+  end;
+{$ENDIF}
+end;
+
+
+procedure TManager.FOnURLQueryReady(Sender: TURLVersionQuery);
+var
+  bDontShowFlag: boolean;
+begin
+  if (not Assigned(Sender)) then
+    exit;
+
+  try
+    if ((Sender.LastVersion <= m_iDontShowLastVersion)) then
+      exit;
+
+    bDontShowFlag := FALSE;
+
+    // TODO: Show version dialog.
+
+(*
+    if (Sender.Info <> '') then
+      TDontShowMessageDlg.Show(Sender.Info, bDontShowFlag);
+
+    if (bDontShowFlag) then
+      TIniSettings.Instance.DontShowLastVersion := Sender.LastVersion;
+*)
+
+  finally
+    Sender.Free;
+  end;
+
 end;
 
 
@@ -748,10 +790,9 @@ begin
         m_Dialogs.MessageDlg(TLocalizer.Instance.GetMessage(8), mtWarning,
           [mbOK], mfNone); // Your opponent is using an older version of Chess4Net. ...
       end;
-
-        // 2007.4 is the first client with a backward compatibility
-        // For incompatible versions:
-        // else RSendData(CMD_GOODBYE);
+      // 2007.4 is the first client with a backward compatibility
+      // For incompatible versions:
+      // else RSendData(CMD_GOODBYE);
     end
     else if (sl = CMD_WELCOME) then
     begin
@@ -1850,6 +1891,7 @@ begin
     ChessBoard.StayOnTop := iniFile.ReadBool(PRIVATE_SECTION_NAME, STAY_ON_TOP_KEY_NAME, FALSE);
     extra_exit := iniFile.ReadBool(PRIVATE_SECTION_NAME, EXTRA_EXIT_KEY_NAME, FALSE);
     TLocalizer.Instance.ActiveLanguage := iniFile.ReadInteger(PRIVATE_SECTION_NAME, LANGUAGE_KEY_NAME, 1) - 1;
+    m_iDontShowLastVersion := iniFile.ReadInteger(PRIVATE_SECTION_NAME, DONT_SHOW_LAST_VERSION, CHESS4NET_VERSION);
 {$IFDEF SKYPE}
     m_bDontShowCredits := iniFile.ReadBool(PRIVATE_SECTION_NAME, DONT_SHOW_CREDITS, FALSE);
 {$ENDIF}
@@ -1976,6 +2018,10 @@ begin
     iniFile.WriteBool(PRIVATE_SECTION_NAME, STAY_ON_TOP_KEY_NAME, ChessBoard.StayOnTop);
     iniFile.WriteBool(PRIVATE_SECTION_NAME, EXTRA_EXIT_KEY_NAME, extra_exit);
     iniFile.WriteInteger(PRIVATE_SECTION_NAME, LANGUAGE_KEY_NAME, TLocalizer.Instance.ActiveLanguage + 1);
+
+    if (m_iDontShowLastVersion <> CHESS4NET_VERSION) then
+      iniFile.WriteInteger(PRIVATE_SECTION_NAME, DONT_SHOW_LAST_VERSION, m_iDontShowLastVersion);
+
 {$IFDEF SKYPE}
     if (m_bDontShowCredits) then
       iniFile.WriteBool(PRIVATE_SECTION_NAME, DONT_SHOW_CREDITS, m_bDontShowCredits);

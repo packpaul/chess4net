@@ -46,6 +46,7 @@ uses
   InfoUnit in '..\InfoUnit.pas' {InfoForm},
   SelectSkypeContactUnit in 'SelectSkypeContactUnit.pas' {SelectSkypeContactForm},
   CreditsFormUnit in 'CreditsFormUnit.pas' {CreditsForm},
+  URLVersionQueryUnit in '..\URLVersionQueryUnit.pas',
   InterProc in 'InterProc.pas'
 {$IFDEF TESTING}
   , SkypeTS_TLB in 'SkypeTS_TLB.pas'
