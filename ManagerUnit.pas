@@ -122,6 +122,7 @@ type
     m_bTransmittable: boolean;
 
     m_iDontShowLastVersion: integer;
+    m_iQueriedDontShowLastVersion: integer;
 
 {$IFDEF GAME_LOG}
     // for game log
@@ -249,7 +250,7 @@ implementation
 uses
   // Chess4Net
   DateUtils, Math, StrUtils, TntIniFiles, Dialogs,
-  LookFeelOptionsUnit, GlobalsLocalUnit, InfoUnit, ChessClockUnit
+  LookFeelOptionsUnit, GlobalsLocalUnit, InfoUnit, ChessClockUnit, DontShowMessageDlgUnit
 {$IFDEF AND_RQ}
   , CallExec
 {$ENDIF}
@@ -719,15 +720,17 @@ begin
   with TURLVersionQuery.Create do
   begin
     OnQueryReady := FOnURLQueryReady;
+  {$IFDEF SKYPE}
     Query(aidSkype, CHESS4NET_VERSION, osidWindows);
+  {$ELSE}
+    Free; // TODO: URL query for other clients
+  {$ENDIF}
   end;
 {$ENDIF}
 end;
 
 
 procedure TManager.FOnURLQueryReady(Sender: TURLVersionQuery);
-var
-  bDontShowFlag: boolean;
 begin
   if (not Assigned(Sender)) then
     exit;
@@ -736,17 +739,14 @@ begin
     if ((Sender.LastVersion <= m_iDontShowLastVersion)) then
       exit;
 
-    bDontShowFlag := FALSE;
-
-    // TODO: Show version dialog.
-
-(*
     if (Sender.Info <> '') then
-      TDontShowMessageDlg.Show(Sender.Info, bDontShowFlag);
-
-    if (bDontShowFlag) then
-      TIniSettings.Instance.DontShowLastVersion := Sender.LastVersion;
-*)
+    begin
+      with TDontShowMessageDlg.Create(m_Dialogs, Sender.Info) do
+      begin
+        m_iQueriedDontShowLastVersion := Sender.LastVersion;
+        Show;
+      end;
+    end;
 
   finally
     Sender.Free;
@@ -1728,6 +1728,12 @@ begin
         RSendData(CMD_PAUSE_GAME_NO);
     end;
 
+    mfDontShowDlg:
+    begin
+      if ((modSender as TDontShowMessageDlg).DontShow) then
+        m_iDontShowLastVersion := m_iQueriedDontShowLastVersion;
+    end;
+
   end;
 end;
 
@@ -2019,7 +2025,7 @@ begin
     iniFile.WriteBool(PRIVATE_SECTION_NAME, EXTRA_EXIT_KEY_NAME, extra_exit);
     iniFile.WriteInteger(PRIVATE_SECTION_NAME, LANGUAGE_KEY_NAME, TLocalizer.Instance.ActiveLanguage + 1);
 
-    if (m_iDontShowLastVersion <> CHESS4NET_VERSION) then
+    if (m_iDontShowLastVersion > CHESS4NET_VERSION) then
       iniFile.WriteInteger(PRIVATE_SECTION_NAME, DONT_SHOW_LAST_VERSION, m_iDontShowLastVersion);
 
 {$IFDEF SKYPE}

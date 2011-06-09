@@ -167,9 +167,11 @@ end;
 
 procedure TQueryThread.Execute;
 begin
+{$IFNDEF TESTING}
   m_strResponse := m_URLVersionQuery.FQuery(m_strURL);
-//  m_strResponse := 'Last version=201102;Info=Chess4Net Analayzer makes you play chess better!'; // TEST
-//  m_strResponse := 'Last version=201102;Info=Version 2011.2 is available'#10'You can download it from http://chess4net.ru'; // TEST
+{$ELSE}
+  m_strResponse := 'Last version=201102;Info=Version 2011.2 is available'#10'TEST> You can download it from http://chess4net.ru <TEST';
+{$ENDIF}
   Synchronize(FNotifyOnResponse);
 end;
 

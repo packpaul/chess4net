@@ -9,7 +9,7 @@ unit ModalForm;
 interface
 
 uses
-  Forms, TntForms, Dialogs, Classes, Windows;
+  Forms, TntForms, Dialogs, Classes, Windows, Controls;
 
 type
   TModalForm = class;
@@ -17,14 +17,13 @@ type
 
   TModalFormID = (mfNone, mfMsgClose, mfMsgLeave, mfMsgAbort, mfMsgResign,
                   mfMsgDraw, mfMsgTakeBack, mfMsgAdjourn, mfConnecting, mfGameOptions,
-                  mfLookFeel, mfCanPause, mfContinue, mfIncompatible
+                  mfLookFeel, mfCanPause, mfContinue, mfIncompatible, mfDontShowDlg
 {$IFDEF SKYPE}
                   , mfSelectSkypeContact
 {$ENDIF}
 {$IFDEF MIRANDA}
                   , mfTransmitting, mfTransmitGame
 {$ENDIF}
-
                   );
 
   TModalFormHandler = procedure(modSender: TModalForm; modID: TModalFormID) of object;
@@ -67,7 +66,9 @@ type
   protected
     RHandler: TModalFormHandler;
     dlgOwner: TDialogs;
+
     constructor Create(dlgOwner: TDialogs; modHandler: TModalFormHandler); reintroduce; overload; virtual;
+
     function GetHandle: hWnd; virtual;
     function GetEnabled_: boolean; virtual;
     procedure SetEnabled_(flag: boolean); virtual;
@@ -77,6 +78,9 @@ type
     procedure SetTop_(y: integer); virtual;
 
     function GetModalID: TModalFormID; virtual;
+
+    function RGetModalResult: TModalResult; virtual;
+    procedure RSetModalResult(Value: TModalResult); virtual;
 
   public
     constructor Create(Owner: TForm; modHandler: TModalFormHandler = nil); reintroduce; overload; virtual;
@@ -88,12 +92,14 @@ type
     property Enabled: boolean read GetEnabled_ write SetEnabled_;
     property Left: integer read GetLeft_ write SetLeft_;
     property Top: integer read GetTop_ write SetTop_;
+
+    property ModalResult: TModalResult read RGetModalResult write RSetModalResult;
   end;
 
 implementation
 
 uses
-  SysUtils, StdCtrls, Controls,
+  SysUtils, StdCtrls,
   DialogUnit, GlobalsUnit;
 
 var
@@ -275,6 +281,17 @@ end;
 procedure TModalForm.SetTop_(y: integer);
 begin
   inherited Top := y;
+end;
+
+
+function TModalForm.RGetModalResult: TModalResult;
+begin
+  Result := inherited ModalResult;
+end;
+
+procedure TModalForm.RSetModalResult(Value: TModalResult);
+begin
+  inherited ModalResult := Value;
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
