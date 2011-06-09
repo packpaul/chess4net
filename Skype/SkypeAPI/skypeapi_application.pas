@@ -22,8 +22,12 @@ type
     m_wstrHandle: WideString;
     m_Application: TApplication;
     m_DatagramListener: TListener;
+
     procedure FCreateListeners;
     procedure FDestroyListeners;
+
+    function Get_PartnerHandle: WideString;
+
   public
     constructor Create(AApplication: TApplication; const wstrHandle: WideString);
     destructor Destroy; override;
@@ -36,6 +40,13 @@ type
     function FGetCount: integer;
     procedure Add(const Stream: IApplicationStream);
     function FGetItem(iIndex: integer): IApplicationStream;
+
+    function IApplicationStreamCollection.Get_Count = FGetCount;
+    function Get_Item(Index: Integer): IApplicationStream;
+    procedure IApplicationStreamCollection.Remove = FRemove;
+    procedure FRemove(iIndex: integer);
+    procedure IApplicationStreamCollection.RemoveAll = Clear;
+
   public
     destructor Destroy; override;
     property Count: integer read FGetCount;
@@ -793,6 +804,12 @@ begin
   TSkype.Instance.ListenersManager.DestroyListener(m_DatagramListener);
 end;
 
+
+function TApplicationStream.Get_PartnerHandle: WideString;
+begin
+  Result := m_wstrHandle;
+end;
+
 ////////////////////////////////////////////////////////////////////////////////
 // TApplicationStreamCollection
 
@@ -817,6 +834,18 @@ end;
 function TApplicationStreamCollection.FGetItem(iIndex: Integer): IApplicationStream;
 begin
   Result := IApplicationStream(inherited Items[iIndex]);
+end;
+
+
+function TApplicationStreamCollection.Get_Item(Index: Integer): IApplicationStream;
+begin
+  Result := FGetItem(Index - 1);
+end;
+
+
+procedure TApplicationStreamCollection.FRemove(iIndex: integer);
+begin
+  Delete(iIndex - 1);
 end;
 
 ////////////////////////////////////////////////////////////////////////////////

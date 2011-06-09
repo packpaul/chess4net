@@ -44,9 +44,18 @@ type
   end;
 
   IApplicationStream = interface(IObject)
+    function Get_PartnerHandle: WideString;
+    property PartnerHandle: WideString read Get_PartnerHandle;
   end;
 
   IApplicationStreamCollection = interface(IObject)
+    procedure Add(const pItem: IApplicationStream);
+    function Get_Count: Integer;
+    procedure Remove(Index: Integer);
+    procedure RemoveAll;
+    function Get_Item(Index: Integer): IApplicationStream;
+    property Count: Integer read Get_Count;
+    property Item[Index: Integer]: IApplicationStream read Get_Item; default;
   end;
 
   IApplication = interface
@@ -180,6 +189,12 @@ type
                                                      write FOnAttachmentStatus;
     property OnApplicationDatagram: TOnApplicationDatagram read FOnApplicationDatagram
                                                            write FOnApplicationDatagram;
+  end;
+
+
+  CoApplicationStreamCollection = class
+  public
+    class function Create: IApplicationStreamCollection;
   end;
 
 implementation
@@ -694,6 +709,14 @@ begin
   m_wstrCurrentUserHandle := RNextToken(wstrBody, wstrBody);   
 
   Result := (m_wstrCurrentUserHandle <> '');
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// CoApplicationStreamCollection
+
+class function CoApplicationStreamCollection.Create: IApplicationStreamCollection;
+begin
+  Result := TApplicationStreamCollection.Create;
 end;
 
 end.
