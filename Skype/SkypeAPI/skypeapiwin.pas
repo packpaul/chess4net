@@ -100,7 +100,11 @@ begin
 
     case Msg.LParam  of
       0: RDoAttachmentStatus(asAttachSuccess);
-      1: RDoAttachmentStatus(asAttachPendingAuthorization);
+      1:
+      begin
+        Sleep(1); // In order to prevent Skype freezing on Windows
+        RDoAttachmentStatus(asAttachPendingAuthorization);
+      end;
       2: RDoAttachmentStatus(asAttachRefused);
       3: RDoAttachmentStatus(asAttachNotAvailable);
     end;
