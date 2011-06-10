@@ -806,8 +806,12 @@ end;
 
 
 function TApplicationStream.Get_PartnerHandle: WideString;
+var
+  iPos: integer;
 begin
-  Result := m_wstrHandle;
+  iPos := LastDelimiter(':', m_wstrHandle);
+  Assert(iPos > 1);
+  Result :=  Copy(m_wstrHandle, 1, iPos - 1);
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
