@@ -192,7 +192,7 @@ begin
     begin
       Synchronize(FSkypeAPIWin.FProcessPendingCommands);
     end;
-    Sleep(0);
+    Sleep(1);
   end;
 end;
 
