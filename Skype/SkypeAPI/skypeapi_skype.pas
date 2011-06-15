@@ -114,7 +114,7 @@ type
 
     m_wstrCurrentUserHandle: WideString;
 
-    m_Command: TCommand;
+    m_lstCommands: TList;
     m_ListenersManager: TListenersManager;
     m_ChatMessageStatusListener: TListener;
     m_PendingSkypeAPICommands: TStringList;
@@ -258,6 +258,8 @@ begin
   m_ListenersManager := TListenersManager.Create;
   m_PendingSkypeAPICommands := TStringList.Create;
 
+  m_lstCommands := TList.Create;
+
   m_SkypeAPI.OnAttachmentStatus := FOnSkypeAPIAttachementStatus;
   m_SkypeAPI.OnCommandReceived := FOnSkypeAPICommandReceived;
 end;
@@ -266,6 +268,8 @@ end;
 destructor TSkype.Destroy;
 begin
   // TODO: Take care if we're in SendCommand()
+
+  m_lstCommands.Free;
 
   m_PendingSkypeAPICommands.Free;
   m_Applications.Free;
@@ -403,19 +407,29 @@ end;
 
 
 procedure TSkype.FOnSkypeAPICommandReceived(ASender: TObject; const wstrCommand: WideString);
+var
+  i: integer;
+  Command: TCommand;
 begin
   Log(WideString('->') + wstrCommand);
 
-  if (Assigned(m_Command)) then
+  if (m_lstCommands.Count > 0) then
   begin
-    if (not m_Command.HasResponse) then
+    for i := 0 to m_lstCommands.Count - 1 do
     begin
-      m_Command.ProcessResponse(wstrCommand);
-      if (m_Command.HasResponse) then
-        Log('Command processed: ' + m_Command.ClassName)
-      else
-        m_PendingSkypeAPICommands.Add(UTF8Encode(wstrCommand));
-    end;
+      Command := TCommand(m_lstCommands[i]);
+      if (Command.HasResponse) then
+        continue;
+
+      Command.ProcessResponse(wstrCommand);
+      if (Command.HasResponse) then
+      begin
+        Log('Command processed: ' + Command.ClassName);
+        exit;
+      end;
+    end; // for
+
+    m_PendingSkypeAPICommands.Add(UTF8Encode(wstrCommand));
   end
   else
   begin
@@ -453,16 +467,10 @@ var
 begin
   Result := FALSE;
 
-  if (Assigned(m_Command)) then
-  begin
-    Log('Unable to process command: ' + m_Command.ClassName);
-    exit;
-  end;
-
-  m_Command := ACommand;
+  m_lstCommands.Add(ACommand);
   try
-    Log('Processing command: ' + m_Command.ClassName);
-    SendCommand(m_Command.Command);
+    Log('Processing command: ' + ACommand.ClassName);
+    SendCommand(ACommand.Command);
 
     iTimeOutTimer := COMMAND_TIMEOUT;
 
@@ -482,7 +490,7 @@ begin
     end;
 
   finally
-    m_Command := nil;
+    m_lstCommands.Remove(ACommand);
   end;
 
   m_PendingSkypeAPICommandsTimer.Enabled := TRUE;
@@ -494,7 +502,7 @@ end;
 procedure TSkype.FOnPendingSkypeAPICommandsTimer(Sender: TObject);
 begin
   m_PendingSkypeAPICommandsTimer.Enabled := FALSE;
-  if (Assigned(m_Command)) then
+  if (m_lstCommands.Count > 0) then
     exit;
   FProcessPendingSkypeAPICommandsForListeners;
 end;

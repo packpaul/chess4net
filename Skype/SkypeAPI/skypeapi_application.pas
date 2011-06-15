@@ -174,13 +174,13 @@ type
 
   TAppStreamsListener = class(TListener)
   private
-    m_wstrParsedStreamHandle: WideString;
+    m_wstrParsedStreamHandles: WideString;
     m_Application: TApplication;      
   protected
     function RParseCommand(const wstrCommand: WideString): boolean; override;
     function RProcessCommand(const wstrCommand: WideString): boolean; override;
   public
-    property Application: TApplication read m_Application write m_Application;  
+    property Application: TApplication read m_Application write m_Application;
   end;
 
 
@@ -433,54 +433,84 @@ begin
   Result := m_wstrName;
 end;
 
-////////////////////////////////////////////////////////////////////////////////
-// TAppCommand
 
-constructor TAppCommand.Create(AApplication: TApplication);
-begin
-  inherited Create;
-  m_Application := AApplication;
-end;
+////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-// TAppCreateCommand
-
-function TAppCreateCommand.RGetCommand: WideString;
-begin
-  Result := CMD_CREATE_APPLIATION + ' ' + Application.Name;
-end;
+// TAppCommand
 
 
-function TAppCreateCommand.RProcessResponse(const wstrCommand: WideString): boolean;
+constructor TAppCommand.Create(AApplication: TApplication);
+
 begin
-  Assert(not HasResponse);
-  
-  Result := SameText(Command, wstrCommand);
-{
-  Other responses:
-  ERROR 536 CREATE: no object or type given
-  ERROR 537 CREATE: Unknown object type given
+
+  inherited Create;
+
+  m_Application := AApplication;
+
+end;
+
+
+////////////////////////////////////////////////////////////////////////////////
+
+// TAppCreateCommand
+
+
+function TAppCreateCommand.RGetCommand: WideString;
+
+begin
+
+  Result := CMD_CREATE_APPLIATION + ' ' + Application.Name;
+
+end;
+
+
+
+function TAppCreateCommand.RProcessResponse(const wstrCommand: WideString): boolean;
+begin
+
+  Assert(not HasResponse);
+
+  
+
+  Result := SameText(Command, wstrCommand);
+
+{
+
+  Other responses:
+
+  ERROR 536 CREATE: no object or type given
+
+  ERROR 537 CREATE: Unknown object type given
   ERROR 540 CREATE APPLICATION: Missing or invalid name
   ERROR 541 APPLICATION: operation failed - in case an application with this name already exists
 }
-end;
 
-////////////////////////////////////////////////////////////////////////////////
-// TAppDeleteCommand
-
-function TAppDeleteCommand.RGetCommand: WideString;
-begin
-  Result := CMD_DELETE_APPLIATION + ' ' + Application.Name;
-end;
+end;
 
 
-function TAppDeleteCommand.RProcessResponse(const wstrCommand: WideString): boolean;
+////////////////////////////////////////////////////////////////////////////////
+
+// TAppDeleteCommand
+
+
+function TAppDeleteCommand.RGetCommand: WideString;
+
+begin
+
+  Result := CMD_DELETE_APPLIATION + ' ' + Application.Name;
+
+end;
+
+
+
+function TAppDeleteCommand.RProcessResponse(const wstrCommand: WideString): boolean;
 begin
   Assert(not HasResponse);
 
   Result := SameText(Command, wstrCommand);
 {
-  Other responses:
+
+  Other responses:
   ERROR 538 DELETE: no object or type given
   ERROR 539 DELETE: Unknown object type given
   ERROR 542 DELETE APPLICATION : missing or invalid application name
@@ -488,16 +518,23 @@ begin
 }
 end;
 
-////////////////////////////////////////////////////////////////////////////////
-// TAppConnectableUsersCommand
 
-function TAppConnectableUsersCommand.RGetCommand: WideString;
-begin
-  Result := CMD_GET_APPLICATION + ' ' + Application.Name + ' ' + CMD_CONNECTABLE;
-end;
+////////////////////////////////////////////////////////////////////////////////
+
+// TAppConnectableUsersCommand
 
 
-function TAppConnectableUsersCommand.RProcessResponse(const wstrCommand: WideString): boolean;
+function TAppConnectableUsersCommand.RGetCommand: WideString;
+
+begin
+
+  Result := CMD_GET_APPLICATION + ' ' + Application.Name + ' ' + CMD_CONNECTABLE;
+
+end;
+
+
+
+function TAppConnectableUsersCommand.RProcessResponse(const wstrCommand: WideString): boolean;
 var
   wstrHead, wstrBody: WideString;
   wstrAppName: WideString;
@@ -558,11 +595,14 @@ end;
 
 function TAppConnectingUsersCommand.RGetCommand: WideString;
 begin
-  Result := CMD_GET_APPLICATION + ' ' + Application.Name + ' ' + CMD_CONNECTING;
-end;
+
+  Result := CMD_GET_APPLICATION + ' ' + Application.Name + ' ' + CMD_CONNECTING;
+
+end;
 
 
-function TAppConnectingUsersCommand.RProcessResponse(const wstrCommand: WideString): boolean;
+
+function TAppConnectingUsersCommand.RProcessResponse(const wstrCommand: WideString): boolean;
 var
   wstrHead, wstrBody: WideString;
   wstrAppName: WideString;
@@ -968,7 +1008,7 @@ begin
   if (wstrHead <> CMD_STREAMS) then
     exit;
 
-  m_wstrParsedStreamHandle := RNextToken(wstrBody, wstrBody);
+  m_wstrParsedStreamHandles := wstrBody;
 
   Result := TRUE;
 end;
@@ -989,7 +1029,7 @@ begin
 
   with TStringList.Create do
   try
-    strHandle := RNextToken(m_wstrParsedStreamHandle, wstr);
+    strHandle := RNextToken(m_wstrParsedStreamHandles, wstr);
     while (strHandle <> '') do
     begin
       Add(strHandle);
@@ -1002,10 +1042,9 @@ begin
     begin
       Stream := Streams[i]._Object as TApplicationStream;
       if (Find(Stream.Handle, iIndex)) then
-      begin
-        Streams.Delete(i);
-        Delete(iIndex);
-      end;
+        Delete(iIndex)
+      else
+        Streams.Delete(i);      
     end;
 
     for i := 0 to Count - 1 do
