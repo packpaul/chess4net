@@ -20,18 +20,30 @@ type
   TApplicationStream = class(TObjectInterfacedObject, IApplicationStream)
   private
     m_wstrHandle: WideString;
+
     m_Application: TApplication;
+
     m_DatagramListener: TListener;
+    m_ReceivedListener: TListener;
+
+    m_iDataLength: integer;
 
     procedure FCreateListeners;
     procedure FDestroyListeners;
 
     function Get_PartnerHandle: WideString;
 
+    procedure Write(const Text: WideString);
+    function Read: WideString;
+    procedure SendDatagram(const Text: WideString);
+
+    function Get_DataLength: Integer;
+
   public
     constructor Create(AApplication: TApplication; const wstrHandle: WideString);
     destructor Destroy; override;
     property Handle: WideString read m_wstrHandle;
+    property DataLength: integer read Get_DataLength write m_iDataLength;
   end;
 
 
@@ -184,9 +196,18 @@ type
   end;
 
 
-  TAppSendDatagramCommand = class(TAppCommand)
+  TAppStreamCommand = class(TAppCommand)
   private
     m_Stream: TApplicationStream;
+  protected
+    property Stream: TApplicationStream read m_Stream;
+  public
+    constructor Create(AApplication: TApplication; AStream: TApplicationStream);
+  end;
+
+
+  TAppStreamWriteCommand = class(TAppStreamCommand)
+  private
     m_wstrText: WideString;
   protected
     function RGetCommand: WideString; override;
@@ -197,20 +218,57 @@ type
   end;
 
 
-  TAppStreamDatagramListener = class(TListener)
+  TAppStreamReadCommand = class(TAppStreamCommand)
+  private
+    m_wstrData: WideString;
+  protected
+    function RGetCommand: WideString; override;
+    function RProcessResponse(const wstrCommand: WideString): boolean; override;
+  public
+    property Data: WideString read m_wstrData;  
+  end;
+
+
+  TAppStreamSendDatagramCommand = class(TAppStreamCommand)
+  private
+    m_wstrText: WideString;
+  protected
+    function RGetCommand: WideString; override;
+    function RProcessResponse(const wstrCommand: WideString): boolean; override;
+  public
+    constructor Create(AApplication: TApplication;
+      AStream: TApplicationStream; const wstrText: WideString);
+  end;
+
+
+  TAppStreamListener = class(TListener)
   private
     m_Application: TApplication;
     m_Stream: TApplicationStream;
+  public
+    property Application: TApplication read m_Application write m_Application;
+    property Stream: TApplicationStream read m_Stream write m_Stream;
+  end;
 
+
+  TAppStreamReceivedListener = class(TAppStreamListener)
+  private
+    m_wstrParsedPacketSize: WideString;
+  protected
+    function RParseCommand(const wstrCommand: WideString): boolean; override;
+    function RProcessCommand(const wstrCommand: WideString): boolean; override;
+    procedure RDoNotify; override;
+  end;
+
+
+  TAppStreamDatagramListener = class(TAppStreamListener)
+  private
     m_wstrParsedText: WideString;
     m_wstrText: WideString;
   protected
     function RParseCommand(const wstrCommand: WideString): boolean; override;
     function RProcessCommand(const wstrCommand: WideString): boolean; override;
     procedure RDoNotify; override;
-  public
-    property Application: TApplication read m_Application write m_Application;
-    property Stream: TApplicationStream read m_Stream write m_Stream;
   end;
 
 const
@@ -223,6 +281,9 @@ const
   CMD_CONNECTING: WideString = 'CONNECTING';
   CMD_CONNECT: WideString = 'CONNECT';
   CMD_STREAMS: WideString = 'STREAMS';
+  CMD_WRITE: WideString = 'WRITE';
+  CMD_READ: WideString = 'READ';  
+  CMD_RECEIVED: WideString = 'RECEIVED';
   CMD_DATAGRAM: WideString = 'DATAGRAM';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -360,29 +421,10 @@ end;
 
 procedure TApplication.SendDatagram(const Text: WideString; const pStreams: IApplicationStreamCollection);
 var
-  Streams: TApplicationStreamCollection;
-  Stream: TApplicationStream;
   i: integer;
-  Command: TAppSendDatagramCommand;
 begin
-  Streams := pStreams._Object as TApplicationStreamCollection;
-  for i := 0 to Streams.Count - 1 do
-  begin
-    Stream := Streams[i]._Object as TApplicationStream;
-    Command := TAppSendDatagramCommand.Create(self, Stream, Text);
-    try
-      if (TSkype.Instance.SendCommand(Command)) then
-      begin
-        // Skype will returns in turn:
-        // "APPLICATION <app. name> SENDING <stream handle>=11" - when data is transmited
-        // "APPLICATION <app. name> SENDING" - when data is sent
-        // Use a listener for additional notification for the client
-      end;
-    finally
-      Command.Free;
-    end;
-    
-  end;
+  for i := 1 to pStreams.Count do
+    pStreams[i].SendDatagram(Text);
 end;
 
 
@@ -827,6 +869,7 @@ begin
   inherited;
 end;
 
+
 procedure TApplicationStream.FCreateListeners;
 begin
   m_DatagramListener := TSkype.Instance.ListenersManager.CreateListener(
@@ -836,11 +879,21 @@ begin
     Application := self.m_Application;
     Stream := self;
   end;
+
+  m_ReceivedListener := TSkype.Instance.ListenersManager.CreateListener(
+    TAppStreamReceivedListener);
+  with (m_ReceivedListener as TAppStreamReceivedListener) do
+  begin
+    Application := self.m_Application;
+    Stream := self;
+  end;
+
 end;
 
 
 procedure TApplicationStream.FDestroyListeners;
 begin
+  TSkype.Instance.ListenersManager.DestroyListener(m_ReceivedListener);
   TSkype.Instance.ListenersManager.DestroyListener(m_DatagramListener);
 end;
 
@@ -852,6 +905,74 @@ begin
   iPos := LastDelimiter(':', m_wstrHandle);
   Assert(iPos > 1);
   Result :=  Copy(m_wstrHandle, 1, iPos - 1);
+end;
+
+
+function TApplicationStream.Read: WideString;
+var
+  Command: TAppStreamReadCommand;
+begin
+  Result := '';
+
+  Command := TAppStreamReadCommand.Create(m_Application, self);
+  try
+    if (TSkype.Instance.SendCommand(Command)) then
+    begin
+      Result := Command.Data;
+    end;
+
+  finally
+    Command.Free;
+  end;
+
+end;
+
+
+procedure TApplicationStream.Write(const Text: WideString);
+var
+  Command: TAppStreamWriteCommand;
+begin
+  Command := TAppStreamWriteCommand.Create(m_Application, self, Text);
+  try
+    if (TSkype.Instance.SendCommand(Command)) then
+    begin
+      // Skype will returns in turn:
+      // "APPLICATION <app. name> SENDING <stream handle> <message length + 2>" - message has been queued for sending
+      // "APPLICATION <app. name> SENDING" - the message has been sent
+      // Use a listener for additional notification for the client
+    end;
+
+  finally
+    Command.Free;
+  end;
+
+end;
+
+
+procedure TApplicationStream.SendDatagram(const Text: WideString);
+var
+  Command: TAppStreamSendDatagramCommand;
+begin
+  Command := TAppStreamSendDatagramCommand.Create(m_Application, self, Text);
+  try
+    if (TSkype.Instance.SendCommand(Command)) then
+    begin
+      // Skype will returns in turn:
+      // "APPLICATION <app. name> SENDING <stream handle>=<data size>" - when data is transmited
+      // "APPLICATION <app. name> SENDING" - when data is sent
+      // Use a listener for additional notification for the client
+    end;
+
+  finally
+    Command.Free;
+  end;
+
+end;
+
+
+function TApplicationStream.Get_DataLength: Integer;
+begin
+  Result := m_iDataLength;
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -893,24 +1014,34 @@ begin
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
-// TAppSendDatagramCommand
+// TAppStreamCommand
 
-constructor TAppSendDatagramCommand.Create(AApplication: TApplication;
-  AStream: TApplicationStream; const wstrText: WideString);
+constructor TAppStreamCommand.Create(AApplication: TApplication;
+  AStream: TApplicationStream);
 begin
   inherited Create(AApplication);
   m_Stream := AStream;
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TAppStreamSendDatagramCommand
+
+constructor TAppStreamSendDatagramCommand.Create(AApplication: TApplication;
+  AStream: TApplicationStream; const wstrText: WideString);
+begin
+  inherited Create(AApplication, AStream);
   m_wstrText := wstrText;
 end;
 
-function TAppSendDatagramCommand.RGetCommand: WideString;
+
+function TAppStreamSendDatagramCommand.RGetCommand: WideString;
 begin
   Result := CMD_ALTER_APPLICATION + ' ' + Application.Name + ' ' + CMD_DATAGRAM + ' ' +
-    m_Stream.Handle + ' ' + m_wstrText;
+    Stream.Handle + ' ' + m_wstrText;
 end;
 
 
-function TAppSendDatagramCommand.RProcessResponse(const wstrCommand: WideString): boolean;
+function TAppStreamSendDatagramCommand.RProcessResponse(const wstrCommand: WideString): boolean;
 var
   wstrHead, wstrBody: WideString;
   wstrAppName, wstrStreamHandle: WideString;
@@ -932,8 +1063,95 @@ begin
     exit;
 
   wstrStreamHandle := RNextToken(wstrBody, wstrBody);
-  if (wstrStreamHandle <> m_Stream.Handle) then
+  if (wstrStreamHandle <> Stream.Handle) then
     exit;
+
+  Result := TRUE;
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TAppStreamWriteCommand
+
+constructor TAppStreamWriteCommand.Create(AApplication: TApplication;
+  AStream: TApplicationStream; const wstrText: WideString);
+begin
+  inherited Create(AApplication, AStream);
+  m_wstrText := wstrText;
+end;
+
+
+function TAppStreamWriteCommand.RGetCommand: WideString;
+begin
+  Result := CMD_ALTER_APPLICATION + ' ' + Application.Name + ' ' + CMD_WRITE + ' ' +
+    Stream.Handle + ' ' + m_wstrText;
+end;
+
+
+function TAppStreamWriteCommand.RProcessResponse(const wstrCommand: WideString): boolean;
+var
+  wstrHead, wstrBody: WideString;
+  wstrAppName, wstrStreamHandle: WideString;
+begin
+  Assert(not HasResponse);
+
+  Result := FALSE;
+
+  RSplitCommandToHeadAndBody(wstrCommand, wstrHead, wstrBody, 2);
+  if (wstrHead <> CMD_ALTER_APPLICATION) then
+    exit;
+
+  wstrAppName := RNextToken(wstrBody, wstrBody);
+  if (wstrAppName <> Application.Name) then
+    exit;
+
+  RSplitCommandToHeadAndBody(wstrBody, wstrHead, wstrBody);
+  if (wstrHead <> CMD_WRITE) then
+    exit;
+
+  wstrStreamHandle := RNextToken(wstrBody, wstrBody);
+  if (wstrStreamHandle <> Stream.Handle) then
+    exit;
+
+  Result := TRUE;
+end;
+
+
+////////////////////////////////////////////////////////////////////////////////
+// TAppStreamReadCommand
+
+function TAppStreamReadCommand.RGetCommand: WideString;
+begin
+  Result := CMD_ALTER_APPLICATION + ' ' + Application.Name + ' ' + CMD_READ + ' ' +
+    Stream.Handle;
+end;
+
+
+function TAppStreamReadCommand.RProcessResponse(const wstrCommand: WideString): boolean;
+var
+  wstrHead, wstrBody: WideString;
+  wstrAppName, wstrStreamHandle: WideString;
+begin
+  Assert(not HasResponse);
+
+  Result := FALSE;
+
+  RSplitCommandToHeadAndBody(wstrCommand, wstrHead, wstrBody, 2);
+  if (wstrHead <> CMD_ALTER_APPLICATION) then
+    exit;
+
+  wstrAppName := RNextToken(wstrBody, wstrBody);
+  if (wstrAppName <> Application.Name) then
+    exit;
+
+  RSplitCommandToHeadAndBody(wstrBody, wstrHead, wstrBody);
+  if (wstrHead <> CMD_READ) then
+    exit;
+
+  wstrStreamHandle := RNextToken(wstrBody, wstrBody);
+  if (wstrStreamHandle <> Stream.Handle) then
+    exit;
+
+  m_wstrData := wstrBody;
 
   Result := TRUE;
 end;
@@ -953,7 +1171,7 @@ begin
     exit;
 
   wstrAppName := RNextToken(wstrBody, wstrBody);
-  if (wstrAppName <> m_Application.Name) then
+  if (wstrAppName <> Application.Name) then
     exit;
 
   RSplitCommandToHeadAndBody(wstrBody, wstrHead, wstrBody);
@@ -961,7 +1179,7 @@ begin
     exit;
 
   wstrStreamHandle := RNextToken(wstrBody, wstrBody);
-  if (wstrStreamHandle <> m_Stream.Handle) then
+  if (wstrStreamHandle <> Stream.Handle) then
     exit;
 
   m_wstrParsedText := wstrBody;
@@ -983,7 +1201,62 @@ end;
 
 procedure TAppStreamDatagramListener.RDoNotify;
 begin
-  TSkype.Instance.DoApplicationDatagram(m_Application, m_Stream, m_wstrText);
+  TSkype.Instance.DoApplicationDatagram(Application, Stream, m_wstrText);
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TAppStreamReceivedListener
+
+function TAppStreamReceivedListener.RParseCommand(const wstrCommand: WideString): boolean;
+var
+  wstrHead, wstrBody: WideString;
+  wstrAppName, wstrStreamHandle: WideString;
+begin
+  Result := FALSE;
+
+  RSplitCommandToHeadAndBody(wstrCommand, wstrHead, wstrBody);
+  if (wstrHead <> CMD_APPLICATION) then
+    exit;
+
+  wstrAppName := RNextToken(wstrBody, wstrBody);
+  if (wstrAppName <> Application.Name) then
+    exit;
+
+  RSplitCommandToHeadAndBody(wstrBody, wstrHead, wstrBody);
+  if (wstrHead <> CMD_RECEIVED) then
+    exit;
+
+  wstrStreamHandle := RNextToken(wstrBody, wstrBody, '=');
+  if (wstrStreamHandle <> Stream.Handle) then
+    exit;
+
+  m_wstrParsedPacketSize := wstrBody;
+
+  Result := TRUE;
+end;
+
+
+function TAppStreamReceivedListener.RProcessCommand(const wstrCommand: WideString): boolean;
+var
+  iDataLength: integer;
+begin
+  Result := RParseCommand(wstrCommand);
+
+  if (not Result) then
+    exit;
+
+  iDataLength := StrToIntDef(m_wstrParsedPacketSize, 0);
+  Stream.DataLength := iDataLength;
+end;
+
+
+procedure TAppStreamReceivedListener.RDoNotify;
+var
+  Streams: IApplicationStreamCollection;
+begin
+  Streams := TApplicationStreamCollection.Create;
+  Streams.Add(Stream);
+  TSkype.Instance.DoApplicationReceiving(Application, Streams);
 end;
 
 ////////////////////////////////////////////////////////////////////////////////

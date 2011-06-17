@@ -16,7 +16,8 @@ type
   protected
     class procedure RSplitCommandToHeadAndBody(const wstrCommand: WideString;
       var wstrHead, wstrBody: WideString; iTokensInHead: integer = 1);
-    class function RNextToken(wstr: WideString; var wstrTail: WideString): WideString;
+    class function RNextToken(wstr: WideString; var wstrTail: WideString;
+      chSeparator: char = ' '): WideString;
   end;
   
 
@@ -105,13 +106,14 @@ begin
 end;
 
 
-class function TCommandBase.RNextToken(wstr: WideString; var wstrTail: WideString): WideString;
+class function TCommandBase.RNextToken(wstr: WideString; var wstrTail: WideString;
+  chSeparator: char = ' '): WideString;
 var
   iPos: integer;
 begin
   wstr := TrimLeft(wstr);
 
-  iPos := Pos(' ', wstr);
+  iPos := Pos(chSeparator, wstr);
   if (iPos > 0) then
   begin
     Result := Copy(wstr, 1, Pred(iPos));

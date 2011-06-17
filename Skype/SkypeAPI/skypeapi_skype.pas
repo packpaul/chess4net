@@ -45,7 +45,12 @@ type
 
   IApplicationStream = interface(IObject)
     function Get_PartnerHandle: WideString;
+    procedure Write(const Text: WideString);
+    function Read: WideString;
+    procedure SendDatagram(const Text: WideString);
+    function Get_DataLength: Integer;    
     property PartnerHandle: WideString read Get_PartnerHandle;
+    property DataLength: Integer read Get_DataLength;
   end;
 
   IApplicationStreamCollection = interface(IObject)
@@ -103,6 +108,8 @@ type
   TOnAttachmentStatus = procedure(ASender: TObject; Status: TAttachmentStatus) of object;
   TOnApplicationDatagram = procedure(ASender: TObject; const pApp: IApplication;
     const pStream: IApplicationStream; const Text: WideString) of object;
+  TApplicationReceiving = procedure(ASender: TObject; const pApp: IApplication;
+    const pStreams: IApplicationStreamCollection) of object;
 
   ESkype = class(Exception);
 
@@ -131,6 +138,7 @@ type
     FOnMessageStatus: TOnMessageStatus;
     FOnAttachmentStatus: TOnAttachmentStatus;
     FOnApplicationDatagram: TOnApplicationDatagram;
+    FOnApplicationReceiving: TApplicationReceiving;
 
     procedure FSetOnMessageStatus(Value: TOnMessageStatus);
 
@@ -176,6 +184,8 @@ type
       Status: TChatMessageStatus);
     procedure DoApplicationDatagram(const pApp: IApplication;
       const pStream: IApplicationStream; const Text: WideString);
+    procedure DoApplicationReceiving(const pApp: IApplication;
+      const pStreams: IApplicationStreamCollection);
 
     property Application[const Name: WideString]: IApplication read GetApplication;
     property Client: IClient read GetClient;
@@ -189,6 +199,8 @@ type
                                                      write FOnAttachmentStatus;
     property OnApplicationDatagram: TOnApplicationDatagram read FOnApplicationDatagram
                                                            write FOnApplicationDatagram;
+    property OnApplicationReceiving: TApplicationReceiving read FOnApplicationReceiving
+                                                                     write FOnApplicationReceiving;
   end;
 
 
@@ -534,6 +546,14 @@ procedure TSkype.DoApplicationDatagram(const pApp: IApplication;
 begin
   if (Assigned(FOnApplicationDatagram)) then
     FOnApplicationDatagram(self, pApp, pStream, Text);
+end;
+
+
+procedure TSkype.DoApplicationReceiving(const pApp: IApplication;
+  const pStreams: IApplicationStreamCollection);
+begin
+  if (Assigned(FOnApplicationReceiving)) then
+    FOnApplicationReceiving(self, pApp, pStreams);
 end;
 
 
