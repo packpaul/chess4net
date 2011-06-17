@@ -151,6 +151,8 @@ type
     procedure FOnMessageStatus(ASender: TObject; const pMessage: IChatMessage; Status: TChatMessageStatus);
     procedure FOnSkypeApplicationDatagram(ASender: TObject; const pApp: IApplication;
       const pStream: IApplicationStream; const Text: WideString);
+    procedure FOnApplicationReceiving(ASender: TObject; const pApp: IApplication;
+      const pStreams: IApplicationStreamCollection);
 
     procedure FShowSkypeConnectableUsers;
 
@@ -161,6 +163,8 @@ type
 
     procedure FAddChildConnector(const AChildConnector: TChildConnector);
     procedure FRemoveChildConnector(const AChildConnector: TChildConnector);
+
+    class procedure FFreeSkype;
 
   protected
     procedure ROnCreate; override;
@@ -333,10 +337,17 @@ end;
 
 
 procedure TConnector.FSendCommand(const wstrCommand: WideString);
+var
+  i: integer;
+  Streams: IApplicationStreamCollection;
 begin
-  SkypeApplication.SendDatagram(wstrCommand, m_SkypeApplicationStreams);
-//  Log('Command ' + wstrCommand);
-  FNotifySender(wstrCommand);
+  Streams := SkypeApplication.Streams;
+  for i := 1 to Streams.Count do
+  begin
+    Streams[i].SendDatagram(wstrCommand); 
+    Streams[i].Write(wstrCommand);
+  end;
+  FNotifySender(wstrCommand);  
 end;
 
 
@@ -664,6 +675,7 @@ begin
     Skype.OnAttachmentStatus := FOnSkypeAttachmentStatus;
     Skype.OnMessageStatus := FOnMessageStatus;
     Skype.OnApplicationDatagram := FOnSkypeApplicationDatagram;
+    Skype.OnApplicationReceiving := FOnApplicationReceiving;
   end;
 
   m_SkypeStates := [sAttaching];
@@ -758,7 +770,7 @@ begin
       if (pStream.PartnerHandle = ContactHandle) then
       begin
         FOnCommand(Text);
-        break;
+        exit;
       end;
     end;
   end; // for
@@ -766,6 +778,42 @@ begin
 end;
 
 
+procedure TBaseConnector.FOnApplicationReceiving(ASender: TObject; const pApp: IApplication;
+  const pStreams: IApplicationStreamCollection);
+var
+  Stream: IApplicationStream;
+  i, j: integer;
+begin
+  if (pApp.Name <> SKYPE_APP_NAME) then
+    exit;
+
+  for i := 1 to pStreams.Count do
+  begin
+    Stream := pStreams[i];
+
+    if (Stream.PartnerHandle = m_wstrContactHandle) then
+    begin
+      FOnCommand(Stream.Read);
+      exit;
+    end;
+
+    for j := 0 to m_lstChildConnectors.Count - 1 do
+    begin
+      with TChildConnector(m_lstChildConnectors[j]) do
+      begin
+        if (Stream.PartnerHandle = ContactHandle) then
+        begin
+          FOnCommand(Stream.Read);
+          exit;
+        end;
+      end;
+    end; // for
+
+  end;
+
+end;
+
+    
 procedure TBaseConnector.FShowContactsTimer(Sender: TObject);
 begin
   if (sAttached in m_SkypeStates) then
@@ -794,13 +842,28 @@ begin
 {$IFDEF TESTING}
   Skype.Disconnect;
 {$ENDIF}
-  FreeAndNil(g_Skype);
+
+  FFreeSkype;
 
   FDestroyTimers;
 
   FreeAndNil(m_lstChildConnectors);
 
   inherited;
+end;
+
+
+class procedure TBaseConnector.FFreeSkype;
+begin
+  if (not Assigned(g_Skype)) then
+    exit;
+
+  g_Skype.OnAttachmentStatus := nil;
+  g_Skype.OnMessageStatus := nil;
+  g_Skype.OnApplicationDatagram := nil;
+  g_Skype.OnApplicationReceiving := nil;
+
+  FreeAndNil(g_Skype);
 end;
 
 
@@ -892,7 +955,7 @@ finalization
 {$IFDEF TESTING}
     g_Skype.Disconnect;
 {$ENDIF}
-    FreeAndNil(g_Skype);
+    TBaseConnector.FFreeSkype;
   end;
 
 end.
