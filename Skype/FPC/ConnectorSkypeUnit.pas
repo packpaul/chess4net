@@ -61,6 +61,8 @@ type
     procedure FOnSkypeAttachmentStatus(ASender: TObject; Status: TAttachmentStatus);
     procedure FOnSkypeApplicationDatagram(ASender: TObject; const pApp: IApplication;
       const pStream: IApplicationStream; const Text: WideString);
+    procedure FOnApplicationReceiving(ASender: TObject; const pApp: IApplication;
+      const pStreams: IApplicationStreamCollection);
     procedure FShowSkypeConnectableUsers;
     procedure FConnectIfNotConnected;
     function FIsUserConnected: boolean;
@@ -379,6 +381,7 @@ begin
     Skype.OnAttachmentStatus := FOnSkypeAttachmentStatus;
     Skype.OnMessageStatus := FOnMessageStatus;
     Skype.OnApplicationDatagram := FOnSkypeApplicationDatagram;
+    Skype.OnApplicationReceiving := FOnApplicationReceiving;
   end;
 
   m_SkypeStates := [sAttaching];
@@ -444,12 +447,39 @@ end;
 procedure TConnector.FOnSkypeApplicationDatagram(ASender: TObject; const pApp: IApplication;
   const pStream: IApplicationStream; const Text: WideString);
 begin
-  if (pApp.Name = SKYPE_APP_NAME) then
+  if (pApp.Name <> SKYPE_APP_NAME) then
+    exit;
+
+  if (pStream.PartnerHandle = m_wstrContactHandle) then
   begin
-    FConnectIfNotConnected;
     FFilterMsg(Text);
-//    Log(WideFormat('FSkypeApplicationDatagram(): Command - %s', [Text]));
+    exit;
   end;
+
+end;
+
+
+procedure TConnector.FOnApplicationReceiving(ASender: TObject; const pApp: IApplication;
+  const pStreams: IApplicationStreamCollection);
+var
+  Stream: IApplicationStream;
+  i: integer;
+begin
+  if (pApp.Name <> SKYPE_APP_NAME) then
+    exit;
+
+  for i := 1 to pStreams.Count do
+  begin
+    Stream := pStreams[i];
+
+    if (Stream.PartnerHandle = m_wstrContactHandle) then
+    begin
+      FFilterMsg(Stream.Read);
+      exit;
+    end;
+
+  end;
+
 end;
 
 
@@ -589,10 +619,17 @@ end;
 
 
 procedure TConnector.FSendCommand(const wstrCommand: WideString);
+var
+  i: integer;
+  Streams: IApplicationStreamCollection;
 begin
-  SkypeApplication.SendDatagram(wstrCommand, SkypeApplication.Streams);
-//  Log('Command ' + wstrCommand);
-  NotifySender(wstrCommand); // TODO: move to handler
+  Streams := SkypeApplication.Streams;
+  for i := 1 to Streams.Count do
+  begin
+    Streams[i].SendDatagram(wstrCommand);
+    Streams[i].Write(wstrCommand);
+  end;
+  NotifySender(wstrCommand);
 end;
 
 
