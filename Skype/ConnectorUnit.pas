@@ -663,7 +663,7 @@ procedure TConnector.FWriteToSkypeApiLog(const s: string);
 begin
 {$IFDEF SKYPEAPI_LOG}
   writeln(m_SkypeAPILogFile, s);
-  Flush(m_ConnectorLogFile);
+  Flush(m_SkypeAPILogFile);
 {$ENDIF}
 end;
 
