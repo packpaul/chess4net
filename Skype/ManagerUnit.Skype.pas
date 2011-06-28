@@ -9,7 +9,7 @@ unit ManagerUnit.Skype;
 interface
 
 uses
-  Classes, TntClasses,
+  Classes, TntClasses, ExtCtrls,
   //
   ManagerUnit, ConnectorUnit, ModalForm;
 
@@ -45,25 +45,40 @@ type
   end;
 
 
-  TTransmittingManagerSkype = class(TManagerSkype)
+  TTransmittingManagerSkype = class
   private
+    m_DestroyTimer: TTimer;
+
     m_GamingManager: TGamingManagerSkype;
     m_wstrContactHandle: WideString;
     m_bReady: boolean;
 
+    m_Connector: TConnector;
+
+    m_lwOpponentClientVersion: LongWord;
+
     constructor FCreate(const AGamingManager: TGamingManagerSkype;
       const wstrContactHandle: WideString);
+
+    procedure FSendData(const cmd: string = '');
 
     property Ready: boolean read m_bReady;
     property ContactHandle: WideString read m_wstrContactHandle;
 
-  protected
     procedure ConnectorHandler(e: TConnectorEvent;
-      d1: pointer = nil; d2: pointer = nil); override;
-    procedure RHandleConnectorDataCommand(sl: string); override;
+      d1: pointer = nil; d2: pointer = nil);
+    procedure FHandleConnectorDataCommand(sl: string);
 
-    procedure ROnCreate; override;
-    procedure ROnDestroy; override;
+    class procedure FSplitStr(s: string; var strLeft: string; var strRight: string);
+
+    procedure FOnCreate;
+    procedure FOnDestroy;
+
+    procedure FOnDestroyTimer(Sender: TObject);
+
+  public
+    destructor Destroy; override;
+    procedure Free;
   end;
 
 implementation
@@ -71,7 +86,7 @@ implementation
 {$J+}
 
 uses
-  SysUtils, Dialogs, Forms, Controls,
+  SysUtils, StrUtils, Dialogs, Forms, Controls,
   //
   LocalizerUnit, ChessBoardUnit, ConnectingUnit, SelectSkypeContactUnit,
   GlobalsLocalUnit;
@@ -131,7 +146,7 @@ begin
     Assign(m_lstTransmittingManagers);
     m_lstTransmittingManagers.Clear;
     for i := 0 to Count - 1 do
-      TTransmittingManagerSkype(Items[i]).RReleaseWithConnectorGracefully;
+      TTransmittingManagerSkype(Items[i]).Free;
   finally
     Free;
   end;
@@ -175,11 +190,11 @@ begin
   if (not (Assigned(ATransmitter) and ATransmitter.Ready)) then
     exit;
 
-  ATransmitter.RSendData(CMD_NICK_ID + ' ' + PlayerNickId + ' ' + OpponentNickId + ' ' + OpponentNick);
-  ATransmitter.RSendData(CMD_GAME_CONTEXT + ' ' + RGetGameContextStr);
+  ATransmitter.FSendData(CMD_NICK_ID + ' ' + PlayerNickId + ' ' + OpponentNickId + ' ' + OpponentNick);
+  ATransmitter.FSendData(CMD_GAME_CONTEXT + ' ' + RGetGameContextStr);
 
   if (ChessBoard.Mode = mGame) then
-    ATransmitter.RSendData(CMD_CONTINUE_GAME);
+    ATransmitter.FSendData(CMD_CONTINUE_GAME);
 end;
 
 
@@ -246,7 +261,7 @@ begin
   begin
     ATransmitter := m_lstTransmittingManagers[i];
     if (Assigned(ATransmitter) and (ATransmitter.Ready)) then
-      ATransmitter.RSendData(strCmd);
+      ATransmitter.FSendData(strCmd);
   end;
 end;
 
@@ -415,14 +430,37 @@ end;
 constructor TTransmittingManagerSkype.FCreate(const AGamingManager: TGamingManagerSkype;
   const wstrContactHandle: WideString);
 begin
+  m_DestroyTimer := TTimer.Create(nil);
+  m_DestroyTimer.Enabled := FALSE;
+  m_DestroyTimer.Interval := 100;
+  m_DestroyTimer.OnTimer := FOnDestroyTimer;
+
   m_GamingManager := AGamingManager;
   m_wstrContactHandle := wstrContactHandle;
-  
-  RCreate;
+
+  FOnCreate;
 end;
 
 
-procedure TTransmittingManagerSkype.ROnCreate;
+destructor TTransmittingManagerSkype.Destroy;
+begin
+  m_DestroyTimer.Free;
+  inherited;
+end;
+
+
+procedure TTransmittingManagerSkype.Free;
+begin
+  if (m_DestroyTimer.Enabled) then
+    exit;
+
+  FOnDestroy;
+
+  m_DestroyTimer.Enabled := TRUE;
+end;
+
+
+procedure TTransmittingManagerSkype.FOnCreate;
 var
   AConnector: TConnector;
 begin
@@ -432,82 +470,121 @@ begin
 
   m_GamingManager.Connector.CreateChildConnector(ConnectorHandler, AConnector);
   Assert(Assigned(AConnector));
-  Connector := AConnector;
+  m_Connector := AConnector;
 
   m_GamingManager.FAddTransmitter(self);
 
-  Connector.ConnectToContact(ContactHandle);   
+  m_Connector.ConnectToContact(m_wstrContactHandle);
 end;
 
 
-procedure TTransmittingManagerSkype.ROnDestroy;
+procedure TTransmittingManagerSkype.FOnDestroy;
 var
   AConnector: TConnector;
-begin // TTransmittingManagerMI.ROnDestroy
+begin
   m_GamingManager.FRemoveTransmitter(self);
 
-  AConnector := Connector;
-  Connector := nil;
+  AConnector := m_Connector;
+  m_Connector := nil;
   if (Assigned(AConnector)) then
     AConnector.Free;
 end;
 
 
+procedure TTransmittingManagerSkype.FOnDestroyTimer(Sender: TObject);
+begin
+  m_DestroyTimer.Enabled := FALSE; 
+  inherited Free;
+end;
+
+
 procedure TTransmittingManagerSkype.ConnectorHandler(
   e: TConnectorEvent; d1: pointer = nil; d2: pointer = nil);
+var
+  strLeft, strCmd: string;
 begin
   case e of
     ceConnected:
     begin
-      RSendData(CMD_VERSION + ' ' + IntToStr(CHESS4NET_VERSION));
-      RSendData(CMD_TRANSMITTING);
+      FSendData(CMD_VERSION + ' ' + IntToStr(CHESS4NET_VERSION));
+      FSendData(CMD_TRANSMITTING);
     end;
 
     ceError, ceDisconnected:
     begin
-      RReleaseWithConnectorGracefully; // ???
+      Free;
+    end;
+
+    ceData:
+    begin
+      strCmd := PString(d1)^;
+      repeat
+        strLeft := LeftStr(strCmd, pos(CMD_DELIMITER, strCmd) - 1);
+        strCmd := RightStr(strCmd, length(strCmd) - length(strLeft) - length(CMD_DELIMITER));
+
+        FHandleConnectorDataCommand(strLeft);
+      until (strCmd = '');
+
     end;
 
   else
-    inherited ConnectorHandler(e, d1, d2);
+    Assert(FALSE);
   end; // case
 end;
 
 
-procedure TTransmittingManagerSkype.RHandleConnectorDataCommand(sl: string);
+procedure TTransmittingManagerSkype.FHandleConnectorDataCommand(sl: string);
 var
   sr: string;
   lwOpponentClientVersion: Longword;
 begin
-  RSplitStr(sl, sl, sr);
+  FSplitStr(sl, sl, sr);
+  
   if (sl = CMD_VERSION) then
   begin
-    RSplitStr(sr, sl, sr);
+    FSplitStr(sr, sl, sr);
     lwOpponentClientVersion := StrToIntDef(sl, CHESS4NET_VERSION);
 
     if (lwOpponentClientVersion < 201101) then
     begin
-      RSendData(CMD_GOODBYE);
-      RReleaseWithConnectorGracefully;
+      FSendData(CMD_GOODBYE);
+      Free;
     end;
 
-    RSetOpponentClientVersion(lwOpponentClientVersion);
+    m_lwOpponentClientVersion := lwOpponentClientVersion;
   end
   else if (sl = CMD_TRANSMITTING) then
   begin
-    RSendData(CMD_GOODBYE); // TODO: some message or output to log
-    RReleaseWithConnectorGracefully;
+    FSendData(CMD_GOODBYE); // TODO: some message or output to log
+    Free;
   end
   else if (sl = CMD_GOODBYE) then
   begin
-    RReleaseWithConnectorGracefully;
+    Free;
   end
   else if (sl = CMD_WELCOME) then
   begin
-    RSendData(CMD_WELCOME);
+    FSendData(CMD_WELCOME);
     m_bReady := TRUE;
     m_GamingManager.FSetGameContextToTransmitter(self);
   end;
+end;
+
+
+class procedure TTransmittingManagerSkype.FSplitStr(s: string; var strLeft: string; var strRight: string);
+begin
+  TManagerSkype.RSplitStr(s, strLeft, strRight);
+end;
+
+
+procedure TTransmittingManagerSkype.FSendData(const cmd: string = '');
+const
+  last_cmd: string = '';
+begin
+  if (cmd = '') then
+    exit;
+  last_cmd := cmd + CMD_DELIMITER;
+  m_Connector.SendData(last_cmd);
 end;
 
 ////////////////////////////////////////////////////////////////////////////////

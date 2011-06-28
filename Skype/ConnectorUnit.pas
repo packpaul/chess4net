@@ -346,14 +346,20 @@ procedure TConnector.FSendCommand(const wstrCommand: WideString);
 var
   i: integer;
   Streams: IApplicationStreamCollection;
+  Stream: IApplicationStream;
 begin
   Streams := SkypeApplication.Streams;
   for i := 1 to Streams.Count do
   begin
-    Streams[i].SendDatagram(wstrCommand); 
-    Streams[i].Write(wstrCommand);
+    Stream := Streams[i];
+    if (Stream.PartnerHandle = ContactHandle) then
+    begin
+      Stream.SendDatagram(wstrCommand);
+      Stream.Write(wstrCommand);
+      FNotifySender(wstrCommand);
+      exit;
+    end;
   end;
-  FNotifySender(wstrCommand);  
 end;
 
 
