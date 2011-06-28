@@ -8,6 +8,9 @@ unit ConnectorUnit;
 
 interface
 
+// {$DEFINE CONNECTOR_LOG}
+// {$DEFINE SKYPEAPI_LOG}
+
 uses
   Classes, TntClasses, ExtCtrls
 {$IFDEF TESTING}
@@ -66,12 +69,11 @@ type
     m_wstrlInBuffer: TTntStringList;
     m_SkypeApplicationStreams: IApplicationStreamCollection;
 
-{$IFDEF DEBUG_LOG}
-    _logFile: Text;
-
-    procedure InitLog;
-    procedure WriteToLog(const s: string);
-    procedure CloseLog;
+{$IFDEF CONNECTOR_LOG}
+    m_ConnectorLogFile: Text;
+{$ENDIF}
+{$IFDEF SKYPEAPI_LOG}
+    m_SkypeAPILogFile: Text;
 {$ENDIF}
 
     constructor FCreate(h: TConnectorHandler);
@@ -100,6 +102,11 @@ type
 
     procedure FSendTimerTimer(Sender: TObject);
     procedure FUserConnectingTimer(Sender: TObject);
+
+    procedure FInitLogs;
+    procedure FWriteToSkypeApiLog(const s: string);
+    procedure FWriteToConnectorLog(const s: string);
+    procedure FCloseLogs;
 
     property SkypeApplication: IApplication read FGetSkypeApplication;
 
@@ -153,6 +160,7 @@ type
       const pStream: IApplicationStream; const Text: WideString);
     procedure FOnApplicationReceiving(ASender: TObject; const pApp: IApplication;
       const pStreams: IApplicationStreamCollection);
+    procedure FOnSkypeAPILog(const wstrLogMsg: WideString);
 
     procedure FShowSkypeConnectableUsers;
 
@@ -249,9 +257,8 @@ begin
     m_bConnected := FALSE;
     FDoHandler(ceDisconnected);
   end;
-{$IFDEF DEBUG_LOG}
-  CloseLog;
-{$ENDIF}
+
+  FCloseLogs;
 end;
 
 
@@ -270,9 +277,8 @@ begin
   Result := FALSE;
   if LeftStr(wstrMsg, length(PROMPT_HEAD)) = PROMPT_HEAD then
     begin
-{$IFDEF DEBUG_LOG}
-      WriteToLog('>> ' + wstrMsg);
-{$ENDIF}
+      FWriteToConnectorLog('>> ' + wstrMsg);
+
       wstrMsg := RightStr(wstrMsg, length(wstrMsg) - length(PROMPT_HEAD));
       l := pos(PROMPT_TAIL, wstrMsg);
       if l = 0 then exit;
@@ -368,9 +374,7 @@ begin
   if (not Result) then
     exit;
 
-{$IFDEF DEBUG_LOG}
-   WriteToLog('<< ' + m_strMsgSending);
-{$ENDIF}
+   FWriteToConnectorLog('<< ' + m_strMsgSending);
 
    m_strMsgSending := '';
    m_strUnformatedMsgSending := '';
@@ -469,9 +473,8 @@ begin
   end
   else
   begin
-{$IFDEF DEBUG_LOG}
-    WriteToLog('resend: ' + m_strMsgSending);
-{$ENDIF}
+    FWriteToConnectorLog('resend: ' + m_strMsgSending);
+
     inc(m_iResendCount);
     if (m_iResendCount = MAX_RESEND_TRYS) then
     begin
@@ -590,38 +593,73 @@ begin // TBaseConnector.FIsUserConnected
 end;
 
 
-{$IFDEF DEBUG_LOG}
-procedure TConnector.InitLog;
+procedure TConnector.FInitLogs;
 begin
-  AssignFile(_logFile, Chess4NetPath + 'Chess4Net_CONNECTORLOG.txt');
-  Append(_logFile);
-  if IOResult <> 0 then
+{$IFDEF CONNECTOR_LOG}
+  AssignFile(m_ConnectorLogFile, Chess4NetPath + 'Chess4Net_CONNECTORLOG.txt');
+  Append(m_ConnectorLogFile);
+  if (IOResult <> 0) then
     begin
-      Rewrite(_logFile);
-      if IOResult <> 0 then
+      Rewrite(m_ConnectorLogFile);
+      if (IOResult <> 0) then
         begin
-          AssignFile(_logFile, Chess4NetPath + 'Chess4Net_CONNECTORLOG~.txt');
-          Append(_logFile);
-          if IOResult <> 0 then Rewrite(_logFile);
+          AssignFile(m_ConnectorLogFile, Chess4NetPath + 'Chess4Net_CONNECTORLOG~.txt');
+          Append(m_ConnectorLogFile);
+          if (IOResult <> 0) then
+            Rewrite(m_ConnectorLogFile);
         end;
     end;
 
-   WriteToLog('[' + DateTimeToStr(Now) + ']');
+   FWriteToConnectorLog('[' + DateTimeToStr(Now) + ']');
+{$ENDIF CONNECTOR_LOG}
+
+{$IFDEF SKYPEAPI_LOG}
+  AssignFile(m_SkypeAPILogFile, Chess4NetPath + 'Chess4Net_SKYPEAPILOG.txt');
+  Append(m_SkypeAPILogFile);
+  if (IOResult <> 0) then
+    begin
+      Rewrite(m_SkypeAPILogFile);
+      if (IOResult <> 0) then
+        begin
+          AssignFile(m_SkypeAPILogFile, Chess4NetPath + 'Chess4Net_SKYPEAPILOG~.txt');
+          Append(m_SkypeAPILogFile);
+          if (IOResult <> 0) then
+            Rewrite(m_SkypeAPILogFile);
+        end;
+    end;
+
+   FWriteToConnectorLog('[' + DateTimeToStr(Now) + ']');
+{$ENDIF SKYPEAPI}
 end;
 
 
-procedure TConnector.WriteToLog(const s: string);
+procedure TConnector.FCloseLogs;
 begin
-  writeln(_logFile, s);
-  Flush(_logFile);
+{$IFDEF SKYPEAPI_LOG}
+  CloseFile(m_SkypeAPILogFile);
+{$ENDIF SKYPEAPI}
+{$IFDEF CONNECTOR_LOG}
+  CloseFile(m_ConnectorLogFile);
+{$ENDIF CONNECTOR_LOG}
 end;
 
 
-procedure TConnector.CloseLog;
+procedure TConnector.FWriteToConnectorLog(const s: string);
 begin
-  CloseFile(_logFile);
+{$IFDEF CONNECTOR_LOG}
+  writeln(m_ConnectorLogFile, s);
+  Flush(m_ConnectorLogFile);
+{$ENDIF}  
 end;
+
+
+procedure TConnector.FWriteToSkypeApiLog(const s: string);
+begin
+{$IFDEF SKYPEAPI_LOG}
+  writeln(m_SkypeAPILogFile, s);
+  Flush(m_ConnectorLogFile);
 {$ENDIF}
+end;
 
 ////////////////////////////////////////////////////////////////////////////////
 // TBaseConnector
@@ -656,9 +694,7 @@ begin
   Result := TBaseConnector.FCreate(h);
   inc(g_iBaseConnectorInstances);
 
-{$IFDEF DEBUG_LOG}
-  Result.InitLog;
-{$ENDIF}
+  Result.FInitLogs;
 end;
 
 
@@ -676,6 +712,9 @@ begin
     Skype.OnMessageStatus := FOnMessageStatus;
     Skype.OnApplicationDatagram := FOnSkypeApplicationDatagram;
     Skype.OnApplicationReceiving := FOnApplicationReceiving;
+{$IFDEF SKYPEAPI_LOG}
+    Skype.OnLog := FOnSkypeAPILog;
+{$ENDIF}
   end;
 
   m_SkypeStates := [sAttaching];
@@ -858,6 +897,9 @@ begin
   if (not Assigned(g_Skype)) then
     exit;
 
+{$IFDEF SKYPEAPI_LOG}
+  g_Skype.OnLog := nil;
+{$ENDIF}
   g_Skype.OnAttachmentStatus := nil;
   g_Skype.OnMessageStatus := nil;
   g_Skype.OnApplicationDatagram := nil;
@@ -883,6 +925,12 @@ end;
 procedure TBaseConnector.FRemoveChildConnector(const AChildConnector: TChildConnector);
 begin
   m_lstChildConnectors.Remove(AChildConnector);
+end;
+
+
+procedure TBaseConnector.FOnSkypeAPILog(const wstrLogMsg: WideString);
+begin
+  FWriteToSkypeApiLog(wstrLogMsg); 
 end;
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -96,7 +96,7 @@ PackageDLLOutputDir=
 PackageDCPOutputDir=
 SearchPath=..\lib\FastMM4;..\lib\PNGImage;..\lib\XIE;..\lib\TntUnicodeControls\Source;.\SkypeAPI
 Packages=vcl;rtl;dbrtl;vcldb;vclx;bdertl;delphiclxide;proide;delphivclide;direct;vclie;stride;VclSmp;vclactnband
-Conditionals=SKYPE;xFASTMM4;xTESTING;SKYPE_API;xDEBUG_LOG
+Conditionals=SKYPE;xFASTMM4;xTESTING;SKYPE_API
 DebugSourceDirs=
 UsePackages=0
 [Parameters]
