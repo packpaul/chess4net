@@ -110,6 +110,7 @@ type
     const pStream: IApplicationStream; const Text: WideString) of object;
   TApplicationReceiving = procedure(ASender: TObject; const pApp: IApplication;
     const pStreams: IApplicationStreamCollection) of object;
+  TOnSkypeLog = procedure(const wstrLogMsg: WideString) of object;
 
   ESkype = class(Exception);
 
@@ -139,6 +140,7 @@ type
     FOnAttachmentStatus: TOnAttachmentStatus;
     FOnApplicationDatagram: TOnApplicationDatagram;
     FOnApplicationReceiving: TApplicationReceiving;
+    FOnLog: TOnSkypeLog;
 
     procedure FSetOnMessageStatus(Value: TOnMessageStatus);
 
@@ -200,7 +202,8 @@ type
     property OnApplicationDatagram: TOnApplicationDatagram read FOnApplicationDatagram
                                                            write FOnApplicationDatagram;
     property OnApplicationReceiving: TApplicationReceiving read FOnApplicationReceiving
-                                                                     write FOnApplicationReceiving;
+                                                           write FOnApplicationReceiving;
+    property OnLog: TOnSkypeLog read FOnLog write FOnLog;
   end;
 
 
@@ -522,7 +525,8 @@ end;
 
 procedure TSkype.Log(const wstrLogMsg: WideString);
 begin
-  // TODO: Output to log
+  if (Assigned(FOnLog)) then
+    FOnLog(wstrLogMsg);
 end;
 
 
