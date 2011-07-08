@@ -1263,15 +1263,17 @@ end;
 
 procedure TManager.ChangeColorConnectedClick(Sender: TObject);
 begin
-  if (ChessBoard.Mode = mGame) then
-    exit;
-  ChangeColor;
-
   if (Transmittable) then
-    exit;
+  begin
+    ChangeColor;
+  end
+  else if (ChessBoard.Mode = mView) then
+  begin
+    ChangeColor;
 
-  RSendData(CMD_CHANGE_COLOR);
-  RRetransmit(CMD_CHANGE_COLOR);  
+    RSendData(CMD_CHANGE_COLOR);
+    RRetransmit(CMD_CHANGE_COLOR);
+  end;
 end;
 
 
@@ -2311,7 +2313,7 @@ begin
     StartAdjournedGameConnected.Visible := FALSE;
     StartStandartGameConnected.Visible := FALSE;
     StartPPRandomGameConnected.Visible := FALSE;
-    ChangeColorConnected.Visible := FALSE;
+//    ChangeColorConnected.Visible := FALSE;
     GameOptionsConnected.Visible := FALSE;
 
 {$IFDEF SKYPE}
