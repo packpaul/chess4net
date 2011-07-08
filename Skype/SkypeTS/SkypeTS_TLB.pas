@@ -12,7 +12,7 @@ unit SkypeTS_TLB;
 // ************************************************************************ //
 
 // PASTLWTR : 1.2
-// File generated on 26/01/2010 21:49:47 from Type Library described below.
+// File generated on 09.07.2011 1:24:22 from Type Library described below.
 
 // ************************************************************************  //
 // Type Lib: C:\PP\MyProjects\Chess4Net\Current\Skype\SkypeTS\SkypeTS.tlb (1)
@@ -152,6 +152,8 @@ type
     procedure AttachmentStatus(Status: TAttachmentStatus); dispid 4;
     procedure ApplicationDatagram(const pApp: IApplication; const pStream: IApplicationStream; 
                                   const Text: WideString); dispid 18;
+    procedure ApplicationReceiving(const pApp: IApplication; 
+                                   const pStreams: IApplicationStreamCollection); dispid 20;
   end;
 
 // *********************************************************************//
@@ -305,6 +307,9 @@ type
   IApplicationStream = interface(IDispatch)
     ['{3453D1C9-CD9B-4704-9BBA-4B5FCFB1AA99}']
     function Get_PartnerHandle: WideString; safecall;
+    procedure SendDatagram(const Text: WideString); safecall;
+    procedure Write(const Text: WideString); safecall;
+    function Read: WideString; safecall;
     property PartnerHandle: WideString read Get_PartnerHandle;
   end;
 
@@ -316,6 +321,9 @@ type
   IApplicationStreamDisp = dispinterface
     ['{3453D1C9-CD9B-4704-9BBA-4B5FCFB1AA99}']
     property PartnerHandle: WideString readonly dispid 8;
+    procedure SendDatagram(const Text: WideString); dispid 5;
+    procedure Write(const Text: WideString); dispid 4;
+    function Read: WideString; dispid 3;
   end;
 
 // *********************************************************************//

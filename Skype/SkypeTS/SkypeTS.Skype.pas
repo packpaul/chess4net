@@ -9,7 +9,7 @@ unit SkypeTS.Skype;
 interface
 
 uses
-  ComObj, ActiveX, AxCtrls, Classes, StdVcl, ExtCtrls,
+  ComObj, ActiveX, AxCtrls, Classes, TntClasses, StdVcl, ExtCtrls,
   SkypeTS_TLB;
 
 type
@@ -61,6 +61,12 @@ type
     procedure FDoReceiveInstantMessage(const ChatMessage: IChatMessage);
     procedure FDoReceiveApplicationDatagram(const ASenderSkype: TSkype;
       const ASenderApplication: IApplication; const wstrText: WideString);
+    procedure FDoApplicationReceiving(const ASenderSkype: TSkype;
+      const ASenderApplication: IApplication; const wstrText: WideString);
+
+    function FGetApplicationByName(const wstrName: WideString): IApplication;
+    function FGetApplicationStreamByPartnerHandle(const AApplication: IApplication;
+      const wstrPartnerHadndle: WideString): IApplicationStream;
 
     class procedure FUpdateApplicationsConnectedSkypes;
 
@@ -171,6 +177,7 @@ type
     procedure FUpdateConnectedSkypes;
 
     property ConnectingUserTimer: TTimer read FGetConnectingUserTimer;
+    property Skype: TSkype read m_Skype;
 
   public
     constructor Create(const wstrName: WideString; const ASkype: TSkype);
@@ -200,10 +207,17 @@ type
   TApplicationStream = class(TAutoIntfObject, IApplicationStream, IObject)
   private
     m_iPartnerSkypeID: integer;
-    function Get_PartnerHandle: WideString; safecall;
+    m_Application: TApplication;
+    m_wstrlTextQueue: TTntStringList;
     function GetObject: TObject;
+    function Get_PartnerHandle: WideString; safecall;
+    procedure SendDatagram(const Text: WideString); safecall;
+    procedure Write(const Text: WideString); safecall;
+    function Read: WideString; safecall;
+    procedure FAddText(const wstrText: WideString);
   public
-    constructor Create(iPartnerSkypeID: integer);
+    constructor Create(iPartnerSkypeID: integer; const AApplication: TApplication);
+    destructor Destroy; override;
     property PartnerSkypeID: integer read m_iPartnerSkypeID;
   end;
 
@@ -470,39 +484,79 @@ end;
 procedure TSkype.FDoReceiveApplicationDatagram(const ASenderSkype: TSkype;
   const ASenderApplication: IApplication; const wstrText: WideString);
 var
-  i: integer;
   AReceiverApplication: IApplication;
   AReceiverApplicationStream: IApplicationStream;
 begin
-  AReceiverApplication := nil;
-
-  for i := 0 to m_Applications.Count - 1 do
-  begin
-    AReceiverApplication := m_Applications[i] as IApplication;
-    if (AReceiverApplication.Name = ASenderApplication.Name) then
-      break;
-    AReceiverApplication := nil;
-  end;
-
+  AReceiverApplication := FGetApplicationByName(ASenderApplication.Name);
   if (not Assigned(AReceiverApplication)) then
     exit;
 
-  AReceiverApplicationStream := nil;
-
-  for i := 1 to AReceiverApplication.Streams.Count do
-  begin
-    AReceiverApplicationStream := AReceiverApplication.Streams[i];
-    if (AReceiverApplicationStream.PartnerHandle = ASenderSkype.CurrentUserHandle) then
-      break;
-
-    AReceiverApplicationStream := nil;
-  end;
-
+  AReceiverApplicationStream := FGetApplicationStreamByPartnerHandle(
+    AReceiverApplication, ASenderSkype.CurrentUserHandle);
   if (not Assigned(AReceiverApplicationStream)) then
     exit;
 
   FEvents.ApplicationDatagram(AReceiverApplication, AReceiverApplicationStream,
     wstrText);
+end;
+
+
+function TSkype.FGetApplicationByName(const wstrName: WideString): IApplication;
+var
+  i: integer;
+begin
+  Result := nil;
+
+  for i := 0 to m_Applications.Count - 1 do
+  begin
+    Result := m_Applications[i] as IApplication;
+    if (Result.Name = wstrName) then
+      break;
+    Result := nil;
+  end;
+end;
+
+
+function TSkype.FGetApplicationStreamByPartnerHandle(const AApplication: IApplication;
+  const wstrPartnerHadndle: WideString): IApplicationStream;
+var
+  i: integer;
+begin
+  Result := nil;
+
+  for i := 1 to AApplication.Streams.Count do
+  begin
+    Result := AApplication.Streams[i];
+    if (Result.PartnerHandle = wstrPartnerHadndle) then
+      break;
+
+    Result := nil;
+  end;
+end;
+
+
+procedure TSkype.FDoApplicationReceiving(const ASenderSkype: TSkype;
+  const ASenderApplication: IApplication; const wstrText: WideString);
+var
+  AReceiverApplication: IApplication;
+  AReceiverApplicationStream: IApplicationStream;
+  AReceiverApplicationStreamCollection: IApplicationStreamCollection;
+begin
+  AReceiverApplication := FGetApplicationByName(ASenderApplication.Name);
+  if (not Assigned(AReceiverApplication)) then
+    exit;
+
+  AReceiverApplicationStream := FGetApplicationStreamByPartnerHandle(
+    AReceiverApplication, ASenderSkype.CurrentUserHandle);
+  if (not Assigned(AReceiverApplicationStream)) then
+    exit;
+
+  ((AReceiverApplicationStream as IObject)._Object as TApplicationStream).FAddText(wstrText);
+
+  AReceiverApplicationStreamCollection := TApplicationStreamCollection.Create;
+  AReceiverApplicationStreamCollection.Add(AReceiverApplicationStream);
+
+  FEvents.ApplicationReceiving(AReceiverApplication, AReceiverApplicationStreamCollection);
 end;
 
 
@@ -630,7 +684,7 @@ begin
     if (Assigned(AUserSkype) and (AUserSkype.CurrentUserHandle = wstrHandle)) then
     begin
       m_lstConnectedSkypeIDs.Add(Pointer(AUserSkype.ID));
-      m_Streams.Add(TApplicationStream.Create(AUserSkype.ID));
+      m_Streams.Add(TApplicationStream.Create(AUserSkype.ID, self));
 
       exit;
     end;
@@ -735,15 +789,13 @@ procedure TApplication.SendDatagram(const Text: WideString;
 var
   i: integer;
   ASenderStream: TApplicationStream;
-  AReceiverSkype: TSkype;
 begin
   FCheckContext;
 
   for i := 1 to pStreams.Count do
   begin
     ASenderStream := (pStreams.Item[i] as IObject)._Object as TApplicationStream;
-    AReceiverSkype := TSkype.GetSkypeByID(ASenderStream.PartnerSkypeID);
-    AReceiverSkype.FDoReceiveApplicationDatagram(m_Skype, self, Text);
+    ASenderStream.SendDatagram(Text);
   end;
   
 end;
@@ -966,11 +1018,22 @@ end;
 ////////////////////////////////////////////////////////////////////////////////
 // TApplicationStream
 
-constructor TApplicationStream.Create(iPartnerSkypeID: integer);
+constructor TApplicationStream.Create(iPartnerSkypeID: integer;
+   const AApplication: TApplication);
 begin
   inherited Create(GetDataTypeLib, IApplicationStreamDisp);
 
   m_iPartnerSkypeID := iPartnerSkypeID;
+  m_Application := AApplication;
+
+  m_wstrlTextQueue := TTntStringList.Create;
+end;
+
+
+destructor TApplicationStream.Destroy;
+begin
+  m_wstrlTextQueue.Free;
+  inherited;
 end;
 
 
@@ -987,6 +1050,44 @@ end;
 function TApplicationStream.GetObject: TObject;
 begin
   Result := self
+end;
+
+
+procedure TApplicationStream.SendDatagram(const Text: WideString);
+var
+  AReceiverSkype: TSkype;
+begin
+  AReceiverSkype := TSkype.GetSkypeByID(m_iPartnerSkypeID);
+  AReceiverSkype.FDoReceiveApplicationDatagram(m_Application.Skype, m_Application, Text);
+end;
+
+
+procedure TApplicationStream.Write(const Text: WideString);
+var
+  AReceiverSkype: TSkype;
+begin
+  AReceiverSkype := TSkype.GetSkypeByID(m_iPartnerSkypeID);
+  AReceiverSkype.FDoApplicationReceiving(m_Application.Skype, m_Application, Text);
+end;
+
+
+function TApplicationStream.Read: WideString;
+var
+  iIndex: integer;
+begin
+  if (m_wstrlTextQueue.Count > 0) then
+  begin
+    Result := m_wstrlTextQueue[0];
+    m_wstrlTextQueue.Delete(0)
+  end
+  else
+    Result := '';  
+end;
+
+
+procedure TApplicationStream.FAddText(const wstrText: WideString);
+begin
+  m_wstrlTextQueue.Append(wstrText); 
 end;
 
 ////////////////////////////////////////////////////////////////////////////////

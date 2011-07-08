@@ -161,6 +161,8 @@ type
     procedure AttachmentStatus(Status: TAttachmentStatus); dispid 4;
     procedure ApplicationDatagram(const pApp: IApplication; const pStream: IApplicationStream; 
                                   const Text: WideString); dispid 18;
+    procedure ApplicationReceiving(const pApp: IApplication; 
+                                   const pStreams: IApplicationStreamCollection); dispid 20;
   end;
 
 // *********************************************************************//
@@ -314,6 +316,9 @@ type
   IApplicationStream = interface(IDispatch)
     ['{3453D1C9-CD9B-4704-9BBA-4B5FCFB1AA99}']
     function Get_PartnerHandle: WideString; safecall;
+    procedure SendDatagram(const Text: WideString); safecall;
+    procedure Write(const Text: WideString); safecall;
+    function Read: WideString; safecall;
     property PartnerHandle: WideString read Get_PartnerHandle;
   end;
 
@@ -324,13 +329,15 @@ type
 // *********************************************************************//
   IApplicationStreamDisp = dispinterface
     ['{3453D1C9-CD9B-4704-9BBA-4B5FCFB1AA99}']
-    property Handle: WideString readonly dispid 2;
     property PartnerHandle: WideString readonly dispid 8;
+    procedure SendDatagram(const Text: WideString); dispid 5;
+    procedure Write(const Text: WideString); dispid 4;
+    function Read: WideString; dispid 3;
   end;
 
 // *********************************************************************//
 // Interface: IClient
-// Flags:     (4416) Dual OleAutomation Dispatchable
+// Flags:     (4544) Dual NonExtensible OleAutomation Dispatchable
 // GUID:      {A81A3BAF-66E6-46A5-B6E5-C568F1621853}
 // *********************************************************************//
   IClient = interface(IDispatch)
@@ -342,7 +349,7 @@ type
 
 // *********************************************************************//
 // DispIntf:  IClientDisp
-// Flags:     (4416) Dual OleAutomation Dispatchable
+// Flags:     (4544) Dual NonExtensible OleAutomation Dispatchable
 // GUID:      {A81A3BAF-66E6-46A5-B6E5-C568F1621853}
 // *********************************************************************//
   IClientDisp = dispinterface
@@ -381,6 +388,8 @@ type
   TSkypeApplicationDatagram = procedure(ASender: TObject; const pApp: IApplication;
                                                           const pStream: IApplicationStream;
                                                           const Text: WideString) of object;
+  TApplicationReceiving = procedure(ASender: TObject; const pApp: IApplication;
+                                                      const pStreams: IApplicationStreamCollection) of object;
 
 
 // *********************************************************************//
@@ -400,6 +409,8 @@ type
     FOnMessageStatus: TSkypeMessageStatus;
     FOnAttachmentStatus: TSkypeAttachmentStatus;
     FOnApplicationDatagram: TSkypeApplicationDatagram;
+    FOnApplicationReceiving: TApplicationReceiving;
+
     FIntf:        ISkype;
 {$IFDEF LIVE_SERVER_AT_DESIGN_TIME}
     FProps:       TSkypeProperties;
@@ -433,6 +444,7 @@ type
     property OnMessageStatus: TSkypeMessageStatus read FOnMessageStatus write FOnMessageStatus;
     property OnAttachmentStatus: TSkypeAttachmentStatus read FOnAttachmentStatus write FOnAttachmentStatus;
     property OnApplicationDatagram: TSkypeApplicationDatagram read FOnApplicationDatagram write FOnApplicationDatagram;
+    property OnApplicationReceiving: TApplicationReceiving read FOnApplicationReceiving write FOnApplicationReceiving;  
   end;
 
 {$IFDEF LIVE_SERVER_AT_DESIGN_TIME}
@@ -572,10 +584,15 @@ begin
     4: if Assigned(FOnAttachmentStatus) then
          FOnAttachmentStatus(Self, Params[0] {TAttachmentStatus});
     18: if Assigned(FOnApplicationDatagram) then
-         FOnApplicationDatagram(Self,
+          FOnApplicationDatagram(Self,
                                 IUnknown(TVarData(Params[0]).VPointer) as IApplication {const IApplication},
                                 IUnknown(TVarData(Params[1]).VPointer) as IApplicationStream {const IApplicationStream},
                                 Params[2] {const WideString});
+    20: if Assigned(FOnApplicationReceiving) then
+          FOnApplicationReceiving(Self,
+          IUnknown(TVarData(Params[0]).VPointer) as IApplication {const IApplication},
+          IUnknown(TVarData(Params[1]).VPointer) as IApplicationStreamCollection {const IApplicationStreamCollection});
+
   end; {case DispID}
 end;
 
