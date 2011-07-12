@@ -38,7 +38,10 @@ uses
   BitmapResUnit in '..\BitmapResUnit.pas',
   LocalizerUnit in '..\LocalizerUnit.pas',
   ChessRulesEngine in '..\ChessRulesEngine.pas',
-  ChessClockUnit in '..\ChessClockUnit.pas';
+  ChessClockUnit in '..\ChessClockUnit.pas',
+  URLVersionQueryUnit in '..\URLVersionQueryUnit.pas',
+  DontShowMessageDlgUnit in '..\DontShowMessageDlgUnit.pas',
+  IniSettingsUnit in '..\IniSettingsUnit.pas';
 
 {$R ..\Chess4Net.res}
 

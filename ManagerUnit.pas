@@ -249,8 +249,9 @@ implementation
 
 uses
   // Chess4Net
-  DateUtils, Math, StrUtils, TntIniFiles, Dialogs,
-  LookFeelOptionsUnit, GlobalsLocalUnit, InfoUnit, ChessClockUnit, DontShowMessageDlgUnit
+  DateUtils, Math, StrUtils, Dialogs,
+  LookFeelOptionsUnit, GlobalsUnit, GlobalsLocalUnit, InfoUnit, ChessClockUnit,
+  DontShowMessageDlgUnit, IniSettingsUnit
 {$IFDEF AND_RQ}
   , CallExec
 {$ENDIF}
@@ -264,9 +265,7 @@ uses
 
 const
   USR_BASE_NAME = 'Chess4Net';
-  INI_FILE_NAME = 'Chess4net.ini';
 
-  INITIAL_CLOCK_TIME = '5 0 5 0'; // 5:00 5:00
   NO_CLOCK_TIME ='u u';
 
   HOUR_TIME_FORMAT = 'h:nn:ss';
@@ -315,34 +314,8 @@ const
   CMD_ADJOURN_GAME_NO = 'adjno';
   CMD_START_ADJOURNED_GAME = 'strtadj';
 
-//  CMD_DELIMITER = '&&'; // CMD_DELIMITER has to be present in arguments
-
+  // CMD_DELIMITER = '&&'; // CMD_DELIMITER has to be present in arguments
   // CMD_CLOSE = 'ext' - IS RESERVED
-
-  // INI-file
-  PRIVATE_SECTION_NAME = 'Private';
-  COMMON_SECTION_PREFIX = 'Common';
-  ANIMATION_KEY_NAME = 'Animation';
-  HILIGHT_LAST_MOVE_KEY_NAME = 'HilightLastMove';
-  FLASH_ON_MOVE_NAME = 'FlashOnMove';
-  SHOW_COORDINATES_KEY_NAME = 'ShowCoordinates';
-  STAY_ON_TOP_KEY_NAME = 'StayOnTop';
-  EXTRA_EXIT_KEY_NAME = 'ExtraExit';
-  CAN_PAUSE_GAME_KEY_NAME = 'CanPauseGame';
-  CAN_ADJOURN_GAME_KEY_NAME = 'CanAdjournGame';
-  ALLOW_TAKEBACKS_KEY_NAME = 'AllowTakebacks';
-  EXTERNAL_BASE_NAME_KEY_NAME = 'ExternalBaseName';
-  USE_USER_BASE_KEY_NAME = 'UseUserBase';
-  AUTO_FLAG_KEY_NAME = 'AutoFlag';
-  TRAINING_MODE_KEY_NAME = 'TrainingMode';
-  PLAYER_COLOR_KEY_NAME = 'PlayerColor';
-  CLOCK_KEY_NAME = 'Clock';
-  ADJOURNED_KEY_NAME = 'Adjourned';
-  LANGUAGE_KEY_NAME = 'Language';
-{$IFDEF SKYPE}
-  DONT_SHOW_CREDITS = 'DontShowCredits';
-{$ENDIF}
-  DONT_SHOW_LAST_VERSION = 'DontShowLastVersion';
 
 type
   TManagerDefault = class(TManager) // TODO: TRILLIAN, AND_RQ, QIP-> own classes
@@ -1217,6 +1190,8 @@ begin
     m_ChessBoard := nil;
   end;
   m_Dialogs.Free;
+
+  TIniSettings.FreeInstance;
 end;
 
 
@@ -1878,45 +1853,36 @@ end;
 
 procedure TManager.RReadPrivateSettings;
 var
-  iniFile: TTntIniFile;
   initialClockTime: string;
 begin
   // ќбщие настройки по умолчанию
   initialClockTime := INITIAL_CLOCK_TIME;
   SetClock(initialClockTime);
+
   ChessBoard.AutoFlag := TRUE;
   you_takebacks := FALSE;
   opponent_takebacks := FALSE;
 
-  // —читывание личных настроек из INI-файла
-  iniFile := TTntIniFile.Create(Chess4NetPath + INI_FILE_NAME);
-  try
-    ChessBoard.animation := TAnimation(iniFile.ReadInteger(PRIVATE_SECTION_NAME, ANIMATION_KEY_NAME, Ord(aQuick)));
-    ChessBoard.LastMoveHilighted := iniFile.ReadBool(PRIVATE_SECTION_NAME, HILIGHT_LAST_MOVE_KEY_NAME, FALSE);
-    ChessBoard.FlashOnMove := iniFile.ReadBool(PRIVATE_SECTION_NAME, FLASH_ON_MOVE_NAME, FALSE);
-    ChessBoard.CoordinatesShown := iniFile.ReadBool(PRIVATE_SECTION_NAME, SHOW_COORDINATES_KEY_NAME, TRUE);
-    // TODO: read screen position and size
-    ChessBoard.StayOnTop := iniFile.ReadBool(PRIVATE_SECTION_NAME, STAY_ON_TOP_KEY_NAME, FALSE);
-    extra_exit := iniFile.ReadBool(PRIVATE_SECTION_NAME, EXTRA_EXIT_KEY_NAME, FALSE);
-    TLocalizer.Instance.ActiveLanguage := iniFile.ReadInteger(PRIVATE_SECTION_NAME, LANGUAGE_KEY_NAME, 1) - 1;
-    m_iDontShowLastVersion := iniFile.ReadInteger(PRIVATE_SECTION_NAME, DONT_SHOW_LAST_VERSION, CHESS4NET_VERSION);
+  // Reading private settings
+  ChessBoard.animation := TIniSettings.Instance.Animation;
+  ChessBoard.LastMoveHilighted := TIniSettings.Instance.LastMoveHilighted;
+  ChessBoard.FlashOnMove := TIniSettings.Instance.FlashOnMove;
+  ChessBoard.CoordinatesShown := TIniSettings.Instance.CoordinatesShown;
+  // TODO: read screen position and size
+  ChessBoard.StayOnTop := TIniSettings.Instance.StayOnTop;
+  extra_exit := TIniSettings.Instance.ExtraExit;
+  TLocalizer.Instance.ActiveLanguage := TIniSettings.Instance.ActiveLanguage;
+  m_iDontShowLastVersion := TIniSettings.Instance.DontShowLastVersion;
 {$IFDEF SKYPE}
-    m_bDontShowCredits := iniFile.ReadBool(PRIVATE_SECTION_NAME, DONT_SHOW_CREDITS, FALSE);
+  m_bDontShowCredits := TIniSettings.Instance.DontShowCredits;
 {$ENDIF}
-
-  finally
-    iniFile.Free;
-  end;
 end;
 
 
 function TManager.FReadCommonSettings(setToOpponent: boolean): boolean;
 var
-  iniFile: TTntIniFile;
-  commonSectionName: string;
-  APlayerColor: TFigureColor;
-  clockStr: string;
-  flag: boolean;
+  strClock: string;
+  bFlag: boolean;
 begin
   if (m_lwOpponentClientVersion < 200705) then // For 2007.4 common settings are not applied
   begin
@@ -1925,143 +1891,123 @@ begin
   end;
 
   Result := FALSE;
-  iniFile := TTntIniFile.Create(Chess4NetPath + INI_FILE_NAME);
-  try
-    commonSectionName := COMMON_SECTION_PREFIX + ' ' + OpponentId;
-    if (not iniFile.SectionExists(commonSectionName)) then
-      exit;
 
-    if (setToOpponent) then
+  TIniSettings.Instance.SetOpponentId(OpponentId);
+  if (not TIniSettings.Instance.HasCommonSettings) then
+    exit;
+
+  if (setToOpponent) then
+  begin
+    if (_PlayerColor = TIniSettings.Instance.PlayerColor) then // Every time change the saved color to opposite one
     begin
-      APlayerColor := TFigureColor(iniFile.ReadInteger(commonSectionName, PLAYER_COLOR_KEY_NAME, Ord(fcBlack)));
-      if (_PlayerColor = APlayerColor) then // Every time change the saved color to opposite one
+      ChangeColor;
+      RSendData(CMD_CHANGE_COLOR);
+      RRetransmit(CMD_CHANGE_COLOR);
+    end;
+
+    strClock := TIniSettings.Instance.Clock;
+    if (strClock <> ClockToStr) then
+    begin
+      SetClock(strClock);
+      RSendData(CMD_SET_CLOCK + ' ' + ClockToStr);
+    end;
+
+    bFlag := TIniSettings.Instance.TrainingMode;
+    if (ChessBoard.pTrainingMode <> bFlag) then
+    begin
+      ChessBoard.pTrainingMode := bFlag;
+      RSendData(CMD_SET_TRAINING + IfThen(ChessBoard.pTrainingMode, ' 1', ' 0'));
+    end;
+
+    if (m_lwOpponentClientVersion >= 200706) then
+    begin
+      bFlag := TIniSettings.Instance.CanPauseGame;
+      if (can_pause_game <> bFlag) then
       begin
-        ChangeColor;
-        RSendData(CMD_CHANGE_COLOR);
-        RRetransmit(CMD_CHANGE_COLOR);
+        can_pause_game := bFlag;
+        RSendData(CMD_CAN_PAUSE_GAME + IfThen(can_pause_game, ' 1', ' 0'));
       end;
-      clockStr := iniFile.ReadString(commonSectionName, CLOCK_KEY_NAME, INITIAL_CLOCK_TIME);
-      if (clockStr <> ClockToStr) then
-      begin
-        SetClock(clockStr);
-        RSendData(CMD_SET_CLOCK + ' ' + ClockToStr);
-      end;
-
-      flag := iniFile.ReadBool(commonSectionName, TRAINING_MODE_KEY_NAME, FALSE);
-      if (ChessBoard.pTrainingMode <> flag) then
-      begin
-        ChessBoard.pTrainingMode := flag;
-        RSendData(CMD_SET_TRAINING + IfThen(ChessBoard.pTrainingMode, ' 1', ' 0'));
-      end;
-
-      if (m_lwOpponentClientVersion >= 200706) then
-      begin
-        flag := iniFile.ReadBool(commonSectionName, CAN_PAUSE_GAME_KEY_NAME, FALSE);
-        if (can_pause_game <> flag) then
-        begin
-          can_pause_game := flag;
-          RSendData(CMD_CAN_PAUSE_GAME + IfThen(can_pause_game, ' 1', ' 0'));
-        end;
-      end; { if opponentClientVersion >= 200706}
-
-      if (m_lwOpponentClientVersion >= 200801) then
-      begin
-        flag := iniFile.ReadBool(commonSectionName, CAN_ADJOURN_GAME_KEY_NAME, FALSE);
-        if (can_adjourn_game <> flag) then
-        begin
-          can_adjourn_game := flag;
-          RSendData(CMD_CAN_ADJOURN_GAME + IfThen(can_adjourn_game, ' 1', ' 0'));
-        end;
-      end; { opponentClientVersion >= 200801 }
-    end; { if setToOpponent }
-
-    m_strExtBaseName := iniFile.ReadString(commonSectionName, EXTERNAL_BASE_NAME_KEY_NAME, '');
-    if (m_strExtBaseName <> '') then
-      ChessBoard.SetExternalBase(Chess4NetPath + m_strExtBaseName)
-    else
-      ChessBoard.UnsetExternalBase;
-
-    ChessBoard.pUseUserBase := iniFile.ReadBool(commonSectionName, USE_USER_BASE_KEY_NAME, FALSE);
-    flag := iniFile.ReadBool(commonSectionName, ALLOW_TAKEBACKS_KEY_NAME, FALSE);
-    if you_takebacks <> flag then
-      begin
-        you_takebacks := flag;
-        RSendData(CMD_ALLOW_TAKEBACKS + IfThen(you_takebacks, ' 1', ' 0'));
-      end;
-    ChessBoard.AutoFlag := iniFile.ReadBool(commonSectionName, AUTO_FLAG_KEY_NAME, FALSE);
-
-    TakebackGame.Visible := (opponent_takebacks or ChessBoard.pTrainingMode);
-    GamePause.Visible := can_pause_game;
+    end; { if opponentClientVersion >= 200706}
 
     if (m_lwOpponentClientVersion >= 200801) then
     begin
-      AdjournedStr := iniFile.ReadString(commonSectionName, ADJOURNED_KEY_NAME, '');
-      if (AdjournedStr <> '') then
+      bFlag := TIniSettings.Instance.CanAdjournGame;
+      if (can_adjourn_game <> bFlag) then
       begin
-        RSendData(CMD_SET_ADJOURNED + ' ' + AdjournedStr);
-        iniFile.WriteString(commonSectionName, ADJOURNED_KEY_NAME, '');
+        can_adjourn_game := bFlag;
+        RSendData(CMD_CAN_ADJOURN_GAME + IfThen(can_adjourn_game, ' 1', ' 0'));
       end;
-    end;
-    
-  finally
-    iniFile.Free;
+    end; { opponentClientVersion >= 200801 }
+  end; { if setToOpponent }
+
+  m_strExtBaseName := TIniSettings.Instance.ExternalBaseName;
+  if (m_strExtBaseName <> '') then
+    ChessBoard.SetExternalBase(Chess4NetPath + m_strExtBaseName)
+  else
+    ChessBoard.UnsetExternalBase;
+
+  ChessBoard.pUseUserBase := TIniSettings.Instance.UseUserBase;
+
+  bFlag := TIniSettings.Instance.AllowTakebacks;
+  if (you_takebacks <> bFlag) then
+  begin
+    you_takebacks := bFlag;
+    RSendData(CMD_ALLOW_TAKEBACKS + IfThen(you_takebacks, ' 1', ' 0'));
   end;
 
-  Result := TRUE;  
+  ChessBoard.AutoFlag := TIniSettings.Instance.AutoFlag;
+
+  TakebackGame.Visible := (opponent_takebacks or ChessBoard.pTrainingMode);
+  GamePause.Visible := can_pause_game;
+
+  if (m_lwOpponentClientVersion >= 200801) then
+  begin
+    AdjournedStr := TIniSettings.Instance.Adjourned;
+    if (AdjournedStr <> '') then
+    begin
+      RSendData(CMD_SET_ADJOURNED + ' ' + AdjournedStr);
+      TIniSettings.Instance.Adjourned := '';
+    end;
+  end;
+
+  Result := TRUE;
 end;
 
 
 procedure TManager.FWritePrivateSettings;
-var
-  iniFile: TTntIniFile;
 begin
   // Write private settings
-  iniFile := TTntIniFile.Create(Chess4NetPath + INI_FILE_NAME);
-  try
-    iniFile.WriteInteger(PRIVATE_SECTION_NAME, ANIMATION_KEY_NAME, Ord(ChessBoard.animation));
-    iniFile.WriteBool(PRIVATE_SECTION_NAME, HILIGHT_LAST_MOVE_KEY_NAME, ChessBoard.LastMoveHilighted);
-    iniFile.WriteBool(PRIVATE_SECTION_NAME, FLASH_ON_MOVE_NAME, ChessBoard.FlashOnMove);
-    iniFile.WriteBool(PRIVATE_SECTION_NAME, SHOW_COORDINATES_KEY_NAME, ChessBoard.CoordinatesShown);
-    // TODO: write screen position
-    iniFile.WriteBool(PRIVATE_SECTION_NAME, STAY_ON_TOP_KEY_NAME, ChessBoard.StayOnTop);
-    iniFile.WriteBool(PRIVATE_SECTION_NAME, EXTRA_EXIT_KEY_NAME, extra_exit);
-    iniFile.WriteInteger(PRIVATE_SECTION_NAME, LANGUAGE_KEY_NAME, TLocalizer.Instance.ActiveLanguage + 1);
-
-    if (m_iDontShowLastVersion > CHESS4NET_VERSION) then
-      iniFile.WriteInteger(PRIVATE_SECTION_NAME, DONT_SHOW_LAST_VERSION, m_iDontShowLastVersion);
-
+  TIniSettings.Instance.Animation := ChessBoard.Animation;
+  TIniSettings.Instance.LastMoveHilighted := ChessBoard.LastMoveHilighted;
+  TIniSettings.Instance.FlashOnMove := ChessBoard.FlashOnMove;
+  TIniSettings.Instance.CoordinatesShown := ChessBoard.CoordinatesShown;
+  // TODO: write screen position
+  TIniSettings.Instance.StayOnTop := ChessBoard.StayOnTop;
+  TIniSettings.Instance.ExtraExit := extra_exit;
+  TIniSettings.Instance.ActiveLanguage := TLocalizer.Instance.ActiveLanguage;
+  if (m_iDontShowLastVersion > CHESS4NET_VERSION) then
+    TIniSettings.Instance.DontShowLastVersion := m_iDontShowLastVersion;
 {$IFDEF SKYPE}
-    if (m_bDontShowCredits) then
-      iniFile.WriteBool(PRIVATE_SECTION_NAME, DONT_SHOW_CREDITS, m_bDontShowCredits);
+  if (m_bDontShowCredits) then
+    TIniSettings.Instance.DontShowCredits := m_bDontShowCredits;
 {$ENDIF}
-  finally
-    iniFile.Free;
-  end;
 end;
 
 
 procedure TManager.FWriteCommonSettings;
-var
-  iniFile: TTntIniFile;
-  strCommonSectionName: string;
 begin
-  iniFile := TTntIniFile.Create(Chess4NetPath + INI_FILE_NAME);
-  try
-    strCommonSectionName := COMMON_SECTION_PREFIX + ' ' + OpponentId;
-    iniFile.WriteInteger(strCommonSectionName, PLAYER_COLOR_KEY_NAME, Ord(_PlayerColor));
-    iniFile.WriteString(strCommonSectionName, CLOCK_KEY_NAME, ClockToStr);
-    iniFile.WriteBool(strCommonSectionName, TRAINING_MODE_KEY_NAME, ChessBoard.pTrainingMode);
-    iniFile.WriteString(strCommonSectionName, EXTERNAL_BASE_NAME_KEY_NAME, m_strExtBaseName);
-    iniFile.WriteBool(strCommonSectionName, USE_USER_BASE_KEY_NAME, ChessBoard.pUseUserBase);
-    iniFile.WriteBool(strCommonSectionName, ALLOW_TAKEBACKS_KEY_NAME, you_takebacks);
-    iniFile.WriteBool(strCommonSectionName, CAN_PAUSE_GAME_KEY_NAME, can_pause_game);
-    iniFile.WriteBool(strCommonSectionName, CAN_ADJOURN_GAME_KEY_NAME, can_adjourn_game);
-    iniFile.WriteBool(strCommonSectionName, AUTO_FLAG_KEY_NAME, ChessBoard.AutoFlag);
-    iniFile.WriteString(strCommonSectionName, ADJOURNED_KEY_NAME, AdjournedStr);
+  TIniSettings.Instance.SetOpponentId(OpponentId);
 
-  finally
-    iniFile.Free;
-  end;
+  TIniSettings.Instance.PlayerColor := _PlayerColor;
+  TIniSettings.Instance.Clock := ClockToStr;
+  TIniSettings.Instance.TrainingMode := ChessBoard.pTrainingMode;
+  TIniSettings.Instance.ExternalBaseName := m_strExtBaseName;
+  TIniSettings.Instance.UseUserBase := ChessBoard.pUseUserBase;
+  TIniSettings.Instance.AllowTakebacks := you_takebacks;
+  TIniSettings.Instance.CanPauseGame := can_pause_game;
+  TIniSettings.Instance.CanAdjournGame := can_adjourn_game;
+  TIniSettings.Instance.AutoFlag := ChessBoard.AutoFlag;
+  TIniSettings.Instance.Adjourned := AdjournedStr;
 end;
 
 

@@ -11,6 +11,8 @@ interface
 const
   DIALOG_CAPTION = 'Chess4Net';
 
+  INITIAL_CLOCK_TIME = '5 0 5 0'; // 5:00 5:00
+
 implementation
 
 end.

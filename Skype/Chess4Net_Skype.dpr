@@ -24,7 +24,7 @@ uses
   ConnectingUnit in 'ConnectingUnit.pas' {ConnectingForm},
   GameOptionsUnit in '..\GameOptionsUnit.pas' {GameOptionsForm},
   ManagerUnit in '..\ManagerUnit.pas' {Manager},
-  ManagerUnit.Skype in 'ManagerUnit.Skype.pas',  
+  ManagerUnit.Skype in 'ManagerUnit.Skype.pas',
   ChessBoardHeaderUnit in '..\ChessBoardHeaderUnit.pas',
   ChessBoardUnit in '..\ChessBoardUnit.pas' {ChessBoard},
   ChessClockUnit in '..\ChessClockUnit.pas',
@@ -48,7 +48,8 @@ uses
   CreditsFormUnit in 'CreditsFormUnit.pas' {CreditsForm},
   URLVersionQueryUnit in '..\URLVersionQueryUnit.pas',
   DontShowMessageDlgUnit in '..\DontShowMessageDlgUnit.pas',
-  InterProc in 'InterProc.pas'
+  InterProc in 'InterProc.pas',
+  IniSettingsUnit in '..\IniSettingsUnit.pas'
 {$IFDEF TESTING}
   , SkypeTS_TLB in 'SkypeTS_TLB.pas'
 {$ELSE}

@@ -41,7 +41,10 @@ uses
   ChessRulesEngine in '..\ChessRulesEngine.pas',
   ManagerUnit.MI in 'ManagerUnit.MI.pas',
   TransmitGameSelectionUnit in 'TransmitGameSelectionUnit.pas' {TransmitGameSelectionForm},
-  ChessClockUnit in '..\ChessClockUnit.pas';
+  ChessClockUnit in '..\ChessClockUnit.pas',
+  URLVersionQueryUnit in '..\URLVersionQueryUnit.pas',
+  DontShowMessageDlgUnit in '..\DontShowMessageDlgUnit.pas',
+  IniSettingsUnit in '..\IniSettingsUnit.pas';
 
 {$R ..\Chess4Net.res}
 
