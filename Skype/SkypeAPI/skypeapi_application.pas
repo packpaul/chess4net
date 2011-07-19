@@ -187,10 +187,11 @@ type
   TAppStreamsListener = class(TListener)
   private
     m_wstrParsedStreamHandles: WideString;
-    m_Application: TApplication;      
+    m_Application: TApplication;
   protected
     function RParseCommand(const wstrCommand: WideString): boolean; override;
     function RProcessCommand(const wstrCommand: WideString): boolean; override;
+    procedure RDoNotify; override;
   public
     property Application: TApplication read m_Application write m_Application;
   end;
@@ -1329,6 +1330,12 @@ begin
   finally
     Free;
   end;
+end;
+
+
+procedure TAppStreamsListener.RDoNotify;
+begin
+  TSkype.Instance.DoApplicationStreams(m_Application, m_Application.Streams);
 end;
 
 end.

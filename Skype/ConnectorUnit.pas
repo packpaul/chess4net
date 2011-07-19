@@ -8,8 +8,8 @@ unit ConnectorUnit;
 
 interface
 
-// {$DEFINE CONNECTOR_LOG}
-// {$DEFINE SKYPEAPI_LOG}
+//{$DEFINE CONNECTOR_LOG}
+//{$DEFINE SKYPEAPI_LOG}
 
 uses
   Classes, TntClasses, ExtCtrls
@@ -104,7 +104,7 @@ type
     procedure FUserConnectingTimer(Sender: TObject);
 
     procedure FInitLogs;
-{$IFDEF SKYPE_API}
+{$IFDEF SKYPEAPI_LOG}
     procedure FWriteToSkypeApiLog(const s: string);
 {$ENDIF}    
     procedure FWriteToConnectorLog(const s: string);
