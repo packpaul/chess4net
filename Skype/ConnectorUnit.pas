@@ -49,14 +49,13 @@ type
   private
     FHandler: TConnectorHandler;
 
-    m_bConnected: boolean;
-
-    m_strMsgSending, m_strUnformatedMsgSending: string; // отсылаемое сообщение
+    m_strMsgSending: string; // отсылаемое сообщение
 
     // m_iCntrMsgIn и m_iCntrMsgOut были введены для преодоления бага с зависающими сообщениями
     m_iCntrMsgIn: integer;  // счётчик входящих сообщений
     m_iCntrMsgOut: integer; // счётчик исходящих сообщений
     m_strMsgBuf: string; // буфер сообщений
+    m_wstrLastCommand: WideString;
 
     m_iResendCount: integer;
 
@@ -89,9 +88,10 @@ type
 
     procedure FOnMessage(const wstrMessage: WideString);
     procedure FOnCommand(const wstrCommand: WideString);
+    procedure FOnApplicationStreams(const Streams: IApplicationStreamCollection);
 
     procedure FConnectIfNotConnected;
-    function FIsUserConnected: boolean;
+    function FGetConnected: boolean;
     procedure FSendInvitation;
 
     function FGetSkype: TSkype;
@@ -104,7 +104,9 @@ type
     procedure FUserConnectingTimer(Sender: TObject);
 
     procedure FInitLogs;
+{$IFDEF SKYPE_API}
     procedure FWriteToSkypeApiLog(const s: string);
+{$ENDIF}    
     procedure FWriteToConnectorLog(const s: string);
     procedure FCloseLogs;
 
@@ -129,7 +131,7 @@ type
     procedure CreateChildConnector(h: TConnectorHandler;
       out AConnector: TConnector); virtual;
 
-    property connected: boolean read m_bConnected;
+    property connected: boolean read FGetConnected;
 
     property Skype: TSkype read FGetSkype;
 
@@ -142,7 +144,7 @@ implementation
 {$I-}
 
 uses
-  StrUtils, SysUtils, {  Forms,   Windows, }
+  StrUtils, SysUtils,
   GlobalsLocalUnit;
 
 type
@@ -160,8 +162,12 @@ type
       const pStream: IApplicationStream; const Text: WideString);
     procedure FOnApplicationReceiving(ASender: TObject; const pApp: IApplication;
       const pStreams: IApplicationStreamCollection);
-    procedure FOnSkypeAPILog(const wstrLogMsg: WideString);
+    procedure FOnApplicationStreams(ASender: TObject; const pApp: IApplication;
+      const pStreams: IApplicationStreamCollection); overload;
 
+{$IFDEF SKYPEAPI_LOG}
+    procedure FOnSkypeAPILog(const wstrLogMsg: WideString);
+{$ENDIF}
     procedure FShowSkypeConnectableUsers;
 
     procedure FCreateTimers;
@@ -249,12 +255,12 @@ end;
 
 procedure TConnector.Close;
 begin
-  if (m_bConnected) then
+  if (connected) then
   begin
     m_strMsgSending := FFormatMsg(MSG_CLOSE);
     FSendCommand(m_strMsgSending);
     m_SendTimer.Enabled := FALSE;
-    m_bConnected := FALSE;
+    Exclude(m_SkypeStates, sUserConnected); 
     FDoHandler(ceDisconnected);
   end;
 
@@ -304,62 +310,60 @@ begin
     Result := FALSE;
     exit;
   end;
+
+  if (m_strMsgSending <> '') then
   begin
-    if (m_strMsgSending <> '') then
+    m_strMsgSending := '';
+    inc(m_iCntrMsgOut);
+  end;
+  if (FDeformatMsg(wstrMsg, iCntrMsg)) then
+  begin
+    Result := TRUE;
+    if (iCntrMsg > m_iCntrMsgIn) then
     begin
-      m_strMsgSending := '';
-      m_strUnformatedMsgSending := '';
-      inc(m_iCntrMsgOut);
-    end;
-    if (FDeformatMsg(wstrMsg, iCntrMsg)) then
-    begin
-      Result := TRUE;
+      inc(m_iCntrMsgIn);
       if (iCntrMsg > m_iCntrMsgIn) then
       begin
-        inc(m_iCntrMsgIn);
-        if (iCntrMsg > m_iCntrMsgIn) then
-        begin
-          FDoHandler(ceError); // пакет исчез
-          exit;
-        end;
-      end
-      else
-        exit; // пропуск пакетов с более низкими номерами
-      if (wstrMsg = MSG_CLOSE) then
-      begin
-        FDoHandler(ceDisconnected);
-        m_bConnected := FALSE;
-      end
-      else
-      begin
-        strMsg := wstrMsg;
-        FDoHandler(ceData, @strMsg);
-      end
+        FDoHandler(ceError); // пакет исчез
+        exit;
+      end;
     end
     else
-      Result := FALSE;
-  end;
+      exit; // пропуск пакетов с более низкими номерами
+    if (wstrMsg = MSG_CLOSE) then
+    begin
+      Exclude(m_SkypeStates, sUserConnected);
+      FDoHandler(ceDisconnected);
+    end
+    else
+    begin
+      strMsg := wstrMsg;
+      FDoHandler(ceData, @strMsg);
+    end
+  end
+  else
+    Result := FALSE;
 end;
 
 
 procedure TConnector.FSendCommand(const wstrCommand: WideString);
 var
   i: integer;
-  Streams: IApplicationStreamCollection;
   Stream: IApplicationStream;
 begin
-  Streams := SkypeApplication.Streams;
-  for i := 1 to Streams.Count do
+  for i := 1 to m_SkypeApplicationStreams.Count do
   begin
-    Stream := Streams[i];
-    if (Stream.PartnerHandle = ContactHandle) then
-    begin
-      Stream.SendDatagram(wstrCommand);
-      Stream.Write(wstrCommand);
-      FNotifySender(wstrCommand);
-      exit;
-    end;
-  end;
+    Stream := m_SkypeApplicationStreams[i];
+    Assert(Stream.PartnerHandle = m_wstrContactHandle);
+
+    Stream.SendDatagram(wstrCommand);
+    Stream.Write(wstrCommand);
+
+    m_wstrLastCommand := wstrCommand;
+
+    FNotifySender(wstrCommand); // TODO: move to Skype.OnApplicationSending
+  end; // for
+  
 end;
 
 
@@ -383,7 +387,6 @@ begin
    FWriteToConnectorLog('<< ' + m_strMsgSending);
 
    m_strMsgSending := '';
-   m_strUnformatedMsgSending := '';
    inc(m_iCntrMsgOut);
 end;
 
@@ -439,6 +442,12 @@ begin
 end;
 
 
+function TConnector.FGetConnected: boolean;
+begin
+  Result := (sUserConnected in m_SkypeStates);
+end;
+
+
 procedure TConnector.ROnCreate;
 begin
   m_wstrlInBuffer := TTntStringList.Create;
@@ -471,7 +480,6 @@ begin
     m_SendTimer.Enabled := FALSE;
     if (m_strMsgBuf <> '') then
     begin
-      m_strUnformatedMsgSending := m_strMsgBuf;
       m_strMsgSending := FFormatMsg(m_strMsgBuf);
       m_strMsgBuf := '';
       FSendCommand(m_strMsgSending);
@@ -495,26 +503,29 @@ procedure TConnector.FUserConnectingTimer(Sender: TObject);
 var
   i: integer;
 begin
+  if (sUserConnecting in m_SkypeStates) then
+    exit;
+
   m_UserConnectingTimer.Enabled := FALSE;
 
-  if (FIsUserConnected) then
+  FBuildSkypeApplicationStreams;
+
+  if (sUserConnected in m_SkypeStates) then
   begin
-    Exclude(m_SkypeStates, sUserConnecting);
-    Include(m_SkypeStates, sUserConnected);
-
-    FBuildSkypeApplicationStreams;
-
-    FSendInvitation;
-
-    m_bConnected := TRUE;
-    FDoHandler(ceConnected);
-
-    for i := 0 to m_wstrlInBuffer.Count - 1 do
-      FFilterMsg(m_wstrlInBuffer[i]);
-    m_wstrlInBuffer.Clear;
+    FSendCommand(m_wstrLastCommand);
   end
   else
-    m_UserConnectingTimer.Enabled := TRUE;
+  begin
+    Include(m_SkypeStates, sUserConnected);
+    FSendInvitation;
+    FDoHandler(ceConnected);
+  end;
+
+  for i := 0 to m_wstrlInBuffer.Count - 1 do
+    FFilterMsg(m_wstrlInBuffer[i]);
+
+  m_wstrlInBuffer.Clear;
+  
 end;
 
 
@@ -523,12 +534,15 @@ var
   i: integer;
   AApplicationStream: IApplicationStream;
 begin
-  m_SkypeApplicationStreams := CoApplicationStreamCollection.Create;
+  if (Assigned(m_SkypeApplicationStreams)) then
+    m_SkypeApplicationStreams.RemoveAll
+  else
+    m_SkypeApplicationStreams := CoApplicationStreamCollection.Create;
 
   for i := 1 to SkypeApplication.Streams.Count do
   begin
     AApplicationStream := SkypeApplication.Streams[i];
-    if (AApplicationStream.PartnerHandle = ContactHandle) then
+    if (AApplicationStream.PartnerHandle = m_wstrContactHandle) then
     begin
       m_SkypeApplicationStreams.Add(AApplicationStream);
       break;
@@ -558,44 +572,49 @@ end;
 
 procedure TConnector.FOnCommand(const wstrCommand: WideString);
 begin
-  FConnectIfNotConnected;
   FFilterMsg(wstrCommand);
-//  Log(WideFormat('FSkypeApplicationDatagram(): Command - %s', [Text]));
+//  Log(WideFormat('FOnCommand(): Command - %s', [Text]));
+end;
+
+
+procedure TConnector.FOnApplicationStreams(const Streams: IApplicationStreamCollection);
+var
+  bStreamAvailable: boolean;
+  i: integer;
+begin
+  if (not ((sUserConnecting in m_SkypeStates) or (sUserConnected in m_SkypeStates))) then
+    exit;
+
+  bStreamAvailable := FALSE;
+
+  for i := 1 to Streams.Count do
+  begin
+    bStreamAvailable := (Streams[i].PartnerHandle = m_wstrContactHandle);
+    if (bStreamAvailable) then
+      break;
+  end;
+
+  if (bStreamAvailable) then
+    Exclude(m_SkypeStates, sUserConnecting)
+  else
+  begin
+    if (sUserConnected in m_SkypeStates) then
+      FConnectIfNotConnected;
+  end;
+
 end;
 
 
 procedure TConnector.FConnectIfNotConnected;
 begin
-  if (not ((sUserConnecting in m_SkypeStates) or FIsUserConnected)) then
-  begin
-    Include(m_SkypeStates, sUserConnecting);
-    SkypeApplication.Connect(m_wstrContactHandle, TRUE);
-    m_UserConnectingTimer.Enabled := TRUE;
-//    Log('Connecting user started.');
-  end;
-end;
+  if (sUserConnecting in m_SkypeStates) then
+    exit;
 
-
-function TConnector.FIsUserConnected: boolean;
-
-  function NUserInConnecting(const wstrUserHandle: WideString): boolean;
-  var
-    i: integer;
-    UserCollection: IUserCollection;
-  begin
-    Result := FALSE;
-    UserCollection := SkypeApplication.ConnectingUsers;
-    for i := 1 to UserCollection.Count do
-      if (UserCollection.Item[i].Handle = wstrUserHandle) then
-      begin
-        Result := TRUE;
-        exit;
-      end;
-  end;
-
-begin // TBaseConnector.FIsUserConnected
-  Result := (sUserConnected in m_SkypeStates) or
-    ((sUserConnecting in m_SkypeStates) and (not NUserInConnecting(self.m_wstrContactHandle)));
+  Include(m_SkypeStates, sUserConnecting);
+  SkypeApplication.Connect(m_wstrContactHandle, TRUE);
+  
+  m_UserConnectingTimer.Enabled := TRUE;
+//  Log('Connecting user started.');
 end;
 
 
@@ -658,14 +677,13 @@ begin
 {$ENDIF}  
 end;
 
-
+{$IFDEF SKYPEAPI_LOG}
 procedure TConnector.FWriteToSkypeApiLog(const s: string);
 begin
-{$IFDEF SKYPEAPI_LOG}
   writeln(m_SkypeAPILogFile, s);
   Flush(m_SkypeAPILogFile);
-{$ENDIF}
 end;
+{$ENDIF}
 
 ////////////////////////////////////////////////////////////////////////////////
 // TBaseConnector
@@ -718,6 +736,7 @@ begin
     Skype.OnMessageStatus := FOnMessageStatus;
     Skype.OnApplicationDatagram := FOnSkypeApplicationDatagram;
     Skype.OnApplicationReceiving := FOnApplicationReceiving;
+    Skype.OnApplicationStreams := FOnApplicationStreams;
 {$IFDEF SKYPEAPI_LOG}
     Skype.OnLog := FOnSkypeAPILog;
 {$ENDIF}
@@ -852,13 +871,29 @@ begin
           exit;
         end;
       end;
-    end; // for
+    end; // for j
 
-  end;
+  end; // for i
 
 end;
 
-    
+
+procedure TBaseConnector.FOnApplicationStreams(ASender: TObject;
+  const pApp: IApplication; const pStreams: IApplicationStreamCollection);
+var
+  i: integer;
+begin
+  if (pApp.Name <> SKYPE_APP_NAME) then
+    exit;
+
+  FOnApplicationStreams(pStreams);
+
+  for i := 0 to m_lstChildConnectors.Count - 1 do
+    TChildConnector(m_lstChildConnectors[i]).FOnApplicationStreams(pStreams);
+
+end;
+
+
 procedure TBaseConnector.FShowContactsTimer(Sender: TObject);
 begin
   if (sAttached in m_SkypeStates) then
@@ -910,6 +945,7 @@ begin
   g_Skype.OnMessageStatus := nil;
   g_Skype.OnApplicationDatagram := nil;
   g_Skype.OnApplicationReceiving := nil;
+  g_Skype.OnApplicationStreams := nil;
 
   FreeAndNil(g_Skype);
 end;
@@ -933,11 +969,12 @@ begin
   m_lstChildConnectors.Remove(AChildConnector);
 end;
 
-
+{$IFDEF SKYPEAPI_LOG}
 procedure TBaseConnector.FOnSkypeAPILog(const wstrLogMsg: WideString);
 begin
-  FWriteToSkypeApiLog(wstrLogMsg); 
+  FWriteToSkypeApiLog(wstrLogMsg);
 end;
+{$ENDIF}
 
 ////////////////////////////////////////////////////////////////////////////////
 // TChildConnector

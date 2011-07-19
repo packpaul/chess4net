@@ -19,7 +19,7 @@ type
     procedure RSendData(const cmd: string = ''); override;
   end;
 
-  TTransmittingManagerSkype = class;
+  TTransmitter = class;
 
   TGamingManagerSkype = class(TManagerSkype)
   private
@@ -27,9 +27,9 @@ type
     m_lstTransmittingManagers: TList;
     m_UserContacts: TContactsList;
     procedure FStopAllTransmitters;
-    procedure FAddTransmitter(ATransmitter: TTransmittingManagerSkype);
-    function FRemoveTransmitter(ATransmitter: TTransmittingManagerSkype): boolean;
-    procedure FSetGameContextToTransmitter(ATransmitter: TTransmittingManagerSkype);
+    procedure FAddTransmitter(ATransmitter: TTransmitter);
+    function FRemoveTransmitter(ATransmitter: TTransmitter): boolean;
+    procedure FSetGameContextToTransmitter(ATransmitter: TTransmitter);
     procedure FBuildUserContactsForTransmition;
 
   protected
@@ -45,7 +45,7 @@ type
   end;
 
 
-  TTransmittingManagerSkype = class
+  TTransmitter = class
   private
     m_DestroyTimer: TTimer;
 
@@ -146,14 +146,14 @@ begin
     Assign(m_lstTransmittingManagers);
     m_lstTransmittingManagers.Clear;
     for i := 0 to Count - 1 do
-      TTransmittingManagerSkype(Items[i]).Free;
+      TTransmitter(Items[i]).Free;
   finally
     Free;
   end;
 end;
 
 
-procedure TGamingManagerSkype.FAddTransmitter(ATransmitter: TTransmittingManagerSkype);
+procedure TGamingManagerSkype.FAddTransmitter(ATransmitter: TTransmitter);
 begin
   if (not Assigned(m_lstTransmittingManagers)) then
     m_lstTransmittingManagers := TList.Create;
@@ -161,7 +161,7 @@ begin
 end;
 
 
-function TGamingManagerSkype.FRemoveTransmitter(ATransmitter: TTransmittingManagerSkype): boolean;
+function TGamingManagerSkype.FRemoveTransmitter(ATransmitter: TTransmitter): boolean;
 var
   i: integer;
 begin
@@ -185,7 +185,7 @@ begin
 end;
 
 
-procedure TGamingManagerSkype.FSetGameContextToTransmitter(ATransmitter: TTransmittingManagerSkype);
+procedure TGamingManagerSkype.FSetGameContextToTransmitter(ATransmitter: TTransmitter);
 begin
   if (not (Assigned(ATransmitter) and ATransmitter.Ready)) then
     exit;
@@ -252,7 +252,7 @@ end;
 procedure TGamingManagerSkype.RRetransmit(const strCmd: string);
 var
   i: integer;
-  ATransmitter: TTransmittingManagerSkype;
+  ATransmitter: TTransmitter;
 begin
   if (Transmittable or (not Assigned(m_lstTransmittingManagers))) then
     exit;
@@ -281,7 +281,7 @@ end;
 procedure TGamingManagerSkype.FBuildUserContactsForTransmition;
 var
   i, j: integer;
-  ATransmittingManager: TTransmittingManagerSkype;
+  ATransmittingManager: TTransmitter;
 begin
   Assert(not Assigned(m_UserContacts));
   Connector.GetConnectableUsers(m_UserContacts);
@@ -379,7 +379,7 @@ procedure TGamingManagerSkype.DialogFormHandler(modSender: TModalForm; msgDlgID:
     begin
       with modSender as TSelectSkypeContactForm do
       begin
-        TTransmittingManagerSkype.FCreate(self,
+        TTransmitter.FCreate(self,
           m_UserContacts.Handle[SelectedContactIndex]);
       end;
     end;
@@ -425,9 +425,9 @@ end;
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// TTransmittingManagerSkype
+// TTransmitter
 
-constructor TTransmittingManagerSkype.FCreate(const AGamingManager: TGamingManagerSkype;
+constructor TTransmitter.FCreate(const AGamingManager: TGamingManagerSkype;
   const wstrContactHandle: WideString);
 begin
   m_DestroyTimer := TTimer.Create(nil);
@@ -442,14 +442,14 @@ begin
 end;
 
 
-destructor TTransmittingManagerSkype.Destroy;
+destructor TTransmitter.Destroy;
 begin
   m_DestroyTimer.Free;
   inherited;
 end;
 
 
-procedure TTransmittingManagerSkype.Free;
+procedure TTransmitter.Free;
 begin
   if (m_DestroyTimer.Enabled) then
     exit;
@@ -460,7 +460,7 @@ begin
 end;
 
 
-procedure TTransmittingManagerSkype.FOnCreate;
+procedure TTransmitter.FOnCreate;
 var
   AConnector: TConnector;
 begin
@@ -478,7 +478,7 @@ begin
 end;
 
 
-procedure TTransmittingManagerSkype.FOnDestroy;
+procedure TTransmitter.FOnDestroy;
 var
   AConnector: TConnector;
 begin
@@ -491,14 +491,14 @@ begin
 end;
 
 
-procedure TTransmittingManagerSkype.FOnDestroyTimer(Sender: TObject);
+procedure TTransmitter.FOnDestroyTimer(Sender: TObject);
 begin
   m_DestroyTimer.Enabled := FALSE; 
   inherited Free;
 end;
 
 
-procedure TTransmittingManagerSkype.ConnectorHandler(
+procedure TTransmitter.ConnectorHandler(
   e: TConnectorEvent; d1: pointer = nil; d2: pointer = nil);
 var
   strLeft, strCmd: string;
@@ -533,7 +533,7 @@ begin
 end;
 
 
-procedure TTransmittingManagerSkype.FHandleConnectorDataCommand(sl: string);
+procedure TTransmitter.FHandleConnectorDataCommand(sl: string);
 var
   sr: string;
   lwOpponentClientVersion: Longword;
@@ -571,13 +571,13 @@ begin
 end;
 
 
-class procedure TTransmittingManagerSkype.FSplitStr(s: string; var strLeft: string; var strRight: string);
+class procedure TTransmitter.FSplitStr(s: string; var strLeft: string; var strRight: string);
 begin
   TManagerSkype.RSplitStr(s, strLeft, strRight);
 end;
 
 
-procedure TTransmittingManagerSkype.FSendData(const cmd: string = '');
+procedure TTransmitter.FSendData(const cmd: string = '');
 const
   last_cmd: string = '';
 begin
