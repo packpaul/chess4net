@@ -595,11 +595,19 @@ begin
   end;
 
   if (bStreamAvailable) then
-    Exclude(m_SkypeStates, sUserConnecting)
+  begin
+    Exclude(m_SkypeStates, sUserConnecting);
+    if (sUserConnected in m_SkypeStates) then
+      FWriteToConnectorLog('Reconnected to Skype of ' + m_wstrContactHandle);
+  end
   else
   begin
     if (sUserConnected in m_SkypeStates) then
+    begin
+      FWriteToConnectorLog('Reconnecting to Skype of ' + m_wstrContactHandle);
+      Exclude(m_SkypeStates, sUserConnecting);
       FConnectIfNotConnected;
+    end;
   end;
 
 end;
