@@ -154,6 +154,8 @@ type
                                   const Text: WideString); dispid 18;
     procedure ApplicationReceiving(const pApp: IApplication; 
                                    const pStreams: IApplicationStreamCollection); dispid 20;
+    procedure ApplicationStreams(const pApp: IApplication; 
+                                 const pStreams: IApplicationStreamCollection); dispid 17;
   end;
 
 // *********************************************************************//

@@ -39,6 +39,6 @@ uses
 
 initialization
   Chess4NetIcon := Application.Icon;
-  Chess4NetPath := ExtractFilePath(Application.ExeName);
+  Chess4NetPath := ExtractFilePath(Application.ExeName); // TODO: Win Vista, Win 7 compatible
 
 end.

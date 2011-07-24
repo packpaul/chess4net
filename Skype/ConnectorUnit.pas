@@ -9,7 +9,9 @@ unit ConnectorUnit;
 interface
 
 //{$DEFINE CONNECTOR_LOG}
-//{$DEFINE SKYPEAPI_LOG}
+{$IFDEF SKYPE_API} {$IFNDEF TESTING}
+  {$DEFINE SKYPEAPI_LOG}
+{$ENDIF} {$ENDIF}
 
 uses
   Classes, TntClasses, ExtCtrls
@@ -564,7 +566,8 @@ begin
   if (wstrMessage = MSG_INVITATION) then
   begin
 //          Log('invitation received');
-    FConnectIfNotConnected;
+   if (not (sUserConnected in m_SkypeStates)) then
+     FConnectIfNotConnected;
   end;
 
 end;

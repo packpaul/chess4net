@@ -163,6 +163,8 @@ type
                                   const Text: WideString); dispid 18;
     procedure ApplicationReceiving(const pApp: IApplication; 
                                    const pStreams: IApplicationStreamCollection); dispid 20;
+    procedure ApplicationStreams(const pApp: IApplication;
+                                 const pStreams: IApplicationStreamCollection); dispid 17;
   end;
 
 // *********************************************************************//
@@ -390,7 +392,8 @@ type
                                                           const Text: WideString) of object;
   TApplicationReceiving = procedure(ASender: TObject; const pApp: IApplication;
                                                       const pStreams: IApplicationStreamCollection) of object;
-
+  TApplicationStreams = procedure(ASender: TObject; const pApp: IApplication;
+                                  const pStreams: IApplicationStreamCollection) of object;
 
 // *********************************************************************//
 // OLE Server Proxy class declaration
@@ -410,6 +413,7 @@ type
     FOnAttachmentStatus: TSkypeAttachmentStatus;
     FOnApplicationDatagram: TSkypeApplicationDatagram;
     FOnApplicationReceiving: TApplicationReceiving;
+    FOnApplicationStreams: TApplicationStreams;
 
     FIntf:        ISkype;
 {$IFDEF LIVE_SERVER_AT_DESIGN_TIME}
@@ -444,7 +448,8 @@ type
     property OnMessageStatus: TSkypeMessageStatus read FOnMessageStatus write FOnMessageStatus;
     property OnAttachmentStatus: TSkypeAttachmentStatus read FOnAttachmentStatus write FOnAttachmentStatus;
     property OnApplicationDatagram: TSkypeApplicationDatagram read FOnApplicationDatagram write FOnApplicationDatagram;
-    property OnApplicationReceiving: TApplicationReceiving read FOnApplicationReceiving write FOnApplicationReceiving;  
+    property OnApplicationReceiving: TApplicationReceiving read FOnApplicationReceiving write FOnApplicationReceiving;
+    property OnApplicationStreams: TApplicationStreams read FOnApplicationStreams write FOnApplicationStreams;
   end;
 
 {$IFDEF LIVE_SERVER_AT_DESIGN_TIME}
@@ -577,21 +582,30 @@ procedure TSkype.InvokeEvent(DispID: TDispID; var Params: TVariantArray);
 begin
   case DispID of
     -1: Exit;  // DISPID_UNKNOWN
+
     11: if Assigned(FOnMessageStatus) then
          FOnMessageStatus(Self,
                           IUnknown(TVarData(Params[0]).VPointer) as IChatMessage {const IChatMessage},
                           Params[1] {TChatMessageStatus});
+
     4: if Assigned(FOnAttachmentStatus) then
          FOnAttachmentStatus(Self, Params[0] {TAttachmentStatus});
+
+    17: if Assigned(FOnApplicationStreams) then
+          FOnApplicationStreams(Self,
+            IUnknown(TVarData(Params[0]).VPointer) as IApplication {const IApplication},
+            IUnknown(TVarData(Params[1]).VPointer) as IApplicationStreamCollection {const IApplicationStreamCollection});
+
     18: if Assigned(FOnApplicationDatagram) then
           FOnApplicationDatagram(Self,
                                 IUnknown(TVarData(Params[0]).VPointer) as IApplication {const IApplication},
                                 IUnknown(TVarData(Params[1]).VPointer) as IApplicationStream {const IApplicationStream},
                                 Params[2] {const WideString});
+
     20: if Assigned(FOnApplicationReceiving) then
           FOnApplicationReceiving(Self,
-          IUnknown(TVarData(Params[0]).VPointer) as IApplication {const IApplication},
-          IUnknown(TVarData(Params[1]).VPointer) as IApplicationStreamCollection {const IApplicationStreamCollection});
+            IUnknown(TVarData(Params[0]).VPointer) as IApplication {const IApplication},
+            IUnknown(TVarData(Params[1]).VPointer) as IApplicationStreamCollection {const IApplicationStreamCollection});
 
   end; {case DispID}
 end;

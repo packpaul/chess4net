@@ -63,6 +63,8 @@ type
       const ASenderApplication: IApplication; const wstrText: WideString);
     procedure FDoApplicationReceiving(const ASenderSkype: TSkype;
       const ASenderApplication: IApplication; const wstrText: WideString);
+    procedure FDoApplicationStreams(const pApp: IApplication;
+      const pStreams: IApplicationStreamCollection);
 
     function FGetApplicationByName(const wstrName: WideString): IApplication;
     function FGetApplicationStreamByPartnerHandle(const AApplication: IApplication;
@@ -560,6 +562,13 @@ begin
 end;
 
 
+procedure TSkype.FDoApplicationStreams(const pApp: IApplication;
+  const pStreams: IApplicationStreamCollection);
+begin
+  FEvents.ApplicationStreams(pApp, pStreams);
+end;
+
+
 function TSkype.Get_CurrentUser: IUser;
 begin
   Result := m_CurrentUser;
@@ -685,7 +694,7 @@ begin
     begin
       m_lstConnectedSkypeIDs.Add(Pointer(AUserSkype.ID));
       m_Streams.Add(TApplicationStream.Create(AUserSkype.ID, self));
-
+      m_Skype.FDoApplicationStreams(self, m_Streams);
       exit;
     end;
   end;
