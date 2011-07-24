@@ -177,6 +177,7 @@ type
     function GetObject: TObject;
 
     procedure FUpdateConnectedSkypes;
+    procedure FAddStream(const ContactSkype: TSkype);
 
     property ConnectingUserTimer: TTimer read FGetConnectingUserTimer;
     property Skype: TSkype read m_Skype;
@@ -664,7 +665,7 @@ begin
   m_ConnectingUserTimer.Free;
   m_lstConnectedSkypeIDs.Free;
   m_ConnectingUsers.Free;
-  
+
   inherited;
 end;
 
@@ -686,6 +687,7 @@ procedure TApplication.FAddUserSkypeToConnected(const wstrHandle: WideString);
 var
   i: integer;
   AUserSkype: TSkype;
+  AUserSkypeApplication: IApplication;
 begin
   for i := Low(g_arrSkypes) to High(g_arrSkypes) do
   begin
@@ -693,8 +695,10 @@ begin
     if (Assigned(AUserSkype) and (AUserSkype.CurrentUserHandle = wstrHandle)) then
     begin
       m_lstConnectedSkypeIDs.Add(Pointer(AUserSkype.ID));
-      m_Streams.Add(TApplicationStream.Create(AUserSkype.ID, self));
-      m_Skype.FDoApplicationStreams(self, m_Streams);
+
+      AUserSkypeApplication := AUserSkype.Get_Application(m_wstrName);
+      ((AUserSkypeApplication as IObject)._Object as TApplication).FAddStream(m_Skype);
+
       exit;
     end;
   end;
@@ -928,6 +932,13 @@ begin // .FUpdateConnectedSkypes
     dec(i);
   end;
   
+end;
+
+
+procedure TApplication.FAddStream(const ContactSkype: TSkype);
+begin
+  m_Streams.Add(TApplicationStream.Create(ContactSkype.ID, self));
+  m_Skype.FDoApplicationStreams(self, m_Streams);
 end;
 
 ////////////////////////////////////////////////////////////////////////////////

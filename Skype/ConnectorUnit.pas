@@ -10,7 +10,7 @@ interface
 
 //{$DEFINE CONNECTOR_LOG}
 {$IFDEF SKYPE_API} {$IFNDEF TESTING}
-  {$DEFINE SKYPEAPI_LOG}
+//  {$DEFINE SKYPEAPI_LOG}
 {$ENDIF} {$ENDIF}
 
 uses
@@ -97,7 +97,8 @@ type
     procedure FSendInvitation;
 
     function FGetSkype: TSkype;
-    procedure FBuildSkypeApplicationStreams;
+    procedure FRebuildSkypeApplicationStreams;
+    function FIsContactStreamAvailable: boolean;
 
     function FGetSkypeApplication: IApplication;
     function FGetUserHandle: WideString;
@@ -221,6 +222,8 @@ begin
 
   FHandler := h;
   m_iCntrMsgOut := 1;
+
+  m_SkypeApplicationStreams := CoApplicationStreamCollection.Create;
 
   ROnCreate;
 end;
@@ -505,12 +508,10 @@ procedure TConnector.FUserConnectingTimer(Sender: TObject);
 var
   i: integer;
 begin
-  if (sUserConnecting in m_SkypeStates) then
+  if (not FIsContactStreamAvailable) then
     exit;
 
   m_UserConnectingTimer.Enabled := FALSE;
-
-  FBuildSkypeApplicationStreams;
 
   if (sUserConnected in m_SkypeStates) then
   begin
@@ -527,19 +528,17 @@ begin
     FFilterMsg(m_wstrlInBuffer[i]);
 
   m_wstrlInBuffer.Clear;
-  
+
+  Exclude(m_SkypeStates, sUserConnecting);
 end;
 
 
-procedure TConnector.FBuildSkypeApplicationStreams;
+procedure TConnector.FRebuildSkypeApplicationStreams;
 var
   i: integer;
   AApplicationStream: IApplicationStream;
 begin
-  if (Assigned(m_SkypeApplicationStreams)) then
-    m_SkypeApplicationStreams.RemoveAll
-  else
-    m_SkypeApplicationStreams := CoApplicationStreamCollection.Create;
+  m_SkypeApplicationStreams.RemoveAll;
 
   for i := 1 to SkypeApplication.Streams.Count do
   begin
@@ -554,6 +553,21 @@ begin
 end;
 
 
+function TConnector.FIsContactStreamAvailable: boolean;
+var
+  i: integer;
+begin
+  Result := FALSE;
+
+  for i := 1 to m_SkypeApplicationStreams.Count do
+  begin
+    Result := (m_SkypeApplicationStreams[i].PartnerHandle = m_wstrContactHandle);
+    if (Result) then
+      break;
+  end;
+end;
+
+
 procedure TConnector.CreateChildConnector(h: TConnectorHandler; out AConnector: TConnector);
 begin
   AConnector := nil;
@@ -562,12 +576,12 @@ end;
 
 procedure TConnector.FOnMessage(const wstrMessage: WideString);
 begin
-//        Log('Received message: ' + wstrMessage);
+  if ((sUserConnecting in m_SkypeStates) or (sUserConnected in m_SkypeStates)) then
+    exit;
+
   if (wstrMessage = MSG_INVITATION) then
   begin
-//          Log('invitation received');
-   if (not (sUserConnected in m_SkypeStates)) then
-     FConnectIfNotConnected;
+    FConnectIfNotConnected;
   end;
 
 end;
@@ -576,30 +590,21 @@ end;
 procedure TConnector.FOnCommand(const wstrCommand: WideString);
 begin
   FFilterMsg(wstrCommand);
-//  Log(WideFormat('FOnCommand(): Command - %s', [Text]));
 end;
 
 
 procedure TConnector.FOnApplicationStreams(const Streams: IApplicationStreamCollection);
-var
-  bStreamAvailable: boolean;
-  i: integer;
 begin
+  FRebuildSkypeApplicationStreams;
+
   if (not ((sUserConnecting in m_SkypeStates) or (sUserConnected in m_SkypeStates))) then
-    exit;
-
-  bStreamAvailable := FALSE;
-
-  for i := 1 to Streams.Count do
   begin
-    bStreamAvailable := (Streams[i].PartnerHandle = m_wstrContactHandle);
-    if (bStreamAvailable) then
-      break;
+    FConnectIfNotConnected;
+    exit;
   end;
 
-  if (bStreamAvailable) then
+  if (FIsContactStreamAvailable) then
   begin
-    Exclude(m_SkypeStates, sUserConnecting);
     if (sUserConnected in m_SkypeStates) then
       FWriteToConnectorLog('Reconnected to Skype of ' + m_wstrContactHandle);
   end
@@ -608,7 +613,6 @@ begin
     if (sUserConnected in m_SkypeStates) then
     begin
       FWriteToConnectorLog('Reconnecting to Skype of ' + m_wstrContactHandle);
-      Exclude(m_SkypeStates, sUserConnecting);
       FConnectIfNotConnected;
     end;
   end;
