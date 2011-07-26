@@ -64,12 +64,19 @@ type
     m_NotifyTimer: TTimer;
     m_lwCmdCounter: LongWord;
     m_PendingCommands: TStringList;
-    m_bListenersDestructionBlocked: boolean;
+    m_iListenersDestructionBlockedCounter: integer;
     procedure FCreateNotifyTimer;
     procedure FDestroyNotifyTimer;
     procedure FOnNotifyTimerTimer(Sender: TObject);
     procedure FProcessPendingCommands;
     procedure FDestroyPendingForDestructionListeners;
+
+    function FGetListenersDestructionBlocked: boolean;
+    procedure FSetListenersDestructionBlocked(bValue: boolean);
+
+    property ListenersDestructionBlocked: boolean
+      read FGetListenersDestructionBlocked write FSetListenersDestructionBlocked;
+
   public
     constructor Create;
     destructor Destroy; override;
@@ -253,7 +260,7 @@ end;
 
 procedure TListenersManager.DestroyListener(var AListener: TListener);
 begin
-  if (not m_bListenersDestructionBlocked) then
+  if (not ListenersDestructionBlocked) then
   begin
     if (m_Listeners.Remove(AListener) >= 0) then
       AListener := nil;
@@ -273,6 +280,8 @@ procedure TListenersManager.FDestroyPendingForDestructionListeners;
 var
   i: integer;
 begin
+  if (ListenersDestructionBlocked) then
+    exit;
   for i := m_Listeners.Count - 1 downto 0 do
   begin
     if ((m_Listeners[i] as TListener).PendingForDestructionFlag) then
@@ -292,7 +301,7 @@ begin
 
   bAddToPending := FALSE;
 
-  m_bListenersDestructionBlocked := TRUE;
+  ListenersDestructionBlocked := TRUE;
   try
     for i := 0 to m_Listeners.Count - 1 do
     begin
@@ -304,7 +313,7 @@ begin
         bAddToPending := TRUE;
     end;
   finally
-    m_bListenersDestructionBlocked := FALSE;  
+    ListenersDestructionBlocked := FALSE;  
   end;
 
   if (bAddToPending) then
@@ -321,7 +330,7 @@ var
 begin
   m_NotifyTimer.Enabled := FALSE;
 
-  m_bListenersDestructionBlocked := TRUE;
+  ListenersDestructionBlocked := TRUE;
   try
     for i := 0 to m_Listeners.Count - 1 do
     begin
@@ -329,7 +338,7 @@ begin
       Listener.FProcessNotification;
     end;
   finally
-    m_bListenersDestructionBlocked := FALSE;
+    ListenersDestructionBlocked := FALSE;
   end;
 
   FProcessPendingCommands;
@@ -357,7 +366,7 @@ procedure TListenersManager.FProcessPendingCommands;
 
       bDeleteCommand := TRUE;
 
-      m_bListenersDestructionBlocked := TRUE;
+      ListenersDestructionBlocked := TRUE;
       try
         for j := 0 to m_Listeners.Count - 1 do
         begin
@@ -366,7 +375,7 @@ procedure TListenersManager.FProcessPendingCommands;
             bDeleteCommand := FALSE;
         end;
       finally
-        m_bListenersDestructionBlocked := FALSE;      
+        ListenersDestructionBlocked := FALSE;      
       end;
 
       if (bDeleteCommand) then
@@ -408,6 +417,24 @@ begin
   m_NotifyTimer.Enabled := FALSE;
   m_NotifyTimer.Interval := 1;
   m_NotifyTimer.OnTimer := FOnNotifyTimerTimer;
+end;
+
+
+function TListenersManager.FGetListenersDestructionBlocked: boolean;
+begin
+  Result := (m_iListenersDestructionBlockedCounter > 0);
+end;
+
+
+procedure TListenersManager.FSetListenersDestructionBlocked(bValue: boolean);
+begin
+  if (bValue) then
+    inc(m_iListenersDestructionBlockedCounter)
+  else
+  begin
+    if (m_iListenersDestructionBlockedCounter > 0) then
+      dec(m_iListenersDestructionBlockedCounter);
+  end;
 end;
 
 end.
