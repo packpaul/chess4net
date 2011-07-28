@@ -652,6 +652,7 @@ begin
 
   WhiteTimeLabel.Font.Assign(m_TimeFont);
   BlackTimeLabel.Font.Assign(m_TimeFont);
+  
   if (WhitePanel.Left + WhitePanel.Width < BlackPanel.Left) then
   begin
     WhiteLabel.Caption := WHITE_LONG_LABEL;
@@ -672,6 +673,12 @@ begin
   if ((WhiteTimeLabel.Left + WhiteTimeLabel.Width > WhitePanel.Width) or
       (BlackTimeLabel.Left + BlackTimeLabel.Width > BlackPanel.Width)) then
   begin
+    WhiteLabel.Caption := WHITE_MEDIUM_LABEL;
+    BlackLabel.Caption := BLACK_MEDIUM_LABEL;
+    if ((WhiteTimeLabel.Left + WhiteTimeLabel.Width <= WhitePanel.Width) and
+      (BlackTimeLabel.Left + BlackTimeLabel.Width <= BlackPanel.Width)) then
+      exit; // TODO: a KLUDGE - make it nice!
+  
     WhiteTimeLabel.Font.Size := WhiteTimeLabel.Font.Size - 4;
     BlackTimeLabel.Font.Size := BlackTimeLabel.Font.Size - 4;
     WhiteLabel.Caption := WHITE_SHORT_LABEL;
