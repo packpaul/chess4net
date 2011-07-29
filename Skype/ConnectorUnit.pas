@@ -337,8 +337,8 @@ begin
       exit; // пропуск пакетов с более низкими номерами
     if (wstrMsg = MSG_CLOSE) then
     begin
-      Exclude(m_SkypeStates, sUserConnected);
       FDoHandler(ceDisconnected);
+      Exclude(m_SkypeStates, sUserConnected);      
     end
     else
     begin
