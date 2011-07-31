@@ -300,7 +300,10 @@ begin
     isidExternalBaseName:
       m_IniFile.WriteString(FGetCommonSectionName, EXTERNAL_BASE_NAME_KEY_NAME, strValue);
     isidAdjourned:
+    begin
       m_IniFile.WriteString(FGetCommonSectionName, ADJOURNED_KEY_NAME, strValue);
+      m_IniFile.UpdateFile;
+    end;
   else
     Assert(FALSE);
   end;

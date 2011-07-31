@@ -81,7 +81,6 @@ type
     procedure BroadcastActionExecute(Sender: TObject);
 
   private
-    m_strAdjourned: string;
     m_ConnectingForm: TConnectingForm;
     m_ContinueForm: TContinueForm;
     m_Connector: TConnector;
@@ -152,6 +151,9 @@ type
     procedure FBuildAdjournedStr;
     procedure FStartAdjournedGame;
 
+    function FGetAdjournedStr: string;
+    procedure FSetAdjournedStr(const strValue: string);
+
     function FGetPlayerColor: TFigureColor;
     procedure FSetPlayerColor(Value: TFigureColor);
 
@@ -164,7 +166,7 @@ type
 
     procedure FOnURLQueryReady(Sender: TURLVersionQuery);
 
-    property AdjournedStr: string read m_strAdjourned write m_strAdjourned;
+    property AdjournedStr: string read FGetAdjournedStr write FSetAdjournedStr;
     property _PlayerColor: TFigureColor read FGetPlayerColor write FSetPlayerColor;
 
   protected
@@ -1962,11 +1964,9 @@ begin
 
   if (m_lwOpponentClientVersion >= 200801) then
   begin
-    AdjournedStr := TIniSettings.Instance.Adjourned;
     if (AdjournedStr <> '') then
     begin
       RSendData(CMD_SET_ADJOURNED + ' ' + AdjournedStr);
-      TIniSettings.Instance.Adjourned := '';
     end;
   end;
 
@@ -2007,7 +2007,6 @@ begin
   TIniSettings.Instance.CanPauseGame := can_pause_game;
   TIniSettings.Instance.CanAdjournGame := can_adjourn_game;
   TIniSettings.Instance.AutoFlag := ChessBoard.AutoFlag;
-  TIniSettings.Instance.Adjourned := AdjournedStr;
 end;
 
 
@@ -2163,6 +2162,18 @@ begin
 {$IFDEF GAME_LOG}
   FInitGameLog;
 {$ENDIF}
+end;
+
+
+function TManager.FGetAdjournedStr: string;
+begin
+  Result := TIniSettings.Instance.Adjourned;
+end;
+
+
+procedure TManager.FSetAdjournedStr(const strValue: string);
+begin
+  TIniSettings.Instance.Adjourned := strValue;
 end;
 
 
