@@ -30,15 +30,20 @@ const
 
 var
   Chess4NetPath: string;
-  Chess4NetIcon: TIcon;  
+  Chess4NetIniFilePath: string;
+  Chess4NetGamesLogPath: string;
+
+  Chess4NetIcon: TIcon;
 
 implementation
 
 uses
-  Forms, SysUtils;
+  Forms,
+  //
+  EnvironmentSetterUnit;
 
 initialization
   Chess4NetIcon := Application.Icon;
-  Chess4NetPath := ExtractFilePath(Application.ExeName); // TODO: Win Vista, Win 7 compatible
+  TEnvironmentSetter.SetEnvironment;
 
 end.
