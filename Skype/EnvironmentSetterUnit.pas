@@ -107,12 +107,17 @@ begin
   if (FIsRunFromInstalledApplication) then
   begin
     Chess4NetIniFilePath := FGetIniFilePath;
+    if (not ForceDirectories(Chess4NetIniFilePath)) then
+      Chess4NetIniFilePath := Chess4NetPath;
+
     Chess4NetGamesLogPath := FGetGamesLogPath;
+    if (not ForceDirectories(Chess4NetGamesLogPath)) then
+      Chess4NetGamesLogPath := Chess4NetPath;
   end
   else
   begin
-    Chess4NetIniFilePath := FGetApplicationPath;
-    Chess4NetGamesLogPath := FGetApplicationPath;
+    Chess4NetIniFilePath := Chess4NetPath;
+    Chess4NetGamesLogPath := Chess4NetPath;
   end;
 
   ENVIRONMENT_SET := TRUE;

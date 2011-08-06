@@ -343,7 +343,7 @@ type
 procedure TManager.RCreateChessBoardAndDialogs;
 begin
 //  m_ChessBoard := TGameChessBoard.Create(self, ChessBoardHandler, Chess4NetPath + USR_BASE_NAME);
-  m_ChessBoard := TGameChessBoard.Create(nil, ChessBoardHandler, Chess4NetPath + USR_BASE_NAME);
+  m_ChessBoard := TGameChessBoard.Create(nil, ChessBoardHandler, Chess4NetGamesLogPath + USR_BASE_NAME);
   m_Dialogs := TDialogs.Create(ChessBoard, DialogFormHandler);
 end;
 
