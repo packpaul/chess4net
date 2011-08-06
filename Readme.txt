@@ -1,9 +1,9 @@
 Chess4Net
 (c) 2007-2011 No rights reserved
-E-Mail: packpaul@mail.ru
+E-Mail: packpaul@mail.ru, packpaul1@gmail.com
 Skype:  packpaul1
 URL:    http://chess4net.ru
-==============================
+==============================================
 
 Opening
 --------
@@ -89,10 +89,15 @@ User DB can learn from your games in order to give you best choices. You can als
 
 Game transmitting mode:
 
-While you're playing some games you can invite other contacts to gollow up these games in real-time. Therefore you must
-start a new session of Chess4Net for a contact you want the game(s) be transmitted to. A mode selection dialog appears
-asking if game broadcasting has to be started. You must select 'Yes' (if you select 'No' an ordinary game session is created). After that you should select a game for transmition (only if there're several games in progress). After your contact
-connects he/she'll be able to watch the game.
+While you're playing some games you can invite other contacts to follow up these games in real-time. Therefore you must
+
+Miranda:
+  start a new session of Chess4Net for a contact you want the game(s) be transmitted to. A mode selection dialog appears asking if game broadcasting has to be started. You must select 'Yes' (if you select 'No' an ordinary game session is created). After that you should select a game for transmition (only if there're several games in progress).
+
+Skype:
+  select Broadcast... from pop-up menu. A list of contacts appears. Select a contact whom you want to transmit the game played to.
+  
+After your contact connects he/she'll be able to watch the game.
 
 
 Endgame
@@ -126,9 +131,12 @@ PP
 Change log
 -----------
 
-Chess4Net 2011.1
-[2011-05-23] Broadcast games feature
-[2011-05-30] Incorrect chess clock timing on different locales fix.
+Chess4Net 2011.1 (Skype)
+[2011-08-06] Localization for German, French, Italian and Estonian
+[2011-08-01] Game resurection after application failure improved
+[2011-07-24] Keeping Skype connection alive feature
+[2011-05-23] Game transmition feature
+[2011-05-30] Incorrect chess clock timing on different locales fix
 [2011-06-01] Stay on top enabled
 
 
