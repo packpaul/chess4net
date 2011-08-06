@@ -31,6 +31,7 @@ type
   public
     constructor Create;
     class procedure SetEnvironment;
+    class procedure CreateLinkForGameLogFile;
   end;
 
 implementation
@@ -76,6 +77,17 @@ begin
   with TEnvironmentSetter.RCreate do
   try
     RSetEnvironment;
+  finally
+    Free;
+  end;
+end;
+
+
+class procedure TEnvironmentSetter.CreateLinkForGameLogFile;
+begin
+  with TEnvironmentSetter.RCreate do
+  try
+    FCreateLinkForGameLogFile;
   finally
     Free;
   end;
@@ -160,17 +172,27 @@ end;
 
 
 procedure TEnvironmentSetter.FCreateLinkForGameLogFile;
+const
+  LINK_CREATION_ATTEMPTED: boolean = FALSE;
 var
   IObject: IUnknown;
   ISLink: IShellLink;
   IPFile: IPersistFile;
   wstrLinkName: WideString;
 begin
-  wstrLinkName := FGetStartMenuPath + ChangeFileExt(GAME_LOG_FILE, '.lnk');
-  if (not FileExists(wstrLinkName)) then
+  if (LINK_CREATION_ATTEMPTED) then
     exit;
-
+    
   if (not FCheckForGameLogFile) then
+    exit;
+    
+  LINK_CREATION_ATTEMPTED := TRUE;    
+
+  if (not FIsRunFromInstalledApplication) then
+    exit;    
+
+  wstrLinkName := FGetStartMenuPath + ChangeFileExt(GAME_LOG_FILE, '.lnk');
+  if (FileExists(wstrLinkName)) then
     exit;
 
   IObject := CreateComObject(CLSID_ShellLink);
@@ -191,13 +213,9 @@ function TEnvironmentSetter.FCheckForGameLogFile: boolean;
 var
   F: TextFile;
 begin
-  if (FileExists(FGetGamesLogPath + GAME_LOG_FILE)) then
-  begin
-    Result := TRUE;
+  Result := FileExists(FGetGamesLogPath + GAME_LOG_FILE);
+  if (Result) then
     exit;
-  end;
-
-  Result := FALSE;
 
   if (not ForceDirectories(FGetGamesLogPath)) then
     exit;

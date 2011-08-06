@@ -636,14 +636,14 @@ end;
 procedure TConnector.FInitLogs;
 begin
 {$IFDEF CONNECTOR_LOG}
-  AssignFile(m_ConnectorLogFile, Chess4NetPath + 'Chess4Net_CONNECTORLOG.txt');
+  AssignFile(m_ConnectorLogFile, Chess4NetGamesLogPath + 'Chess4Net_CONNECTORLOG.txt');
   Append(m_ConnectorLogFile);
   if (IOResult <> 0) then
     begin
       Rewrite(m_ConnectorLogFile);
       if (IOResult <> 0) then
         begin
-          AssignFile(m_ConnectorLogFile, Chess4NetPath + 'Chess4Net_CONNECTORLOG~.txt');
+          AssignFile(m_ConnectorLogFile, Chess4NetGamesLogPath + 'Chess4Net_CONNECTORLOG~.txt');
           Append(m_ConnectorLogFile);
           if (IOResult <> 0) then
             Rewrite(m_ConnectorLogFile);
@@ -654,14 +654,14 @@ begin
 {$ENDIF CONNECTOR_LOG}
 
 {$IFDEF SKYPEAPI_LOG}
-  AssignFile(m_SkypeAPILogFile, Chess4NetPath + 'Chess4Net_SKYPEAPILOG.txt');
+  AssignFile(m_SkypeAPILogFile, Chess4NetGamesLogPath + 'Chess4Net_SKYPEAPILOG.txt');
   Append(m_SkypeAPILogFile);
   if (IOResult <> 0) then
     begin
       Rewrite(m_SkypeAPILogFile);
       if (IOResult <> 0) then
         begin
-          AssignFile(m_SkypeAPILogFile, Chess4NetPath + 'Chess4Net_SKYPEAPILOG~.txt');
+          AssignFile(m_SkypeAPILogFile, Chess4NetGamesLogPath + 'Chess4Net_SKYPEAPILOG~.txt');
           Append(m_SkypeAPILogFile);
           if (IOResult <> 0) then
             Rewrite(m_SkypeAPILogFile);

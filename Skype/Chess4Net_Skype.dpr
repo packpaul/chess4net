@@ -49,7 +49,8 @@ uses
   URLVersionQueryUnit in '..\URLVersionQueryUnit.pas',
   DontShowMessageDlgUnit in '..\DontShowMessageDlgUnit.pas',
   InterProc in 'InterProc.pas',
-  IniSettingsUnit in '..\IniSettingsUnit.pas'
+  IniSettingsUnit in '..\IniSettingsUnit.pas',
+  EnvironmentSetterUnit in 'EnvironmentSetterUnit.pas'
 {$IFDEF TESTING}
   , SkypeTS_TLB in 'SkypeTS_TLB.pas'
 {$ELSE}

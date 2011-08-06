@@ -106,7 +106,7 @@ uses
   GlobalsUnit, GlobalsLocalUnit;
 
 const
-  INI_FILE_NAME = 'Chess4net.ini';
+  INI_FILE_NAME = 'Chess4Net.ini';
 
   PRIVATE_SECTION_NAME = 'Private';
   COMMON_SECTION_PREFIX = 'Common';
@@ -166,7 +166,7 @@ end;
 
 function TIniSettings.FGetIniFileName: string;
 begin
-  Result := Chess4NetPath + INI_FILE_NAME;
+  Result := Chess4NetIniFilePath + INI_FILE_NAME;
 end;
 
 

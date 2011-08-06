@@ -1810,20 +1810,23 @@ begin
   if (not move_done) then
     exit;
 
-  AssignFile(gameLogFile, Chess4NetPath + 'Chess4Net_GAMELOG.txt');
+  AssignFile(gameLogFile, Chess4NetGamesLogPath + GAME_LOG_FILE);
 {$I-}
   Append(gameLogFile);
 {$I+}
-  if IOResult <> 0 then
+  if (IOResult <> 0) then
     begin
       Rewrite(gameLogFile);
-      if IOResult = 0 then
+      if (IOResult = 0) then
         writeln(gameLogFile, gameLog);
     end
   else
     writeln(gameLogFile, sLineBreak + gameLog);
 
   CloseFile(gameLogFile);
+{$IFDEF SKYPE}
+  CreateLinkForGameLogFile;
+{$ENDIF}
 end;
 {$ENDIF}
 

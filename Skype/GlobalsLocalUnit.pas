@@ -35,12 +35,19 @@ var
 
   Chess4NetIcon: TIcon;
 
+procedure CreateLinkForGameLogFile;
+
 implementation
 
 uses
   Forms,
   //
   EnvironmentSetterUnit;
+
+procedure CreateLinkForGameLogFile;
+begin
+  TEnvironmentSetter.CreateLinkForGameLogFile
+end;
 
 initialization
   Chess4NetIcon := Application.Icon;
