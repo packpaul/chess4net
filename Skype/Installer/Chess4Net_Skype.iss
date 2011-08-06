@@ -40,7 +40,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [Files]
 Source: "Chess4Net_Skype.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "Lang.ini"; DestDir: "{app}"; Flags: ignoreversion
-Source: "Chess4Net_GAMELOG.txt"; DestDir: "{app}"; Flags: ignoreversion
+;Source: "Chess4Net_GAMELOG.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "*.pos"; DestDir: "{app}"; Flags: ignoreversion
 Source: "*.mov"; DestDir: "{app}"; Flags: ignoreversion
 Source: "Readme.txt"; DestDir: "{app}"; Flags: ignoreversion isreadme
@@ -55,20 +55,14 @@ Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Registry]
-Root: HKCR; Subkey: "{#MyAppId}"; ValueType: string; ValueName: ""; ValueData: "{#MyAppName}"; Flags: uninsdeletevalue
-Root: HKCR; Subkey: "{#MyAppId}\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#MyAppExeName},0"
+Root: HKLM; Subkey: "Software\Chess4Net"; Flags: uninsdeletekeyifempty
+Root: HKLM; Subkey: "Software\Chess4Net\Skype"; ValueType: string; ValueName: ""; ValueData: "{app}\{#MyAppExeName}"; Flags: uninsdeletekey
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, "&", "&&")}}"; Flags: nowait postinstall skipifsilent
 
-[Code]
-
-function InitializeUninstall(): Boolean;
-var
-  IniFileName: string;
-begin
-  IniFileName := ExpandConstant('{app}\{#MyAppIniName}');
-  DeleteFile(IniFileName);
-  Result := TRUE;
-end;
-
+[UninstallDelete]
+Type: filesandordirs; Name: "{userprograms}\Chess4Net\Skype"
+Type: dirifempty; Name: "{userprograms}\Chess4Net"
+Type: filesandordirs; Name: "{userappdata}\Chess4Net\Skype"
+Type: dirifempty; Name: "{userappdata}\Chess4Net"
