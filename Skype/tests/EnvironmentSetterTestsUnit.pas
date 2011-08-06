@@ -27,6 +27,7 @@ type
 
   published
     procedure SetEnvironmentTest;
+    procedure StartMenuPathTest;
   end;
 
 implementation
@@ -78,6 +79,15 @@ begin
 
   CheckNotEqualsString('', Chess4NetGamesLogPath);
   Status('Chess4NetGamesLogPath=' + Chess4NetGamesLogPath);
+end;
+
+
+procedure TEnvironmentSetterTests.StartMenuPathTest;
+var
+  strChess4NetStartMenuPath: string;
+begin
+  strChess4NetStartMenuPath := m_EnvironmentSetter.RGetStartMenuPath;
+  Status('Chess4Net start menu path=' + strChess4NetStartMenuPath);
 end;
 
 initialization

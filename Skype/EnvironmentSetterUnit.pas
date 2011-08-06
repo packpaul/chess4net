@@ -14,7 +14,6 @@ type
     m_bIsTesting: boolean;
     
     function FGetApplicationPath: string;
-    function FGetStartMenuPath: string;
     function FGetGamesLogPath: string;
     function FGetIniFilePath: string;
 
@@ -26,6 +25,8 @@ type
   protected
     constructor RCreate;
     procedure RSetEnvironment;
+    function RGetStartMenuPath: string;
+
     property IsTesting: boolean read m_bIsTesting write m_bIsTesting;
 
   public
@@ -144,9 +145,9 @@ begin
 end;
 
 
-function TEnvironmentSetter.FGetStartMenuPath: string;
+function TEnvironmentSetter.RGetStartMenuPath: string;
 begin
-  if (GetSpecialFolderPath(Result, CSIDL_STARTMENU)) then
+  if (GetSpecialFolderPath(Result, CSIDL_PROGRAMS)) then
     Result := IncludeTrailingPathDelimiter(Result) + PATH_ADDON
   else
     Result := '';
@@ -191,7 +192,7 @@ begin
   if (not FIsRunFromInstalledApplication) then
     exit;    
 
-  wstrLinkName := FGetStartMenuPath + ChangeFileExt(GAME_LOG_FILE, '.lnk');
+  wstrLinkName := RGetStartMenuPath + ChangeFileExt(GAME_LOG_FILE, '.lnk');
   if (FileExists(wstrLinkName)) then
     exit;
 
@@ -202,7 +203,7 @@ begin
   ISLink.SetPath(PChar(FGetGamesLogPath + GAME_LOG_FILE));
   ISLink.SetWorkingDirectory(PChar(FGetGamesLogPath));
 
-  if (not ForceDirectories(FGetStartMenuPath)) then
+  if (not ForceDirectories(RGetStartMenuPath)) then
     exit;
 
   IPFile.Save(PWChar(wstrLinkName), FALSE);
