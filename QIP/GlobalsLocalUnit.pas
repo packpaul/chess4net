@@ -40,6 +40,9 @@ const
 
 var
   QIPPluginsPath, Chess4NetPath: WideString;
+  Chess4NetIniFilePath: WideString;
+  Chess4NetGamesLogPath: WideString;
+
   Chess4NetIcon, pluginIcon: TIcon;
 
 implementation
@@ -56,6 +59,8 @@ begin
   Chess4NetPath := QIPPluginsPath + 'Chess4Net\';
   if not DirectoryExists(Chess4NetPath) then
     CreateDir(Chess4NetPath);
+  Chess4NetIniFilePath := Chess4NetPath;
+  Chess4NetGamesLogPath := Chess4NetPath;
 
   Chess4NetIcon := TIcon.Create;
   Chess4NetIcon.Handle := LoadIcon(hInstance, 'MAINICON');

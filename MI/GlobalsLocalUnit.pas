@@ -30,6 +30,9 @@ const
 
 var
   Chess4NetPath: string;
+  Chess4NetIniFilePath: string;
+  Chess4NetGamesLogPath: string;
+  
   Chess4NetIcon, pluginIcon: TIcon;
 
 implementation

@@ -36,6 +36,8 @@ begin
   Chess4NetPath := MirandaPluginPath;
   if (not DirectoryExists(Chess4NetPath)) then
     CreateDir(Chess4NetPath);
+  Chess4NetIniFilePath := Chess4NetPath;
+  Chess4NetGamesLogPath := Chess4NetPath;
   Chess4NetIcon := TIcon.Create;
   Chess4NetIcon.Handle := LoadIcon(hInstance, 'MAINICON');
   pluginIcon := Chess4NetIcon;

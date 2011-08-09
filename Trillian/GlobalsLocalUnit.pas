@@ -32,7 +32,10 @@ const
 
 var
   TrillianPluginsPath, Chess4NetPath: string;
-  Chess4NetIcon, pluginIcon: TIcon; 
+  Chess4NetIniFilePath: string;
+  Chess4NetGamesLogPath: string;
+
+  Chess4NetIcon, pluginIcon: TIcon;
 
 implementation
 
@@ -44,6 +47,8 @@ initialization
   Chess4NetPath := TrillianPluginsPath + 'Chess4Net\';
   if not DirectoryExists(Chess4NetPath) then
     CreateDir(Chess4NetPath);
+  Chess4NetIniFilePath := Chess4NetPath;
+  Chess4NetGamesLogPath := Chess4NetPath;
   Chess4NetIcon := TIcon.Create;
   Chess4NetIcon.Handle := LoadIcon(hInstance, 'MAINICON');
   pluginIcon := Chess4NetIcon;

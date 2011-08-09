@@ -29,6 +29,8 @@ const
 
 var
   AndRQPluginsPath, Chess4NetPath: string;
+  Chess4NetIniFilePath: string;
+  Chess4NetGamesLogPath: string;
   Chess4NetIcon, pluginIcon: TIcon;
   AndRQVersion: integer;
 
@@ -40,8 +42,10 @@ uses
 initialization
   AndRQPluginsPath := ExtractFileDir(Application.ExeName) + '\Plugins\';
   Chess4NetPath := AndRQPluginsPath + 'Chess4Net\';
-  if not DirectoryExists(Chess4NetPath) then
+  if (not DirectoryExists(Chess4NetPath)) then
     CreateDir(Chess4NetPath);
+  Chess4NetIniFilePath := Chess4NetPath;
+  Chess4NetGamesLogPath := Chess4NetPath;
   Chess4NetIcon := TIcon.Create;
   Chess4NetIcon.Handle := LoadIcon(hInstance, 'MAINICON');
   pluginIcon := Chess4NetIcon;
