@@ -53,7 +53,8 @@ implementation
 
 uses
   StrUtils, Forms, TntIniFiles,
-  GlobalsLocalUnit;
+  //
+  GlobalsUnit;
 
 const
   LOCALIZER_INI_FILE = 'Lang.ini';

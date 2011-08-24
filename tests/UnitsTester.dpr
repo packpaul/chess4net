@@ -13,7 +13,9 @@ uses
   PromotionUnit in '..\PromotionUnit.pas' {PromotionForm},
   PosBaseChessBoardUnit in '..\PosBaseChessBoardUnit.pas',
   PosBaseUnit in '..\PosBaseUnit.pas',
-  LocalizerUnit in '..\LocalizerUnit.pas';
+  LocalizerUnit in '..\LocalizerUnit.pas',
+  GlobalsUnit in '..\GlobalsUnit.pas',
+  ChessClockUnit in '..\ChessClockUnit.pas';
 
 {$R *.res}
 

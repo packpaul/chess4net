@@ -20,9 +20,9 @@ procedure ErrorDuringPluginStart;
 implementation
 
 uses
-  Windows, Forms, Dialogs, Graphics, SysUtils, Controls
+  Windows, Forms, Dialogs, Graphics, SysUtils, Controls,
   // plugin units
-  , GlobalsLocalUnit, ManagerUnit.MI, ModalForm;
+  GlobalsUnit, GlobalsLocalUnit, ManagerUnit.MI, ModalForm;
 
 function CreatePluginInstance(Connector: TConnector): IMirandaPlugin;
 begin

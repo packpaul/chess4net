@@ -28,16 +28,16 @@ const
   PLUGIN_EMAIL = 'packpaul@mail.ru';
 
 var
-  AndRQPluginsPath, Chess4NetPath: string;
-  Chess4NetIniFilePath: string;
-  Chess4NetGamesLogPath: string;
+  AndRQPluginsPath: string;
   Chess4NetIcon, pluginIcon: TIcon;
   AndRQVersion: integer;
 
 implementation
 
 uses
-  SysUtils, Forms, Windows;
+  SysUtils, Forms, Windows,
+  //
+  GlobalsUnit;
 
 initialization
   AndRQPluginsPath := ExtractFileDir(Application.ExeName) + '\Plugins\';

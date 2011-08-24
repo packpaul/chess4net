@@ -31,16 +31,15 @@ const
   PLUGIN_EMAIL = 'packpaul@mail.ru';
 
 var
-  TrillianPluginsPath, Chess4NetPath: string;
-  Chess4NetIniFilePath: string;
-  Chess4NetGamesLogPath: string;
-
+  TrillianPluginsPath: string;
   Chess4NetIcon, pluginIcon: TIcon;
 
 implementation
 
 uses
-  SysUtils, Forms, Windows;
+  SysUtils, Forms, Windows,
+  //
+  GlobalsUnit;
 
 initialization
   TrillianPluginsPath := ExtractFileDir(Application.ExeName) + '\plugins\';

@@ -29,10 +29,6 @@ const
   SKYPE_APP_NAME = 'Chess4Net_Skype';
 
 var
-  Chess4NetPath: string;
-  Chess4NetIniFilePath: string;
-  Chess4NetGamesLogPath: string;
-
   Chess4NetIcon: TIcon;
 
 procedure CreateLinkForGameLogFile;

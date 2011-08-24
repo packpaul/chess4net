@@ -39,16 +39,15 @@ const
   PLUGIN_EMAIL = 'packpaul@mail.ru';
 
 var
-  QIPPluginsPath, Chess4NetPath: WideString;
-  Chess4NetIniFilePath: WideString;
-  Chess4NetGamesLogPath: WideString;
-
+  QIPPluginsPath: string;
   Chess4NetIcon, pluginIcon: TIcon;
 
 implementation
 
 uses
-  SysUtils, Forms, Windows;
+  SysUtils, Forms, Windows,
+  //
+  GlobalsUnit;
 
 
 procedure InitGlobals(pluginFileName: WideString);
