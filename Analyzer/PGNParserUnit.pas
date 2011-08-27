@@ -536,7 +536,6 @@ function TGameParser.FNextToken: WideString;
 var
   wstr: WideString;
   iPos: integer;
-  bTokenFound: boolean;
 begin
   Result := '';
 
@@ -627,8 +626,6 @@ begin
 
     wstr := FNextToken;
   end;
-
-  Result := FALSE;
 
   raise EPGNParser.Create;
 end;

@@ -9,11 +9,22 @@ unit PosBaseChessBoardUnit;
 interface
 
 uses
-  Classes,
+  Classes, Graphics,
   //
   PosBaseUnit, ChessBoardHeaderUnit, ChessRulesEngine, ChessBoardUnit;
 
 type
+  TPosBaseChessBoard = class;
+
+  TPosBaseChessBoardLayer = class(TChessBoardLayerBase)
+  private
+    m_PosBaseChessBoard: TPosBaseChessBoard;  
+  protected
+    procedure RDraw; override;
+  public
+    constructor Create(const APosBaseChessBoard: TPosBaseChessBoard);
+  end;
+
   TGameResult = (grWin, grWinTime, grDraw, grLost, grLostTime);
 
   // Extension of TChessBoard with Position DB
@@ -24,16 +35,18 @@ type
     m_PosBase, m_ExtPosBase: TPosBase;
     m_bTrainingMode: boolean;
     m_strPosBaseName, m_strExtPosBaseName: string;
+    m_Layer: TPosBaseChessBoardLayer;
+
     procedure FSetTrainingMode(bEnabled: boolean);
     procedure FUseUserBase(bUseUserBase: boolean);
     procedure FReadFromBase;
     procedure FWriteGameToBase;
     procedure FClearMovePriorList;
+    procedure FDrawHiddenBoard(ACanvas: TCanvas; iSquareSize: integer);
 
   protected
     procedure ROnAfterMoveDone; override;
     procedure ROnAfterSetPosition; override;
-    procedure RDrawHiddenBoard; override;
 
     procedure RSetMode(const Value: TMode); override;
 
@@ -53,7 +66,7 @@ type
 implementation
 
 uses
-  SysUtils, Graphics;
+  SysUtils;
 
 type
   TPrior = (mpNo, mpHigh, mpMid, mpLow);
@@ -103,11 +116,16 @@ begin
   m_bUseUserBase := TRUE;
   m_strPosBaseName := strPosBaseName;
   _lstMovePrior := TList.Create;
+
+  m_Layer := TPosBaseChessBoardLayer.Create(self);
+  Layer := m_Layer;
 end;
 
 
 destructor TPosBaseChessBoard.Destroy;
 begin
+  m_Layer.Free;
+
   FClearMovePriorList;
   _lstMovePrior.Free;
 
@@ -196,7 +214,7 @@ begin
 end;
 
 
-procedure TPosBaseChessBoard.RDrawHiddenBoard;
+procedure TPosBaseChessBoard.FDrawHiddenBoard(ACanvas: TCanvas; iSquareSize: integer);
 const
   ARROW_END_LENGTH = 10; // в пикселях
   ARROW_END_ANGLE = 15 * (Pi / 180); // угол концов стрелки
@@ -214,7 +232,7 @@ var
   xa, ya, ca, sa: double;
   move: TMoveAbs;
 begin
-  if (not Assigned(bmHiddenBoard)) then
+  if (not Assigned(ACanvas)) then
     exit;
 
   inherited;
@@ -223,7 +241,7 @@ begin
       (PlayerColor = PositionColor))) then
     exit;
 
-  bmHiddenBoard.Canvas.Pen.Style := psSolid;
+  ACanvas.Pen.Style := psSolid;
 
   for i := 0 to _lstMovePrior.Count - 1 do
   begin
@@ -231,18 +249,18 @@ begin
       mpNo: continue;
       mpHigh:
         begin
-          bmHiddenBoard.Canvas.Pen.Color := HIGH_ARROW_COLOR;
-          bmHiddenBoard.Canvas.Pen.Width := HIGH_ARROW_WIDTH;
+          ACanvas.Pen.Color := HIGH_ARROW_COLOR;
+          ACanvas.Pen.Width := HIGH_ARROW_WIDTH;
         end;
       mpMid:
         begin
-          bmHiddenBoard.Canvas.Pen.Color := MID_ARROW_COLOR;
-          bmHiddenBoard.Canvas.Pen.Width := MID_ARROW_WIDTH;
+          ACanvas.Pen.Color := MID_ARROW_COLOR;
+          ACanvas.Pen.Width := MID_ARROW_WIDTH;
         end;
       mpLow:
         begin
-          bmHiddenBoard.Canvas.Pen.Color := LOW_ARROW_COLOR;
-          bmHiddenBoard.Canvas.Pen.Width := LOW_ARROW_WIDTH;
+          ACanvas.Pen.Color := LOW_ARROW_COLOR;
+          ACanvas.Pen.Width := LOW_ARROW_WIDTH;
         end;
     end;
 
@@ -271,23 +289,23 @@ begin
     x := x - Round(ARROW_INDENT * ca);
     y := y - Round(ARROW_INDENT * sa);
 
-    bmHiddenBoard.Canvas.MoveTo(x0, y0);
-    bmHiddenBoard.Canvas.LineTo(x, y);
+    ACanvas.MoveTo(x0, y0);
+    ACanvas.LineTo(x, y);
 
     xa := x + (-ARROW_END_LENGTH * cos(ARROW_END_ANGLE)) * ca -
               (ARROW_END_LENGTH * sin(ARROW_END_ANGLE)) * sa;
     ya := y + (-ARROW_END_LENGTH * cos(ARROW_END_ANGLE)) * sa +
               (ARROW_END_LENGTH * sin(ARROW_END_ANGLE)) * ca;
 
-    bmHiddenBoard.Canvas.LineTo(Round(xa), Round(ya));
+    ACanvas.LineTo(Round(xa), Round(ya));
 
     xa := x + (-ARROW_END_LENGTH * cos(ARROW_END_ANGLE)) * ca -
               (-ARROW_END_LENGTH * sin(ARROW_END_ANGLE)) * sa;
     ya := y + (-ARROW_END_LENGTH * cos(ARROW_END_ANGLE)) * sa +
               (-ARROW_END_LENGTH * sin(ARROW_END_ANGLE)) * ca;
 
-    bmHiddenBoard.Canvas.MoveTo(x, y);
-    bmHiddenBoard.Canvas.LineTo(Round(xa), Round(ya));
+    ACanvas.MoveTo(x, y);
+    ACanvas.LineTo(Round(xa), Round(ya));
   end;
 
 end;
@@ -616,8 +634,7 @@ begin
     opRead:
     begin
       _oChessBoard.FReadFromBase;
-      if (not _oChessBoard.RIsAnimating) then
-        Synchronize(_oChessBoard.RDrawBoard);
+      Synchronize(_oChessBoard.m_Layer.DoUpdate);
     end;
     opWrite:
       _oChessBoard.FWriteGameToBase;
@@ -631,6 +648,22 @@ begin
     exit;
   inherited WaitFor;
 end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TPosBaseChessBoardLayer
+
+constructor TPosBaseChessBoardLayer.Create(const APosBaseChessBoard: TPosBaseChessBoard);
+begin
+  inherited Create;
+  m_PosBaseChessBoard := APosBaseChessBoard;
+end;
+
+
+procedure TPosBaseChessBoardLayer.RDraw;
+begin
+  m_PosBaseChessBoard.FDrawHiddenBoard(Canvas, SquareSize);
+end;
+
 
 initialization
   Randomize;

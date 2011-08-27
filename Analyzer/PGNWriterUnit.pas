@@ -443,7 +443,6 @@ var
 
   procedure NWriteCommentLine(const wstrCommentLine: WideString);
   var
-    iPosLeft, iPos: integer;
     wstr: WideString;
   begin
     wstr := Tnt_WideStringReplace(wstrCommentLine, '}', '}}', [rfReplaceAll]);
