@@ -111,6 +111,8 @@ begin
   FClearMovePriorList;
   m_lstMovePrior.Free;
 
+  TrainingMode := FALSE;
+  
   inherited;
 end;
 
