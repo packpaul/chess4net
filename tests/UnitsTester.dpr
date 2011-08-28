@@ -11,12 +11,11 @@ uses
   ChessBoardUnit in '..\ChessBoardUnit.pas' {ChessBoard},
   BitmapResUnit in '..\BitmapResUnit.pas',
   PromotionUnit in '..\PromotionUnit.pas' {PromotionForm},
-  PosBaseChessBoardUnit in '..\PosBaseChessBoardUnit.pas',
+  PosBaseChessBoardLayerUnit in '..\PosBaseChessBoardLayerUnit.pas',
   PosBaseUnit in '..\PosBaseUnit.pas',
   LocalizerUnit in '..\LocalizerUnit.pas',
   GlobalsUnit in '..\GlobalsUnit.pas',
-  ChessClockUnit in '..\ChessClockUnit.pas',
-  PosBaseChessBoardLayerUnit in '..\PosBaseChessBoardLayerUnit.pas';
+  ChessClockUnit in '..\ChessClockUnit.pas';
 
 {$R *.res}
 

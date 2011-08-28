@@ -19,7 +19,7 @@ uses
   BitmapResUnit in '..\BitmapResUnit.pas',
   ChessBoardHeaderUnit in '..\ChessBoardHeaderUnit.pas',
   ChessBoardUnit in '..\ChessBoardUnit.pas' {ChessBoard},
-  PosBaseChessBoardUnit in '..\PosBaseChessBoardUnit.pas',
+  PosBaseChessBoardLayerUnit in '..\PosBaseChessBoardLayerUnit.pas',
   GameChessBoardUnit in '..\GameChessBoardUnit.pas' {GameChessBoard},
   ConnectingUnit in '..\ConnectingUnit.pas' {ConnectingForm},
   ConnectorUnit in 'ConnectorUnit.pas',
@@ -44,8 +44,7 @@ uses
   ChessClockUnit in '..\ChessClockUnit.pas',
   URLVersionQueryUnit in '..\URLVersionQueryUnit.pas',
   DontShowMessageDlgUnit in '..\DontShowMessageDlgUnit.pas',
-  IniSettingsUnit in '..\IniSettingsUnit.pas',
-  PosBaseChessBoardLayerUnit in '..\PosBaseChessBoardLayerUnit.pas';
+  IniSettingsUnit in '..\IniSettingsUnit.pas';
 
 {$R ..\Chess4Net.res}
 

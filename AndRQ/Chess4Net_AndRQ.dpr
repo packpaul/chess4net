@@ -17,7 +17,7 @@ uses
   GameOptionsUnit in '..\GameOptionsUnit.pas' {GameOptionsForm},
   ChessBoardHeaderUnit in '..\ChessBoardHeaderUnit.pas',
   ChessBoardUnit in '..\ChessBoardUnit.pas' {ChessBoard},
-  PosBaseChessBoardUnit in '..\PosBaseChessBoardUnit.pas',  
+  PosBaseChessBoardLayerUnit in '..\PosBaseChessBoardLayerUnit.pas',
   GameChessBoardUnit in '..\GameChessBoardUnit.pas' {GameChessBoard},
   PromotionUnit in '..\PromotionUnit.pas' {PromotionForm},
   LookFeelOptionsUnit in '..\LookFeelOptionsUnit.pas' {OptionsForm},
@@ -41,8 +41,7 @@ uses
   ChessClockUnit in '..\ChessClockUnit.pas',
   URLVersionQueryUnit in '..\URLVersionQueryUnit.pas',
   DontShowMessageDlgUnit in '..\DontShowMessageDlgUnit.pas',
-  IniSettingsUnit in '..\IniSettingsUnit.pas',
-  PosBaseChessBoardLayerUnit in '..\PosBaseChessBoardLayerUnit.pas';
+  IniSettingsUnit in '..\IniSettingsUnit.pas';
 
 {$R ..\Chess4Net.res}
 

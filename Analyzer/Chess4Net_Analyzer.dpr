@@ -12,7 +12,7 @@ uses
 {$ENDIF}
   Forms,
   AnalyseChessBoardUnit in 'AnalyseChessBoardUnit.pas' {AnalyseChessBoard: TTntForm},
-  PosBaseChessBoardUnit in '..\PosBaseChessBoardUnit.pas',
+  PosBaseChessBoardLayerUnit in '..\PosBaseChessBoardLayerUnit.pas',
   ChessBoardHeaderUnit in '..\ChessBoardHeaderUnit.pas',
   ChessBoardUnit in '..\ChessBoardUnit.pas' {ChessBoard},
   ChessRulesEngine in '..\ChessRulesEngine.pas',
@@ -40,8 +40,7 @@ uses
   FloatingFormsUnit in 'FloatingFormsUnit.pas',
   CommentsFormUnit in 'CommentsFormUnit.pas' {CommentsForm},
   CommentsEditFormUnit in 'CommentsEditFormUnit.pas' {CommentsEditForm},
-  WinControlHlpUnit in 'WinControlHlpUnit.pas',
-  PosBaseChessBoardLayerUnit in '..\PosBaseChessBoardLayerUnit.pas';
+  WinControlHlpUnit in 'WinControlHlpUnit.pas';
 
 {$R ..\Chess4Net.res}
 

@@ -12,7 +12,7 @@ uses
   ExtCtrls, TntStdCtrls, Buttons, Controls, StdCtrls, Classes, Forms, TntForms,
   Graphics, Messages,
   // Chess4net
-  ChessBoardHeaderUnit, ChessBoardUnit, PosBaseChessBoardUnit, ChessRulesEngine,
+  ChessBoardHeaderUnit, ChessBoardUnit, ChessRulesEngine,
   LocalizerUnit, PosBaseChessBoardLayerUnit;
 
 type
@@ -65,7 +65,8 @@ type
     procedure TimePanelResize(Sender: TObject);
 
   private
-    m_ChessBoard: TPosBaseChessBoard;
+    m_ChessBoard: TChessBoard;
+    m_PosBaseChessBoardLayer: TPosBaseChessBoardLayer;
 
     FHandler: TGameChessBoardHandler;
 
@@ -141,6 +142,7 @@ type
       const strPosBaseName: string = ''); reintroduce;
 
     procedure FCreateChessBoard(const strPosBaseName: string);
+    procedure FDestroyChessBoard;
 
     procedure TakeBack; // взятие хода обратно
     procedure SwitchClock(clock_color: TFigureColor);
@@ -316,13 +318,16 @@ constructor TGameChessBoard.Create(Owner: TComponent;
 begin
   FHandler := AHandler;
   inherited Create(Owner);
-  FCreateChessBoard(strPosBaseName);  
+  FCreateChessBoard(strPosBaseName);
 end;
 
 
 procedure TGameChessBoard.FCreateChessBoard(const strPosBaseName: string);
 begin
-  m_ChessBoard := TPosBaseChessBoard.Create(self, FChessBoardHandler, strPosBaseName);
+  m_ChessBoard := TChessBoard.Create(self, FChessBoardHandler);
+  m_PosBaseChessBoardLayer := TPosBaseChessBoardLayer.Create(strPosBaseName);
+
+  m_ChessBoard.AddLayer(m_PosBaseChessBoardLayer);
 
   with ChessBoardPanel do
     SetBounds(Left, Top, m_ChessBoard.ClientWidth, m_ChessBoard.ClientHeight);
@@ -336,11 +341,20 @@ begin
 end;
 
 
+procedure TGameChessBoard.FDestroyChessBoard;
+begin
+  m_ChessBoard.RemoveLayer(m_PosBaseChessBoardLayer); // m_ChessBoard is destroyed by its parent
+  FreeAndNil(m_PosBaseChessBoardLayer);
+end;
+
+
 procedure TGameChessBoard.FormDestroy(Sender: TObject);
 begin
+  TLocalizer.Instance.DeleteSubscriber(self);
+
   m_TimeFont.Free;
 
-  TLocalizer.Instance.DeleteSubscriber(self);
+  FDestroyChessBoard;
 end;
 
 
@@ -726,43 +740,43 @@ end;
 
 procedure TGameChessBoard.WriteGameToBase(vGameResult: TGameResult);
 begin
-  m_ChessBoard.WriteGameToBase(vGameResult);
+  m_PosBaseChessBoardLayer.WriteGameToBase(vGameResult);
 end;
 
 
 procedure TGameChessBoard.SetExternalBase(const strExtPosBaseName: string);
 begin
-  m_ChessBoard.SetExternalBase(strExtPosBaseName);
+  m_PosBaseChessBoardLayer.SetExternalBase(strExtPosBaseName);
 end;
 
 
 procedure TGameChessBoard.UnsetExternalBase;
 begin
-  m_ChessBoard.UnsetExternalBase;
+  m_PosBaseChessBoardLayer.UnsetExternalBase;
 end;
 
 
 function TGameChessBoard.FGetTrainingMode: boolean;
 begin
-  Result := m_ChessBoard.pTrainingMode;
+  Result := m_PosBaseChessBoardLayer.TrainingMode;
 end;
 
 
 procedure TGameChessBoard.FSetTrainingMode(bValue: boolean);
 begin
-  m_ChessBoard.pTrainingMode := bValue;
+  m_PosBaseChessBoardLayer.TrainingMode := bValue;
 end;
 
 
 function TGameChessBoard.FGetUseUserBase: boolean;
 begin
-  Result := m_ChessBoard.pUseUserBase;
+  Result := m_PosBaseChessBoardLayer.UseUserBase;
 end;
 
 
 procedure TGameChessBoard.FSetUseUserBase(bValue: boolean);
 begin
-  m_ChessBoard.pUseUserBase := bValue;
+  m_PosBaseChessBoardLayer.UseUserBase := bValue;
 end;
 
 

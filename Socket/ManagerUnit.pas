@@ -14,7 +14,7 @@ uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms,
   TntForms, Dialogs, TntDialogs, Menus, ActnList, ExtCtrls,
   // Chess4Net Units
-  ChessBoardHeaderUnit, ChessBoardUnit, PosBaseChessBoardUnit, GameChessBoardUnit,
+  ChessBoardHeaderUnit, ChessBoardUnit, GameChessBoardUnit,
   ConnectorUnit, ConnectingUnit, ContinueUnit;
 
 type

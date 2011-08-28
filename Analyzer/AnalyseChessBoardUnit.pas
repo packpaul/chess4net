@@ -12,7 +12,7 @@ uses
   Forms, TntMenus, Menus, Classes, TntClasses, Controls, ExtCtrls, Messages,
   ComCtrls, Dialogs, ActnList, ImgList, AppEvnts, SysUtils,
   //
-  ChessBoardUnit, PosBaseChessBoardUnit, ChessEngineInfoUnit, ChessEngine,
+  ChessBoardUnit, PosBaseChessBoardLayerUnit, ChessEngineInfoUnit, ChessEngine,
   MoveListFormUnit, PlysTreeUnit, PlysProviderIntfUnit, URLVersionQueryUnit,
   SelectLineFormUnit, OpeningsDBManagerFormUnit, OpeningsDBManagerUnit,
   PositionEditingFormUnit, ChessRulesEngine, PGNParserUnit, FloatingFormsUnit,
@@ -166,7 +166,9 @@ type
     procedure EditCommentActionExecute(Sender: TObject);
     procedure EditCommentActionUpdate(Sender: TObject);
   private
-    m_ChessBoard: TPosBaseChessBoard;
+    m_ChessBoard: TChessBoard;
+    m_PosBaseChessBoardLayer: TPosBaseChessBoardLayer;
+
     m_ResizingType: (rtNo, rtHoriz, rtVert);
 
     m_OpeningsDBManager: TOpeningsDBManager;
@@ -198,6 +200,7 @@ type
     procedure WMDropFiles(var Msg : TMessage); message WM_DROPFILES;
 
     procedure FCreateChessBoard;
+    procedure FDestroyChessBoard;
     procedure FInitPosition;
 
     procedure FCreateChessEngineInfoForm;
@@ -364,15 +367,21 @@ begin
 
   m_MoveListForm.PlysProvider := nil;
   m_OpeningsDBManagerForm.OpeningsDBManagerProvider := nil;
-   
+
   m_OpeningsDBManager.Free;
   m_PlysTree.Free;
+
+  FDestroyChessBoard;
 end;
 
 
 procedure TAnalyseChessBoard.FCreateChessBoard;
 begin
-  m_ChessBoard := TPosBaseChessBoard.Create(self, FChessBoardHandler, '');
+  m_ChessBoard := TChessBoard.Create(self, FChessBoardHandler);
+  m_PosBaseChessBoardLayer := TPosBaseChessBoardLayer.Create;
+
+  m_ChessBoard.AddLayer(m_PosBaseChessBoardLayer);
+
   m_ChessBoard.MoveNotationFormat := mnfCh4NEx;
   m_ChessBoard.FENFormat := TRUE;
 
@@ -390,6 +399,13 @@ begin
   m_ChessBoard.InitPosition;
 
   FOnOpeningsDBManagerChanged(nil);
+end;
+
+
+procedure TAnalyseChessBoard.FDestroyChessBoard;
+begin
+  m_ChessBoard.RemoveLayer(m_PosBaseChessBoardLayer); // m_ChessBoard is destroyed by its parent
+  FreeAndNil(m_PosBaseChessBoardLayer);
 end;
 
 
@@ -830,8 +846,9 @@ end;
 
 procedure TAnalyseChessBoard.FOnOpeningsDBManagerChanged(Sender: TObject);
 begin
-  m_ChessBoard.SetExternalBase(m_OpeningsDBManager.DB);
-  m_ChessBoard.pTrainingMode := ((m_OpeningsDBManager.DB <> '') and (m_OpeningsDBManager.Enabled));  
+  m_PosBaseChessBoardLayer.SetExternalBase(m_OpeningsDBManager.DB);
+  m_PosBaseChessBoardLayer.TrainingMode := ((m_OpeningsDBManager.DB <> '') and
+    (m_OpeningsDBManager.Enabled));  
 end;
 
 

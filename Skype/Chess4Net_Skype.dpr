@@ -28,7 +28,7 @@ uses
   ChessBoardHeaderUnit in '..\ChessBoardHeaderUnit.pas',
   ChessBoardUnit in '..\ChessBoardUnit.pas' {ChessBoard},
   ChessClockUnit in '..\ChessClockUnit.pas',
-  PosBaseChessBoardUnit in '..\PosBaseChessBoardUnit.pas',
+  PosBaseChessBoardLayerUnit in '..\PosBaseChessBoardLayerUnit.pas',
   GameChessBoardUnit in '..\GameChessBoardUnit.pas' {GameChessBoard},
   PromotionUnit in '..\PromotionUnit.pas' {PromotionForm},
   LookFeelOptionsUnit in '..\LookFeelOptionsUnit.pas' {OptionsForm},
@@ -50,8 +50,7 @@ uses
   DontShowMessageDlgUnit in '..\DontShowMessageDlgUnit.pas',
   InterProc in 'InterProc.pas',
   IniSettingsUnit in '..\IniSettingsUnit.pas',
-  EnvironmentSetterUnit in 'EnvironmentSetterUnit.pas',
-  PosBaseChessBoardLayerUnit in '..\PosBaseChessBoardLayerUnit.pas'
+  EnvironmentSetterUnit in 'EnvironmentSetterUnit.pas'
 {$IFDEF TESTING}
   , SkypeTS_TLB in 'SkypeTS_TLB.pas'
 {$ELSE}

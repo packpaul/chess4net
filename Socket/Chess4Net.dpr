@@ -18,7 +18,7 @@ uses
   ManagerUnit in 'ManagerUnit.pas' {Manager},
   ChessBoardHeaderUnit in '..\ChessBoardHeaderUnit.pas',
   ChessBoardUnit in '..\ChessBoardUnit.pas' {ChessBoard},
-  PosBaseChessBoardUnit in '..\PosBaseChessBoardUnit.pas',
+  PosBaseChessBoardLayerUnit in '..\PosBaseChessBoardLayerUnit.pas',  
   GameChessBoardUnit in '..\GameChessBoardUnit.pas' {GameChessBoard},
   PromotionUnit in '..\PromotionUnit.pas' {PromotionForm},
   LookFeelOptionsUnit in '..\LookFeelOptionsUnit.pas' {OptionsForm},
@@ -33,8 +33,7 @@ uses
   BitmapResUnit in '..\BitmapResUnit.pas',
   ChessRulesEngine in '..\ChessRulesEngine.pas',
   LocalizerUnit in '..\LocalizerUnit.pas',
-  ChessClockUnit in '..\ChessClockUnit.pas',
-  PosBaseChessBoardLayerUnit in '..\PosBaseChessBoardLayerUnit.pas';
+  ChessClockUnit in '..\ChessClockUnit.pas';
 
 {$R ..\Chess4Net.res}
 

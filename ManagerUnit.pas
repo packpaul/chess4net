@@ -17,7 +17,7 @@ uses
   plugin,
 {$ENDIF}
   // Chess4Net Units
-  ChessBoardHeaderUnit, ChessRulesEngine, ChessBoardUnit, PosBaseChessBoardUnit,
+  ChessBoardHeaderUnit, ChessRulesEngine, ChessBoardUnit,
   GameChessBoardUnit, ConnectorUnit, ConnectingUnit, GameOptionsUnit,
   ModalForm, DialogUnit, ContinueUnit, LocalizerUnit, URLVersionQueryUnit;
 

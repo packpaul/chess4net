@@ -90,7 +90,7 @@ type
 
     m_iUpdateCounter: integer;
 
-    m_Layer: TChessBoardLayerBase;
+    m_lstLayers: TList;
 
     procedure HilightLastMove;
     procedure Evaluate;
@@ -126,7 +126,6 @@ type
     function FGetFENFormat: boolean;
     procedure FSetFENFormat(bValue: boolean);
 
-    procedure FSetLayer(Value: TChessBoardLayerBase);
     procedure FDrawHiddenBoard;
     function FGetHiddenBoardCanvas: TCanvas;
 
@@ -143,12 +142,8 @@ type
     property SquareSize: integer read m_iSquareSize;
     property PositionsList: TList read FGetPositionsList;    
 
-  protected
-    property Layer: TChessBoardLayerBase read m_Layer write FSetLayer;
-
   public
-    constructor Create(Owner: TComponent; AHandler: TChessBoardHandler = nil;
-      const strPosBaseName: string = ''); reintroduce;
+    constructor Create(Owner: TComponent; AHandler: TChessBoardHandler = nil); reintroduce;
 
     function DoMove(const strMove: string): boolean;
     procedure ResetMoveList;
@@ -162,6 +157,9 @@ type
 
     procedure BeginUpdate;
     procedure EndUpdate;
+
+    procedure AddLayer(const ALayer: TChessBoardLayerBase);
+    procedure RemoveLayer(const ALayer: TChessBoardLayerBase);
 
     property PlayerColor: TFigureColor read m_PlayerColor write FSetPlayerColor;
     property Mode: TMode read m_Mode write FSetMode;
@@ -190,6 +188,8 @@ type
     procedure RDraw; virtual; abstract;
     function RGetColorStarts: TFigureColor;
 
+    procedure RDoUpdate;
+
     procedure ROnAfterMoveDone; virtual;
     procedure ROnAfterSetPosition; virtual;
     procedure ROnAfterModeSet(const OldValue, NewValue: TMode); virtual;
@@ -200,8 +200,6 @@ type
     property Canvas: TCanvas read FGetCanvas;
     property Position: PChessPosition read FGetPosition;
     property PositionsList: TList read FGetPositionsList;
-  public
-    procedure DoUpdate;
   end;
 
 implementation
@@ -225,8 +223,7 @@ const
 ////////////////////////////////////////////////////////////////////////////////
 // TChessBoard
 
-constructor TChessBoard.Create(Owner: TComponent; AHandler: TChessBoardHandler = nil;
-  const strPosBaseName: string = '');
+constructor TChessBoard.Create(Owner: TComponent; AHandler: TChessBoardHandler = nil);
 begin
   FHandler := AHandler;
   // TODO: strPosBaseName
@@ -270,6 +267,8 @@ end;
 
 
 procedure TChessBoard.FDrawBoard;
+var
+  i: integer;
 begin
   if (csDestroying in ComponentState) then
     exit;
@@ -278,8 +277,9 @@ begin
     exit;
 
   FDrawHiddenBoard;
-  if (Assigned(m_Layer)) then
-    m_Layer.RDraw;
+
+  for i := 0 to m_lstLayers.Count - 1 do
+    TChessBoardLayerBase(m_lstLayers[i]).RDraw;
 
   PBoxBoardPaint(nil);
 end;
@@ -506,6 +506,7 @@ end;
 procedure TChessBoard.FSetMode(const Value: TMode);
 var
   OldMode: TMode;
+  i: integer;
 begin
   if (m_Mode = Value) then
     exit;
@@ -516,8 +517,8 @@ begin
   if ((m_Mode in [mView, mEdit]) and (Assigned(m_PromotionForm))) then
     m_PromotionForm.Close;
 
-  if (Assigned(m_Layer)) then
-    m_Layer.ROnAfterModeSet(OldMode, m_Mode);
+  for i := 0 to m_lstLayers.Count - 1 do
+    TChessBoardLayerBase(m_lstLayers[i]).ROnAfterModeSet(OldMode, m_Mode);
 
   FDrawBoard;
   HilightLastMove;
@@ -569,6 +570,7 @@ procedure TChessBoard.FOnAfterMoveDone;
 var
   _fig: TFigure;
   strLastMove: string;
+  i: integer;
 begin
   m_i0 := lastMove.i0;
   m_j0 := lastMove.j0;
@@ -590,8 +592,8 @@ begin
   if (m_Mode = mAnalyse) then
     FTogglePlayerColor;
 
-  if (Assigned(m_Layer)) then
-    m_Layer.ROnAfterMoveDone;
+  for i := 0 to m_lstLayers.Count - 1 do
+    TChessBoardLayerBase(m_lstLayers[i]).ROnAfterMoveDone;
 end;
 
 
@@ -646,10 +648,13 @@ end;
 
 
 procedure TChessBoard.ResetMoveList;
+var
+  i: integer;
 begin
   m_ChessRulesEngine.ResetMoveList;
-  if (Assigned(m_Layer)) then
-    m_Layer.ROnResetMoveList;
+
+  for i := 0 to m_lstLayers.Count - 1 do
+    TChessBoardLayerBase(m_lstLayers[i]).ROnResetMoveList;
 end;
 
 
@@ -674,6 +679,7 @@ end;
 procedure TChessBoard.FOnAfterSetPosition;
 var
   strPosition: string;
+  i: integer;
 begin
   case m_Mode of
     mAnalyse:
@@ -686,8 +692,8 @@ begin
   strPosition := GetPosition;
   FDoHandler(cbePosSet, @strPosition, self);
 
-  if (Assigned(m_Layer)) then
-    m_Layer.ROnAfterSetPosition;
+  for i := 0 to m_lstLayers.Count - 1 do
+    TChessBoardLayerBase(m_lstLayers[i]).ROnAfterSetPosition;
 end;
 
 
@@ -702,18 +708,18 @@ begin
   m_animation := aQuick;
 
   m_ChessRulesEngine := TChessRulesEngine.Create(self);
+  m_lstLayers := TList.Create;
 end;
 
 
 procedure TChessBoard.FormDestroy(Sender: TObject);
 var
   _fig: TFigure;
+  i: integer;
 begin
-  if (Assigned(m_Layer)) then
-  begin
-    m_Layer.ChessBoard := nil;
-    m_Layer := nil;
-  end;
+  for i := m_lstLayers.Count - 1 downto 0 do
+    RemoveLayer(m_lstLayers[i]);
+  m_lstLayers.Free;
 
   m_ChessRulesEngine.Free;
 
@@ -1255,17 +1261,32 @@ begin
 end;
 
 
-procedure TChessBoard.FSetLayer(Value: TChessBoardLayerBase);
+procedure TChessBoard.AddLayer(const ALayer: TChessBoardLayerBase);
 begin
-  m_Layer := Value;
-  m_Layer.ChessBoard := self;
-  FOnDrawLayerUpdate(m_Layer);
+  if (m_lstLayers.IndexOf(ALayer) >= 0) then
+    exit;
+
+  ALayer.ChessBoard := self;
+  m_lstLayers.Add(ALayer);
+
+  FOnDrawLayerUpdate(ALayer);
+end;
+
+
+procedure TChessBoard.RemoveLayer(const ALayer: TChessBoardLayerBase);
+begin
+  if (m_lstLayers.Remove(ALayer) >= 0) then
+  begin
+    ALayer.ChessBoard := nil;
+
+    FOnDrawLayerUpdate(ALayer);    
+  end;
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
 // TChessBoardDrawBase
 
-procedure TChessBoardLayerBase.DoUpdate;
+procedure TChessBoardLayerBase.RDoUpdate;
 begin
   if (Assigned(m_ChessBoard)) then
     m_ChessBoard.FOnDrawLayerUpdate(self);
