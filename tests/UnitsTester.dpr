@@ -15,7 +15,8 @@ uses
   PosBaseUnit in '..\PosBaseUnit.pas',
   LocalizerUnit in '..\LocalizerUnit.pas',
   GlobalsUnit in '..\GlobalsUnit.pas',
-  ChessClockUnit in '..\ChessClockUnit.pas';
+  ChessClockUnit in '..\ChessClockUnit.pas',
+  PosBaseChessBoardLayerUnit in '..\PosBaseChessBoardLayerUnit.pas';
 
 {$R *.res}
 

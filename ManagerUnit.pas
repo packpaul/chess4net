@@ -252,8 +252,9 @@ implementation
 uses
   // Chess4Net
   DateUtils, Math, StrUtils, Dialogs,
+  //
   LookFeelOptionsUnit, GlobalsUnit, GlobalsLocalUnit, InfoUnit, ChessClockUnit,
-  DontShowMessageDlgUnit, IniSettingsUnit
+  DontShowMessageDlgUnit, IniSettingsUnit, PosBaseChessBoardLayerUnit
 {$IFDEF AND_RQ}
   , CallExec
 {$ENDIF}

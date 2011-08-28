@@ -103,7 +103,12 @@ type
 
     function AskPromotionFigure(FigureColor: TFigureColor): TFigureName;
 
+    procedure FSetMode(const Value: TMode);
+
+    function FDoMove(i, j: integer; prom_fig: TFigureName = K): boolean;    
     procedure FOnAfterMoveDone;
+    procedure FOnAfterSetPosition;
+
     procedure FAnimate(const i, j: integer); // Animates a disposition of a piece from (i0,j0) to (i,j)
 
     procedure FWhatSquare(const P: TPoint; var i: Integer; var j: Integer);
@@ -125,33 +130,28 @@ type
     procedure FDrawHiddenBoard;
     function FGetHiddenBoardCanvas: TCanvas;
 
+    procedure FDrawBoard;    
     procedure FOnDrawLayerUpdate(const ADrawLayer: TChessBoardLayerBase);
 
     function FGetMovesOffset: integer;
+    function FGetColorStarts: TFigureColor;    
 
     procedure WMSizing(var Msg: TMessage); message WM_SIZING;
 
     procedure FDoHandler(e: TChessBoardEvent; d1: pointer = nil; d2: pointer = nil);
 
     property SquareSize: integer read m_iSquareSize;
+    property PositionsList: TList read FGetPositionsList;    
 
   protected
-    procedure RDrawBoard;
-    procedure ROnAfterMoveDone; virtual;
-    procedure ROnAfterSetPosition; virtual;
-    function RDoMove(i, j: integer; prom_fig: TFigureName = K): boolean;
-    procedure RSetMode(const Value: TMode); virtual;
-    function RGetColorStarts: TFigureColor;
-
-    property PositionsList: TList read FGetPositionsList;
-    property Layer: TChessBoardLayerBase read m_Layer write FSetLayer;    
+    property Layer: TChessBoardLayerBase read m_Layer write FSetLayer;
 
   public
     constructor Create(Owner: TComponent; AHandler: TChessBoardHandler = nil;
       const strPosBaseName: string = ''); reintroduce;
 
     function DoMove(const strMove: string): boolean;
-    procedure ResetMoveList; virtual;
+    procedure ResetMoveList;
     function SetPosition(const strPosition: string): boolean;
     function GetPosition: string;
     procedure InitPosition;
@@ -164,7 +164,7 @@ type
     procedure EndUpdate;
 
     property PlayerColor: TFigureColor read m_PlayerColor write FSetPlayerColor;
-    property Mode: TMode read m_Mode write RSetMode;
+    property Mode: TMode read m_Mode write FSetMode;
     property CoordinatesShown: boolean read coord_show write FSetCoordinatesShown;
     property Flipped: boolean read _flipped write FSetFlipped;
     property LastMoveHilighted: boolean read last_hilight write FSetLastMoveHilighted;
@@ -184,11 +184,22 @@ type
     m_ChessBoard: TChessBoard;
     function FGetSquareSize: integer;
     function FGetCanvas: TCanvas;
-    property ChessBoard: TChessBoard read m_ChessBoard write m_ChessBoard;
+    function FGetPosition: PChessPosition;
+    function FGetPositionsList: TList;
   protected
     procedure RDraw; virtual; abstract;
+    function RGetColorStarts: TFigureColor;
+
+    procedure ROnAfterMoveDone; virtual;
+    procedure ROnAfterSetPosition; virtual;
+    procedure ROnAfterModeSet(const OldValue, NewValue: TMode); virtual;
+    procedure ROnResetMoveList; virtual;
+
+    property ChessBoard: TChessBoard read m_ChessBoard write m_ChessBoard;
     property SquareSize: integer read FGetSquareSize;
     property Canvas: TCanvas read FGetCanvas;
+    property Position: PChessPosition read FGetPosition;
+    property PositionsList: TList read FGetPositionsList;
   public
     procedure DoUpdate;
   end;
@@ -251,14 +262,14 @@ begin
   else
   begin
     AnimateTimer.Enabled := FALSE;
-    RDrawBoard;
+    FDrawBoard;
     HilightLastMove;
     Evaluate;
   end;
 end;
 
 
-procedure TChessBoard.RDrawBoard;
+procedure TChessBoard.FDrawBoard;
 begin
   if (csDestroying in ComponentState) then
     exit;
@@ -475,6 +486,7 @@ begin
     // anim_step := anim_step_num;
     // AnimateTimerTimer(nil);
   end;
+  
   if (PBoxBoard.Dragging) then
   begin
     m_bDraggedMoved := FALSE;
@@ -487,21 +499,27 @@ procedure TChessBoard.FSetFlipped(Value: boolean);
 begin
   // TODO: ???
   _flipped := Value;
-  RDrawBoard;
+  FDrawBoard;
 end;
 
 
-procedure TChessBoard.RSetMode(const Value: TMode);
+procedure TChessBoard.FSetMode(const Value: TMode);
+var
+  OldMode: TMode;
 begin
   if (m_Mode = Value) then
     exit;
 
+  OldMode := m_Mode;
   m_Mode := Value;
 
   if ((m_Mode in [mView, mEdit]) and (Assigned(m_PromotionForm))) then
     m_PromotionForm.Close;
 
-  RDrawBoard;
+  if (Assigned(m_Layer)) then
+    m_Layer.ROnAfterModeSet(OldMode, m_Mode);
+
+  FDrawBoard;
   HilightLastMove;
 end;
 
@@ -509,7 +527,7 @@ end;
 procedure TChessBoard.FSetCoordinatesShown(Value: boolean);
 begin
   coord_show := Value;
-  RDrawBoard;
+  FDrawBoard;
   HilightLastMove;
 end;
 
@@ -517,7 +535,7 @@ end;
 procedure TChessBoard.FSetLastMoveHilighted(Value: boolean);
 begin
   last_hilight := Value;
-  RDrawBoard;
+  FDrawBoard;
   HilightLastMove;
 end;
 
@@ -550,6 +568,7 @@ end;
 procedure TChessBoard.FOnAfterMoveDone;
 var
   _fig: TFigure;
+  strLastMove: string;
 begin
   m_i0 := lastMove.i0;
   m_j0 := lastMove.j0;
@@ -565,7 +584,14 @@ begin
   else
     m_fig := _fig;
 
-  ROnAfterMoveDone;
+  strLastMove := m_ChessRulesEngine.LastMoveStr;
+  FDoHandler(cbeMoved, @strLastMove, self);
+
+  if (m_Mode = mAnalyse) then
+    FTogglePlayerColor;
+
+  if (Assigned(m_Layer)) then
+    m_Layer.ROnAfterMoveDone;
 end;
 
 
@@ -619,21 +645,11 @@ begin
 end;
 
 
-procedure TChessBoard.ROnAfterMoveDone;
-var
-  strLastMove: string;
-begin
-  strLastMove := m_ChessRulesEngine.LastMoveStr;
-  FDoHandler(cbeMoved, @strLastMove, self);
-
-  if (m_Mode = mAnalyse) then
-    FTogglePlayerColor;
-end;
-
-
 procedure TChessBoard.ResetMoveList;
 begin
   m_ChessRulesEngine.ResetMoveList;
+  if (Assigned(m_Layer)) then
+    m_Layer.ROnResetMoveList;
 end;
 
 
@@ -643,8 +659,8 @@ begin
   if (Result) then
   begin
     FCancelAnimationDragging;
-    ROnAfterSetPosition;
-    RDrawBoard;
+    FOnAfterSetPosition;
+    FDrawBoard;
   end;
 end;
 
@@ -655,7 +671,7 @@ begin
 end;
 
 
-procedure TChessBoard.ROnAfterSetPosition;
+procedure TChessBoard.FOnAfterSetPosition;
 var
   strPosition: string;
 begin
@@ -669,6 +685,9 @@ begin
 
   strPosition := GetPosition;
   FDoHandler(cbePosSet, @strPosition, self);
+
+  if (Assigned(m_Layer)) then
+    m_Layer.ROnAfterSetPosition;
 end;
 
 
@@ -718,7 +737,7 @@ begin
   case m_Mode of
     mGame, mAnalyse:
     begin
-      if (RDoMove(i, j)) then
+      if (FDoMove(i, j)) then
         m_bDraggedMoved := TRUE;
     end;
 
@@ -744,7 +763,7 @@ begin
 end;
 
 
-function TChessBoard.RDoMove(i, j: integer; prom_fig: TFigureName = K): boolean;
+function TChessBoard.FDoMove(i, j: integer; prom_fig: TFigureName = K): boolean;
 begin
   Result := m_ChessRulesEngine.DoMove(m_i0, m_j0, i, j, prom_fig);
   if (Result) then
@@ -814,7 +833,7 @@ begin
       end
       else
       begin
-        RDrawBoard;
+        FDrawBoard;
         if (m_bDraggedMoved) then
         begin
           HilightLastMove;
@@ -837,10 +856,10 @@ begin
       if (bRes) then
       begin
         Position.SetPiece(m_i0, m_j0, ES);
-        ROnAfterSetPosition;
+        FOnAfterSetPosition;
       end;
 
-      RDrawBoard;      
+      FDrawBoard;      
     end;
   end; // case
 end;
@@ -958,7 +977,7 @@ begin
 end;
 
 
-function TChessBoard.RGetColorStarts: TFigureColor;
+function TChessBoard.FGetColorStarts: TFigureColor;
 begin
   Result := m_ChessRulesEngine.GetColorStarts;
 end;
@@ -979,14 +998,14 @@ begin
             exit;
           FWhatSquare(Point(X, Y), i, j);
           if (m_bDraggedMoved) then
-            RDrawBoard
+            FDrawBoard
           else
           begin
             m_bHilighted := FALSE;
-            if (RDoMove(i, j)) then
+            if (FDoMove(i, j)) then
               FAnimate(i, j)
             else
-              RDrawBoard;
+              FDrawBoard;
           end;
         end;
 
@@ -998,8 +1017,8 @@ begin
           FWhatSquare(Point(X, Y), i, j);
           if (Position.SetPiece(i, j, m_EditPiece)) then
           begin
-            ROnAfterSetPosition;
-            RDrawBoard;
+            FOnAfterSetPosition;
+            FDrawBoard;
           end;
         end;
 
@@ -1037,15 +1056,20 @@ begin
   m_ChessRulesEngine.InitNewGame;
 
   FCancelAnimationDragging;
-  ROnAfterSetPosition;
-  RDrawBoard;
+  FOnAfterSetPosition;
+
+  FDrawBoard;
 end;
 
 
 procedure TChessBoard.PPRandom;
 begin
   m_ChessRulesEngine.InitNewPPRandomGame;
-  RDrawBoard;
+
+  FCancelAnimationDragging;
+  FOnAfterSetPosition;
+  
+  FDrawBoard;
 end;
 
 
@@ -1060,9 +1084,9 @@ begin
   if (m_Mode = mAnalyse) then
     FTogglePlayerColor;
 
-  ROnAfterSetPosition;
+  FOnAfterSetPosition;
   // TODO: animation
-  RDrawBoard;
+  FDrawBoard;
 end;
 
 
@@ -1155,7 +1179,7 @@ begin
     m_bmBuf.Palette:= m_bmChessBoard.Palette;
   end;
 
-  RDrawBoard;
+  FDrawBoard;
 end;
 
 
@@ -1219,7 +1243,7 @@ begin
   begin
     dec(m_iUpdateCounter);
     if (m_iUpdateCounter = 0) then
-      RDrawBoard;
+      FDrawBoard;
   end;
 end;
 
@@ -1227,7 +1251,7 @@ end;
 procedure TChessBoard.FOnDrawLayerUpdate(const ADrawLayer: TChessBoardLayerBase);
 begin
   if (not AnimateTimer.Enabled) then
-    RDrawBoard;
+    FDrawBoard;
 end;
 
 
@@ -1243,13 +1267,17 @@ end;
 
 procedure TChessBoardLayerBase.DoUpdate;
 begin
-  m_ChessBoard.FOnDrawLayerUpdate(self);
+  if (Assigned(m_ChessBoard)) then
+    m_ChessBoard.FOnDrawLayerUpdate(self);
 end;
 
 
 function TChessBoardLayerBase.FGetSquareSize: integer;
 begin
-  Result := m_ChessBoard.SquareSize;
+  if (Assigned(m_ChessBoard)) then
+    Result := m_ChessBoard.SquareSize
+  else
+    Result := 0;  
 end;
 
 
@@ -1259,6 +1287,53 @@ begin
     Result := m_ChessBoard.FGetHiddenBoardCanvas
   else
     Result := nil;
+end;
+
+
+function TChessBoardLayerBase.FGetPosition: PChessPosition;
+begin
+  if (Assigned(m_ChessBoard)) then
+    Result := m_ChessBoard.Position
+  else
+    Result := nil;
+end;
+
+
+function TChessBoardLayerBase.RGetColorStarts: TFigureColor;
+begin
+  if (Assigned(m_ChessBoard)) then
+    Result := m_ChessBoard.FGetColorStarts
+  else
+    Result := fcWhite;
+end;
+
+
+function TChessBoardLayerBase.FGetPositionsList: TList;
+begin
+  if (Assigned(m_ChessBoard)) then
+    Result := m_ChessBoard.PositionsList
+  else
+    Result := nil;
+end;
+
+
+procedure TChessBoardLayerBase.ROnAfterMoveDone;
+begin
+end;
+
+
+procedure TChessBoardLayerBase.ROnAfterSetPosition;
+begin
+end;
+
+
+procedure TChessBoardLayerBase.ROnAfterModeSet(const OldValue, NewValue: TMode);
+begin
+end;
+
+
+procedure TChessBoardLayerBase.ROnResetMoveList;
+begin
 end;
 
 end.

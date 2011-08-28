@@ -44,7 +44,8 @@ uses
   ChessClockUnit in '..\ChessClockUnit.pas',
   URLVersionQueryUnit in '..\URLVersionQueryUnit.pas',
   DontShowMessageDlgUnit in '..\DontShowMessageDlgUnit.pas',
-  IniSettingsUnit in '..\IniSettingsUnit.pas';
+  IniSettingsUnit in '..\IniSettingsUnit.pas',
+  PosBaseChessBoardLayerUnit in '..\PosBaseChessBoardLayerUnit.pas';
 
 {$R ..\Chess4Net.res}
 

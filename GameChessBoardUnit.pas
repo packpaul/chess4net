@@ -13,7 +13,7 @@ uses
   Graphics, Messages,
   // Chess4net
   ChessBoardHeaderUnit, ChessBoardUnit, PosBaseChessBoardUnit, ChessRulesEngine,
-  LocalizerUnit;
+  LocalizerUnit, PosBaseChessBoardLayerUnit;
 
 type
   TGameChessBoardEvent =

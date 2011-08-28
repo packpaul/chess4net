@@ -33,7 +33,8 @@ uses
   BitmapResUnit in '..\BitmapResUnit.pas',
   ChessRulesEngine in '..\ChessRulesEngine.pas',
   LocalizerUnit in '..\LocalizerUnit.pas',
-  ChessClockUnit in '..\ChessClockUnit.pas';
+  ChessClockUnit in '..\ChessClockUnit.pas',
+  PosBaseChessBoardLayerUnit in '..\PosBaseChessBoardLayerUnit.pas';
 
 {$R ..\Chess4Net.res}
 

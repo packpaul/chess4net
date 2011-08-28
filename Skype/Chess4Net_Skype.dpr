@@ -50,7 +50,8 @@ uses
   DontShowMessageDlgUnit in '..\DontShowMessageDlgUnit.pas',
   InterProc in 'InterProc.pas',
   IniSettingsUnit in '..\IniSettingsUnit.pas',
-  EnvironmentSetterUnit in 'EnvironmentSetterUnit.pas'
+  EnvironmentSetterUnit in 'EnvironmentSetterUnit.pas',
+  PosBaseChessBoardLayerUnit in '..\PosBaseChessBoardLayerUnit.pas'
 {$IFDEF TESTING}
   , SkypeTS_TLB in 'SkypeTS_TLB.pas'
 {$ELSE}

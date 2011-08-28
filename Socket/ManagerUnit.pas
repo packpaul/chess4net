@@ -123,8 +123,9 @@ implementation
 
 uses
   DateUtils, Math, StrUtils, TntIniFiles,
+  //
   GameOptionsUnit, ConnectionUnit, LookFeelOptionsUnit, GlobalsLocalUnit,
-  GlobalsUnit, ChessRulesEngine, ChessClockUnit;
+  GlobalsUnit, ChessRulesEngine, ChessClockUnit, PosBaseChessBoardLayerUnit;
 
 const
   USR_BASE_NAME = 'Chess4Net';
