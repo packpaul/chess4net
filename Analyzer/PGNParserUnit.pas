@@ -11,10 +11,16 @@ interface
 uses
   TntClasses, Classes,
   //
-  ChessRulesEngine, PlysTreeUnit;
+  NonRefInterfacedObjectUnit, ChessRulesEngine, PlysTreeUnit;
 
 type
-  TPGNParser = class
+  IPGNDataCursor = interface
+    function GetLine: WideString;
+    function GetNextLine: WideString;
+    function IsEndOfData: boolean;
+  end;
+
+  TPGNParser = class(TNonRefInterfacedObject, IPGNDataCursor)
   private
     m_Data: TTntStrings;
     m_iDataLine: integer;
@@ -30,15 +36,18 @@ type
     m_strStartPosition: string;
 
     function FGetLine: WideString;
-    function FGetNextLine: WideString;
-    function FIsEndOfData: boolean;
+    function IPGNDataCursor.GetLine = FGetLine;
 
-    function  FIsTag(const wstr: WideString): boolean;
+    function FGetNextLine: WideString;
+    function IPGNDataCursor.GetNextLine = FGetNextLine;
+
+    function FIsEndOfData: boolean;
+    function IPGNDataCursor.IsEndOfData = FIsEndOfData;
+
     procedure FParseTags;
     procedure FParseGame;
 
-    procedure FCheckAgainstC4NVersionSupport(const strVersion: string);
-    procedure FSetupStartPosition(const strPosition: string);
+    procedure FCheckAgainstC4NVersionSupport(iVersion: integer);
 
     property StartPosition: string read m_strStartPosition;
 
@@ -50,6 +59,29 @@ type
 
     property Tree: TPlysTree read m_Tree;
     property InC4NFormat: boolean read m_bInC4NFormat;
+  end;
+
+
+  TPGNTagParser = class
+  private
+    m_DataCursor: IPGNDataCursor;
+
+    m_wstrWhite: WideString;
+    m_wstrBlack: WideString;
+    m_iC4N: integer;
+    m_strFEN: string;
+
+    function FParse: boolean;
+    function FProcessLine(const wstr: WideString): boolean;
+    procedure FSetC4N(const strValue: string);
+  public
+    function Parse(ADataCursor: IPGNDataCursor): boolean;
+    class function IsTag(wstr: WideString): boolean;
+
+    property White: WideString read m_wstrWhite;
+    property Black: WideString read m_wstrBlack;
+    property C4N: integer read m_iC4N;
+    property FEN: string read m_strFEN;
   end;
 
 implementation
@@ -186,88 +218,28 @@ end;
 
 
 procedure TPGNParser.FParseTags;
-
-  function NProcessLine(const wstr: WideString): boolean;
-  const
-    WHITE_PREFIX = '[White "';
-    BLACK_PREFIX = '[Black "';
-    C4N_PREFIX = '[C4N "';
-    FEN_PREFIX = '[FEN "';
-    POSTFIX = '"]';
-  begin
-    Result := FALSE;
-
-    if (not FIsTag(wstr)) then
+begin // .FParseTags
+  with TPGNTagParser.Create do
+  try
+    m_bParseResult := (m_bParseResult and Parse(self));
+    if (not m_bParseResult) then
       exit;
 
-    if ((LeftStr(wstr, length(WHITE_PREFIX)) = WHITE_PREFIX) and
-        (RightStr(wstr, length(POSTFIX)) = POSTFIX)) then
-    begin
-      m_strWhite := Copy(wstr, length(WHITE_PREFIX) + 1,
-        length(wstr) - length(WHITE_PREFIX) - length(POSTFIX));
-    end
-    else if ((LeftStr(wstr, length(BLACK_PREFIX)) = BLACK_PREFIX) and
-        (RightStr(wstr, length(POSTFIX)) = POSTFIX)) then
-    begin
-      m_strBlack := Copy(wstr, length(BLACK_PREFIX) + 1,
-        length(wstr) - length(BLACK_PREFIX) - length(POSTFIX));
-    end
-    else if ((LeftStr(wstr, length(C4N_PREFIX)) = C4N_PREFIX) and
-        (RightStr(wstr, length(POSTFIX)) = POSTFIX)) then
-    begin
-      FCheckAgainstC4NVersionSupport(Copy(wstr, length(C4N_PREFIX) + 1,
-        length(wstr) - length(C4N_PREFIX) - length(POSTFIX)));
-    end
-    else if ((LeftStr(wstr, length(FEN_PREFIX)) = FEN_PREFIX) and
-        (RightStr(wstr, length(POSTFIX)) = POSTFIX)) then
-    begin
-      FSetupStartPosition(Copy(wstr, length(FEN_PREFIX) + 1,
-        length(wstr) - length(FEN_PREFIX) - length(POSTFIX)));
-    end;
+    self.m_strWhite := White;
+    self.m_strBlack := Black;
+    self.FCheckAgainstC4NVersionSupport(C4N);
+    m_strStartPosition := FEN;
 
-    Result := TRUE;
+  finally
+    Free;
   end;
 
-var
-  wstr: WideString;
-begin // .FParseTags
-  m_bParseResult := (m_bParseResult and (not FIsEndOfData));
-  if (not m_bParseResult) then
-    exit;
-
-  wstr := FGetLine;
-  repeat
-    wstr := TrimRight(wstr);
-    if (wstr <> '') then
-    begin
-      if (not NProcessLine(wstr)) then
-        exit;
-    end;
-
-    wstr := FGetNextLine;
-
-  until (FIsEndOfData);
 end;
 
 
-procedure TPGNParser.FSetupStartPosition(const strPosition: string);
+procedure TPGNParser.FCheckAgainstC4NVersionSupport(iVersion: integer);
 begin
-  m_strStartPosition := strPosition;
-end;
-
-
-function  TPGNParser.FIsTag(const wstr: WideString): boolean;
-begin
-  Result := ((wstr <> '') and ((wstr[1] = '[') and (wstr[length(wstr)] = ']')));
-end;
-
-
-procedure TPGNParser.FCheckAgainstC4NVersionSupport(const strVersion: string);
-var
-  iC4NFormatVer: integer;
-begin
-  iC4NFormatVer := StrToIntDef(strVersion, 0);
-  m_bInC4NFormat := (iC4NFormatVer in [1, 2]);
+  m_bInC4NFormat := (iVersion in [1, 2]);
 end;
 
 
@@ -284,7 +256,7 @@ begin
   try
     wstr := FGetLine;
     repeat
-      if (FIsTag(TrimRight(wstr))) then
+      if (TPGNTagParser.IsTag(TrimRight(wstr))) then
         break;
 
       if (wstr <> '') then
@@ -701,5 +673,103 @@ begin
   Dispose(movePly);
 end;
 
+////////////////////////////////////////////////////////////////////////////////
+// TPGNTagParser
+
+class function TPGNTagParser.IsTag(wstr: WideString): boolean;
+begin
+  wstr := TrimRight(wstr);
+  Result := ((wstr <> '') and ((wstr[1] = '[') and (wstr[length(wstr)] = ']')));
+end;
+
+
+function TPGNTagParser.Parse(ADataCursor: IPGNDataCursor): boolean;
+begin
+  Assert(Assigned(ADataCursor));
+  
+  m_DataCursor := ADataCursor;
+  try
+    Result := FParse;
+  finally
+    m_DataCursor := nil;
+  end;
+end;
+
+
+function TPGNTagParser.FParse: boolean;
+var
+  wstr: WideString;
+begin
+  Result := FALSE;
+
+  if (m_DataCursor.IsEndOfData) then
+    exit;
+
+  Result := TRUE;
+
+  wstr := m_DataCursor.GetLine;
+  repeat
+    wstr := TrimRight(wstr);
+    if (wstr <> '') then
+    begin
+      if (not FProcessLine(wstr)) then
+        exit;
+    end;
+
+    wstr := m_DataCursor.GetNextLine;
+
+  until (m_DataCursor.IsEndOfData);
+
+end;
+
+
+function TPGNTagParser.FProcessLine(const wstr: WideString): boolean;
+const
+  WHITE_PREFIX = '[White "';
+  BLACK_PREFIX = '[Black "';
+  C4N_PREFIX = '[C4N "';
+  FEN_PREFIX = '[FEN "';
+  POSTFIX = '"]';
+begin
+  Result := FALSE;
+
+  if (not TPGNTagParser.IsTag(wstr)) then
+    exit;
+
+  if ((LeftStr(wstr, length(WHITE_PREFIX)) = WHITE_PREFIX) and
+      (RightStr(wstr, length(POSTFIX)) = POSTFIX)) then
+  begin
+    m_wstrWhite := Copy(wstr, length(WHITE_PREFIX) + 1,
+      length(wstr) - length(WHITE_PREFIX) - length(POSTFIX));
+  end
+  else if ((LeftStr(wstr, length(BLACK_PREFIX)) = BLACK_PREFIX) and
+      (RightStr(wstr, length(POSTFIX)) = POSTFIX)) then
+  begin
+    m_wstrBlack := Copy(wstr, length(BLACK_PREFIX) + 1,
+      length(wstr) - length(BLACK_PREFIX) - length(POSTFIX));
+  end
+  else if ((LeftStr(wstr, length(C4N_PREFIX)) = C4N_PREFIX) and
+      (RightStr(wstr, length(POSTFIX)) = POSTFIX)) then
+  begin
+    FSetC4N(Copy(wstr, length(C4N_PREFIX) + 1,
+      length(wstr) - length(C4N_PREFIX) - length(POSTFIX)));
+  end
+  else if ((LeftStr(wstr, length(FEN_PREFIX)) = FEN_PREFIX) and
+      (RightStr(wstr, length(POSTFIX)) = POSTFIX)) then
+  begin
+    m_strFEN := Copy(wstr, length(FEN_PREFIX) + 1,
+      length(wstr) - length(FEN_PREFIX) - length(POSTFIX));
+  end;
+
+  Result := TRUE;
+end;
+
+
+procedure TPGNTagParser.FSetC4N(const strValue: string);
+begin
+  m_iC4N := StrToIntDef(strValue, 0);
+  if (m_iC4N < 0) then
+    m_iC4N := 0;
+end;
 
 end.

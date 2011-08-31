@@ -16,7 +16,7 @@ uses
   MoveListFormUnit, PlysTreeUnit, PlysProviderIntfUnit, URLVersionQueryUnit,
   SelectLineFormUnit, OpeningsDBManagerFormUnit, OpeningsDBManagerUnit,
   PositionEditingFormUnit, ChessRulesEngine, PGNParserUnit, FloatingFormsUnit,
-  CommentsFormUnit;
+  CommentsFormUnit, GamesManagerUnit;
 
 type
   TAnalyseChessBoard = class(TMainFloatingForm, IPlysProvider, IPositionEditable)
@@ -193,6 +193,8 @@ type
     m_GameFileName: TFileName;
     m_bGameFileInC4NFormat: boolean;
 
+    m_GamesManager: TGamesManager;
+
     procedure FChessBoardHandler(e: TChessBoardEvent; d1: pointer = nil;
       d2: pointer = nil);
 
@@ -212,7 +214,7 @@ type
     procedure FOnChessEngineCalculationInfo(Sender: TObject; rEvaluation: real; strMovesLine: string);
     procedure FSynchronizeChessEngineWithChessBoardAndStartEvaluation;
 
-    procedure FLoadPGNDataFromFile(AFileName: TFileName);
+    procedure FLoadPGNDataFromFile(const AFileName: TFileName);
     function FLoadPGNData(const PGNData: TTntStrings): boolean;
     procedure FLoadPGNDataFromParser(const PGNParser: TPGNParser);
     function FSavePGNData: boolean;
@@ -331,6 +333,8 @@ procedure TAnalyseChessBoard.FormCreate(Sender: TObject);
 begin
   Caption := Format(LBL_CHESS4NET_ANALYZER_VER, [CHESS4NET_VERSION_TXT]);
 
+  m_GamesManager := TGamesManager.Create;
+
   m_PlysTree := TPlysTree.Create;
 
   m_OpeningsDBManager := TOpeningsDBManager.Create;
@@ -372,6 +376,8 @@ begin
   m_PlysTree.Free;
 
   FDestroyChessBoard;
+
+  FreeAndNil(m_GamesManager);
 end;
 
 
@@ -615,14 +621,19 @@ begin
 end;
 
 
-procedure TAnalyseChessBoard.FLoadPGNDataFromFile(AFileName: TFileName);
+procedure TAnalyseChessBoard.FLoadPGNDataFromFile(const AFileName: TFileName);
 var
-  wstrlData: TTntStringList;
+  Data: TTntStrings;
 begin
-  wstrlData := TTntStringList.Create;
+  if (not m_GamesManager.LoadFromFile(AFileName)) then
+  begin
+    MessageDlg(MSG_INCORRECT_FILE_FORMAT, mtError, [mbOK], 0);
+    exit;
+  end;
+
+  m_GamesManager.GetGameData(0, Data);
   try
-    wstrlData.LoadFromFile(AFileName);
-    if (not FLoadPGNData(wstrlData)) then
+    if (not FLoadPGNData(Data)) then
     begin
       MessageDlg(MSG_INCORRECT_FILE_FORMAT, mtError, [mbOK], 0);
       exit;
@@ -631,7 +642,7 @@ begin
     FSetGameFileName(AFileName);
 
   finally
-    wstrlData.Free;
+    Data.Free;
   end;
 end;
 

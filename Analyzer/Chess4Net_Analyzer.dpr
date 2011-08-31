@@ -40,7 +40,8 @@ uses
   FloatingFormsUnit in 'FloatingFormsUnit.pas',
   CommentsFormUnit in 'CommentsFormUnit.pas' {CommentsForm},
   CommentsEditFormUnit in 'CommentsEditFormUnit.pas' {CommentsEditForm},
-  WinControlHlpUnit in 'WinControlHlpUnit.pas';
+  WinControlHlpUnit in 'WinControlHlpUnit.pas',
+  GamesManagerUnit in 'GamesManagerUnit.pas';
 
 {$R ..\Chess4Net.res}
 
