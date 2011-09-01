@@ -215,7 +215,8 @@ type
     procedure FSynchronizeChessEngineWithChessBoardAndStartEvaluation;
 
     procedure FLoadPGNDataFromFile(const AFileName: TFileName);
-    function FLoadPGNData(const PGNData: TTntStrings): boolean;
+    function FLoadPGNData(const PGNData: TTntStrings): boolean; overload;
+    function FLoadPGNData(const wstrData: WideString): boolean; overload;
     procedure FLoadPGNDataFromParser(const PGNParser: TPGNParser);
     function FSavePGNData: boolean;
     procedure FSavePGNDataAs;
@@ -623,27 +624,23 @@ end;
 
 procedure TAnalyseChessBoard.FLoadPGNDataFromFile(const AFileName: TFileName);
 var
-  Data: TTntStrings;
+  bResult: boolean;
 begin
-  if (not m_GamesManager.LoadFromFile(AFileName)) then
+  Screen.Cursor := crHourGlass;
+  try
+    bResult := m_GamesManager.LoadFromFile(AFileName);
+  finally
+    Screen.Cursor := crDefault;
+  end;
+
+  if (bResult and FLoadPGNData(m_GamesManager.Games[0].PGNData)) then
+    FSetGameFileName(AFileName)
+  else
   begin
     MessageDlg(MSG_INCORRECT_FILE_FORMAT, mtError, [mbOK], 0);
     exit;
   end;
 
-  m_GamesManager.GetGameData(0, Data);
-  try
-    if (not FLoadPGNData(Data)) then
-    begin
-      MessageDlg(MSG_INCORRECT_FILE_FORMAT, mtError, [mbOK], 0);
-      exit;
-    end;
-
-    FSetGameFileName(AFileName);
-
-  finally
-    Data.Free;
-  end;
 end;
 
 
@@ -689,13 +686,28 @@ begin
     if (not PGNParser.Parse(PGNData)) then
       exit;
 
-    FLoadPGNDataFromParser(PGNParser);      
+    FLoadPGNDataFromParser(PGNParser);
 
   finally
     PGNParser.Free;
   end;
 
   Result := TRUE;
+end;
+
+
+function TAnalyseChessBoard.FLoadPGNData(const wstrData: WideString): boolean;
+var
+  wstrlData: TTntStringList;
+begin
+  wstrlData := TTntStringList.Create;
+  try
+    wstrlData.Text := wstrData;
+    Result := FLoadPGNData(wstrlData);
+  finally
+    wstrlData.Free;
+  end;
+  
 end;
 
 

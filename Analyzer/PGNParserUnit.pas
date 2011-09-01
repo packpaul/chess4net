@@ -11,19 +11,14 @@ interface
 uses
   TntClasses, Classes,
   //
-  NonRefInterfacedObjectUnit, ChessRulesEngine, PlysTreeUnit;
+  ChessRulesEngine, PlysTreeUnit;
 
 type
-  IPGNDataCursor = interface
-    function GetLine: WideString;
-    function GetNextLine: WideString;
-    function IsEndOfData: boolean;
-  end;
-
-  TPGNParser = class(TNonRefInterfacedObject, IPGNDataCursor)
+  TPGNParser = class
   private
     m_Data: TTntStrings;
     m_iDataLine: integer;
+
     m_bParseResult: boolean;
 
     m_strWhite: string;
@@ -36,13 +31,8 @@ type
     m_strStartPosition: string;
 
     function FGetLine: WideString;
-    function IPGNDataCursor.GetLine = FGetLine;
-
     function FGetNextLine: WideString;
-    function IPGNDataCursor.GetNextLine = FGetNextLine;
-
     function FIsEndOfData: boolean;
-    function IPGNDataCursor.IsEndOfData = FIsEndOfData;
 
     procedure FParseTags;
     procedure FParseGame;
@@ -62,6 +52,13 @@ type
   end;
 
 
+  IPGNDataCursor = interface
+    function GetLine: WideString;
+    function GetNextLine: WideString;
+    function IsEndOfData: boolean;
+  end;
+
+  
   TPGNTagParser = class
   private
     m_DataCursor: IPGNDataCursor;
@@ -140,6 +137,17 @@ type
     ply: integer;
     addPos: boolean; // ??. genOpening
     posMoveCount: integer;
+  end;
+
+
+  TPGNDataCursorAdaptor = class(TInterfacedObject, IPGNDataCursor)
+  private
+    m_PGNParser: TPGNParser;
+  public
+    constructor Create(const APGNParser: TPGNParser);
+    function GetLine: WideString;
+    function GetNextLine: WideString;
+    function IsEndOfData: boolean;
   end;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -221,14 +229,14 @@ procedure TPGNParser.FParseTags;
 begin // .FParseTags
   with TPGNTagParser.Create do
   try
-    m_bParseResult := (m_bParseResult and Parse(self));
+    m_bParseResult := (m_bParseResult and Parse(TPGNDataCursorAdaptor.Create(self)));
     if (not m_bParseResult) then
       exit;
 
     self.m_strWhite := White;
     self.m_strBlack := Black;
     self.FCheckAgainstC4NVersionSupport(C4N);
-    m_strStartPosition := FEN;
+    self.m_strStartPosition := FEN;
 
   finally
     Free;
@@ -770,6 +778,33 @@ begin
   m_iC4N := StrToIntDef(strValue, 0);
   if (m_iC4N < 0) then
     m_iC4N := 0;
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TPGNDataCursorAdaptor
+
+constructor TPGNDataCursorAdaptor.Create(const APGNParser: TPGNParser);
+begin
+  inherited Create;
+  m_PGNParser := APGNParser;
+end;
+
+
+function TPGNDataCursorAdaptor.GetLine: WideString;
+begin
+  Result := m_PGNParser.FGetLine;
+end;
+
+
+function TPGNDataCursorAdaptor.GetNextLine: WideString;
+begin
+  Result := m_PGNParser.FGetNextLine;
+end;
+
+
+function TPGNDataCursorAdaptor.IsEndOfData: boolean;
+begin
+  Result := m_PGNParser.FIsEndOfData;
 end;
 
 end.
