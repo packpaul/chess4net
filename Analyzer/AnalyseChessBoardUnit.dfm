@@ -127,6 +127,10 @@ object AnalyseChessBoard: TAnalyseChessBoard
         Action = CommentsAction
         Caption = '&Comments'
       end
+      object GamesListMenuItem: TTntMenuItem
+        Action = GamesListAction
+        Caption = '&Games List'
+      end
       object ViewOpeningsDBManagerMenuItem: TTntMenuItem
         Action = OpeningsDBManagerAction
         Caption = '&Openings DB Manager'
@@ -365,6 +369,11 @@ object AnalyseChessBoard: TAnalyseChessBoard
       ShortCut = 16453
       OnExecute = EditCommentActionExecute
       OnUpdate = EditCommentActionUpdate
+    end
+    object GamesListAction: TAction
+      Category = 'Views'
+      OnExecute = GamesListActionExecute
+      OnUpdate = GamesListActionUpdate
     end
   end
   object ImageList: TImageList

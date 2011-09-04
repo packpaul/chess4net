@@ -41,7 +41,8 @@ uses
   CommentsFormUnit in 'CommentsFormUnit.pas' {CommentsForm},
   CommentsEditFormUnit in 'CommentsEditFormUnit.pas' {CommentsEditForm},
   WinControlHlpUnit in 'WinControlHlpUnit.pas',
-  GamesManagerUnit in 'GamesManagerUnit.pas';
+  GamesManagerUnit in 'GamesManagerUnit.pas',
+  GamesListFormUnit in 'GamesListFormUnit.pas' {GamesListForm};
 
 {$R ..\Chess4Net.res}
 

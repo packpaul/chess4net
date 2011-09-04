@@ -16,7 +16,7 @@ uses
   MoveListFormUnit, PlysTreeUnit, PlysProviderIntfUnit, URLVersionQueryUnit,
   SelectLineFormUnit, OpeningsDBManagerFormUnit, OpeningsDBManagerUnit,
   PositionEditingFormUnit, ChessRulesEngine, PGNParserUnit, FloatingFormsUnit,
-  CommentsFormUnit, GamesManagerUnit;
+  CommentsFormUnit, GamesManagerUnit, GamesListFormUnit;
 
 type
   TAnalyseChessBoard = class(TMainFloatingForm, IPlysProvider, IPositionEditable)
@@ -109,6 +109,8 @@ type
     EditCommentAction: TAction;
     N10: TTntMenuItem;
     EditCommentMenuItem: TTntMenuItem;
+    GamesListAction: TAction;
+    GamesListMenuItem: TTntMenuItem;
     procedure FileExitMenuItemClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormCanResize(Sender: TObject; var NewWidth,
@@ -165,6 +167,8 @@ type
     procedure EndPositionActionUpdate(Sender: TObject);
     procedure EditCommentActionExecute(Sender: TObject);
     procedure EditCommentActionUpdate(Sender: TObject);
+    procedure GamesListActionExecute(Sender: TObject);
+    procedure GamesListActionUpdate(Sender: TObject);
   private
     m_ChessBoard: TChessBoard;
     m_PosBaseChessBoardLayer: TPosBaseChessBoardLayer;
@@ -194,6 +198,7 @@ type
     m_bGameFileInC4NFormat: boolean;
 
     m_GamesManager: TGamesManager;
+    m_GamesListForm: TGamesListForm;
 
     procedure FChessBoardHandler(e: TChessBoardEvent; d1: pointer = nil;
       d2: pointer = nil);
@@ -218,6 +223,7 @@ type
     function FLoadPGNData(const PGNData: TTntStrings): boolean; overload;
     function FLoadPGNData(const wstrData: WideString): boolean; overload;
     procedure FLoadPGNDataFromParser(const PGNParser: TPGNParser);
+
     function FSavePGNData: boolean;
     procedure FSavePGNDataAs;
     function FAskAndSavePGNData: boolean;
@@ -297,6 +303,8 @@ type
 
     procedure FRefreshStatusBar;
 
+    procedure FOnGamesManagerChanged(Sender: TObject);
+
     property ChessBoardFlipped: boolean read FGetChessBoardFlipped write FSetChessBoardFlipped;
   end;
 
@@ -335,6 +343,7 @@ begin
   Caption := Format(LBL_CHESS4NET_ANALYZER_VER, [CHESS4NET_VERSION_TXT]);
 
   m_GamesManager := TGamesManager.Create;
+  m_GamesManager.OnChanged := FOnGamesManagerChanged;
 
   m_PlysTree := TPlysTree.Create;
 
@@ -370,15 +379,17 @@ begin
 
   FDestroyChessEngine;
 
+  m_GamesListForm.GamesListProvider := nil;
+  m_GamesManager.OnChanged := nil;
+  
   m_MoveListForm.PlysProvider := nil;
   m_OpeningsDBManagerForm.OpeningsDBManagerProvider := nil;
 
+  m_GamesManager.Free;
   m_OpeningsDBManager.Free;
   m_PlysTree.Free;
 
   FDestroyChessBoard;
-
-  FreeAndNil(m_GamesManager);
 end;
 
 
@@ -633,12 +644,20 @@ begin
     Screen.Cursor := crDefault;
   end;
 
-  if (bResult and FLoadPGNData(m_GamesManager.Games[0].PGNData)) then
-    FSetGameFileName(AFileName)
-  else
+  if (not bResult) then
   begin
     MessageDlg(MSG_INCORRECT_FILE_FORMAT, mtError, [mbOK], 0);
     exit;
+  end;
+
+  if (Assigned(m_GamesListForm)) then
+    m_GamesListForm.Refresh;
+
+  if (m_GamesManager.GamesCount > 1) then
+  begin
+    GamesListAction.Update;
+    if (not GamesListAction.Checked) then
+      GamesListAction.Execute;
   end;
 
 end;
@@ -1673,6 +1692,42 @@ begin // .WMDropFiles
   end;
 
   inherited;
+end;
+
+
+procedure TAnalyseChessBoard.GamesListActionExecute(Sender: TObject);
+begin
+  if (not Assigned(m_GamesListForm)) then
+  begin
+    m_GamesListForm := TGamesListForm.Create(self, self);
+    m_GamesListForm.GamesListProvider := m_GamesManager;
+  end;
+
+  if (m_GamesListForm.Showing) then
+    m_GamesListForm.Hide
+  else
+    m_GamesListForm.Show;
+end;
+
+
+procedure TAnalyseChessBoard.GamesListActionUpdate(Sender: TObject);
+begin
+  (Sender as TAction).Checked := (Assigned(m_GamesListForm) and
+    m_GamesListForm.Showing);
+end;
+
+
+procedure TAnalyseChessBoard.FOnGamesManagerChanged(Sender: TObject);
+var
+  iIndex: integer;
+begin
+  iIndex := m_GamesManager.CurrentGameIndex;
+  if (iIndex >= 0) then
+  begin
+    if (FLoadPGNData(m_GamesManager.Games[iIndex].PGNData)) then
+      ;
+//      FSetGameFileName(AFileName); // TODO:
+  end;
 end;
 
 end.

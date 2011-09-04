@@ -3,9 +3,9 @@ unit GamesManagerUnit;
 interface
 
 uses
-  SysUtils, Classes, TntClasses, Contnrs,
+  SysUtils, TntSysUtils, Classes, TntClasses, Contnrs,
   //
-  PGNParserUnit;
+  PGNParserUnit, GamesListFormUnit, NonRefInterfacedObjectUnit;
 
 type
   TGameItem = class
@@ -16,15 +16,19 @@ type
   public
     constructor Create;
     property PGNData: WideString read m_wstrPGNData;
+    property Name: WideString read m_wstrName;
   end;
 
-  
-  TGamesManager = class
+
+  TGamesManager = class(TNonRefInterfacedObject, IGamesListProvider)
   private
     m_wstrlData: TTntStringList;
     m_iDataLine: integer;
 
     m_Games: TObjectList;
+    m_iCurrentGameIndex: integer;
+
+    FOnChanged: TNotifyEvent;
 
     function FGetLine: WideString;
     function FGetNextLine: WideString;
@@ -36,6 +40,16 @@ type
     function FGetGamesCount: integer;
     function FGetGame(iIndex: integer): TGameItem;
 
+    procedure FDoChanged;
+
+    function IGamesListProvider.GetGameName = FGetGameName;
+    function FGetGameName(iIndex: integer): WideString;
+
+    function IGamesListProvider.GetCurrentGameIndex = FGetCurrentGameIndex;
+    function FGetCurrentGameIndex: integer;
+    procedure IGamesListProvider.SetCurrentGameIndex = FSetCurrentGameIndex;
+    procedure FSetCurrentGameIndex(iValue: integer);
+
   public
     constructor Create;
     destructor Destroy; override;
@@ -43,14 +57,16 @@ type
     function LoadFromFile(const AFileName: TFileName): boolean;
     function GetGamesCount: integer;
 
+    procedure Clear;
+
     property GamesCount: integer read FGetGamesCount;
     property Games[iIndex: integer]: TGameItem read FGetGame;
+    property CurrentGameIndex: integer read m_iCurrentGameIndex;
+
+    property OnChanged: TNotifyEvent read FOnChanged write FOnChanged;
   end;
 
 implementation
-
-uses
-  NonRefInterfacedObjectUnit;
 
 type
   TPGNDataCursorAdaptor = class(TNonRefInterfacedObject, IPGNDataCursor)
@@ -63,14 +79,19 @@ type
     function IsEndOfData: boolean;
   end;
 
+const
+  NO_NAME = 'NN';
+
 ////////////////////////////////////////////////////////////////////////////////
 // TGamesManager
 
 constructor TGamesManager.Create;
 begin
   inherited Create;
+
   m_wstrlData := TTntStringList.Create;
   m_Games := TObjectList.Create;
+  Clear;
 end;
 
 
@@ -85,6 +106,7 @@ end;
 function TGamesManager.LoadFromFile(const AFileName: TFileName): boolean;
 begin
   m_Games.Clear;
+  m_iCurrentGameIndex := -1;
 
   m_wstrlData.LoadFromFile(AFileName);
   try
@@ -98,7 +120,10 @@ begin
   end;
 
   Result := (m_Games.Count > 0);
-  
+  if (Result) then
+    m_iCurrentGameIndex := 0;
+
+  FDoChanged;
 end;
 
 
@@ -174,7 +199,7 @@ begin // .FParseFile
     wstrlPGNGame := TTntStringList.Create;
 
     if (NParseGame(wstrlPGNGame)) then
-      NAddGame(wstrlPGNGame, 'NN');
+      NAddGame(wstrlPGNGame, NO_NAME);
 
     repeat
       wstrlPGNGame.Clear;
@@ -197,13 +222,16 @@ end;
 
 class function TGamesManager.FCreateGameName(const ATagParser: TPGNTagParser): WideString;
 begin
-  Result := '<TODO:>';
+  if (Assigned(ATagParser)) then
+    Result := Tnt_WideFormat('%s - %s', [ATagParser.White, ATagParser.Black])
+  else
+    Result := NO_NAME;
 end;
 
 
 function TGamesManager.GetGamesCount: integer;
 begin
-  Result := 1;
+  Result := m_Games.Count;
 end;
 
 
@@ -245,6 +273,47 @@ begin
 end;
 
 
+procedure TGamesManager.FDoChanged;
+begin
+  if (not Assigned(FOnChanged)) then
+    exit;
+
+  FOnChanged(self);
+end;
+
+
+procedure TGamesManager.Clear;
+begin
+  m_Games.Clear;
+  m_iCurrentGameIndex := -1;
+  
+  FDoChanged;
+end;
+
+
+function TGamesManager.FGetGameName(iIndex: integer): WideString;
+begin
+  Result := Games[iIndex].Name;
+end;
+
+
+function TGamesManager.FGetCurrentGameIndex: integer;
+begin
+  Result := m_iCurrentGameIndex;
+end;
+
+
+procedure TGamesManager.FSetCurrentGameIndex(iValue: integer);
+begin
+  if ((iValue = m_iCurrentGameIndex) or
+      (not ((iValue >= 0) and (iValue < GamesCount)))) then
+    exit;
+
+  m_iCurrentGameIndex := iValue;
+
+  FDoChanged;
+end;
+
 ////////////////////////////////////////////////////////////////////////////////
 // TPGNDataCursorAdaptor
 
@@ -284,6 +353,7 @@ end;
 constructor TGameItem.FCreate(const wstrPGNData, wstrGameName: WideString);
 begin
   inherited Create;
+  
   m_wstrPGNData := wstrPGNData;
   m_wstrName := wstrGameName;
 end;
