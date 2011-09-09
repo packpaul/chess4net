@@ -45,7 +45,8 @@ type
     constructor Create;
     destructor Destroy; override;
 
-    function Parse(const AData: TTntStrings): boolean;
+    function Parse(const wstrData: WideString): boolean; overload;
+    function Parse(const AData: TTntStrings): boolean; overload;
 
     property Tree: TPlysTree read m_Tree;
     property InC4NFormat: boolean read m_bInC4NFormat;
@@ -71,6 +72,7 @@ type
     function FParse: boolean;
     function FProcessLine(const wstr: WideString): boolean;
     procedure FSetC4N(const strValue: string);
+
   public
     function Parse(ADataCursor: IPGNDataCursor): boolean;
     class function IsTag(wstr: WideString): boolean;
@@ -106,13 +108,13 @@ type
     m_strBkpMove: string;
     m_iPly: integer;
     m_bAddPos: boolean;
-    m_PosMoveStack, m_MovePlyStack: TStack;
+    m_MovePlyStack: TStack;
 
     m_bLastInvalidMove: boolean;
 
     procedure FParse;
     procedure FParseNextToken;
-    function FHasNoTokens: boolean;
+    function FHasTokens: boolean;
     function FParseComment(const wstrToken: WideString; out wstrComment: WideString): boolean;
 
     function FStartLine(const strToken: string): boolean;
@@ -132,11 +134,16 @@ type
 
 
   PMovePly = ^TMovePly;
-  TMovePly = record
+  TMovePly = object
+  private
+    m_bNewed: boolean;
+  public
     move: string;
     ply: integer;
     addPos: boolean; // ??. genOpening
-    posMoveCount: integer;
+
+    function Create: PMovePly;
+    procedure Free;
   end;
 
 
@@ -164,6 +171,20 @@ destructor TPGNParser.Destroy;
 begin
   m_Tree.Free;
   inherited;
+end;
+
+
+function TPGNParser.Parse(const wstrData: WideString): boolean;
+var
+  wstrlData: TTntStringList;
+begin
+  wstrlData := TTntStringList.Create;
+  try
+    wstrlData.Text := wstrData;
+    Result := Parse(wstrlData);
+  finally
+    wstrlData.Free;
+  end;
 end;
 
 
@@ -227,9 +248,12 @@ end;
 
 procedure TPGNParser.FParseTags;
 begin // .FParseTags
+  if (not m_bParseResult) then
+    exit;
+
   with TPGNTagParser.Create do
   try
-    m_bParseResult := (m_bParseResult and Parse(TPGNDataCursorAdaptor.Create(self)));
+    m_bParseResult := Parse(TPGNDataCursorAdaptor.Create(self));
     if (not m_bParseResult) then
       exit;
 
@@ -250,14 +274,13 @@ begin
   m_bInC4NFormat := (iVersion in [1, 2]);
 end;
 
-
+(*
 procedure TPGNParser.FParseGame;
 var
   wstr: WideString;
   wstrlGameData: TTntStringList;
 begin
-  m_bParseResult := (m_bParseResult and (not FIsEndOfData));
-  if (not m_bParseResult) then
+  if ((not m_bParseResult) or FIsEndOfData) then
     exit;
 
   wstrlGameData := TTntStringList.Create;
@@ -290,7 +313,51 @@ begin
   finally
     wstrlGameData.Free;
   end;
-  
+
+end;
+*)
+
+procedure TPGNParser.FParseGame;
+var
+  wstr: WideString;
+  wstrlGameData: TTntStringList;
+begin
+  if (not m_bParseResult) then
+    exit;
+
+  wstrlGameData := TTntStringList.Create;
+  try
+    wstr := FGetLine;
+    while (not FIsEndOfData) do
+    begin
+      if (TPGNTagParser.IsTag(TrimRight(wstr))) then
+        break;
+
+      if (wstr <> '') then
+        wstrlGameData.Append(wstr);
+
+      wstr := FGetNextLine;
+    end;
+{
+    // TODO: C4N = 3 handling
+    m_bParseResult := (wstrlGameData.Count > 0);
+    if (not m_bParseResult) then
+      exit;
+}
+    with TGameParser.Create(self) do
+    try
+      Parse(wstrlGameData);
+
+      self.m_bInC4NFormat := InC4NFormat;
+
+    finally
+      Free;
+    end;
+
+  finally
+    wstrlGameData.Free;
+  end;
+
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -340,10 +407,8 @@ end;
 
 procedure TGameParser.FParse;
 var
-  moveEsts: TList;
   i: integer;
 begin
-
   m_ChessRulesEngine.InitNewGame;
   if (m_strStartPosition <> '') then
   begin
@@ -352,47 +417,38 @@ begin
   end;
 
   m_Tree.Clear;
+  
   m_Tree.WhiteStarts := (m_ChessRulesEngine.Position.color = fcWhite);
   m_Tree.Add(m_ChessRulesEngine.GetPosition);
   m_Tree.PlysOffset := 2 * m_ChessRulesEngine.MovesOffset;
 
-  moveEsts := nil;
-  m_PosMoveStack := nil;
   m_MovePlyStack := TStack.Create;
   try
-    moveEsts := TList.Create;
-    m_PosMoveStack := TStack.Create;
-
     m_iPly := m_Tree.PlysOffset;
     m_strBkpMove := '';
     m_bLastInvalidMove := TRUE;
     m_bAddPos := TRUE;
 
-    repeat
+    while (FHasTokens) do
       FParseNextToken;
-    until FHasNoTokens;
-
+{
+    // TODO: C4N = 3 handling
     if (m_MovePlyStack.Count <> 0) then
       raise EPGNParser.Create;
+}
 
   finally
-    for i := 0 to moveEsts.Count - 1 do
-      Dispose(moveEsts[i]);
-    moveEsts.Free;
-
-    while (m_PosMoveStack.Count > 0) do
-      Dispose(m_PosMoveStack.Pop);
-    m_PosMoveStack.Free;
-
-    m_MovePlyStack.Free;
+    if (m_MovePlyStack.Count > 0) then
+      PMovePly(m_MovePlyStack.Pop).Free;
+    FreeAndNil(m_MovePlyStack);
   end;
 
 end;
 
 
-function TGameParser.FHasNoTokens: boolean;
+function TGameParser.FHasTokens: boolean;
 begin
-  Result := (m_iDataLine >= m_wstrlData.Count);
+  Result := (m_iDataLine < m_wstrlData.Count);
 end;
 
 
@@ -520,7 +576,7 @@ begin
   Result := '';
 
   repeat
-    if (FHasNoTokens) then
+    if (not FHasTokens) then
       exit;
 
     wstr := TrimLeft(m_wstrlData[m_iDataLine]);
@@ -564,7 +620,7 @@ begin
   bEndOfComment := FALSE;
   bNeedTrimFlag := FALSE;
 
-  while (not FHasNoTokens) do
+  while (FHasTokens) do
   begin
     if (TrimRight(wstr) = '|') then
     begin
@@ -623,11 +679,11 @@ begin
     exit;
   end;
 
-  New(movePly);
+  movePly := movePly.Create;
+
   movePly.move := m_strBkpMove;
   movePly.ply := m_iPly;
   movePly.addPos := m_bAddPos;
-  movePly.posMoveCount := m_PosMoveStack.Count;
 
   if (not m_bLastInvalidMove) then
   begin
@@ -650,35 +706,33 @@ end;
 procedure TGameParser.FTakeBackLine;
 var
   movePly: PMovePly;
-  n: integer;
 begin
   movePly := PMovePly(m_MovePlyStack.Pop);
-  while (movePly.ply <= m_iPly) do
-  begin
-    m_ChessRulesEngine.TakeBack;
-    dec(m_iPly);
+  try
+    while (movePly.ply <= m_iPly) do
+    begin
+      m_ChessRulesEngine.TakeBack;
+      dec(m_iPly);
+    end;
+
+    if m_ChessRulesEngine.DoMove(movePly.move) then
+    begin
+      m_Tree.SetPlyForPlyIndex(m_ChessRulesEngine.NPlysDone - m_Tree.PlysOffset,
+        m_ChessRulesEngine.lastMoveStr);
+      inc(m_iPly);
+    end
+    else
+    begin
+      m_bLastInvalidMove := TRUE;
+      m_bAddPos := movePly.addPos; // Opening
+    end;
+
+    m_strBkpMove := movePly.move;
+
+  finally
+    movePly.Free;
   end;
 
-  if m_ChessRulesEngine.DoMove(movePly.move) then
-  begin
-    m_Tree.SetPlyForPlyIndex(m_ChessRulesEngine.NPlysDone - m_Tree.PlysOffset,
-      m_ChessRulesEngine.lastMoveStr);
-    inc(m_iPly);
-  end
-  else
-  begin
-    m_bLastInvalidMove := TRUE;
-    m_bAddPos := movePly.addPos; // Opening
-  end;
-
-  n := movePly.posMoveCount;
-  while (n < m_PosMoveStack.Count) do // Deletion of subline stack
-    Dispose(m_PosMoveStack.Pop);
-
-  m_strBkpMove := movePly.move;
-
-  movePly.move := '';
-  Dispose(movePly);
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -805,6 +859,27 @@ end;
 function TPGNDataCursorAdaptor.IsEndOfData: boolean;
 begin
   Result := m_PGNParser.FIsEndOfData;
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TMovePly
+
+function TMovePly.Create: PMovePly;
+begin
+  New(Result);
+  Result.m_bNewed := TRUE;
+end;
+
+
+procedure TMovePly.Free;
+begin
+  if (not Assigned(@self)) then
+    exit;
+
+  move := '';
+
+  if (m_bNewed) then
+    Dispose(@self);
 end;
 
 end.

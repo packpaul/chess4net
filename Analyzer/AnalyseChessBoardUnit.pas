@@ -220,8 +220,7 @@ type
     procedure FSynchronizeChessEngineWithChessBoardAndStartEvaluation;
 
     procedure FLoadPGNDataFromFile(const AFileName: TFileName);
-    function FLoadPGNData(const PGNData: TTntStrings): boolean; overload;
-    function FLoadPGNData(const wstrData: WideString): boolean; overload;
+    function FLoadPGNDataForCurrentGameInGameList: boolean;
     procedure FLoadPGNDataFromParser(const PGNParser: TPGNParser);
 
     function FSavePGNData: boolean;
@@ -297,6 +296,7 @@ type
     procedure FSetGameChanged(bValue: boolean);
 
     function FSetNewStandard: boolean;
+    procedure FNewGameToGameList;
 
     function FGetChessBoardFlipped: boolean;
     procedure FSetChessBoardFlipped(bValue: boolean);
@@ -644,12 +644,6 @@ begin
     Screen.Cursor := crDefault;
   end;
 
-  if (not bResult) then
-  begin
-    MessageDlg(MSG_INCORRECT_FILE_FORMAT, mtError, [mbOK], 0);
-    exit;
-  end;
-
   if (Assigned(m_GamesListForm)) then
     m_GamesListForm.Refresh;
 
@@ -660,6 +654,9 @@ begin
       GamesListAction.Execute;
   end;
 
+  if ((not bResult) or
+      ((m_GamesManager.GetGamesCount = 1) and (m_GamesManager.Games[0].DataError))) then
+    MessageDlg(MSG_INCORRECT_FILE_FORMAT, mtError, [mbOK], 0);
 end;
 
 
@@ -694,7 +691,7 @@ begin
 end;
 
 
-function TAnalyseChessBoard.FLoadPGNData(const PGNData: TTntStrings): boolean;
+function TAnalyseChessBoard.FLoadPGNDataForCurrentGameInGameList: boolean;
 var
   PGNParser: TPGNParser;
 begin
@@ -702,7 +699,7 @@ begin
 
   PGNParser := TPGNParser.Create;
   try
-    if (not PGNParser.Parse(PGNData)) then
+    if (not m_GamesManager.ParseGame(PGNParser, m_GamesManager.CurrentGameIndex)) then
       exit;
 
     FLoadPGNDataFromParser(PGNParser);
@@ -712,21 +709,6 @@ begin
   end;
 
   Result := TRUE;
-end;
-
-
-function TAnalyseChessBoard.FLoadPGNData(const wstrData: WideString): boolean;
-var
-  wstrlData: TTntStringList;
-begin
-  wstrlData := TTntStringList.Create;
-  try
-    wstrlData.Text := wstrData;
-    Result := FLoadPGNData(wstrlData);
-  finally
-    wstrlData.Free;
-  end;
-  
 end;
 
 
@@ -741,7 +723,6 @@ begin
     m_bGameFileInC4NFormat := PGNParser.InC4NFormat;
 
     FSetToInitialPosition;
-
     FRefreshMoveListForm;
 
   finally
@@ -851,6 +832,9 @@ begin
   MoveListAction.Execute;
   OpeningsDBManagerAction.Execute;
   CommentsAction.Execute;
+
+  FNewGameToGameList;
+
 {$IFDEF RELEASE}
   with TURLVersionQuery.Create do
   begin
@@ -1229,6 +1213,25 @@ begin
 
   FInitPosition;
   FRefreshMoveListForm;
+
+  FNewGameToGameList;
+  if (Assigned(m_GamesListForm)) then
+    m_GamesListForm.Refresh;
+end;
+
+
+procedure TAnalyseChessBoard.FNewGameToGameList;
+var
+  PGNWriter: TPGNWriter;
+begin
+  PGNWriter := TPGNWriter.Create;
+  try
+    m_GamesManager.Clear;
+    PGNWriter.WriteInChess4NetFormat(m_PlysTree);
+    m_GamesManager.AddGame(PGNWriter);
+  finally
+    PGNWriter.Free;
+  end;
 end;
 
 
@@ -1719,14 +1722,17 @@ end;
 
 procedure TAnalyseChessBoard.FOnGamesManagerChanged(Sender: TObject);
 var
-  iIndex: integer;
+  AGameItem: TGameItem;
 begin
-  iIndex := m_GamesManager.CurrentGameIndex;
-  if (iIndex >= 0) then
+  if (FLoadPGNDataForCurrentGameInGameList) then
   begin
-    if (FLoadPGNData(m_GamesManager.Games[iIndex].PGNData)) then
-      ;
-//      FSetGameFileName(AFileName); // TODO:
+    AGameItem := m_GamesManager.Games[m_GamesManager.CurrentGameIndex];
+    FSetGameFileName(AGameItem.FileName);
+  end
+  else
+  begin
+    FInitPosition;
+    FRefreshMoveListForm;
   end;
 end;
 

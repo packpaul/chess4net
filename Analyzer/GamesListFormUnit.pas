@@ -14,13 +14,21 @@ uses
   FloatingFormsUnit;
 
 type
+  TGameData = object
+  private
+    wstrName: WideString;
+    bDataError: boolean;
+  public
+    property Name: WideString read wstrName write wstrName;
+    property DataError: boolean read bDataError write bDataError;
+  end;
+
   IGamesListProvider = interface
     function GetGamesCount: integer;
-    function GetGameName(iIndex: integer): WideString;
     function GetCurrentGameIndex: integer;
     procedure SetCurrentGameIndex(iValue: integer);
+    procedure GetGameData(iIndex: integer; out AGameData: TGameData);
     property GamesCount: integer read GetGamesCount;
-    property GameNames[iIndex: integer]: WideString read GetGameName;
     property CurrentGameIndex: integer read GetCurrentGameIndex
                                        write SetCurrentGameIndex;
   end;
@@ -35,6 +43,7 @@ type
   private
     m_GamesListProvider: IGamesListProvider;
     procedure FSetGamesListProvider(Value: IGamesListProvider);
+    function FGetGameName(iGameIndex: integer): WideString;
   public
     procedure Refresh;
     property GamesListProvider: IGamesListProvider
@@ -47,6 +56,9 @@ uses
   SysUtils, TntSysUtils;
 
 {$R *.dfm}
+
+const
+  DATA_ERROR = '<DATA ERROR>';
 
 ////////////////////////////////////////////////////////////////////////////////
 // TGamesListForm
@@ -61,11 +73,23 @@ begin
   GamesListBox.Clear;
   for i := 0 to m_GamesListProvider.GamesCount - 1 do
   begin
-    GamesListBox.Items.Append(
-      Tnt_WideFormat('%d. %s', [i + 1, m_GamesListProvider.GameNames[i]]));
+    GamesListBox.Items.Append(FGetGameName(i));
   end;
   if ((GamesListBox.Count > 0) and (m_GamesListProvider.CurrentGameIndex >= 0)) then
     GamesListBox.ItemIndex := m_GamesListProvider.CurrentGameIndex;
+end;
+
+
+function TGamesListForm.FGetGameName(iGameIndex: integer): WideString;
+var
+  AGameData: TGameData;
+begin
+  m_GamesListProvider.GetGameData(iGameIndex, AGameData);
+
+  if (AGameData.DataError) then
+    Result := Tnt_WideFormat('%d. %s', [iGameIndex + 1, DATA_ERROR])
+  else
+    Result := Tnt_WideFormat('%d. %s', [iGameIndex + 1, AGameData.Name]);
 end;
 
 
@@ -110,6 +134,10 @@ begin
     exit;
 
   m_GamesListProvider.CurrentGameIndex := GamesListBox.ItemIndex;
+  GamesListBox.ItemIndex := m_GamesListProvider.CurrentGameIndex;
+
+  GamesListBox.Items[GamesListBox.ItemIndex] :=
+    FGetGameName(m_GamesListProvider.CurrentGameIndex);
 end;
 
 end.

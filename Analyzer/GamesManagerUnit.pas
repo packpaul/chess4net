@@ -5,18 +5,23 @@ interface
 uses
   SysUtils, TntSysUtils, Classes, TntClasses, Contnrs,
   //
-  PGNParserUnit, GamesListFormUnit, NonRefInterfacedObjectUnit;
+  PGNParserUnit, PGNWriterUnit, GamesListFormUnit, NonRefInterfacedObjectUnit;
 
 type
   TGameItem = class
   private
     m_wstrPGNData: WideString;
     m_wstrName: WideString;
+    m_bDataError: boolean;
+    m_FileName: TFileName;
     constructor FCreate(const wstrPGNData, wstrGameName: WideString);
+    procedure FSetDataError(bValue: boolean);
   public
     constructor Create;
     property PGNData: WideString read m_wstrPGNData;
     property Name: WideString read m_wstrName;
+    property FileName: TFileName read m_FileName;
+    property DataError: boolean read m_bDataError;
   end;
 
 
@@ -37,13 +42,13 @@ type
     procedure FParseFile;
     class function FCreateGameName(const ATagParser: TPGNTagParser): WideString;
 
-    function FGetGamesCount: integer;
+    procedure FAddGame(const APGNGame: TTntStrings; const wstrGameName: WideString);
     function FGetGame(iIndex: integer): TGameItem;
 
     procedure FDoChanged;
 
-    function IGamesListProvider.GetGameName = FGetGameName;
-    function FGetGameName(iIndex: integer): WideString;
+    procedure IGamesListProvider.GetGameData = FGetGameData;
+    procedure FGetGameData(iIndex: integer; out AGameData: TGameData);
 
     function IGamesListProvider.GetCurrentGameIndex = FGetCurrentGameIndex;
     function FGetCurrentGameIndex: integer;
@@ -58,8 +63,10 @@ type
     function GetGamesCount: integer;
 
     procedure Clear;
+    procedure AddGame(const APGNWriter: TPGNWriter);
+    function ParseGame(var PGNParser: TPGNParser; iGameIndex: integer): boolean;
 
-    property GamesCount: integer read FGetGamesCount;
+    property GamesCount: integer read GetGamesCount;
     property Games[iIndex: integer]: TGameItem read FGetGame;
     property CurrentGameIndex: integer read m_iCurrentGameIndex;
 
@@ -81,6 +88,7 @@ type
 
 const
   NO_NAME = 'NN';
+  NO_NAME_GAME = 'NN - NN';
 
 ////////////////////////////////////////////////////////////////////////////////
 // TGamesManager
@@ -110,16 +118,16 @@ begin
 
   m_wstrlData.LoadFromFile(AFileName);
   try
-    m_iDataLine := 0;
-
     FParseFile;
-
   finally
-    m_wstrlData.Clear;
     m_iDataLine := 0;
+    m_wstrlData.Clear;
   end;
 
-  Result := (m_Games.Count > 0);
+  if (GamesCount = 1) then
+    Games[0].m_FileName := AFileName;
+
+  Result := (GamesCount > 0);
   if (Result) then
     m_iCurrentGameIndex := 0;
 
@@ -157,16 +165,6 @@ procedure TGamesManager.FParseFile;
 
 var
   TagParser: TPGNTagParser;
-
-  procedure NAddGame(const APGNGame: TTntStrings; const wstrGameName: WideString);
-  var
-    GameItem: TGameItem;
-  begin
-    GameItem := TGameItem.FCreate(APGNGame.Text, wstrGameName);
-    m_Games.Add(GameItem);
-  end;
-
-var
   DataCursor: TPGNDataCursorAdaptor;
 
   function NParseTag(var wstrlPGNGame: TTntStringList): boolean;
@@ -199,7 +197,7 @@ begin // .FParseFile
     wstrlPGNGame := TTntStringList.Create;
 
     if (NParseGame(wstrlPGNGame)) then
-      NAddGame(wstrlPGNGame, NO_NAME);
+      FAddGame(wstrlPGNGame, NO_NAME_GAME);
 
     repeat
       wstrlPGNGame.Clear;
@@ -207,7 +205,7 @@ begin // .FParseFile
       if (NParseTag(wstrlPGNGame)) then
         exit;
       if (NParseGame(wstrlPGNGame)) then
-        NAddGame(wstrlPGNGame, FCreateGameName(TagParser));
+        FAddGame(wstrlPGNGame, FCreateGameName(TagParser));
 
     until (FIsEndOfData);
 
@@ -220,12 +218,36 @@ begin // .FParseFile
 end;
 
 
+procedure TGamesManager.FAddGame(const APGNGame: TTntStrings;
+  const wstrGameName: WideString);
+var
+  GameItem: TGameItem;
+begin
+  GameItem := TGameItem.FCreate(APGNGame.Text, wstrGameName);
+  m_Games.Add(GameItem);
+end;
+
+
 class function TGamesManager.FCreateGameName(const ATagParser: TPGNTagParser): WideString;
+var
+  wstrWhite, wstrBlack: WideString;
 begin
   if (Assigned(ATagParser)) then
-    Result := Tnt_WideFormat('%s - %s', [ATagParser.White, ATagParser.Black])
+  begin
+    if (ATagParser.White <> '') then
+      wstrWhite := ATagParser.White
+    else
+      wstrWhite := NO_NAME;
+
+    if (ATagParser.Black <> '') then
+      wstrBlack := ATagParser.Black
+    else
+      wstrBlack := NO_NAME;
+
+    Result := Tnt_WideFormat('%s - %s', [wstrWhite, wstrBlack])
+  end
   else
-    Result := NO_NAME;
+    Result := NO_NAME_GAME;
 end;
 
 
@@ -261,12 +283,6 @@ begin
 end;
 
 
-function TGamesManager.FGetGamesCount: integer;
-begin
-  Result := m_Games.Count;
-end;
-
-
 function TGamesManager.FGetGame(iIndex: integer): TGameItem;
 begin
   Result := m_Games[iIndex] as TGameItem;
@@ -286,20 +302,26 @@ procedure TGamesManager.Clear;
 begin
   m_Games.Clear;
   m_iCurrentGameIndex := -1;
-  
+
   FDoChanged;
 end;
 
 
-function TGamesManager.FGetGameName(iIndex: integer): WideString;
+procedure TGamesManager.FGetGameData(iIndex: integer; out AGameData: TGameData);
+var
+  GameItem: TGameItem;
 begin
-  Result := Games[iIndex].Name;
+  GameItem := Games[iIndex];
+
+  AGameData.Name := GameItem.Name;
+  AGameData.DataError := GameItem.DataError;
 end;
 
 
 function TGamesManager.FGetCurrentGameIndex: integer;
 begin
   Result := m_iCurrentGameIndex;
+  // TODO
 end;
 
 
@@ -312,6 +334,33 @@ begin
   m_iCurrentGameIndex := iValue;
 
   FDoChanged;
+end;
+
+
+function TGamesManager.ParseGame(var PGNParser: TPGNParser; iGameIndex: integer): boolean;
+var
+  AGameItem: TGameItem;
+begin
+  Result := FALSE;
+
+  if (not (Assigned(PGNParser) and
+           (iGameIndex >= 0) and (iGameIndex < GamesCount))) then
+    exit;
+
+  AGameItem := Games[iGameIndex];
+
+  Result := PGNParser.Parse(AGameItem.PGNData);
+
+  if (not Result) then
+    AGameItem.FSetDataError(TRUE);
+end;
+
+
+procedure TGamesManager.AddGame(const APGNWriter: TPGNWriter);
+begin
+  FAddGame(APGNWriter.Data, NO_NAME);
+  if (GamesCount = 1) then
+    FSetCurrentGameIndex(0);
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -353,9 +402,21 @@ end;
 constructor TGameItem.FCreate(const wstrPGNData, wstrGameName: WideString);
 begin
   inherited Create;
-  
+
   m_wstrPGNData := wstrPGNData;
   m_wstrName := wstrGameName;
+end;
+
+
+procedure TGameItem.FSetDataError(bValue: boolean);
+begin
+  if (m_bDataError or (not bValue)) then
+    exit;
+
+  m_bDataError := bValue;
+  
+  m_wstrPGNData := '';
+  m_FileName := '';
 end;
 
 end.
