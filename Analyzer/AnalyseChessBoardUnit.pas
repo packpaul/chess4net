@@ -193,6 +193,9 @@ type
     m_lwPlysListUpdateID: LongWord;
 
     m_bGameChanged: boolean;
+    m_bPlysTreeChanged: boolean;    
+
+    m_CurrentGameItem: TGameItem;
 
     m_GameFileName: TFileName;
     m_bGameFileInC4NFormat: boolean;
@@ -220,8 +223,9 @@ type
     procedure FSynchronizeChessEngineWithChessBoardAndStartEvaluation;
 
     procedure FLoadPGNDataFromFile(const AFileName: TFileName);
-    function FLoadPGNDataForCurrentGameInGameList: boolean;
     procedure FLoadPGNDataFromParser(const PGNParser: TPGNParser);
+
+    function FLoadDataForCurrentGameInGameList: boolean;
 
     function FSavePGNData: boolean;
     procedure FSavePGNDataAs;
@@ -296,7 +300,7 @@ type
     procedure FSetGameChanged(bValue: boolean);
 
     function FSetNewStandard: boolean;
-    procedure FNewGameToGameList;
+    procedure FSetGameToGameList;
 
     function FGetChessBoardFlipped: boolean;
     procedure FSetChessBoardFlipped(bValue: boolean);
@@ -304,6 +308,8 @@ type
     procedure FRefreshStatusBar;
 
     procedure FOnGamesManagerChanged(Sender: TObject);
+
+    procedure FSaveGameContextData;
 
     property ChessBoardFlipped: boolean read FGetChessBoardFlipped write FSetChessBoardFlipped;
   end;
@@ -318,6 +324,21 @@ uses
 
 {$R *.dfm}
 
+type
+  TGameContextData = class
+  private
+    m_iCurrentPlyIndex: integer;
+    m_bGameChanged: boolean;
+    m_PlysTree: TPlysTree;
+    procedure FSetPlysTree(const Value: TPlysTree);
+  public
+    destructor Destroy; override;
+    class function GetNullInstance: TGameContextData;
+    property CurrentPlyIndex: integer read m_iCurrentPlyIndex write m_iCurrentPlyIndex;
+    property GameChanged: boolean read m_bGameChanged write m_bGameChanged;
+    property PlysTree: TPlysTree read m_PlysTree write FSetPlysTree;
+  end;
+
 const
   MSG_GAME_CHANGED_SAVE_CHANGES = 'Current game was modified. Save the changes?';
   MSG_INCORRECT_FILE_FORMAT = 'Incorrect file format encountered or data is broken!';
@@ -329,6 +350,9 @@ const
 
   LBL_EDITING = 'Editing';
   LBL_CHANGED = 'Changed';
+
+var
+  g_NullGameContextDataInstance: TGameContextData = nil;
 
 ////////////////////////////////////////////////////////////////////////////////
 // TAnalyseChessBoard
@@ -385,7 +409,9 @@ begin
   m_MoveListForm.PlysProvider := nil;
   m_OpeningsDBManagerForm.OpeningsDBManagerProvider := nil;
 
+  m_CurrentGameItem := nil;
   m_GamesManager.Free;
+
   m_OpeningsDBManager.Free;
   m_PlysTree.Free;
 
@@ -487,6 +513,8 @@ begin
     exit;
 
   m_bGameChanged := bValue;
+  if (m_bGameChanged) then
+    m_bPlysTreeChanged := TRUE;
 
   FRefreshStatusBar;
 end;
@@ -584,6 +612,7 @@ begin
   m_PlysTree.Clear;
   m_PlysTree.WhiteStarts := (m_ChessBoard.PositionColor = fcWhite);
   m_PlysTree.Add(m_ChessBoard.GetPosition);
+  m_bPlysTreeChanged := FALSE;
 
   FSetGameFileName('');
   FSetGameChanged(FALSE);
@@ -655,7 +684,7 @@ begin
   end;
 
   if ((not bResult) or
-      ((m_GamesManager.GetGamesCount = 1) and (m_GamesManager.Games[0].DataError))) then
+      ((m_GamesManager.GetGamesCount = 1) and (m_CurrentGameItem.DataError))) then
     MessageDlg(MSG_INCORRECT_FILE_FORMAT, mtError, [mbOK], 0);
 end;
 
@@ -691,22 +720,51 @@ begin
 end;
 
 
-function TAnalyseChessBoard.FLoadPGNDataForCurrentGameInGameList: boolean;
+function TAnalyseChessBoard.FLoadDataForCurrentGameInGameList: boolean;
+
+  function NLoadPGNData: boolean;
+  var
+    PGNParser: TPGNParser;
+  begin
+    Result := FALSE;
+
+    PGNParser := TPGNParser.Create;
+    try
+      if (not m_GamesManager.ParseGame(PGNParser, m_GamesManager.CurrentGameIndex)) then
+        exit;
+
+      FLoadPGNDataFromParser(PGNParser);
+
+    finally
+      PGNParser.Free;
+    end;
+
+    Result := TRUE;
+  end;
+
 var
-  PGNParser: TPGNParser;
-begin
+  AGameContextData: TGameContextData;
+begin // .FLoadDataForCurrentGameInGameList
   Result := FALSE;
 
-  PGNParser := TPGNParser.Create;
-  try
-    if (not m_GamesManager.ParseGame(PGNParser, m_GamesManager.CurrentGameIndex)) then
+  AGameContextData := TGameContextData.GetNullInstance;
+
+  if (Assigned(m_CurrentGameItem) and Assigned(m_CurrentGameItem.Data)) then
+    AGameContextData := m_CurrentGameItem.Data as TGameContextData;
+
+  if (Assigned(AGameContextData.PlysTree)) then
+  begin
+    m_PlysTree.Assign(AGameContextData.PlysTree);
+    m_bPlysTreeChanged := FALSE;
+  end
+  else
+  begin
+    if (not NLoadPGNData) then
       exit;
-
-    FLoadPGNDataFromParser(PGNParser);
-
-  finally
-    PGNParser.Free;
   end;
+
+  m_iCurrentPlyIndex := AGameContextData.CurrentPlyIndex;
+  m_bGameChanged := AGameContextData.GameChanged; 
 
   Result := TRUE;
 end;
@@ -833,7 +891,7 @@ begin
   OpeningsDBManagerAction.Execute;
   CommentsAction.Execute;
 
-  FNewGameToGameList;
+  FSetGameToGameList;
 
 {$IFDEF RELEASE}
   with TURLVersionQuery.Create do
@@ -998,7 +1056,10 @@ function TAnalyseChessBoard.FSetPlyForPlyIndex(iPlyIndex: integer; const strPly:
 begin
   Result := m_PlysTree.SetPlyForPlyIndex(iPlyIndex, strPly);
   if (Result) then
+  begin
+    m_bPlysTreeChanged := TRUE;
     inc(m_lwPlysListUpdateID);
+  end;
 
   FSetCurrentPlyIndex(iPlyIndex);  
 end;
@@ -1214,20 +1275,20 @@ begin
   FInitPosition;
   FRefreshMoveListForm;
 
-  FNewGameToGameList;
+  FSetGameToGameList;
   if (Assigned(m_GamesListForm)) then
     m_GamesListForm.Refresh;
 end;
 
 
-procedure TAnalyseChessBoard.FNewGameToGameList;
+procedure TAnalyseChessBoard.FSetGameToGameList;
 var
   PGNWriter: TPGNWriter;
 begin
   PGNWriter := TPGNWriter.Create;
   try
-    m_GamesManager.Clear;
     PGNWriter.WriteInChess4NetFormat(m_PlysTree);
+    m_GamesManager.Clear;
     m_GamesManager.AddGame(PGNWriter);
   finally
     PGNWriter.Free;
@@ -1356,6 +1417,7 @@ begin
     exit;
 
   m_PlysTree.SetLineToMain;
+  FSetGameChanged(TRUE);  
 
   inc(m_lwPlysListUpdateID);
   FRefreshMoveListForm;
@@ -1440,6 +1502,10 @@ begin
   FSynchronizeChessEngineWithChessBoardAndStartEvaluation;
 
   FRefreshStatusBar;
+
+  FSetGameToGameList;
+  if (Assigned(m_GamesListForm)) then
+    m_GamesListForm.Refresh;
 end;
 
 
@@ -1721,19 +1787,76 @@ end;
 
 
 procedure TAnalyseChessBoard.FOnGamesManagerChanged(Sender: TObject);
-var
-  AGameItem: TGameItem;
 begin
-  if (FLoadPGNDataForCurrentGameInGameList) then
-  begin
-    AGameItem := m_GamesManager.Games[m_GamesManager.CurrentGameIndex];
-    FSetGameFileName(AGameItem.FileName);
-  end
+  FSaveGameContextData;
+
+  if (m_GamesManager.CurrentGameIndex >= 0) then
+    m_CurrentGameItem := m_GamesManager.Games[m_GamesManager.CurrentGameIndex];
+
+  if (FLoadDataForCurrentGameInGameList) then
+    FSetGameFileName(m_CurrentGameItem.FileName);
   else
   begin
+    m_CurrentGameItem := nil;
     FInitPosition;
-    FRefreshMoveListForm;
   end;
+
+  FRefreshMoveListForm;
 end;
+
+
+procedure TAnalyseChessBoard.FSaveGameContextData;
+var
+  AGameContextData: TGameContextData;
+begin
+  if (not Assigned(m_CurrentGameItem)) then
+    exit;
+
+  if ((m_iCurrentPlyIndex <> 0) or m_bGameChanged or m_bPlysTreeChanged) then
+  begin
+    AGameContextData := m_CurrentGameItem.Data as TGameContextData;
+    if (not Assigned(AGameContextData)) then
+    begin
+      AGameContextData := TGameContextData.Create;
+      m_CurrentGameItem.SetData(TObject(AGameContextData));
+    end;
+
+    AGameContextData.CurrentPlyIndex := m_iCurrentPlyIndex;
+    AGameContextData.GameChanged := m_bGameChanged;
+    if (m_bPlysTreeChanged) then
+      AGameContextData.PlysTree := m_PlysTree;
+  end;
+  
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TGameContextData
+
+destructor TGameContextData.Destroy;
+begin
+  m_PlysTree.Free;
+  inherited;
+end;
+
+
+procedure TGameContextData.FSetPlysTree(const Value: TPlysTree);
+begin
+  if (not Assigned(m_PlysTree)) then
+    m_PlysTree := TPlysTree.Create;
+  m_PlysTree.Assign(Value);
+end;
+
+
+class function TGameContextData.GetNullInstance: TGameContextData;
+begin
+  if (not Assigned(g_NullGameContextDataInstance)) then
+    g_NullGameContextDataInstance := TGameContextData.Create;
+  Result := g_NullGameContextDataInstance;
+end;
+
+initialization
+
+finalization
+  FreeAndNil(g_NullGameContextDataInstance);
 
 end.

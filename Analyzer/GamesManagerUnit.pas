@@ -14,13 +14,17 @@ type
     m_wstrName: WideString;
     m_bDataError: boolean;
     m_FileName: TFileName;
+    m_Data: TObject;
     constructor FCreate(const wstrPGNData, wstrGameName: WideString);
     procedure FSetDataError(bValue: boolean);
   public
     constructor Create;
+    destructor Destroy; override;
+    procedure SetData(var AData: TObject);
     property PGNData: WideString read m_wstrPGNData;
     property Name: WideString read m_wstrName;
     property FileName: TFileName read m_FileName;
+    property Data: TObject read m_Data;
     property DataError: boolean read m_bDataError;
   end;
 
@@ -321,7 +325,6 @@ end;
 function TGamesManager.FGetCurrentGameIndex: integer;
 begin
   Result := m_iCurrentGameIndex;
-  // TODO
 end;
 
 
@@ -358,7 +361,7 @@ end;
 
 procedure TGamesManager.AddGame(const APGNWriter: TPGNWriter);
 begin
-  FAddGame(APGNWriter.Data, NO_NAME);
+  FAddGame(APGNWriter.Data, NO_NAME_GAME);
   if (GamesCount = 1) then
     FSetCurrentGameIndex(0);
 end;
@@ -408,15 +411,28 @@ begin
 end;
 
 
+destructor TGameItem.Destroy;
+begin
+  m_Data.Free; 
+  inherited;
+end;
+
+
 procedure TGameItem.FSetDataError(bValue: boolean);
 begin
   if (m_bDataError or (not bValue)) then
     exit;
 
   m_bDataError := bValue;
-  
+
   m_wstrPGNData := '';
   m_FileName := '';
+end;
+
+
+procedure TGameItem.SetData(var AData: TObject);
+begin
+  m_Data := AData;
 end;
 
 end.
