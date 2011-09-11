@@ -193,9 +193,7 @@ type
     m_lwPlysListUpdateID: LongWord;
 
     m_bGameChanged: boolean;
-    m_bPlysTreeChanged: boolean;    
-
-    m_CurrentGameItem: TGameItem;
+    m_bPlysTreeChanged: boolean;
 
     m_GameFileName: TFileName;
     m_bGameFileInC4NFormat: boolean;
@@ -256,7 +254,8 @@ type
     function FGetCurrentPlyIndex: integer;
 
     procedure IPlysProvider.SetCurrentPlyIndex = FSetCurrentPlyIndex;
-    procedure FSetCurrentPlyIndex(iValue: integer);
+    procedure FSetCurrentPlyIndex(iValue: integer); overload;
+    procedure FSetCurrentPlyIndex(iValue: integer; bForwardMoveFlag: boolean); overload;
 
     function IPlysProvider.HasSeveralPlysForPlyIndex = FHasSeveralPlysForPlyIndex;
     function FHasSeveralPlysForPlyIndex(iPlyIndex: integer): boolean;
@@ -300,7 +299,7 @@ type
     procedure FSetGameChanged(bValue: boolean);
 
     function FSetNewStandard: boolean;
-    procedure FSetGameToGameList;
+    procedure FSetGameToGameList(iGameIndex: integer = -1);
 
     function FGetChessBoardFlipped: boolean;
     procedure FSetChessBoardFlipped(bValue: boolean);
@@ -308,8 +307,9 @@ type
     procedure FRefreshStatusBar;
 
     procedure FOnGamesManagerChanged(Sender: TObject);
+    procedure FOnCurrentGameIndexChanged(iOldGameIndex: integer; var iNewGameIndex: integer);
 
-    procedure FSaveGameContextData;
+    procedure FSaveGameContextData(iGameIndex: integer);
 
     property ChessBoardFlipped: boolean read FGetChessBoardFlipped write FSetChessBoardFlipped;
   end;
@@ -368,6 +368,7 @@ begin
 
   m_GamesManager := TGamesManager.Create;
   m_GamesManager.OnChanged := FOnGamesManagerChanged;
+  m_GamesManager.OnCurrentGameIndexChange := FOnCurrentGameIndexChanged; 
 
   m_PlysTree := TPlysTree.Create;
 
@@ -405,11 +406,11 @@ begin
 
   m_GamesListForm.GamesListProvider := nil;
   m_GamesManager.OnChanged := nil;
+  m_GamesManager.OnCurrentGameIndexChange := nil;
   
   m_MoveListForm.PlysProvider := nil;
   m_OpeningsDBManagerForm.OpeningsDBManagerProvider := nil;
 
-  m_CurrentGameItem := nil;
   m_GamesManager.Free;
 
   m_OpeningsDBManager.Free;
@@ -612,10 +613,10 @@ begin
   m_PlysTree.Clear;
   m_PlysTree.WhiteStarts := (m_ChessBoard.PositionColor = fcWhite);
   m_PlysTree.Add(m_ChessBoard.GetPosition);
-  m_bPlysTreeChanged := FALSE;
 
   FSetGameFileName('');
   FSetGameChanged(FALSE);
+  m_bPlysTreeChanged := FALSE;  
 
   FSynchronizeChessEngineWithChessBoardAndStartEvaluation;
 end;
@@ -665,6 +666,7 @@ end;
 procedure TAnalyseChessBoard.FLoadPGNDataFromFile(const AFileName: TFileName);
 var
   bResult: boolean;
+  ACurrentGameItem: TGameItem;
 begin
   Screen.Cursor := crHourGlass;
   try
@@ -673,9 +675,6 @@ begin
     Screen.Cursor := crDefault;
   end;
 
-  if (Assigned(m_GamesListForm)) then
-    m_GamesListForm.Refresh;
-
   if (m_GamesManager.GamesCount > 1) then
   begin
     GamesListAction.Update;
@@ -683,8 +682,9 @@ begin
       GamesListAction.Execute;
   end;
 
+  ACurrentGameItem := m_GamesManager.Games[m_GamesManager.CurrentGameIndex];
   if ((not bResult) or
-      ((m_GamesManager.GetGamesCount = 1) and (m_CurrentGameItem.DataError))) then
+      ((m_GamesManager.GetGamesCount = 1) and (ACurrentGameItem.DataError))) then
     MessageDlg(MSG_INCORRECT_FILE_FORMAT, mtError, [mbOK], 0);
 end;
 
@@ -743,28 +743,29 @@ function TAnalyseChessBoard.FLoadDataForCurrentGameInGameList: boolean;
   end;
 
 var
-  AGameContextData: TGameContextData;
+  GameContextData: TGameContextData;
+  CurrentGameItem: TGameItem;
 begin // .FLoadDataForCurrentGameInGameList
   Result := FALSE;
 
-  AGameContextData := TGameContextData.GetNullInstance;
+  CurrentGameItem := m_GamesManager.Games[m_GamesManager.CurrentGameIndex]; 
 
-  if (Assigned(m_CurrentGameItem) and Assigned(m_CurrentGameItem.Data)) then
-    AGameContextData := m_CurrentGameItem.Data as TGameContextData;
+  if (Assigned(CurrentGameItem.Data)) then
+    GameContextData := CurrentGameItem.Data as TGameContextData
+  else
+    GameContextData := TGameContextData.GetNullInstance;
 
-  if (Assigned(AGameContextData.PlysTree)) then
-  begin
-    m_PlysTree.Assign(AGameContextData.PlysTree);
-    m_bPlysTreeChanged := FALSE;
-  end
+  if (Assigned(GameContextData.PlysTree)) then
+    m_PlysTree.Assign(GameContextData.PlysTree)
   else
   begin
     if (not NLoadPGNData) then
       exit;
   end;
 
-  m_iCurrentPlyIndex := AGameContextData.CurrentPlyIndex;
-  m_bGameChanged := AGameContextData.GameChanged; 
+  FSetCurrentPlyIndex(GameContextData.CurrentPlyIndex, FALSE);
+  FSetGameChanged(GameContextData.GameChanged);
+  m_bPlysTreeChanged := FALSE;       
 
   Result := TRUE;
 end;
@@ -1005,7 +1006,13 @@ end;
 
 procedure TAnalyseChessBoard.FSetCurrentPlyIndex(iValue: integer);
 begin
-  if ((iValue - FGetCurrentPlyIndex) = 1) then
+  FSetCurrentPlyIndex(iValue, TRUE);
+end;
+
+
+procedure TAnalyseChessBoard.FSetCurrentPlyIndex(iValue: integer; bForwardMoveFlag: boolean);
+begin
+  if (bForwardMoveFlag and ((iValue - FGetCurrentPlyIndex) = 1)) then
     FForwardMove
   else if ((iValue >= 0) and (iValue <= FGetPlysCount)) then
   begin
@@ -1275,21 +1282,23 @@ begin
   FInitPosition;
   FRefreshMoveListForm;
 
+  m_GamesManager.Clear;
   FSetGameToGameList;
-  if (Assigned(m_GamesListForm)) then
-    m_GamesListForm.Refresh;
 end;
 
 
-procedure TAnalyseChessBoard.FSetGameToGameList;
+procedure TAnalyseChessBoard.FSetGameToGameList(iGameIndex: integer = -1);
 var
   PGNWriter: TPGNWriter;
 begin
   PGNWriter := TPGNWriter.Create;
   try
     PGNWriter.WriteInChess4NetFormat(m_PlysTree);
-    m_GamesManager.Clear;
-    m_GamesManager.AddGame(PGNWriter);
+    if (iGameIndex >= 0) then
+      m_GamesManager.ChangeGame(PGNWriter, iGameIndex)
+    else
+      m_GamesManager.AddGame(PGNWriter);
+      
   finally
     PGNWriter.Free;
   end;
@@ -1504,8 +1513,6 @@ begin
   FRefreshStatusBar;
 
   FSetGameToGameList;
-  if (Assigned(m_GamesListForm)) then
-    m_GamesListForm.Refresh;
 end;
 
 
@@ -1788,45 +1795,59 @@ end;
 
 procedure TAnalyseChessBoard.FOnGamesManagerChanged(Sender: TObject);
 begin
-  FSaveGameContextData;
+  if (Assigned(m_GamesListForm)) then
+    m_GamesListForm.Refresh;
+end;
 
-  if (m_GamesManager.CurrentGameIndex >= 0) then
-    m_CurrentGameItem := m_GamesManager.Games[m_GamesManager.CurrentGameIndex];
+
+procedure TAnalyseChessBoard.FOnCurrentGameIndexChanged(iOldGameIndex: integer;
+  var iNewGameIndex: integer);
+var
+  ACurrentGameItem: TGameItem;
+begin
+  FSaveGameContextData(iOldGameIndex);
 
   if (FLoadDataForCurrentGameInGameList) then
-    FSetGameFileName(m_CurrentGameItem.FileName);
-  else
   begin
-    m_CurrentGameItem := nil;
+    ACurrentGameItem := m_GamesManager.Games[m_GamesManager.CurrentGameIndex];
+    FSetGameFileName(ACurrentGameItem.FileName)
+  end
+  else
     FInitPosition;
-  end;
 
+  inc(m_lwPlysListUpdateID);
   FRefreshMoveListForm;
 end;
 
 
-procedure TAnalyseChessBoard.FSaveGameContextData;
+procedure TAnalyseChessBoard.FSaveGameContextData(iGameIndex: integer);
 var
-  AGameContextData: TGameContextData;
+  GameContextData: TGameContextData;
+  OldGameItem: TGameItem;
 begin
-  if (not Assigned(m_CurrentGameItem)) then
+  if (iGameIndex < 0) then
     exit;
 
   if ((m_iCurrentPlyIndex <> 0) or m_bGameChanged or m_bPlysTreeChanged) then
   begin
-    AGameContextData := m_CurrentGameItem.Data as TGameContextData;
-    if (not Assigned(AGameContextData)) then
+    OldGameItem := m_GamesManager.Games[iGameIndex];
+
+    GameContextData := OldGameItem.Data as TGameContextData;
+    if (not Assigned(GameContextData)) then
     begin
-      AGameContextData := TGameContextData.Create;
-      m_CurrentGameItem.SetData(TObject(AGameContextData));
+      GameContextData := TGameContextData.Create;
+      OldGameItem.SetData(TObject(GameContextData));
     end;
 
-    AGameContextData.CurrentPlyIndex := m_iCurrentPlyIndex;
-    AGameContextData.GameChanged := m_bGameChanged;
+    GameContextData.CurrentPlyIndex := m_iCurrentPlyIndex;
+    GameContextData.GameChanged := m_bGameChanged;
     if (m_bPlysTreeChanged) then
-      AGameContextData.PlysTree := m_PlysTree;
+      GameContextData.PlysTree := m_PlysTree;
   end;
-  
+
+  if (m_bGameChanged and m_bPlysTreeChanged) then
+    FSetGameToGameList(iGameIndex);
+    
 end;
 
 ////////////////////////////////////////////////////////////////////////////////

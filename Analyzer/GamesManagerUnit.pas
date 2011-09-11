@@ -15,7 +15,8 @@ type
     m_bDataError: boolean;
     m_FileName: TFileName;
     m_Data: TObject;
-    constructor FCreate(const wstrPGNData, wstrGameName: WideString);
+    constructor FCreate(const wstrPGNData, wstrGameName: WideString); overload;
+    constructor FCreate(const wstrPGNData: WideString; const ASourceGameItem: TGameItem); overload;
     procedure FSetDataError(bValue: boolean);
   public
     constructor Create;
@@ -28,6 +29,8 @@ type
     property DataError: boolean read m_bDataError;
   end;
 
+  TOnCurrentGameIndexChangedEvent = procedure(iOldGameIndex: integer;
+    var iNewGameIndex: integer) of object;
 
   TGamesManager = class(TNonRefInterfacedObject, IGamesListProvider)
   private
@@ -38,6 +41,7 @@ type
     m_iCurrentGameIndex: integer;
 
     FOnChanged: TNotifyEvent;
+    FOnCurrentGameIndexChanged: TOnCurrentGameIndexChangedEvent;
 
     function FGetLine: WideString;
     function FGetNextLine: WideString;
@@ -50,6 +54,7 @@ type
     function FGetGame(iIndex: integer): TGameItem;
 
     procedure FDoChanged;
+    procedure FDoCurrentGameIndexChanged(iOldGameIndex: integer; var iNewGameIndex: integer);
 
     procedure IGamesListProvider.GetGameData = FGetGameData;
     procedure FGetGameData(iIndex: integer; out AGameData: TGameData);
@@ -58,6 +63,8 @@ type
     function FGetCurrentGameIndex: integer;
     procedure IGamesListProvider.SetCurrentGameIndex = FSetCurrentGameIndex;
     procedure FSetCurrentGameIndex(iValue: integer);
+
+    procedure FClear;
 
   public
     constructor Create;
@@ -68,13 +75,18 @@ type
 
     procedure Clear;
     procedure AddGame(const APGNWriter: TPGNWriter);
+    procedure ChangeGame(const APGNWriter: TPGNWriter; iGameIndex: integer);
+
     function ParseGame(var PGNParser: TPGNParser; iGameIndex: integer): boolean;
 
     property GamesCount: integer read GetGamesCount;
     property Games[iIndex: integer]: TGameItem read FGetGame;
+
     property CurrentGameIndex: integer read m_iCurrentGameIndex;
 
     property OnChanged: TNotifyEvent read FOnChanged write FOnChanged;
+    property OnCurrentGameIndexChange: TOnCurrentGameIndexChangedEvent
+      read FOnCurrentGameIndexChanged write FOnCurrentGameIndexChanged;
   end;
 
 implementation
@@ -117,9 +129,8 @@ end;
 
 function TGamesManager.LoadFromFile(const AFileName: TFileName): boolean;
 begin
-  m_Games.Clear;
-  m_iCurrentGameIndex := -1;
-
+  FClear;
+  
   m_wstrlData.LoadFromFile(AFileName);
   try
     FParseFile;
@@ -132,8 +143,9 @@ begin
     Games[0].m_FileName := AFileName;
 
   Result := (GamesCount > 0);
+
   if (Result) then
-    m_iCurrentGameIndex := 0;
+    FSetCurrentGameIndex(0);
 
   FDoChanged;
 end;
@@ -302,12 +314,27 @@ begin
 end;
 
 
+procedure TGamesManager.FDoCurrentGameIndexChanged(iOldGameIndex: integer;
+  var iNewGameIndex: integer);
+begin
+  if (not Assigned(FOnCurrentGameIndexChanged)) then
+    exit;
+
+  FOnCurrentGameIndexChanged(iOldGameIndex, iNewGameIndex);
+end;
+
+
 procedure TGamesManager.Clear;
+begin
+  FClear;
+  FDoChanged;
+end;
+
+
+procedure TGamesManager.FClear;
 begin
   m_Games.Clear;
   m_iCurrentGameIndex := -1;
-
-  FDoChanged;
 end;
 
 
@@ -329,14 +356,20 @@ end;
 
 
 procedure TGamesManager.FSetCurrentGameIndex(iValue: integer);
+var
+  iOldGameIndex: integer;
 begin
   if ((iValue = m_iCurrentGameIndex) or
       (not ((iValue >= 0) and (iValue < GamesCount)))) then
     exit;
 
+  iOldGameIndex := m_iCurrentGameIndex;
   m_iCurrentGameIndex := iValue;
 
-  FDoChanged;
+  FDoCurrentGameIndexChanged(iOldGameIndex, iValue);
+
+  if ((iValue >= 0) and (iValue < GamesCount)) then
+    m_iCurrentGameIndex := iValue;
 end;
 
 
@@ -364,6 +397,19 @@ begin
   FAddGame(APGNWriter.Data, NO_NAME_GAME);
   if (GamesCount = 1) then
     FSetCurrentGameIndex(0);
+end;
+
+
+procedure TGamesManager.ChangeGame(const APGNWriter: TPGNWriter; iGameIndex: integer);
+var
+  AOldGameItem, ANewGameItem: TGameItem;
+begin
+  if (not ((iGameIndex >= 0) and (iGameIndex < GamesCount))) then
+    exit;
+
+  AOldGameItem := Games[iGameIndex];
+  ANewGameItem := TGameItem.FCreate(APGNWriter.Data.Text, AOldGameItem);
+  m_Games[iGameIndex] := ANewGameItem;
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -411,9 +457,23 @@ begin
 end;
 
 
-destructor TGameItem.Destroy;
+constructor TGameItem.FCreate(const wstrPGNData: WideString; const ASourceGameItem: TGameItem);
 begin
-  m_Data.Free; 
+  FCreate(wstrPGNData, ASourceGameItem.m_wstrName);
+
+  m_FileName := ASourceGameItem.m_FileName;
+  m_Data := ASourceGameItem.m_Data;
+  ASourceGameItem.m_Data := nil;
+end;
+
+
+destructor TGameItem.Destroy;
+var
+  Dummy: TObject;
+begin
+  Dummy := nil;
+  SetData(Dummy);
+  
   inherited;
 end;
 
@@ -432,6 +492,11 @@ end;
 
 procedure TGameItem.SetData(var AData: TObject);
 begin
+  if (m_Data = AData) then
+    exit;
+
+  FreeAndNil(m_Data);
+
   m_Data := AData;
 end;
 

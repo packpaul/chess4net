@@ -302,6 +302,9 @@ procedure TPlysTree.Assign(const Source: TPlysTree);
 begin
   Assert(Assigned(Source));
 
+  if (self = Source) then
+    exit;
+
   Clear;
 
   m_bWhiteStarts := Source.WhiteStarts;
