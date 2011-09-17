@@ -193,7 +193,10 @@ type
     m_lwPlysListUpdateID: LongWord;
 
     m_bGameChanged: boolean;
+    m_bGameChangedLocal: boolean;
     m_bPlysTreeChanged: boolean;
+
+    m_bDontAskSaveGameOnGameSwitch: boolean;
 
     m_GameFileName: TFileName;
     m_bGameFileInC4NFormat: boolean;
@@ -228,6 +231,7 @@ type
     function FSavePGNData: boolean;
     procedure FSavePGNDataAs;
     function FAskAndSavePGNData: boolean;
+    function FAskAndSavePGNDataOnGameSwitch: boolean;
 
     function IPlysProvider.GetWhiteStarts = FGetWhiteStarts;
     function FGetWhiteStarts: boolean;
@@ -330,6 +334,7 @@ type
     m_iCurrentPlyIndex: integer;
     m_bGameChanged: boolean;
     m_PlysTree: TPlysTree;
+    m_DontAskSaveGame: boolean;
     procedure FSetPlysTree(const Value: TPlysTree);
   public
     destructor Destroy; override;
@@ -337,6 +342,7 @@ type
     property CurrentPlyIndex: integer read m_iCurrentPlyIndex write m_iCurrentPlyIndex;
     property GameChanged: boolean read m_bGameChanged write m_bGameChanged;
     property PlysTree: TPlysTree read m_PlysTree write FSetPlysTree;
+    property DontAskSaveGame: boolean read m_DontAskSaveGame write m_DontAskSaveGame;
   end;
 
 const
@@ -510,12 +516,16 @@ end;
 
 procedure TAnalyseChessBoard.FSetGameChanged(bValue: boolean);
 begin
+  if (bValue) then
+  begin
+    m_bGameChangedLocal := TRUE;
+    m_bPlysTreeChanged := TRUE;    
+  end;
+
   if (m_bGameChanged = bValue) then
     exit;
 
   m_bGameChanged := bValue;
-  if (m_bGameChanged) then
-    m_bPlysTreeChanged := TRUE;
 
   FRefreshStatusBar;
 end;
@@ -764,8 +774,12 @@ begin // .FLoadDataForCurrentGameInGameList
   end;
 
   FSetCurrentPlyIndex(GameContextData.CurrentPlyIndex, FALSE);
+
   FSetGameChanged(GameContextData.GameChanged);
-  m_bPlysTreeChanged := FALSE;       
+  m_bPlysTreeChanged := FALSE;
+  m_bGameChangedLocal := FALSE;
+
+  m_bDontAskSaveGameOnGameSwitch := GameContextData.DontAskSaveGame;
 
   Result := TRUE;
 end;
@@ -1175,7 +1189,7 @@ end;
 
 function TAnalyseChessBoard.FAskAndSavePGNData: boolean;
 var
-  iRes: integer;
+  Res: TModalResult;
 begin
   Result := TRUE;
 
@@ -1183,8 +1197,9 @@ begin
   if (not SaveAction.Enabled) then
     exit;
 
-  iRes := MessageDlg(MSG_GAME_CHANGED_SAVE_CHANGES, mtConfirmation, mbYesNoCancel, 0);
-  case iRes of
+  Res := MessageDlg(MSG_GAME_CHANGED_SAVE_CHANGES, mtConfirmation, mbYesNoCancel, 0);
+
+  case Res of
     mrCancel:
       Result := FALSE;
     mrYes:
@@ -1192,6 +1207,36 @@ begin
     mrNo:
       ;
   end;
+end;
+
+
+function TAnalyseChessBoard.FAskAndSavePGNDataOnGameSwitch: boolean;
+var
+  Res: TModalResult;
+  bDontShowFlag: boolean;
+begin
+  Result := TRUE;
+
+  SaveAction.Update;
+  if (not SaveAction.Enabled) then
+    exit;
+
+  bDontShowFlag := FALSE;
+  Res := TDontShowMessageDlg.Show(MSG_GAME_CHANGED_SAVE_CHANGES, mtConfirmation,
+    mbYesNoCancel, bDontShowFlag);
+
+  case Res of
+    mrCancel:
+      Result := FALSE;
+    mrYes:
+      SaveAction.Execute;
+    mrNo:
+      ;
+  end;
+
+  if (Result) then
+    m_bDontAskSaveGameOnGameSwitch := bDontShowFlag;
+    
 end;
 
 
@@ -1796,7 +1841,7 @@ end;
 procedure TAnalyseChessBoard.FOnGamesManagerChanged(Sender: TObject);
 begin
   if (Assigned(m_GamesListForm)) then
-    m_GamesListForm.Refresh;
+    m_GamesListForm.RefreshAll;
 end;
 
 
@@ -1805,6 +1850,16 @@ procedure TAnalyseChessBoard.FOnCurrentGameIndexChanged(iOldGameIndex: integer;
 var
   ACurrentGameItem: TGameItem;
 begin
+  if (iOldGameIndex >= 0) then
+  begin
+    if (m_bGameChangedLocal and (not m_bDontAskSaveGameOnGameSwitch) and
+        (not FAskAndSavePGNDataOnGameSwitch)) then
+    begin
+      iNewGameIndex := iOldGameIndex;
+      exit;
+    end;
+  end;
+
   FSaveGameContextData(iOldGameIndex);
 
   if (FLoadDataForCurrentGameInGameList) then
@@ -1817,6 +1872,9 @@ begin
 
   inc(m_lwPlysListUpdateID);
   FRefreshMoveListForm;
+
+  if (Assigned(m_GamesListForm)) then
+    m_GamesListForm.Refresh;
 end;
 
 
@@ -1843,6 +1901,9 @@ begin
     GameContextData.GameChanged := m_bGameChanged;
     if (m_bPlysTreeChanged) then
       GameContextData.PlysTree := m_PlysTree;
+    GameContextData.DontAskSaveGame := m_bDontAskSaveGameOnGameSwitch;
+
+    OldGameItem.FileName := m_GameFileName;
   end;
 
   if (m_bGameChanged and m_bPlysTreeChanged) then

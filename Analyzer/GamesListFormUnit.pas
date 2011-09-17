@@ -45,6 +45,7 @@ type
     procedure FSetGamesListProvider(Value: IGamesListProvider);
     function FGetGameName(iGameIndex: integer): WideString;
   public
+    procedure RefreshAll;
     procedure Refresh;
     property GamesListProvider: IGamesListProvider
       read m_GamesListProvider write FSetGamesListProvider;
@@ -64,6 +65,26 @@ const
 // TGamesListForm
 
 procedure TGamesListForm.Refresh;
+begin
+  if (not Assigned(m_GamesListProvider)) then
+    exit;
+
+  if (m_GamesListProvider.GamesCount <> GamesListBox.Count) then
+  begin
+    RefreshAll;
+    exit;
+  end;
+
+  if ((GamesListBox.Count > 0) and (m_GamesListProvider.CurrentGameIndex >= 0)) then
+  begin
+    GamesListBox.ItemIndex := m_GamesListProvider.CurrentGameIndex;
+    GamesListBox.Items[m_GamesListProvider.CurrentGameIndex] :=
+      FGetGameName(m_GamesListProvider.CurrentGameIndex);
+  end;
+end;
+
+
+procedure TGamesListForm.RefreshAll;
 var
   i: integer;
 begin
@@ -75,6 +96,7 @@ begin
   begin
     GamesListBox.Items.Append(FGetGameName(i));
   end;
+
   if ((GamesListBox.Count > 0) and (m_GamesListProvider.CurrentGameIndex >= 0)) then
     GamesListBox.ItemIndex := m_GamesListProvider.CurrentGameIndex;
 end;
@@ -129,15 +151,20 @@ end;
 
 
 procedure TGamesListForm.GamesListBoxClick(Sender: TObject);
+var
+  iSavedGameIndex: integer;
 begin
   if (not Assigned(m_GamesListProvider)) then
     exit;
 
-  m_GamesListProvider.CurrentGameIndex := GamesListBox.ItemIndex;
-  GamesListBox.ItemIndex := m_GamesListProvider.CurrentGameIndex;
+  iSavedGameIndex := m_GamesListProvider.CurrentGameIndex;
 
-  GamesListBox.Items[GamesListBox.ItemIndex] :=
-    FGetGameName(m_GamesListProvider.CurrentGameIndex);
+  m_GamesListProvider.CurrentGameIndex := GamesListBox.ItemIndex;
+
+  if (iSavedGameIndex = m_GamesListProvider.CurrentGameIndex) then
+    GamesListBox.ItemIndex := iSavedGameIndex
+  else
+    GamesListBox.Items[iSavedGameIndex] := FGetGameName(iSavedGameIndex);
 end;
 
 end.

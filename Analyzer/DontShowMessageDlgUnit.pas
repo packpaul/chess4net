@@ -9,36 +9,37 @@ unit DontShowMessageDlgUnit;
 interface
 
 uses
-  Forms, StdCtrls;
+  Forms, Dialogs, StdCtrls, Controls;
 
 type
   TDontShowMessageDlg = class
   private
     m_MsgDlgForm: TForm;
     m_DontShowCheckBox: TCheckBox;
-    constructor Create(const wstrMsg: WideString);
+    constructor Create(const wstrMsg: WideString; ADlgType: TMsgDlgType;
+      AButtons: TMsgDlgButtons);
     function FGetDontShow: boolean;
     procedure FSetDontShow(bValue: boolean);
-    procedure FShow;
+    function FShow: TModalResult;
     property DontShow: boolean read FGetDontShow write FSetDontShow;
   public
     destructor Destroy; override;
-    class procedure Show(const wstrMsg: WideString; var bDontShowFlag: boolean);
+    class procedure Show(const wstrMsg: WideString; var bDontShowFlag: boolean); overload;
+    class function Show(const wstrMsg: WideString; ADlgType: TMsgDlgType;
+      AButtons: TMsgDlgButtons; var bDontShowFlag: boolean): TModalResult; overload;
   end;
 
 implementation
 
-uses
-  Dialogs, Controls;
-
 ////////////////////////////////////////////////////////////////////////////////
 // TDontShowMessageDlg
 
-constructor TDontShowMessageDlg.Create(const wstrMsg: WideString);
+constructor TDontShowMessageDlg.Create(const wstrMsg: WideString;
+  ADlgType: TMsgDlgType; AButtons: TMsgDlgButtons);
 begin
   inherited Create;
 
-  m_MsgDlgForm := CreateMessageDialog(wstrMsg, mtInformation, [mbOK]);
+  m_MsgDlgForm := CreateMessageDialog(wstrMsg, ADlgType, AButtons);
   m_MsgDlgForm.Position := poScreenCenter;
   m_MsgDlgForm.Height := m_MsgDlgForm.Height + 10; 
 
@@ -60,10 +61,17 @@ end;
 
 class procedure TDontShowMessageDlg.Show(const wstrMsg: WideString; var bDontShowFlag: boolean);
 begin
-  with TDontShowMessageDlg.Create(wstrMsg) do
+  Show(wstrMsg, mtInformation, [mbOk], bDontShowFlag); 
+end;
+
+
+class function TDontShowMessageDlg.Show(const wstrMsg: WideString; ADlgType: TMsgDlgType;
+  AButtons: TMsgDlgButtons; var bDontShowFlag: boolean): TModalResult;
+begin
+  with TDontShowMessageDlg.Create(wstrMsg, ADlgType, AButtons) do
   try
     DontShow := bDontShowFlag;
-    FShow;
+    Result := FShow;
     bDontShowFlag := DontShow;
   finally
     Free;
@@ -83,9 +91,9 @@ begin
 end;
 
 
-procedure TDontShowMessageDlg.FShow;
+function TDontShowMessageDlg.FShow: TModalResult;
 begin
-  m_MsgDlgForm.ShowModal;
+  Result := m_MsgDlgForm.ShowModal;
 end;
 
 end.

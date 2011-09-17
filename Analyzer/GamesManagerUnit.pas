@@ -24,7 +24,7 @@ type
     procedure SetData(var AData: TObject);
     property PGNData: WideString read m_wstrPGNData;
     property Name: WideString read m_wstrName;
-    property FileName: TFileName read m_FileName;
+    property FileName: TFileName read m_FileName write m_FileName;
     property Data: TObject read m_Data;
     property DataError: boolean read m_bDataError;
   end;
@@ -140,7 +140,7 @@ begin
   end;
 
   if (GamesCount = 1) then
-    Games[0].m_FileName := AFileName;
+    Games[0].FileName := AFileName;
 
   Result := (GamesCount > 0);
 
