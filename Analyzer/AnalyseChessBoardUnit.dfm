@@ -140,6 +140,19 @@ object AnalyseChessBoard: TAnalyseChessBoard
         Caption = 'Chess &Engine Info'
       end
     end
+    object ModeMenuItem: TTntMenuItem
+      Caption = '&Mode'
+      object ModeAnalysisMenuItem: TTntMenuItem
+        Action = AnalysisModeAction
+        Caption = '&Analysis'
+        RadioItem = True
+      end
+      object ModeTrainingMenuItem: TTntMenuItem
+        Action = TrainingModeAction
+        Caption = '&Training'
+        RadioItem = True
+      end
+    end
     object EditMenuItem: TTntMenuItem
       Caption = '&Edit'
       object EditDeleteLineMenuItem: TTntMenuItem
@@ -220,7 +233,7 @@ object AnalyseChessBoard: TAnalyseChessBoard
       Action = TakebackMoveAction
       Caption = 'Takeback Move'
     end
-    object ReturnFromLine: TTntMenuItem
+    object PopupReturnFromLine: TTntMenuItem
       Action = ReturnFromLineAction
       Caption = 'Return from line'
     end
@@ -374,6 +387,17 @@ object AnalyseChessBoard: TAnalyseChessBoard
       Category = 'Views'
       OnExecute = GamesListActionExecute
       OnUpdate = GamesListActionUpdate
+    end
+    object AnalysisModeAction: TAction
+      Category = 'Modes'
+      Checked = True
+      OnExecute = AnalysisModeActionExecute
+      OnUpdate = ModeActionUpdate
+    end
+    object TrainingModeAction: TAction
+      Category = 'Modes'
+      OnExecute = TrainingModeActionExecute
+      OnUpdate = ModeActionUpdate
     end
   end
   object ImageList: TImageList

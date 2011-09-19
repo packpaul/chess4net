@@ -19,6 +19,19 @@ uses
   CommentsFormUnit, GamesManagerUnit, GamesListFormUnit;
 
 type
+  TMode = (modAnalysis, modTraining);
+
+  TAnalyseChessBoard = class;
+
+  TModeStrategyBase = class
+  private
+    m_ChessBoard: TAnalyseChessBoard;
+    function FGetMode: TMode;
+  protected
+    constructor Create(AChessBoard: TAnalyseChessBoard);
+    property ChessBoard: TAnalyseChessBoard read m_ChessBoard;
+  end;
+
   TAnalyseChessBoard = class(TMainFloatingForm, IPlysProvider, IPositionEditable)
     MainMenu: TTntMainMenu;
     FileMenuItem: TTntMenuItem;
@@ -103,7 +116,7 @@ type
     EditPopupBlackKnightMenuItem: TTntMenuItem;
     CommentsMenuItem: TTntMenuItem;
     CommentsAction: TAction;
-    ReturnFromLine: TTntMenuItem;
+    PopupReturnFromLine: TTntMenuItem;
     EndPositionAction: TAction;
     PositionEndMenuItem: TTntMenuItem;
     EditCommentAction: TAction;
@@ -111,6 +124,11 @@ type
     EditCommentMenuItem: TTntMenuItem;
     GamesListAction: TAction;
     GamesListMenuItem: TTntMenuItem;
+    ModeMenuItem: TTntMenuItem;
+    ModeAnalysisMenuItem: TTntMenuItem;
+    ModeTrainingMenuItem: TTntMenuItem;
+    AnalysisModeAction: TAction;
+    TrainingModeAction: TAction;
     procedure FileExitMenuItemClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormCanResize(Sender: TObject; var NewWidth,
@@ -169,6 +187,9 @@ type
     procedure EditCommentActionUpdate(Sender: TObject);
     procedure GamesListActionExecute(Sender: TObject);
     procedure GamesListActionUpdate(Sender: TObject);
+    procedure AnalysisModeActionExecute(Sender: TObject);
+    procedure TrainingModeActionExecute(Sender: TObject);
+    procedure ModeActionUpdate(Sender: TObject);
   private
     m_ChessBoard: TChessBoard;
     m_PosBaseChessBoardLayer: TPosBaseChessBoardLayer;
@@ -203,6 +224,8 @@ type
 
     m_GamesManager: TGamesManager;
     m_GamesListForm: TGamesListForm;
+
+    m_ModeStrategy: TModeStrategyBase;
 
     procedure FChessBoardHandler(e: TChessBoardEvent; d1: pointer = nil;
       d2: pointer = nil);
@@ -290,6 +313,7 @@ type
     procedure FSetLineToMain;
 
     procedure FRefreshMoveListForm;
+    procedure FAdjustPlysList(const strMove: string);
 
     procedure FOnURLQueryReady(Sender: TURLVersionQuery);
     procedure FOnOpeningsDBManagerChanged(Sender: TObject);
@@ -312,6 +336,8 @@ type
 
     procedure FOnGamesManagerChanged(Sender: TObject);
     procedure FOnCurrentGameIndexChanged(iOldGameIndex: integer; var iNewGameIndex: integer);
+
+    function FGetMode: TMode;
 
     procedure FSaveGameContextData(iGameIndex: integer);
 
@@ -343,6 +369,14 @@ type
     property GameChanged: boolean read m_bGameChanged write m_bGameChanged;
     property PlysTree: TPlysTree read m_PlysTree write FSetPlysTree;
     property DontAskSaveGame: boolean read m_DontAskSaveGame write m_DontAskSaveGame;
+  end;
+
+
+  TModeStrategyAnalysis = class(TModeStrategyBase)
+  end;
+
+
+  TModeStrategyTraining = class(TModeStrategyBase)
   end;
 
 const
@@ -384,6 +418,8 @@ begin
   FCreateChessBoard;
   FInitPosition;
 
+  m_ModeStrategy := TModeStrategyAnalysis.Create(self);
+
   FRefreshStatusBar;
 
   DragAcceptFiles(Handle, TRUE);
@@ -408,6 +444,8 @@ procedure TAnalyseChessBoard.FormDestroy(Sender: TObject);
 begin
   DragAcceptFiles(Handle, FALSE);
 
+  m_ModeStrategy.Free;  
+
   FDestroyChessEngine;
 
   m_GamesListForm.GamesListProvider := nil;
@@ -423,6 +461,7 @@ begin
   m_PlysTree.Free;
 
   FDestroyChessBoard;
+
 end;
 
 
@@ -462,38 +501,12 @@ end;
 
 procedure TAnalyseChessBoard.FChessBoardHandler(e: TChessBoardEvent; d1: pointer = nil;
   d2: pointer = nil);
-
-  procedure NAdjustPlysList;
-  var
-    strMove: string;
-    iPly: integer;
-  begin
-    strMove := PString(d1)^;
-
-    iPly := FGetCurrentPlyIndex;
-
-    if (FGetPlysCount >= iPly) then
-    begin
-      if (m_PlysTree[iPly] = strMove) then
-      begin
-        FRefreshMoveListForm; // cursor moved
-        exit;
-      end;
-    end;
-
-    m_PlysTree.Add(iPly, m_ChessBoard.GetPosition, strMove, [psUserLine]);
-    FSetGameChanged(TRUE);
-
-    inc(m_lwPlysListUpdateID);
-    FRefreshMoveListForm;
-  end;
-
 begin // .FChessBoardHandler
   case e of
     cbeMoved:
     begin
       inc(m_iCurrentPlyIndex);
-      NAdjustPlysList;
+      FAdjustPlysList(PString(d1)^);
       FSynchronizeChessEngineWithChessBoardAndStartEvaluation;
     end;
 
@@ -505,12 +518,49 @@ begin // .FChessBoardHandler
 
     cbeMenu:
     begin
-      if (FIsEditing) then
-        EditPopupMenu.Popup(Mouse.CursorPos.X, Mouse.CursorPos.Y)
-      else
-        PopupMenu.Popup(Mouse.CursorPos.X, Mouse.CursorPos.Y);
+      case FGetMode of
+        modAnalysis:
+        begin
+          if (FIsEditing) then
+            EditPopupMenu.Popup(Mouse.CursorPos.X, Mouse.CursorPos.Y)
+          else
+            PopupMenu.Popup(Mouse.CursorPos.X, Mouse.CursorPos.Y);
+        end;
+
+        modTraining:
+        begin
+          PopupMenu.Popup(Mouse.CursorPos.X, Mouse.CursorPos.Y);
+        end;
+
+      end; // case FGetMode
+
+    end;
+
+  end; // case e
+
+end;
+
+
+procedure TAnalyseChessBoard.FAdjustPlysList(const strMove: string);
+var
+  iPly: integer;
+begin
+  iPly := FGetCurrentPlyIndex;
+
+  if (FGetPlysCount >= iPly) then
+  begin
+    if (m_PlysTree[iPly] = strMove) then
+    begin
+      FRefreshMoveListForm; // cursor moved
+      exit;
     end;
   end;
+
+  m_PlysTree.Add(iPly, m_ChessBoard.GetPosition, strMove, [psUserLine]);
+  FSetGameChanged(TRUE);
+
+  inc(m_lwPlysListUpdateID);
+  FRefreshMoveListForm;
 end;
 
 
@@ -519,7 +569,7 @@ begin
   if (bValue) then
   begin
     m_bGameChangedLocal := TRUE;
-    m_bPlysTreeChanged := TRUE;    
+    m_bPlysTreeChanged := TRUE;
   end;
 
   if (m_bGameChanged = bValue) then
@@ -1471,7 +1521,7 @@ begin
     exit;
 
   m_PlysTree.SetLineToMain;
-  FSetGameChanged(TRUE);  
+  FSetGameChanged(TRUE);
 
   inc(m_lwPlysListUpdateID);
   FRefreshMoveListForm;
@@ -1551,6 +1601,7 @@ begin
   m_PlysTree.Clear;
   m_PlysTree.WhiteStarts := (m_ChessBoard.PositionColor = fcWhite);
   m_PlysTree.PlysOffset := 2 * m_ChessBoard.MovesOffset; 
+
   m_PlysTree.Add(m_ChessBoard.GetPosition);
 
   FSynchronizeChessEngineWithChessBoardAndStartEvaluation;
@@ -1563,7 +1614,7 @@ end;
 
 function TAnalyseChessBoard.FIsEditing: boolean;
 begin
-  Result := (m_ChessBoard.Mode = mEdit);
+  Result := ((FGetMode = modAnalysis) and (m_ChessBoard.Mode = mEdit));
 end;
 
 
@@ -1593,7 +1644,10 @@ end;
 
 procedure TAnalyseChessBoard.NewStandardActionExecute(Sender: TObject);
 begin
-  FSetNewStandard;
+  if (not FSetNewStandard) then
+    exit;
+
+  AnalysisModeAction.Execute;
 end;
 
 
@@ -1601,6 +1655,8 @@ procedure TAnalyseChessBoard.NewCustomActionExecute(Sender: TObject);
 begin
   if (not FSetNewStandard) then
     exit;
+
+  AnalysisModeAction.Execute;
 
   FStartEditing;
 end;
@@ -1911,6 +1967,43 @@ begin
     
 end;
 
+
+procedure TAnalyseChessBoard.AnalysisModeActionExecute(Sender: TObject);
+var
+  OldModeStrategy: TModeStrategyBase;
+begin
+  (Sender as TAction).Checked := TRUE;
+
+  OldModeStrategy := m_ModeStrategy;
+  m_ModeStrategy := TModeStrategyAnalysis.Create(self);
+  OldModeStrategy.Free;
+end;
+
+
+procedure TAnalyseChessBoard.TrainingModeActionExecute(Sender: TObject);
+var
+  OldModeStrategy: TModeStrategyBase;
+begin
+  (Sender as TAction).Checked := TRUE;
+
+  OldModeStrategy := m_ModeStrategy;
+  m_ModeStrategy := TModeStrategyTraining.Create(self);
+  OldModeStrategy.Free;
+end;
+
+
+procedure TAnalyseChessBoard.ModeActionUpdate(Sender: TObject);
+begin
+  (Sender as TAction).Enabled := (not FIsEditing);
+end;
+
+
+function TAnalyseChessBoard.FGetMode: TMode;
+begin
+  Result := m_ModeStrategy.FGetMode;
+end;
+
+
 ////////////////////////////////////////////////////////////////////////////////
 // TGameContextData
 
@@ -1935,6 +2028,27 @@ begin
     g_NullGameContextDataInstance := TGameContextData.Create;
   Result := g_NullGameContextDataInstance;
 end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TModeStrategyBase
+
+constructor TModeStrategyBase.Create(AChessBoard: TAnalyseChessBoard);
+begin
+  inherited Create;
+  m_ChessBoard := AChessBoard;
+end;
+
+
+function TModeStrategyBase.FGetMode: TMode;
+begin
+  if (self is TModeStrategyAnalysis) then
+    Result := modAnalysis
+  else if (self is TModeStrategyTraining) then
+    Result := modTraining
+  else
+    Assert(FALSE);
+end;
+
 
 initialization
 
