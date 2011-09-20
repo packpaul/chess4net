@@ -30,6 +30,10 @@ type
   protected
     constructor Create(AChessBoard: TAnalyseChessBoard);
     property ChessBoard: TAnalyseChessBoard read m_ChessBoard;
+  public
+    procedure OnMove(const strMove: string); virtual; abstract;
+    procedure OnSetPosition(const strPos: string); virtual; abstract;
+    procedure OnForwardingMove; virtual;
   end;
 
   TAnalyseChessBoard = class(TMainFloatingForm, IPlysProvider, IPositionEditable)
@@ -373,10 +377,20 @@ type
 
 
   TModeStrategyAnalysis = class(TModeStrategyBase)
+  public
+    procedure OnMove(const strMove: string); override;
+    procedure OnSetPosition(const strPos: string); override;
   end;
 
 
   TModeStrategyTraining = class(TModeStrategyBase)
+  private
+    m_bReplyingFlag: boolean;
+    m_bForwardingFlag: boolean;
+  public
+    procedure OnMove(const strMove: string); override;
+    procedure OnSetPosition(const strPos: string); override;
+    procedure OnForwardingMove; override;
   end;
 
 const
@@ -415,10 +429,10 @@ begin
   m_OpeningsDBManager := TOpeningsDBManager.Create;
   m_OpeningsDBManager.OnChanged := FOnOpeningsDBManagerChanged;
 
+  m_ModeStrategy := TModeStrategyAnalysis.Create(self);
+
   FCreateChessBoard;
   FInitPosition;
-
-  m_ModeStrategy := TModeStrategyAnalysis.Create(self);
 
   FRefreshStatusBar;
 
@@ -444,14 +458,12 @@ procedure TAnalyseChessBoard.FormDestroy(Sender: TObject);
 begin
   DragAcceptFiles(Handle, FALSE);
 
-  m_ModeStrategy.Free;  
-
   FDestroyChessEngine;
 
   m_GamesListForm.GamesListProvider := nil;
   m_GamesManager.OnChanged := nil;
   m_GamesManager.OnCurrentGameIndexChange := nil;
-  
+
   m_MoveListForm.PlysProvider := nil;
   m_OpeningsDBManagerForm.OpeningsDBManagerProvider := nil;
 
@@ -461,6 +473,8 @@ begin
   m_PlysTree.Free;
 
   FDestroyChessBoard;
+
+  m_ModeStrategy.Free;  
 
 end;
 
@@ -505,15 +519,12 @@ begin // .FChessBoardHandler
   case e of
     cbeMoved:
     begin
-      inc(m_iCurrentPlyIndex);
-      FAdjustPlysList(PString(d1)^);
-      FSynchronizeChessEngineWithChessBoardAndStartEvaluation;
+      m_ModeStrategy.OnMove(PString(d1)^);
     end;
 
     cbePosSet:
     begin
-      if (FIsEditing and Assigned(m_PositionEditingForm)) then
-        m_PositionEditingForm.FEN := PString(d1)^;
+      m_ModeStrategy.OnSetPosition(PString(d1)^);
     end;
 
     cbeMenu:
@@ -688,6 +699,8 @@ var
 begin
   if (FGetPlysCount <= FGetCurrentPlyIndex) then
     exit;
+
+  m_ModeStrategy.OnForwardingMove;
 
   bRes := m_ChessBoard.DoMove(m_PlysTree[FGetCurrentPlyIndex + 1]);
   Assert(bRes);
@@ -1469,7 +1482,7 @@ end;
 
 procedure TAnalyseChessBoard.DeleteLineActionUpdate(Sender: TObject);
 begin
-  (Sender as TAction).Enabled := (FGetCurrentPlyIndex > 0);  
+  (Sender as TAction).Enabled := ((FGetMode = modAnalysis) and (FGetCurrentPlyIndex > 0));  
 end;
 
 
@@ -1505,7 +1518,7 @@ end;
 
 procedure TAnalyseChessBoard.SetLineToMainActionUpdate(Sender: TObject);
 begin
-  (Sender as TAction).Enabled := (FGetPlysCount > 0)
+  (Sender as TAction).Enabled := ((FGetMode = modAnalysis) and (FGetPlysCount > 0));
 end;
 
 
@@ -1830,7 +1843,7 @@ end;
 
 procedure TAnalyseChessBoard.EditCommentActionUpdate(Sender: TObject);
 begin
-  (Sender as TAction).Enabled := (not FIsEditing);
+  (Sender as TAction).Enabled := ((FGetMode = modAnalysis) and (not FIsEditing));
 end;
 
 
@@ -1973,6 +1986,7 @@ var
   OldModeStrategy: TModeStrategyBase;
 begin
   (Sender as TAction).Checked := TRUE;
+  ModeAnalysisMenuItem.Checked := TRUE; // Otherwise radio items won't work on Win7
 
   OldModeStrategy := m_ModeStrategy;
   m_ModeStrategy := TModeStrategyAnalysis.Create(self);
@@ -1985,6 +1999,7 @@ var
   OldModeStrategy: TModeStrategyBase;
 begin
   (Sender as TAction).Checked := TRUE;
+  ModeTrainingMenuItem.Checked := TRUE; // Otherwise radio items won't work on Win7
 
   OldModeStrategy := m_ModeStrategy;
   m_ModeStrategy := TModeStrategyTraining.Create(self);
@@ -2041,6 +2056,8 @@ end;
 
 function TModeStrategyBase.FGetMode: TMode;
 begin
+  Result := modAnalysis; // To avoid warning
+
   if (self is TModeStrategyAnalysis) then
     Result := modAnalysis
   else if (self is TModeStrategyTraining) then
@@ -2049,6 +2066,72 @@ begin
     Assert(FALSE);
 end;
 
+
+procedure TModeStrategyBase.OnForwardingMove;
+begin
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TModeStrategyAnalysis
+
+procedure TModeStrategyAnalysis.OnMove(const strMove: string);
+begin
+  with ChessBoard do
+  begin
+    inc(m_iCurrentPlyIndex);
+    FAdjustPlysList(strMove);
+    FSynchronizeChessEngineWithChessBoardAndStartEvaluation;
+  end;
+end;
+
+
+procedure TModeStrategyAnalysis.OnSetPosition(const strPos: string);
+begin
+  with ChessBoard do
+  begin
+    if (FIsEditing and Assigned(m_PositionEditingForm)) then
+      m_PositionEditingForm.FEN := strPos;
+  end;
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TModeStrategyTraining
+
+procedure TModeStrategyTraining.OnMove(const strMove: string);
+begin
+  with ChessBoard do
+  begin
+    inc(m_iCurrentPlyIndex);
+    FAdjustPlysList(strMove);
+    FSynchronizeChessEngineWithChessBoardAndStartEvaluation;
+  end;
+
+  try
+    if (m_bReplyingFlag or m_bForwardingFlag) then
+      exit;
+
+    m_bReplyingFlag := TRUE;
+
+    ChessBoard.ForwardMoveAction.Execute;
+
+  finally
+    m_bForwardingFlag := FALSE;
+    m_bReplyingFlag := FALSE;
+  end;
+  
+end;
+
+
+procedure TModeStrategyTraining.OnSetPosition(const strPos: string);
+begin
+  m_bReplyingFlag := FALSE;
+end;
+
+
+procedure TModeStrategyTraining.OnForwardingMove;
+begin
+  m_bForwardingFlag := TRUE;
+end;
 
 initialization
 
