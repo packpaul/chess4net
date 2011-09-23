@@ -71,7 +71,7 @@ type
     m_iSquareSize: integer; // Size of one chess board field
 
     m_animation: TAnimation; // Animation speed
-    anim_step, anim_step_num: integer;
+    m_iAnimStep, m_iPrevAnimStep, m_iAnimStepsCount: integer;
     anim_dx, anim_dy: real; // Variables for animation of a dragged piece
 
     m_PlayerColor: TFigureColor; // Color of player client
@@ -105,16 +105,17 @@ type
 
     procedure FSetMode(const Value: TMode);
 
-    function FDoMove(i, j: integer; prom_fig: TFigureName = K): boolean;    
+    function FDoMove(i, j: integer; prom_fig: TFigureName = K): boolean;
     procedure FOnAfterMoveDone;
     procedure FOnAfterSetPosition;
 
     procedure FAnimate(const i, j: integer); // Animates a disposition of a piece from (i0,j0) to (i,j)
+    procedure FDoAnimationStep;
+    procedure FEndAnimation;
 
     procedure FWhatSquare(const P: TPoint; var i: Integer; var j: Integer);
 
     procedure FSetPlayerColor(const Value: TFigureColor);
-    procedure FTogglePlayerColor;
     procedure FCancelAnimationDragging; // Caneling of animation and dragging for trace removal after draw
     procedure FSetFlipped(Value: boolean); // Flips chess position
     procedure FSetCoordinatesShown(Value: boolean);
@@ -154,6 +155,8 @@ type
     procedure TakeBack;
     function NMoveDone: integer;
     function NPlysDone: integer;
+
+    function IsMoveAnimating: boolean;
 
     procedure BeginUpdate;
     procedure EndUpdate;
@@ -226,43 +229,59 @@ const
 constructor TChessBoard.Create(Owner: TComponent; AHandler: TChessBoardHandler = nil);
 begin
   FHandler := AHandler;
-  // TODO: strPosBaseName
   inherited Create(Owner);
 end;
 
 
 procedure TChessBoard.AnimateTimerTimer(Sender: TObject);
+begin
+  FDoAnimationStep;
+  if (m_iAnimStep >= m_iAnimStepsCount) then
+    FEndAnimation;
+end;
+
+
+procedure TChessBoard.FDoAnimationStep;
 var
-  X,Y: integer;
+  iX, iY: integer;
   rect: TRect;
 begin
-  inc(anim_step);
-  if (anim_step < anim_step_num) then
+  if (m_iAnimStep < m_iAnimStepsCount) then
   begin
-    X := round(x0 + anim_dx * anim_step);
-    Y := round(y0 + anim_dy * anim_step);
-    dx := X - x0 - Round(anim_dx * (anim_step - 1));
-    dy := Y - y0 - Round(anim_dy * (anim_step - 1));
+    inc(m_iAnimStep);
+
+    iX := round(x0 + anim_dx * m_iAnimStep);
+    iY := round(y0 + anim_dy * m_iAnimStep);
+    dx := iX - x0 - Round(anim_dx * m_iPrevAnimStep);
+    dy := iY - y0 - Round(anim_dy * m_iPrevAnimStep);
 
     // Восстановить фрагмент на m_bmHiddenBoard
-    m_bmHiddenBoard.Canvas.Draw(X - dx, Y - dy, m_bmBuf);
+    m_bmHiddenBoard.Canvas.Draw(iX - dx, iY - dy, m_bmBuf);
     // Копировать новый фрагмент в буфер
     m_bmBuf.Canvas.CopyRect(Bounds(0, 0, m_iSquareSize, m_iSquareSize),
-      m_bmHiddenBoard.Canvas, Bounds(X, Y, m_iSquareSize, m_iSquareSize));
+      m_bmHiddenBoard.Canvas, Bounds(iX, iY, m_iSquareSize, m_iSquareSize));
     // Нарисовать перетаскиваемую фигуру в новой позиции
-    m_bmHiddenBoard.Canvas.Draw(X, Y, m_bmFigure[m_fig]);
+    m_bmHiddenBoard.Canvas.Draw(iX, iY, m_bmFigure[m_fig]);
     // Перенести новый фрагмент на экран
-    rect := Bounds(Min(X - dx, X), Min(Y - dy, Y),
+    rect := Bounds(Min(iX - dx, iX), Min(iY - dy, iY),
       abs(dx) + m_iSquareSize, abs(dy) + m_iSquareSize);
     PBoxBoard.Canvas.CopyRect(rect, m_bmHiddenBoard.Canvas, rect);
-  end
-  else
-  begin
-    AnimateTimer.Enabled := FALSE;
-    FDrawBoard;
-    HilightLastMove;
-    Evaluate;
   end;
+
+  m_iPrevAnimStep := m_iAnimStep;
+  
+end;
+
+
+procedure TChessBoard.FEndAnimation;
+begin
+  AnimateTimer.Enabled := FALSE;
+
+  m_iAnimStep := m_iAnimStepsCount;
+
+  FDrawBoard;
+  HilightLastMove;
+  Evaluate;
 end;
 
 
@@ -468,22 +487,13 @@ begin
 end;
 
 
-procedure TChessBoard.FTogglePlayerColor;
-begin
-  if (m_PlayerColor = fcWhite) then
-    m_PlayerColor := fcBlack
-  else // fcBlack
-    m_PlayerColor := fcWhite;  
-end;
-
-
 procedure TChessBoard.FCancelAnimationDragging;
 begin
   // Cancel animation and dragging
   if (AnimateTimer.Enabled) then
   begin
     AnimateTimer.Enabled := FALSE;
-    // anim_step := anim_step_num;
+    // iAnimStep := iAnimStepsCount;
     // AnimateTimerTimer(nil);
   end;
   
@@ -550,11 +560,7 @@ begin
 
   // Animation canceling
   if (AnimateTimer.Enabled) then
-  begin
-    AnimateTimer.Enabled := FALSE;
-    anim_step := anim_step_num;
-    AnimateTimerTimer(nil);
-  end;
+    FEndAnimation;
 
   Result := m_ChessRulesEngine.DoMove(strMove);
 
@@ -590,7 +596,7 @@ begin
   FDoHandler(cbeMoved, @strLastMove, self);
 
   if (m_Mode = mAnalyse) then
-    FTogglePlayerColor;
+    m_PlayerColor := PositionColor;
 
   for i := 0 to m_lstLayers.Count - 1 do
     TChessBoardLayerBase(m_lstLayers[i]).ROnAfterMoveDone;
@@ -604,13 +610,22 @@ begin
   if (not Showing) then
     exit;
 
+  if ((m_i0 = 0) or (m_j0 = 0)) then
+    exit;
+
+  if (AnimateTimer.Enabled) then
+  begin
+    m_iAnimStep := m_iAnimStepsCount;
+    exit;
+  end;
+
   case animation of
     aNo:
-      anim_step_num := 1;
+      m_iAnimStepsCount := 1;
     aSlow:
-      anim_step_num := ANIMATION_SLOW;
+      m_iAnimStepsCount := ANIMATION_SLOW;
     aQuick:
-      anim_step_num := ANIMATION_QUICK;
+      m_iAnimStepsCount := ANIMATION_QUICK;
   end;
 
   if (_flipped) then
@@ -628,10 +643,11 @@ begin
     y := (8 - j) * m_iSquareSize + CHB_Y;
   end;
 
-  anim_dx := (x-x0) / anim_step_num;
-  anim_dy := (y-y0) / anim_step_num;
+  anim_dx := (x - x0) / m_iAnimStepsCount;
+  anim_dy := (y - y0) / m_iAnimStepsCount;
 
-  anim_step:= 0;
+  m_iAnimStep := 0;
+  m_iPrevAnimStep := m_iAnimStep;  
 
   // Copy image of the empty square to m_bmBuf
   m_bmBuf.Width := m_iSquareSize;
@@ -688,6 +704,9 @@ begin
     mEdit:
       ResetMoveList;
   end;
+
+  m_i0 := 0;
+  m_j0 := 0;
 
   strPosition := GetPosition;
   FDoHandler(cbePosSet, @strPosition, self);
@@ -839,6 +858,8 @@ begin
       end
       else
       begin
+        if (AnimateTimer.Enabled) then
+          AnimateTimer.Enabled := FALSE;
         FDrawBoard;
         if (m_bDraggedMoved) then
         begin
@@ -914,11 +935,8 @@ begin
     exit;
   end;
 
-  if (anim_step < anim_step_num) then
-  begin
-    anim_step := anim_step_num;
-    AnimateTimerTimer(nil);
-  end;
+  if (m_iAnimStep < m_iAnimStepsCount) then
+    FEndAnimation;
 
   m_fig := f;
   m_i0 := i;
@@ -1086,9 +1104,6 @@ begin
 
   if (not m_ChessRulesEngine.TakeBack) then
     exit;
-
-  if (m_Mode = mAnalyse) then
-    FTogglePlayerColor;
 
   FOnAfterSetPosition;
   // TODO: animation
@@ -1279,8 +1294,14 @@ begin
   begin
     ALayer.ChessBoard := nil;
 
-    FOnDrawLayerUpdate(ALayer);    
+    FOnDrawLayerUpdate(ALayer);
   end;
+end;
+
+
+function TChessBoard.IsMoveAnimating: boolean;
+begin
+  Result := AnimateTimer.Enabled; 
 end;
 
 ////////////////////////////////////////////////////////////////////////////////

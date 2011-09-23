@@ -28,7 +28,7 @@ type
     m_ChessBoard: TAnalyseChessBoard;
     function FGetMode: TMode;
   protected
-    constructor Create(AChessBoard: TAnalyseChessBoard);
+    constructor RCreate(AChessBoard: TAnalyseChessBoard); virtual;
     property ChessBoard: TAnalyseChessBoard read m_ChessBoard;
   public
     procedure OnMove(const strMove: string); virtual; abstract;
@@ -377,6 +377,8 @@ type
 
 
   TModeStrategyAnalysis = class(TModeStrategyBase)
+  protected
+    constructor RCreate(AChessBoard: TAnalyseChessBoard);
   public
     procedure OnMove(const strMove: string); override;
     procedure OnSetPosition(const strPos: string); override;
@@ -387,7 +389,15 @@ type
   private
     m_bReplyingFlag: boolean;
     m_bForwardingFlag: boolean;
+    m_ReplyDelayedTimer: TTimer;
+    procedure FOnReplyDelayedTimer(Sender: TObject);
+    procedure FResetPlysTree;
+    procedure FDiscloseCurrentPly;
+    function FMayDoMove(const strMove: string): boolean;
+  protected
+    constructor RCreate(AChessBoard: TAnalyseChessBoard);
   public
+    destructor Destroy; override;
     procedure OnMove(const strMove: string); override;
     procedure OnSetPosition(const strPos: string); override;
     procedure OnForwardingMove; override;
@@ -429,7 +439,7 @@ begin
   m_OpeningsDBManager := TOpeningsDBManager.Create;
   m_OpeningsDBManager.OnChanged := FOnOpeningsDBManagerChanged;
 
-  m_ModeStrategy := TModeStrategyAnalysis.Create(self);
+  m_ModeStrategy := TModeStrategyAnalysis.RCreate(self);
 
   FCreateChessBoard;
   FInitPosition;
@@ -687,7 +697,7 @@ begin
 
   FSetGameFileName('');
   FSetGameChanged(FALSE);
-  m_bPlysTreeChanged := FALSE;  
+  m_bPlysTreeChanged := FALSE;
 
   FSynchronizeChessEngineWithChessBoardAndStartEvaluation;
 end;
@@ -1387,6 +1397,8 @@ begin
   if (not Result) then
     exit;
 
+  AnalysisModeAction.Execute;    
+
   FInitPosition;
   FRefreshMoveListForm;
 
@@ -1657,10 +1669,7 @@ end;
 
 procedure TAnalyseChessBoard.NewStandardActionExecute(Sender: TObject);
 begin
-  if (not FSetNewStandard) then
-    exit;
-
-  AnalysisModeAction.Execute;
+  FSetNewStandard;
 end;
 
 
@@ -1668,8 +1677,6 @@ procedure TAnalyseChessBoard.NewCustomActionExecute(Sender: TObject);
 begin
   if (not FSetNewStandard) then
     exit;
-
-  AnalysisModeAction.Execute;
 
   FStartEditing;
 end;
@@ -1989,7 +1996,7 @@ begin
   ModeAnalysisMenuItem.Checked := TRUE; // Otherwise radio items won't work on Win7
 
   OldModeStrategy := m_ModeStrategy;
-  m_ModeStrategy := TModeStrategyAnalysis.Create(self);
+  m_ModeStrategy := TModeStrategyAnalysis.RCreate(self);
   OldModeStrategy.Free;
 end;
 
@@ -2002,7 +2009,7 @@ begin
   ModeTrainingMenuItem.Checked := TRUE; // Otherwise radio items won't work on Win7
 
   OldModeStrategy := m_ModeStrategy;
-  m_ModeStrategy := TModeStrategyTraining.Create(self);
+  m_ModeStrategy := TModeStrategyTraining.RCreate(self);
   OldModeStrategy.Free;
 end;
 
@@ -2047,7 +2054,7 @@ end;
 ////////////////////////////////////////////////////////////////////////////////
 // TModeStrategyBase
 
-constructor TModeStrategyBase.Create(AChessBoard: TAnalyseChessBoard);
+constructor TModeStrategyBase.RCreate(AChessBoard: TAnalyseChessBoard);
 begin
   inherited Create;
   m_ChessBoard := AChessBoard;
@@ -2074,6 +2081,13 @@ end;
 ////////////////////////////////////////////////////////////////////////////////
 // TModeStrategyAnalysis
 
+constructor TModeStrategyAnalysis.RCreate(AChessBoard: TAnalyseChessBoard);
+begin
+  inherited;
+  ChessBoard.m_MoveListForm.TrainingMode := FALSE;
+end;
+
+
 procedure TModeStrategyAnalysis.OnMove(const strMove: string);
 begin
   with ChessBoard do
@@ -2097,11 +2111,42 @@ end;
 ////////////////////////////////////////////////////////////////////////////////
 // TModeStrategyTraining
 
+constructor TModeStrategyTraining.RCreate(AChessBoard: TAnalyseChessBoard);
+begin
+  inherited;
+
+  ChessBoard.m_MoveListForm.TrainingMode := TRUE;
+
+  m_ReplyDelayedTimer := TTimer.Create(nil);
+  m_ReplyDelayedTimer.Enabled := FALSE;
+  m_ReplyDelayedTimer.Interval := 200;
+  m_ReplyDelayedTimer.OnTimer := FOnReplyDelayedTimer;
+
+  FResetPlysTree;
+end;
+
+
+destructor TModeStrategyTraining.Destroy;
+begin
+  m_ReplyDelayedTimer.Free;
+  inherited;
+end;
+
+
 procedure TModeStrategyTraining.OnMove(const strMove: string);
 begin
   with ChessBoard do
   begin
+    if (not self.FMayDoMove(strMove)) then
+    begin
+      m_ChessBoard.TakeBack;
+      exit;
+    end;
+
     inc(m_iCurrentPlyIndex);
+
+    self.FDiscloseCurrentPly;
+
     FAdjustPlysList(strMove);
     FSynchronizeChessEngineWithChessBoardAndStartEvaluation;
   end;
@@ -2112,13 +2157,27 @@ begin
 
     m_bReplyingFlag := TRUE;
 
-    ChessBoard.ForwardMoveAction.Execute;
+    m_ReplyDelayedTimer.Enabled := TRUE;
 
   finally
     m_bForwardingFlag := FALSE;
     m_bReplyingFlag := FALSE;
   end;
-  
+
+end;
+
+
+function TModeStrategyTraining.FMayDoMove(const strMove: string): boolean;
+var
+  m_strlPlys: TStrings;
+begin
+  m_strlPlys := TStringList.Create;
+  try
+    ChessBoard.FGetPlysForPlyIndex(ChessBoard.FGetCurrentPlyIndex + 1, m_strlPlys);
+    Result := (m_strlPlys.IndexOf(strMove) >= 0);
+  finally
+    m_strlPlys.Free;
+  end;
 end;
 
 
@@ -2131,6 +2190,28 @@ end;
 procedure TModeStrategyTraining.OnForwardingMove;
 begin
   m_bForwardingFlag := TRUE;
+end;
+
+
+procedure TModeStrategyTraining.FOnReplyDelayedTimer(Sender: TObject);
+begin
+  if (ChessBoard.m_ChessBoard.IsMoveAnimating) then
+    exit;
+
+  m_ReplyDelayedTimer.Enabled := FALSE;
+  ChessBoard.ForwardMoveAction.Execute;
+end;
+
+
+procedure TModeStrategyTraining.FResetPlysTree;
+begin
+  // TODO:
+end;
+
+
+procedure TModeStrategyTraining.FDiscloseCurrentPly;
+begin
+  // TODO:
 end;
 
 initialization

@@ -16,6 +16,7 @@ uses
 type
   TStringGrid = class(Grids.TStringGrid)
   private
+    m_HiddenInplaceEditData: TStrings;
     m_bPlyLineSelection: boolean;
     class procedure FPlyIndexToGridPos(iPlyIndex: integer; bWhiteStarts: boolean;
       out iCol, iRow: integer);
@@ -23,13 +24,18 @@ type
       bWhiteStarts: boolean): integer;
     function FGetPlysProvider: IPlysProvider;
     procedure FSetPlyLineSelection(bValue: boolean);
+    procedure FOnGetPickListItems(ACol, ARow: Integer; Items: TStrings);
+    function FGetTrainingMode: boolean;
     property PlysProvider: IPlysProvider read FGetPlysProvider;
     property PlyLineSelection: boolean read m_bPlyLineSelection write FSetPlyLineSelection;
+    property TrainingMode: boolean read FGetTrainingMode;
   protected
     function CreateEditor: TInplaceEdit; override;
     function GetEditStyle(ACol, ARow: Longint): TEditStyle; override;
     function CanEditModify: Boolean; override;
     function CanEditShow: Boolean; override;
+    procedure SetEditText(ACol, ARow: Longint; const Value: string); override;
+    function GetEditText(ACol, ARow: Longint): string; override;
   public
     destructor Destroy; override;
   end;
@@ -63,14 +69,16 @@ type
     m_lwInvalidationID: LongWord;
     m_bCellFirstSelected: boolean;
     m_bRefreshing: boolean;
+    m_bTrainingMode: boolean;
 
-    procedure FOnGetPickListItems(ACol, ARow: Integer; Items: TStrings);
     procedure FSetPlysProvider(APlysProvider: IPlysProvider);
     function FGetMovesCount: integer;
     procedure FRefresh;
+    procedure FSetTrainingMode(bValue: boolean);
   public
-    procedure Refresh;
     procedure SelectLine;
+    procedure Refresh;
+    property TrainingMode: boolean read m_bTrainingMode write FSetTrainingMode;
     property PlysProvider: IPlysProvider read m_PlysProvider write FSetPlysProvider;
   end;
 
@@ -93,6 +101,7 @@ type
 
 const
   SEVERAL_PLYS_COLOR = TColor($D0E0F0);
+  UNKNOWN_PLY = '?';
 
 ////////////////////////////////////////////////////////////////////////////////
 // TMoveListForm
@@ -105,18 +114,6 @@ begin
     Cells[1, 0] := 'White';
     Cells[2, 0] := 'Black';
   end;
-end;
-
-
-procedure TMoveListForm.FOnGetPickListItems(ACol, ARow: Integer; Items: TStrings);
-begin
-  if (Assigned(m_PlysProvider)) then
-  begin
-    m_PlysProvider.GetPlysForPlyIndex(TStringGrid.FGridPosToPlyIndex(ACol, ARow,
-      m_PlysProvider.WhiteStarts), Items)
-  end
-  else
-    Items.Clear;
 end;
 
 
@@ -214,6 +211,9 @@ procedure TMoveListForm.MovesStringGridDrawCell(Sender: TObject; ACol,
   begin
     Result := MovesStringGrid.Cells[ACol, ARow];
 
+    if (m_bTrainingMode and (ACol > 0) and (Result <> '')) then
+      Result := UNKNOWN_PLY;
+
     if (not Assigned(m_PlysProvider)) then
       exit;
 
@@ -233,13 +233,11 @@ procedure TMoveListForm.MovesStringGridDrawCell(Sender: TObject; ACol,
     begin
       MovesStringGrid.Canvas.Brush.Color := clHighlight;
       MovesStringGrid.Canvas.Font.Color := clHighlightText;
-      MovesStringGrid.Canvas.FillRect(Rect);
     end
     else if (m_PlysProvider.HasSeveralPlysForPlyIndex(iPly)) then
-    begin
       MovesStringGrid.Canvas.Brush.Color := SEVERAL_PLYS_COLOR;
-      MovesStringGrid.Canvas.FillRect(Rect);
-    end;
+
+    MovesStringGrid.Canvas.FillRect(Rect);    
 
     PlyStatuses := m_PlysProvider.GetPlyStatus(iPly);
     if (psMainLine in PlyStatuses) then
@@ -400,11 +398,26 @@ begin
   end;
 end;
 
+
+procedure TMoveListForm.FSetTrainingMode(bValue: boolean);
+begin
+  if ((not Assigned(self)) or (m_bTrainingMode = bValue)) then
+    exit;
+
+  m_bTrainingMode := bValue;
+
+  MovesStringGrid.PlyLineSelection := FALSE;
+
+  MovesStringGrid.Invalidate;
+end;
+
 ////////////////////////////////////////////////////////////////////////////////
 // TStringGrid
 
 destructor TStringGrid.Destroy;
 begin
+  m_HiddenInplaceEditData.Free;
+
   if (Assigned(InplaceEditor)) then
   begin
     (InplaceEditor as TInplaceEditList).OnGetPickListitems := nil;
@@ -418,7 +431,7 @@ begin
   Result := TInplaceEditList.Create(self);
   with (Result as TInplaceEditList) do
   begin
-    OnGetPickListitems := (self.Owner as TMoveListForm).FOnGetPickListItems;
+    OnGetPickListitems := FOnGetPickListItems;
     ReadOnly := TRUE;
     AutoSelect := FALSE;
   end;
@@ -482,7 +495,13 @@ end;
 
 function TStringGrid.FGetPlysProvider: IPlysProvider;
 begin
-  Result := (self.Owner as TMoveListForm).PlysProvider;
+  Result := (Owner as TMoveListForm).PlysProvider;
+end;
+
+
+function TStringGrid.FGetTrainingMode: boolean;
+begin
+  Result := (Owner as TMoveListForm).TrainingMode;
 end;
 
 
@@ -496,17 +515,77 @@ begin
   if (bValue) then
   begin
     ShowEditor;
-    with InplaceEditor as TInplaceEditList do
+    if (Assigned(InplaceEditor)) then
     begin
-      if (not (self.Owner as TMoveListForm).Active) then
+      with InplaceEditor as TInplaceEditList do
+      begin
+        if (not (self.Owner as TMoveListForm).Active) then
+          DropDown;
         DropDown;
-      DropDown;
+      end;
     end;
   end
   else
     HideEditor;
 
   m_bPlyLineSelection := EditorMode;
+end;
+
+
+procedure TStringGrid.SetEditText(ACol, ARow: Longint; const Value: string);
+var
+  iInplaceEditItemIndex: integer;
+  strHiddenValue: string;
+begin
+  if (Assigned(InplaceEditor)) then
+    iInplaceEditItemIndex := (InplaceEditor as TInplaceEditList).PickList.ItemIndex
+  else
+    iInplaceEditItemIndex := -1;
+
+  if (iInplaceEditItemIndex >= 0) then
+    strHiddenValue := m_HiddenInplaceEditData[iInplaceEditItemIndex]
+  else
+    strHiddenValue := Value;
+
+  inherited SetEditText(ACol, ARow, strHiddenValue);
+end;
+
+
+function TStringGrid.GetEditText(ACol, ARow: Longint): string;
+begin
+  Result := inherited GetEditText(ACol, ARow);
+{
+  if ((ACol > 0) and TrainingMode) then
+    Result := UNKNOWN_PLY
+  else
+    Result := inherited GetEditText(ACol, ARow);
+}
+end;
+
+
+procedure TStringGrid.FOnGetPickListItems(ACol, ARow: Integer; Items: TStrings);
+var
+  i: integer;
+begin
+  if (not Assigned(m_HiddenInplaceEditData)) then
+    m_HiddenInplaceEditData := TStringList.Create;
+
+  if (Assigned(PlysProvider)) then
+  begin
+    PlysProvider.GetPlysForPlyIndex(TStringGrid.FGridPosToPlyIndex(ACol, ARow,
+      PlysProvider.WhiteStarts), m_HiddenInplaceEditData)
+  end
+  else
+    m_HiddenInplaceEditData.Clear;
+
+  Items.Assign(m_HiddenInplaceEditData);
+{
+  if (TrainingMode) then
+  begin
+    for i := 0 to Items.Count - 1 do
+      Items[i] := UNKNOWN_PLY;
+  end;
+}  
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -534,7 +613,7 @@ procedure TInplaceEditList.CloseUp(Accept: Boolean);
 begin
   if (Accept) then
     Text := '';
-    
+
   inherited;
 end;
 
