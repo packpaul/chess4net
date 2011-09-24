@@ -24,6 +24,8 @@ type
     m_arrNextNodes: array of TPlysTreeNode;
     m_iNextNodeOfLineIndex: integer;
 
+    m_bDisclosed: boolean;
+
     constructor Create(const strPos, strPly: string; APlyStatuses: TPlyStatuses); overload;
     class function Create(const Source: TPlysTreeNode): TPlysTreeNode; overload;
 
@@ -41,10 +43,13 @@ type
     procedure FRemapMainLine;
     procedure FSetLineToMain;
 
+    procedure FSetIsDisclosedRecusively(bValue: boolean);
+
     property Ply: string read m_strPly;
     property Pos: string read m_strPos;
     property PlyStatuses: TPlyStatuses read m_PlyStatuses write m_PlyStatuses;
     property Comment: WideString read m_wstrComment write m_wstrComment;
+    property IsDisclosed: boolean read m_bDisclosed write m_bDisclosed;
 
   public
     destructor Destroy; override;
@@ -82,11 +87,17 @@ type
     function SetPlyForPlyIndex(iIndex: integer; const strPly: string): boolean;
     function GetPlyStatus(iIndex: integer): TPlyStatuses;
 
+    function FGetIsDisclosed(iIndex: integer): boolean;
+    procedure FSetIsDisclosed(iIndex: integer; bValue: boolean);
+
+    procedure ClearAllDisclosedPlys;
+
     procedure Assign(const Source: TPlysTree);
 
     class function ConvertPlyToMove(iPly: integer; bWhiteStarts: boolean): integer;
     class function IsWhiteToMove(iPly: integer; bWhiteStarts: boolean): boolean;
 
+    property IsDisclosed[iIndex: integer]: boolean read FGetIsDisclosed write FSetIsDisclosed;
     property Plys[iIndex: integer]: string read FGetPly; default;
     property Position[iIndex: integer]: string read FGetPosition;
     property Comments[iIndex: integer]: WideString read FGetComments write FSetComments;
@@ -388,6 +399,45 @@ begin
     Node.Comment := wstrValue;
 end;
 
+
+function TPlysTree.FGetIsDisclosed(iIndex: integer): boolean;
+var
+  Node: TPlysTreeNode;
+begin
+  Node := FGetNodeOfDepth(iIndex);
+  if (Assigned(Node)) then
+    Result := Node.IsDisclosed
+  else
+    Result := TRUE;
+end;
+
+
+procedure TPlysTree.FSetIsDisclosed(iIndex: integer; bValue: boolean);
+var
+  Node: TPlysTreeNode;
+  i: integer;
+begin
+  if (iIndex <= 0) then
+    exit;
+
+  i := 0;
+
+  Node := m_FirstNode;
+  while ((i <= iIndex) and Assigned(Node)) do
+  begin
+    Node.IsDisclosed := bValue;
+    Node := Node.FGetNextNodeOfLine;
+    inc(i);
+  end;
+end;
+
+
+procedure TPlysTree.ClearAllDisclosedPlys;
+begin
+  if (Assigned(m_FirstNode)) then
+    m_FirstNode.FSetIsDisclosedRecusively(FALSE);
+end;
+
 ////////////////////////////////////////////////////////////////////////////////
 // TPlysTreeNode
 
@@ -421,6 +471,7 @@ begin
     m_strPly := Source.m_strPly;
     m_PlyStatuses := Source.m_PlyStatuses;
     m_wstrComment := Source.m_wstrComment;
+    m_bDisclosed := Source.m_bDisclosed;
 
     SetLength(m_arrNextNodes, Length(Source.m_arrNextNodes));
     for i := Low(Source.m_arrNextNodes) to High(Source.m_arrNextNodes) do
@@ -429,6 +480,7 @@ begin
     m_iNextNodeOfLineIndex := Source.m_iNextNodeOfLineIndex;
   end;
 end;
+
 
 destructor TPlysTreeNode.Destroy;
 begin
@@ -624,6 +676,31 @@ begin // .FRemapMainLine
     end;
     NextNode.FSetLineToMain;
   end;
+
+end;
+
+
+procedure TPlysTreeNode.FSetIsDisclosedRecusively(bValue: boolean);
+var
+  Node: TPlysTreeNode;
+  i: integer;
+begin
+  Node := self;
+  repeat
+    with Node do
+    begin
+      m_bDisclosed := bValue;
+
+      for i := Low(m_arrNextNodes) to High(m_arrNextNodes) do
+      begin
+        if ((i <> m_iNextNodeOfLineIndex) and Assigned(m_arrNextNodes[i])) then
+          m_arrNextNodes[i].FSetIsDisclosedRecusively(bValue);
+      end;
+    end;
+
+    Node := Node.FGetNextNodeOfLine;
+
+  until (not Assigned(Node));
 
 end;
 

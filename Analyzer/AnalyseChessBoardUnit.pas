@@ -34,6 +34,7 @@ type
     procedure OnMove(const strMove: string); virtual; abstract;
     procedure OnSetPosition(const strPos: string); virtual; abstract;
     procedure OnForwardingMove; virtual;
+    procedure OnLoadGameFrom; virtual;
   end;
 
   TAnalyseChessBoard = class(TMainFloatingForm, IPlysProvider, IPositionEditable)
@@ -300,6 +301,9 @@ type
     function IPlysProvider.GetPlyStatus = FGetPlyStatus;
     function FGetPlyStatus(iPlyIndex: integer): TPlyStatuses;
 
+    function IPlysProvider.IsPlyDisclosed = FIsPlyDisclosed;
+    function FIsPlyDisclosed(iPlyIndex: integer): boolean;
+
     procedure IPositionEditable.SetEditPiece = FSetEditPiece;
     procedure FSetEditPiece(Piece: TFigure);
 
@@ -316,7 +320,7 @@ type
     procedure FDeleteLine;
     procedure FSetLineToMain;
 
-    procedure FRefreshMoveListForm;
+    procedure FRefreshMoveListAndComments;
     procedure FAdjustPlysList(const strMove: string);
 
     procedure FOnURLQueryReady(Sender: TURLVersionQuery);
@@ -378,7 +382,7 @@ type
 
   TModeStrategyAnalysis = class(TModeStrategyBase)
   protected
-    constructor RCreate(AChessBoard: TAnalyseChessBoard);
+    constructor RCreate(AChessBoard: TAnalyseChessBoard); override;
   public
     procedure OnMove(const strMove: string); override;
     procedure OnSetPosition(const strPos: string); override;
@@ -395,12 +399,13 @@ type
     procedure FDiscloseCurrentPly;
     function FMayDoMove(const strMove: string): boolean;
   protected
-    constructor RCreate(AChessBoard: TAnalyseChessBoard);
+    constructor RCreate(AChessBoard: TAnalyseChessBoard); override;
   public
     destructor Destroy; override;
     procedure OnMove(const strMove: string); override;
     procedure OnSetPosition(const strPos: string); override;
     procedure OnForwardingMove; override;
+    procedure OnLoadGameFrom; override;
   end;
 
 const
@@ -409,11 +414,13 @@ const
   MSG_FILE_EXISTS_OVERWRITE = 'File %s already exists. Do you want it to be overwritten?';
   MSG_LINE_TO_BE_DELETED = 'Are you sure you want to delete current line?';
   MSG_SET_LINE_TO_MAIN = 'Are you sure you want current line be set to main?';
+  MSG_INCORRECT_MOVE = 'Incorrect move!';
 
   LBL_CHESS4NET_ANALYZER_VER = 'Chess4Net Analyzer %s';
 
   LBL_EDITING = 'Editing';
   LBL_CHANGED = 'Changed';
+  LBL_TRAINING = 'Training';
 
 var
   g_NullGameContextDataInstance: TGameContextData = nil;
@@ -452,15 +459,27 @@ end;
 
 procedure TAnalyseChessBoard.FRefreshStatusBar;
 begin
-  if (FIsEditing) then
-    StatusBar.Panels[1].Text := LBL_EDITING
-  else
-  begin
-    if (m_bGameChanged) then
-      StatusBar.Panels[1].Text := LBL_CHANGED
-    else
-      StatusBar.Panels[1].Text := '';
-  end;
+  case FGetMode of
+    modAnalysis:
+    begin
+      if (FIsEditing) then
+        StatusBar.Panels[1].Text := LBL_EDITING
+      else
+      begin
+        if (m_bGameChanged) then
+          StatusBar.Panels[1].Text := LBL_CHANGED
+        else
+          StatusBar.Panels[1].Text := '';
+      end;
+    end;
+
+    modTraining:
+    begin
+      StatusBar.Panels[1].Text := LBL_TRAINING;
+    end;
+
+  end; // case
+
 end;
 
 
@@ -572,7 +591,7 @@ begin
   begin
     if (m_PlysTree[iPly] = strMove) then
     begin
-      FRefreshMoveListForm; // cursor moved
+      FRefreshMoveListAndComments; // cursor moved
       exit;
     end;
   end;
@@ -581,7 +600,7 @@ begin
   FSetGameChanged(TRUE);
 
   inc(m_lwPlysListUpdateID);
-  FRefreshMoveListForm;
+  FRefreshMoveListAndComments;
 end;
 
 
@@ -869,7 +888,7 @@ begin
     m_bGameFileInC4NFormat := PGNParser.InC4NFormat;
 
     FSetToInitialPosition;
-    FRefreshMoveListForm;
+    FRefreshMoveListAndComments;
 
   finally
     m_ChessBoard.EndUpdate;
@@ -1098,22 +1117,29 @@ end;
 
 
 procedure TAnalyseChessBoard.FSetCurrentPlyIndex(iValue: integer; bForwardMoveFlag: boolean);
+var
+  iSavedPlyIndex: integer;
 begin
   if (bForwardMoveFlag and ((iValue - FGetCurrentPlyIndex) = 1)) then
     FForwardMove
   else if ((iValue >= 0) and (iValue <= FGetPlysCount)) then
   begin
-    m_ChessBoard.SetPosition(m_PlysTree.Position[iValue]);
+    iSavedPlyIndex := m_iCurrentPlyIndex;
     m_iCurrentPlyIndex := iValue;
-    FRefreshMoveListForm;
+
+    if (not m_ChessBoard.SetPosition(m_PlysTree.Position[iValue])) then
+      m_iCurrentPlyIndex := iSavedPlyIndex;
+
+    FRefreshMoveListAndComments;
     FSynchronizeChessEngineWithChessBoardAndStartEvaluation;
   end;
 end;
 
 
-procedure TAnalyseChessBoard.FRefreshMoveListForm;
+procedure TAnalyseChessBoard.FRefreshMoveListAndComments;
 begin
-  m_MoveListForm.Refresh;
+  if (Assigned(m_MoveListForm)) then
+    m_MoveListForm.Refresh;
   if (Assigned(m_CommentsForm)) then
     m_CommentsForm.Refresh;
 end;
@@ -1226,6 +1252,12 @@ end;
 function TAnalyseChessBoard.FGetPlyStatus(iPlyIndex: integer): TPlyStatuses;
 begin
   Result := m_PlysTree.GetPlyStatus(iPlyIndex);
+end;
+
+
+function TAnalyseChessBoard.FIsPlyDisclosed(iPlyIndex: integer): boolean;
+begin
+  Result := m_PlysTree.IsDisclosed[iPlyIndex];
 end;
 
 
@@ -1400,7 +1432,7 @@ begin
   AnalysisModeAction.Execute;    
 
   FInitPosition;
-  FRefreshMoveListForm;
+  FRefreshMoveListAndComments;
 
   m_GamesManager.Clear;
   FSetGameToGameList;
@@ -1549,7 +1581,7 @@ begin
   FSetGameChanged(TRUE);
 
   inc(m_lwPlysListUpdateID);
-  FRefreshMoveListForm;
+  FRefreshMoveListAndComments;
 end;
 
 
@@ -1941,13 +1973,14 @@ begin
   if (FLoadDataForCurrentGameInGameList) then
   begin
     ACurrentGameItem := m_GamesManager.Games[m_GamesManager.CurrentGameIndex];
-    FSetGameFileName(ACurrentGameItem.FileName)
+    FSetGameFileName(ACurrentGameItem.FileName);
+    m_ModeStrategy.OnLoadGameFrom;
   end
   else
     FInitPosition;
 
   inc(m_lwPlysListUpdateID);
-  FRefreshMoveListForm;
+  FRefreshMoveListAndComments;
 
   if (Assigned(m_GamesListForm)) then
     m_GamesListForm.Refresh;
@@ -1998,6 +2031,8 @@ begin
   OldModeStrategy := m_ModeStrategy;
   m_ModeStrategy := TModeStrategyAnalysis.RCreate(self);
   OldModeStrategy.Free;
+
+  FRefreshStatusBar;
 end;
 
 
@@ -2011,6 +2046,8 @@ begin
   OldModeStrategy := m_ModeStrategy;
   m_ModeStrategy := TModeStrategyTraining.RCreate(self);
   OldModeStrategy.Free;
+
+  FRefreshStatusBar;
 end;
 
 
@@ -2057,6 +2094,7 @@ end;
 constructor TModeStrategyBase.RCreate(AChessBoard: TAnalyseChessBoard);
 begin
   inherited Create;
+
   m_ChessBoard := AChessBoard;
 end;
 
@@ -2078,13 +2116,24 @@ procedure TModeStrategyBase.OnForwardingMove;
 begin
 end;
 
+
+procedure TModeStrategyBase.OnLoadGameFrom;
+begin
+end;
+
 ////////////////////////////////////////////////////////////////////////////////
 // TModeStrategyAnalysis
 
 constructor TModeStrategyAnalysis.RCreate(AChessBoard: TAnalyseChessBoard);
 begin
   inherited;
-  ChessBoard.m_MoveListForm.TrainingMode := FALSE;
+
+  with ChessBoard do
+  begin
+    if (Assigned(m_MoveListForm)) then
+      m_MoveListForm.TrainingMode := FALSE;
+  end;
+  
 end;
 
 
@@ -2115,14 +2164,20 @@ constructor TModeStrategyTraining.RCreate(AChessBoard: TAnalyseChessBoard);
 begin
   inherited;
 
-  ChessBoard.m_MoveListForm.TrainingMode := TRUE;
-
   m_ReplyDelayedTimer := TTimer.Create(nil);
   m_ReplyDelayedTimer.Enabled := FALSE;
   m_ReplyDelayedTimer.Interval := 200;
   m_ReplyDelayedTimer.OnTimer := FOnReplyDelayedTimer;
 
   FResetPlysTree;
+
+  with ChessBoard do
+  begin
+    if (Assigned(m_MoveListForm)) then
+      m_MoveListForm.TrainingMode := TRUE;
+    FDiscloseCurrentPly;
+  end;
+
 end;
 
 
@@ -2140,14 +2195,14 @@ begin
     if (not self.FMayDoMove(strMove)) then
     begin
       m_ChessBoard.TakeBack;
+      MessageDlg(MSG_INCORRECT_MOVE, mtCustom, [mbOk], 0);      
       exit;
     end;
 
     inc(m_iCurrentPlyIndex);
-
+    FAdjustPlysList(strMove);
     self.FDiscloseCurrentPly;
 
-    FAdjustPlysList(strMove);
     FSynchronizeChessEngineWithChessBoardAndStartEvaluation;
   end;
 
@@ -2184,6 +2239,7 @@ end;
 procedure TModeStrategyTraining.OnSetPosition(const strPos: string);
 begin
   m_bReplyingFlag := FALSE;
+  FDiscloseCurrentPly;
 end;
 
 
@@ -2205,13 +2261,25 @@ end;
 
 procedure TModeStrategyTraining.FResetPlysTree;
 begin
-  // TODO:
+  ChessBoard.m_PlysTree.ClearAllDisclosedPlys;
 end;
 
 
 procedure TModeStrategyTraining.FDiscloseCurrentPly;
 begin
-  // TODO:
+  with ChessBoard do
+  begin
+    m_PlysTree.IsDisclosed[FGetCurrentPlyIndex] := TRUE;
+    if (Assigned(m_MoveListForm)) then
+      m_MoveListForm.Refresh;
+  end;
+end;
+
+
+procedure TModeStrategyTraining.OnLoadGameFrom;
+begin
+  with ChessBoard do
+    m_ChessBoard.Flipped := (ChessBoardFlipped = FGetWhiteStarts);
 end;
 
 initialization

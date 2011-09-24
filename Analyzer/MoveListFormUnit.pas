@@ -25,10 +25,10 @@ type
     function FGetPlysProvider: IPlysProvider;
     procedure FSetPlyLineSelection(bValue: boolean);
     procedure FOnGetPickListItems(ACol, ARow: Integer; Items: TStrings);
-    function FGetTrainingMode: boolean;
+//    function FGetTrainingMode: boolean;
     property PlysProvider: IPlysProvider read FGetPlysProvider;
     property PlyLineSelection: boolean read m_bPlyLineSelection write FSetPlyLineSelection;
-    property TrainingMode: boolean read FGetTrainingMode;
+//    property TrainingMode: boolean read FGetTrainingMode;
   protected
     function CreateEditor: TInplaceEdit; override;
     function GetEditStyle(ACol, ARow: Longint): TEditStyle; override;
@@ -168,7 +168,10 @@ begin
   MovesStringGrid.FocusCell(m_iPlyIndexCol, m_iPlyIndexRow, TRUE);
 
   if (m_lwInvalidationID = m_PlysProvider.InvalidationID) then
-    exit
+  begin
+    MovesStringGrid.Invalidate;
+    exit;
+  end
   else
     m_lwInvalidationID := m_PlysProvider.InvalidationID;
 
@@ -208,11 +211,17 @@ procedure TMoveListForm.MovesStringGridDrawCell(Sender: TObject; ACol,
   ARow: Integer; Rect: TRect; State: TGridDrawState);
 
   function NGetData: string;
+  var
+    iPly: integer;
   begin
     Result := MovesStringGrid.Cells[ACol, ARow];
 
     if (m_bTrainingMode and (ACol > 0) and (Result <> '')) then
-      Result := UNKNOWN_PLY;
+    begin
+      iPly := TStringGrid.FGridPosToPlyIndex(ACol, ARow, m_PlysProvider.WhiteStarts);
+      if (not m_PlysProvider.IsPlyDisclosed(iPly)) then
+        Result := UNKNOWN_PLY;
+    end;
 
     if (not Assigned(m_PlysProvider)) then
       exit;
@@ -498,12 +507,12 @@ begin
   Result := (Owner as TMoveListForm).PlysProvider;
 end;
 
-
+(*
 function TStringGrid.FGetTrainingMode: boolean;
 begin
   Result := (Owner as TMoveListForm).TrainingMode;
 end;
-
+*)
 
 procedure TStringGrid.FSetPlyLineSelection(bValue: boolean);
 begin
@@ -564,8 +573,6 @@ end;
 
 
 procedure TStringGrid.FOnGetPickListItems(ACol, ARow: Integer; Items: TStrings);
-var
-  i: integer;
 begin
   if (not Assigned(m_HiddenInplaceEditData)) then
     m_HiddenInplaceEditData := TStringList.Create;

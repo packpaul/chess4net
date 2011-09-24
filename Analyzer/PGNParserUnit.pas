@@ -406,8 +406,6 @@ end;
 
 
 procedure TGameParser.FParse;
-var
-  i: integer;
 begin
   m_ChessRulesEngine.InitNewGame;
   if (m_strStartPosition <> '') then
@@ -672,6 +670,8 @@ var
   movePly: PMovePly;
 begin
   Result := TRUE;
+
+  movePly := nil; // To supress warning
 
   if ((length(strToken) > 1) and (strToken[2] = '{')) then
   begin

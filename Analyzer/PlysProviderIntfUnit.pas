@@ -33,6 +33,8 @@ type
     procedure GetPlysForPlyIndex(iPlyIndex: integer; var List: TStrings);
     function SetPlyForPlyIndex(iPlyIndex: integer; const strPly: string): boolean;
 
+    function IsPlyDisclosed(iPlyIndex: integer): boolean;
+
     function GetInvalidationID: LongWord;
 
     property PlysCount: integer read GetPlysCount;
