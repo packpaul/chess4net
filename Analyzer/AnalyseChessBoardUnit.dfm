@@ -119,6 +119,17 @@ object AnalyseChessBoard: TAnalyseChessBoard
       object N5: TTntMenuItem
         Caption = '-'
       end
+      object PreviousGame1: TTntMenuItem
+        Action = PreviousGameAction
+        Caption = '&Previous Game'
+      end
+      object NextGame1: TTntMenuItem
+        Action = NextGameAction
+        Caption = '&Next Game'
+      end
+      object N11: TTntMenuItem
+        Caption = '-'
+      end
       object ViewMoveListMenuItem: TTntMenuItem
         Action = MoveListAction
         Caption = '&Move List'
@@ -398,6 +409,22 @@ object AnalyseChessBoard: TAnalyseChessBoard
       Category = 'Modes'
       OnExecute = TrainingModeActionExecute
       OnUpdate = ModeActionUpdate
+    end
+    object PreviousGameAction: TAction
+      Category = 'Navigation'
+      Hint = 'Previous Game'
+      ImageIndex = 1
+      ShortCut = 16417
+      OnExecute = PreviousGameActionExecute
+      OnUpdate = PreviousGameActionUpdate
+    end
+    object NextGameAction: TAction
+      Category = 'Navigation'
+      Hint = 'Next Game'
+      ImageIndex = 0
+      ShortCut = 16418
+      OnExecute = NextGameActionExecute
+      OnUpdate = NextGameActionUpdate
     end
   end
   object ImageList: TImageList

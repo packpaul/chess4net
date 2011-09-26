@@ -66,12 +66,14 @@ type
 
     procedure FClear;
 
+    function IGamesListProvider.GetGamesCount = FGetGamesCount;
+    function FGetGamesCount: integer;
+
   public
     constructor Create;
     destructor Destroy; override;
 
     function LoadFromFile(const AFileName: TFileName): boolean;
-    function GetGamesCount: integer;
 
     procedure Clear;
     procedure AddGame(const APGNWriter: TPGNWriter);
@@ -79,10 +81,10 @@ type
 
     function ParseGame(var PGNParser: TPGNParser; iGameIndex: integer): boolean;
 
-    property GamesCount: integer read GetGamesCount;
+    property GamesCount: integer read FGetGamesCount;
     property Games[iIndex: integer]: TGameItem read FGetGame;
 
-    property CurrentGameIndex: integer read m_iCurrentGameIndex;
+    property CurrentGameIndex: integer read m_iCurrentGameIndex write FSetCurrentGameIndex;
 
     property OnChanged: TNotifyEvent read FOnChanged write FOnChanged;
     property OnCurrentGameIndexChange: TOnCurrentGameIndexChangedEvent
@@ -267,7 +269,7 @@ begin
 end;
 
 
-function TGamesManager.GetGamesCount: integer;
+function TGamesManager.FGetGamesCount: integer;
 begin
   Result := m_Games.Count;
 end;

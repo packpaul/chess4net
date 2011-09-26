@@ -134,6 +134,11 @@ type
     ModeTrainingMenuItem: TTntMenuItem;
     AnalysisModeAction: TAction;
     TrainingModeAction: TAction;
+    NextGameAction: TAction;
+    PreviousGameAction: TAction;
+    N11: TTntMenuItem;
+    PreviousGame1: TTntMenuItem;
+    NextGame1: TTntMenuItem;
     procedure FileExitMenuItemClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormCanResize(Sender: TObject; var NewWidth,
@@ -195,6 +200,10 @@ type
     procedure AnalysisModeActionExecute(Sender: TObject);
     procedure TrainingModeActionExecute(Sender: TObject);
     procedure ModeActionUpdate(Sender: TObject);
+    procedure PreviousGameActionExecute(Sender: TObject);
+    procedure NextGameActionExecute(Sender: TObject);
+    procedure PreviousGameActionUpdate(Sender: TObject);
+    procedure NextGameActionUpdate(Sender: TObject);
   private
     m_ChessBoard: TChessBoard;
     m_PosBaseChessBoardLayer: TPosBaseChessBoardLayer;
@@ -395,11 +404,18 @@ type
     m_bReplyingFlag: boolean;
     m_bForwardingFlag: boolean;
     m_ReplyDelayedTimer: TTimer;
+    m_SwitchToNextGameTimer: TTimer;
+    m_bDontSwitchToNextGame: boolean;
     procedure FOnReplyDelayedTimer(Sender: TObject);
+    procedure FOnSwitchToNextGameTimer(Sender: TObject);
     procedure FResetPlysTree;
     procedure FDiscloseCurrentPly;
+    function FIsCurrentPlyDisclosed: boolean;
     function FMayDoMove(const strMove: string): boolean;
     procedure FShowHint;
+    function FIsLastPlyInLine: boolean;
+    procedure FCreateTimers;
+    procedure FDestroyTimers;
   protected
     constructor RCreate(AChessBoard: TAnalyseChessBoard); override;
   public
@@ -416,6 +432,7 @@ const
   MSG_FILE_EXISTS_OVERWRITE = 'File %s already exists. Do you want it to be overwritten?';
   MSG_LINE_TO_BE_DELETED = 'Are you sure you want to delete current line?';
   MSG_SET_LINE_TO_MAIN = 'Are you sure you want current line be set to main?';
+  MSG_END_POSITION_SWITCH_NEXT_GAME = 'End position of line is reached. Do you want to switch to the next game?';
 
   LBL_CHESS4NET_ANALYZER_VER = 'Chess4Net Analyzer %s';
 
@@ -787,7 +804,7 @@ begin
 
   ACurrentGameItem := m_GamesManager.Games[m_GamesManager.CurrentGameIndex];
   if ((not bResult) or
-      ((m_GamesManager.GetGamesCount = 1) and (ACurrentGameItem.DataError))) then
+      ((m_GamesManager.GamesCount = 1) and (ACurrentGameItem.DataError))) then
     MessageDlg(MSG_INCORRECT_FILE_FORMAT, mtError, [mbOK], 0);
 end;
 
@@ -1157,6 +1174,8 @@ begin
   DeleteLineAction.Update;
   InitialPositionAction.Update;
   EndPositionAction.Update;
+  NextGameAction.Update;
+  PreviousGameAction.Update;
   CommentsAction.Update; // TODO: In XP this line is not needed. What about Vista?
 end;
 
@@ -2064,6 +2083,30 @@ begin
 end;
 
 
+procedure TAnalyseChessBoard.PreviousGameActionExecute(Sender: TObject);
+begin
+  m_GamesManager.CurrentGameIndex := m_GamesManager.CurrentGameIndex - 1;
+end;
+
+
+procedure TAnalyseChessBoard.PreviousGameActionUpdate(Sender: TObject);
+begin
+  (Sender as TAction).Enabled := (m_GamesManager.CurrentGameIndex > 0);
+end;
+
+
+procedure TAnalyseChessBoard.NextGameActionExecute(Sender: TObject);
+begin
+  m_GamesManager.CurrentGameIndex := m_GamesManager.CurrentGameIndex + 1;
+end;
+
+
+procedure TAnalyseChessBoard.NextGameActionUpdate(Sender: TObject);
+begin
+  (Sender as TAction).Enabled :=
+    (m_GamesManager.CurrentGameIndex < (m_GamesManager.GamesCount - 1));
+end;
+
 ////////////////////////////////////////////////////////////////////////////////
 // TGameContextData
 
@@ -2165,10 +2208,7 @@ constructor TModeStrategyTraining.RCreate(AChessBoard: TAnalyseChessBoard);
 begin
   inherited;
 
-  m_ReplyDelayedTimer := TTimer.Create(nil);
-  m_ReplyDelayedTimer.Enabled := FALSE;
-  m_ReplyDelayedTimer.Interval := 200;
-  m_ReplyDelayedTimer.OnTimer := FOnReplyDelayedTimer;
+  FCreateTimers;
 
   FResetPlysTree;
 
@@ -2184,21 +2224,48 @@ end;
 
 destructor TModeStrategyTraining.Destroy;
 begin
-  m_ReplyDelayedTimer.Free;
+  FDestroyTimers;
   inherited;
 end;
 
 
+procedure TModeStrategyTraining.FCreateTimers;
+begin
+  m_ReplyDelayedTimer := TTimer.Create(nil);
+  with m_ReplyDelayedTimer do
+  begin
+    Enabled := FALSE;
+    Interval := 200;
+    OnTimer := FOnReplyDelayedTimer;
+  end;
+
+  m_SwitchToNextGameTimer := TTimer.Create(nil);
+  with m_SwitchToNextGameTimer do
+  begin
+    Enabled := FALSE;
+    Interval := 500;
+    OnTimer := FOnSwitchToNextGameTimer;
+  end;
+
+end;
+
+
+procedure TModeStrategyTraining.FDestroyTimers;
+begin
+  FreeAndNil(m_SwitchToNextGameTimer);
+  FreeAndNil(m_ReplyDelayedTimer);
+end;
+
+
 procedure TModeStrategyTraining.OnMove(const strMove: string);
+var
+  bPlyJustDisclosedFlag: boolean;
 begin
   with ChessBoard do
   begin
     if (not self.FMayDoMove(strMove)) then
     begin
       m_ChessBoard.TakeBack;
-
-      if (FGetCurrentPlyIndex >= FGetPlysCount) then
-        exit; 
 
       if (TIncorrectMoveForm.Show = immrShowHint) then
         FShowHint;
@@ -2208,12 +2275,26 @@ begin
 
     inc(m_iCurrentPlyIndex);
     FAdjustPlysList(strMove);
+
+    bPlyJustDisclosedFlag := (not self.FIsCurrentPlyDisclosed);
     self.FDiscloseCurrentPly;
 
     FSynchronizeChessEngineWithChessBoardAndStartEvaluation;
-  end;
+  end; // with
 
   try
+    if (FIsLastPlyInLine) then
+    begin
+      if (m_bDontSwitchToNextGame or (not bPlyJustDisclosedFlag)) then
+        exit;
+
+      ChessBoard.NextGameAction.Update;
+      if (ChessBoard.NextGameAction.Enabled) then
+        m_SwitchToNextGameTimer.Enabled := TRUE;
+
+      exit;
+    end;
+
     if (m_bReplyingFlag or m_bForwardingFlag) then
       exit;
 
@@ -2226,6 +2307,13 @@ begin
     m_bReplyingFlag := FALSE;
   end;
 
+end;
+
+
+function TModeStrategyTraining.FIsLastPlyInLine: boolean;
+begin
+  with ChessBoard do
+    Result := (FGetCurrentPlyIndex >= FGetPlysCount);
 end;
 
 
@@ -2266,9 +2354,32 @@ begin
 end;
 
 
+procedure TModeStrategyTraining.FOnSwitchToNextGameTimer(Sender: TObject);
+var
+  Res: TModalResult;
+begin
+  if (ChessBoard.m_ChessBoard.IsMoveAnimating) then
+    exit;
+
+  m_SwitchToNextGameTimer.Enabled := FALSE;
+
+  Res := TDontShowMessageDlg.Show(MSG_END_POSITION_SWITCH_NEXT_GAME,
+    mtConfirmation, [mbYes, mbNo], m_bDontSwitchToNextGame);
+  if (Res = mrYes) then
+    ChessBoard.NextGameAction.Execute;
+end;
+
+
 procedure TModeStrategyTraining.FResetPlysTree;
 begin
   ChessBoard.m_PlysTree.ClearAllDisclosedPlys;
+end;
+
+
+function TModeStrategyTraining.FIsCurrentPlyDisclosed: boolean;
+begin
+  with ChessBoard do
+    Result := m_PlysTree.IsDisclosed[FGetCurrentPlyIndex];
 end;
 
 

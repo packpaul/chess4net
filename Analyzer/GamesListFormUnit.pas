@@ -9,7 +9,7 @@ unit GamesListFormUnit;
 interface
 
 uses
-  Forms, AppEvnts, Classes, Controls, StdCtrls,
+  Forms, AppEvnts, Classes, Controls, StdCtrls, Buttons,
   //
   FloatingFormsUnit;
 
@@ -35,7 +35,9 @@ type
 
   TGamesListForm = class(TChildFloatingForm)
     GamesListBox: TListBox;
-    ApplicationEvents: TApplicationEvents;    
+    ApplicationEvents: TApplicationEvents;
+    ForthSpeedButton: TSpeedButton;
+    BackSpeedButton: TSpeedButton;
     procedure ApplicationEventsShowHint(var HintStr: String;
       var CanShow: Boolean; var HintInfo: THintInfo);
     procedure FormShow(Sender: TObject);
@@ -54,7 +56,9 @@ type
 implementation
 
 uses
-  SysUtils, TntSysUtils;
+  SysUtils, TntSysUtils,
+  //
+  AnalyseChessBoardUnit;
 
 {$R *.dfm}
 
