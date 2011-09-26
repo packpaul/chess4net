@@ -358,7 +358,8 @@ uses
   Windows, TntClipbrd, ShellAPI,
   //
   GlobalsLocalUnit, DontShowMessageDlgUnit,
-  IniSettingsUnit, PGNWriterUnit, SplashFormUnit, CommentsEditFormUnit;
+  IniSettingsUnit, PGNWriterUnit, SplashFormUnit, CommentsEditFormUnit,
+  IncorrectMoveFormUnit;
 
 {$R *.dfm}
 
@@ -398,6 +399,7 @@ type
     procedure FResetPlysTree;
     procedure FDiscloseCurrentPly;
     function FMayDoMove(const strMove: string): boolean;
+    procedure FShowHint;
   protected
     constructor RCreate(AChessBoard: TAnalyseChessBoard); override;
   public
@@ -414,7 +416,6 @@ const
   MSG_FILE_EXISTS_OVERWRITE = 'File %s already exists. Do you want it to be overwritten?';
   MSG_LINE_TO_BE_DELETED = 'Are you sure you want to delete current line?';
   MSG_SET_LINE_TO_MAIN = 'Are you sure you want current line be set to main?';
-  MSG_INCORRECT_MOVE = 'Incorrect move!';
 
   LBL_CHESS4NET_ANALYZER_VER = 'Chess4Net Analyzer %s';
 
@@ -2195,7 +2196,13 @@ begin
     if (not self.FMayDoMove(strMove)) then
     begin
       m_ChessBoard.TakeBack;
-      MessageDlg(MSG_INCORRECT_MOVE, mtCustom, [mbOk], 0);      
+
+      if (FGetCurrentPlyIndex >= FGetPlysCount) then
+        exit; 
+
+      if (TIncorrectMoveForm.Show = immrShowHint) then
+        FShowHint;
+
       exit;
     end;
 
@@ -2280,6 +2287,24 @@ procedure TModeStrategyTraining.OnLoadGameFrom;
 begin
   with ChessBoard do
     m_ChessBoard.Flipped := (ChessBoardFlipped = FGetWhiteStarts);
+end;
+
+
+procedure TModeStrategyTraining.FShowHint;
+var
+  APlys: TStrings;
+begin
+  APlys := nil;
+
+  with ChessBoard do
+  try
+    APlys := TStringList.Create;
+    FGetPlysForPlyIndex(FGetCurrentPlyIndex + 1, APlys);
+    MessageDlg(APlys.CommaText, mtCustom, [mbOk], 0);
+  finally
+    APlys.Free;
+  end;
+
 end;
 
 initialization
