@@ -2267,6 +2267,9 @@ begin
     begin
       m_ChessBoard.TakeBack;
 
+      if (FIsLastPlyInLine) then
+        exit;
+
       if (TIncorrectMoveForm.Show = immrShowHint) then
         FShowHint;
 
