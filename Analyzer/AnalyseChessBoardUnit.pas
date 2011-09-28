@@ -614,8 +614,8 @@ begin
     end;
   end;
 
-  m_PlysTree.Add(iPly, m_ChessBoard.GetPosition, strMove, [psUserLine]);
-  FSetGameChanged(TRUE);
+  if (m_PlysTree.Add(iPly, m_ChessBoard.GetPosition, strMove, [psUserLine])) then
+    FSetGameChanged(TRUE);
 
   inc(m_lwPlysListUpdateID);
   FRefreshMoveListAndComments;

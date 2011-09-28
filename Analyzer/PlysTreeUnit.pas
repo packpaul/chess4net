@@ -33,7 +33,7 @@ type
     function FGetNextNodeOfMainLine: TPlysTreeNode;
     procedure FDeleteNextNodeOfLine;
     procedure FDeleteNextNodes;
-    procedure FAddLineNode(Node: TPlysTreeNode);
+    function FAddLineNode(Node: TPlysTreeNode): boolean;
     function FGetNextNodesCount: integer;
     procedure FGetNextNodesList(var List: TStrings);
     function FSetNextNodeOfLineToPly(const strPly: string): boolean;
@@ -74,9 +74,9 @@ type
     destructor Destroy; override;
 
     function Add(iPlyIndex: integer; const strPos: string;
-      const strMove: string = ''; APlyStatuses: TPlyStatuses = []): integer; overload;
+      const strMove: string = ''; APlyStatuses: TPlyStatuses = []): boolean; overload;
     function Add(const strPos: string; strMove: string = '';
-      APlyStatuses: TPlyStatuses = []): integer; overload;
+      APlyStatuses: TPlyStatuses = []): boolean; overload;
 
     procedure Clear;
     function Delete(iIndex: Integer): boolean;
@@ -178,13 +178,14 @@ end;
 
 
 function TPlysTree.Add(iPlyIndex: integer; const strPos: string;
-  const strMove: string = ''; APlyStatuses: TPlyStatuses = []): integer;
+  const strMove: string = ''; APlyStatuses: TPlyStatuses = []): boolean;
 var
+  i: integer;
   Node, NextNode: TPlysTreeNode;
 begin
   Assert(iPlyIndex >= 0);
 
-  Result := 0;
+  Result := TRUE;
 
   if (iPlyIndex = 0) then
   begin
@@ -194,19 +195,21 @@ begin
     exit;
   end;
 
+  i := 0;
+
   NextNode := m_FirstNode;
   repeat
-    inc(Result);
+    inc(i);
     Node := NextNode;
     NextNode := Node.FGetNextNodeOfLine;
-  until ((Result >= iPlyIndex) or (not Assigned(NextNode)));
+  until ((i >= iPlyIndex) or (not Assigned(NextNode)));
 
-  Node.FAddLineNode(TPlysTreeNode.Create(strPos, strMove, APlyStatuses));
+  Result := Node.FAddLineNode(TPlysTreeNode.Create(strPos, strMove, APlyStatuses));
 end;
 
 
 function TPlysTree.Add(const strPos: string; strMove: string = '';
-  APlyStatuses: TPlyStatuses = []): integer;
+  APlyStatuses: TPlyStatuses = []): boolean;
 begin
   Result := Add(Count, strPos, strMove, APlyStatuses);
 end;
@@ -540,10 +543,12 @@ begin
 end;
 
 
-procedure TPlysTreeNode.FAddLineNode(Node: TPlysTreeNode);
+function TPlysTreeNode.FAddLineNode(Node: TPlysTreeNode): boolean;
 var
   i: integer;
 begin
+  Result := FALSE;
+
   for i := Low(m_arrNextNodes) to High(m_arrNextNodes) do
   begin
     if (Assigned(m_arrNextNodes[i]) and m_arrNextNodes[i].FEquals(Node)) then
@@ -553,6 +558,8 @@ begin
       exit;
     end;
   end;
+
+  Result := TRUE;
 
   if ((psMainLine in PlyStatuses) and (FGetNextNodesCount = 0)) then
     Node.PlyStatuses := Node.PlyStatuses + [psMainLine];
