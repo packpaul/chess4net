@@ -368,7 +368,7 @@ uses
   //
   GlobalsLocalUnit, DontShowMessageDlgUnit,
   IniSettingsUnit, PGNWriterUnit, SplashFormUnit, CommentsEditFormUnit,
-  IncorrectMoveFormUnit;
+  IncorrectMoveFormUnit, MoveHintsChessBoardLayerUnit;
 
 {$R *.dfm}
 
@@ -404,15 +404,16 @@ type
     m_bReplyingFlag: boolean;
     m_bForwardingFlag: boolean;
     m_ReplyDelayedTimer: TTimer;
-    m_SwitchToNextGameTimer: TTimer;
-    m_bDontSwitchToNextGame: boolean;
+    m_EndPositionOfLineTimer: TTimer;
+    m_bDontAskOnEndPositionOfLine: boolean;
+    m_MoveHintsChessBoardLayer: TMoveHintsChessBoardLayer;
     procedure FOnReplyDelayedTimer(Sender: TObject);
-    procedure FOnSwitchToNextGameTimer(Sender: TObject);
+    procedure FOnEndPositionOfLineTimer(Sender: TObject);
     procedure FResetPlysTree;
     procedure FDiscloseCurrentPly;
     function FIsCurrentPlyDisclosed: boolean;
     function FMayDoMove(const strMove: string): boolean;
-    procedure FShowHint;
+    procedure FShowHint(const strMoveDone: string);
     function FIsLastPlyInLine: boolean;
     procedure FCreateTimers;
     procedure FDestroyTimers;
@@ -432,7 +433,8 @@ const
   MSG_FILE_EXISTS_OVERWRITE = 'File %s already exists. Do you want it to be overwritten?';
   MSG_LINE_TO_BE_DELETED = 'Are you sure you want to delete current line?';
   MSG_SET_LINE_TO_MAIN = 'Are you sure you want current line be set to main?';
-  MSG_END_POSITION_SWITCH_NEXT_GAME = 'End position of line is reached. Do you want to switch to the next game?';
+  MSG_END_POSITION_REACHED = 'End position of line is reached.';
+  MSG_END_POSITION_REACHED_SWITCH_NEXT_GAME = 'End position of line is reached. Do you want to switch to the next game?';
 
   LBL_CHESS4NET_ANALYZER_VER = 'Chess4Net Analyzer %s';
 
@@ -2219,12 +2221,18 @@ begin
     FDiscloseCurrentPly;
   end;
 
+  m_MoveHintsChessBoardLayer := TMoveHintsChessBoardLayer.Create;
+  ChessBoard.m_ChessBoard.AddLayer(m_MoveHintsChessBoardLayer);
 end;
 
 
 destructor TModeStrategyTraining.Destroy;
 begin
+  ChessBoard.m_ChessBoard.RemoveLayer(m_MoveHintsChessBoardLayer);
+  m_MoveHintsChessBoardLayer.Free;
+
   FDestroyTimers;
+  
   inherited;
 end;
 
@@ -2239,12 +2247,12 @@ begin
     OnTimer := FOnReplyDelayedTimer;
   end;
 
-  m_SwitchToNextGameTimer := TTimer.Create(nil);
-  with m_SwitchToNextGameTimer do
+  m_EndPositionOfLineTimer := TTimer.Create(nil);
+  with m_EndPositionOfLineTimer do
   begin
     Enabled := FALSE;
     Interval := 500;
-    OnTimer := FOnSwitchToNextGameTimer;
+    OnTimer := FOnEndPositionOfLineTimer;
   end;
 
 end;
@@ -2252,7 +2260,7 @@ end;
 
 procedure TModeStrategyTraining.FDestroyTimers;
 begin
-  FreeAndNil(m_SwitchToNextGameTimer);
+  FreeAndNil(m_EndPositionOfLineTimer);
   FreeAndNil(m_ReplyDelayedTimer);
 end;
 
@@ -2271,10 +2279,12 @@ begin
         exit;
 
       if (TIncorrectMoveForm.Show = immrShowHint) then
-        FShowHint;
+        FShowHint(strMove);
 
       exit;
     end;
+
+    m_MoveHintsChessBoardLayer.UnsetData;
 
     inc(m_iCurrentPlyIndex);
     FAdjustPlysList(strMove);
@@ -2288,12 +2298,10 @@ begin
   try
     if (FIsLastPlyInLine) then
     begin
-      if (m_bDontSwitchToNextGame or (not bPlyJustDisclosedFlag)) then
+      if (m_bDontAskOnEndPositionOfLine or (not bPlyJustDisclosedFlag)) then
         exit;
 
-      ChessBoard.NextGameAction.Update;
-      if (ChessBoard.NextGameAction.Enabled) then
-        m_SwitchToNextGameTimer.Enabled := TRUE;
+      m_EndPositionOfLineTimer.Enabled := TRUE;
 
       exit;
     end;
@@ -2322,14 +2330,14 @@ end;
 
 function TModeStrategyTraining.FMayDoMove(const strMove: string): boolean;
 var
-  m_strlPlys: TStrings;
+  APlys: TStrings;
 begin
-  m_strlPlys := TStringList.Create;
+  APlys := TStringList.Create;
   try
-    ChessBoard.FGetPlysForPlyIndex(ChessBoard.FGetCurrentPlyIndex + 1, m_strlPlys);
-    Result := (m_strlPlys.IndexOf(strMove) >= 0);
+    ChessBoard.FGetPlysForPlyIndex(ChessBoard.FGetCurrentPlyIndex + 1, APlys);
+    Result := (APlys.IndexOf(strMove) >= 0);
   finally
-    m_strlPlys.Free;
+    APlys.Free;
   end;
 end;
 
@@ -2357,19 +2365,26 @@ begin
 end;
 
 
-procedure TModeStrategyTraining.FOnSwitchToNextGameTimer(Sender: TObject);
+procedure TModeStrategyTraining.FOnEndPositionOfLineTimer(Sender: TObject);
 var
   Res: TModalResult;
 begin
   if (ChessBoard.m_ChessBoard.IsMoveAnimating) then
     exit;
 
-  m_SwitchToNextGameTimer.Enabled := FALSE;
+  m_EndPositionOfLineTimer.Enabled := FALSE;
 
-  Res := TDontShowMessageDlg.Show(MSG_END_POSITION_SWITCH_NEXT_GAME,
-    mtConfirmation, [mbYes, mbNo], m_bDontSwitchToNextGame);
-  if (Res = mrYes) then
-    ChessBoard.NextGameAction.Execute;
+  ChessBoard.NextGameAction.Update;
+  if (ChessBoard.NextGameAction.Enabled) then
+  begin
+    Res := TDontShowMessageDlg.Show(MSG_END_POSITION_REACHED_SWITCH_NEXT_GAME,
+      mtConfirmation, [mbYes, mbNo], m_bDontAskOnEndPositionOfLine);
+    if (Res = mrYes) then
+      ChessBoard.NextGameAction.Execute;
+  end
+  else
+    TDontShowMessageDlg.Show(MSG_END_POSITION_REACHED, mtCustom, [mbOk],
+      m_bDontAskOnEndPositionOfLine);
 end;
 
 
@@ -2404,19 +2419,35 @@ begin
 end;
 
 
-procedure TModeStrategyTraining.FShowHint;
+procedure TModeStrategyTraining.FShowHint(const strMoveDone: string);
 var
-  APlys: TStrings;
+  NextPlys: TStrings;
+  i: integer;
+  iMainLinePlyIndex: integer;
 begin
-  APlys := nil;
+  NextPlys := nil;
 
   with ChessBoard do
   try
-    APlys := TStringList.Create;
-    FGetPlysForPlyIndex(FGetCurrentPlyIndex + 1, APlys);
-    MessageDlg(APlys.CommaText, mtCustom, [mbOk], 0);
+    NextPlys := TStringList.Create;
+
+    iMainLinePlyIndex := -1;
+
+    FGetPlysForPlyIndex(FGetCurrentPlyIndex + 1, NextPlys);
+    for i := 0 to NextPlys.Count - 1 do
+    begin
+      if (psMainLine in m_PlysTree.GetNextPlyStatus(FGetCurrentPlyIndex, NextPlys[i])) then
+      begin
+        iMainLinePlyIndex := i;
+        break;
+      end;
+    end;
+
+    m_MoveHintsChessBoardLayer.SetData(m_ChessBoard.GetPosition,
+      strMoveDone, NextPlys, iMainLinePlyIndex);
+
   finally
-    APlys.Free;
+    NextPlys.Free;
   end;
 
 end;

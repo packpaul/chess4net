@@ -43,7 +43,8 @@ uses
   WinControlHlpUnit in 'WinControlHlpUnit.pas',
   GamesManagerUnit in 'GamesManagerUnit.pas',
   GamesListFormUnit in 'GamesListFormUnit.pas' {GamesListForm},
-  IncorrectMoveFormUnit in 'IncorrectMoveFormUnit.pas' {IncorrectMoveForm};
+  IncorrectMoveFormUnit in 'IncorrectMoveFormUnit.pas' {IncorrectMoveForm},
+  MoveHintsChessBoardLayerUnit in 'MoveHintsChessBoardLayerUnit.pas';
 
 {$R ..\Chess4Net.res}
 

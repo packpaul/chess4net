@@ -45,6 +45,8 @@ type
 
     procedure FSetIsDisclosedRecusively(bValue: boolean);
 
+    function FGetNextPlyStatuses(const strNextPly: string): TPlyStatuses;
+
     property Ply: string read m_strPly;
     property Pos: string read m_strPos;
     property PlyStatuses: TPlyStatuses read m_PlyStatuses write m_PlyStatuses;
@@ -86,6 +88,7 @@ type
     procedure GetPlysForPlyIndex(iIndex: integer; var List: TStrings);
     function SetPlyForPlyIndex(iIndex: integer; const strPly: string): boolean;
     function GetPlyStatus(iIndex: integer): TPlyStatuses;
+    function GetNextPlyStatus(iIndex: integer; const strNextPly: string): TPlyStatuses;
 
     function FGetIsDisclosed(iIndex: integer): boolean;
     procedure FSetIsDisclosed(iIndex: integer; bValue: boolean);
@@ -295,6 +298,18 @@ begin
   Node := FGetNodeOfDepth(iIndex);
   if (Assigned(Node)) then
     Result := Node.PlyStatuses
+  else
+    Result := [];
+end;
+
+
+function TPlysTree.GetNextPlyStatus(iIndex: integer; const strNextPly: string): TPlyStatuses;
+var
+  Node: TPlysTreeNode;
+begin
+  Node := FGetNodeOfDepth(iIndex);
+  if (Assigned(Node)) then
+    Result := Node.FGetNextPlyStatuses(strNextPly)
   else
     Result := [];
 end;
@@ -609,7 +624,12 @@ begin
   for i := Low(m_arrNextNodes) to High(m_arrNextNodes) do
   begin
     Node := m_arrNextNodes[i];
-    if (Assigned(Node)) then
+    if (not Assigned(Node)) then
+      continue;
+
+    if (i = m_iNextNodeOfLineIndex) then
+      List.Insert(0, Node.Ply)
+    else
       List.Append(Node.Ply);
   end;
 end;
@@ -709,6 +729,23 @@ begin
 
   until (not Assigned(Node));
 
+end;
+
+
+function TPlysTreeNode.FGetNextPlyStatuses(const strNextPly: string): TPlyStatuses;
+var
+  i: integer;
+begin
+  for i := Low(m_arrNextNodes) to High(m_arrNextNodes) do
+  begin
+    if (Assigned(m_arrNextNodes[i]) and (m_arrNextNodes[i].Ply = strNextPly)) then
+    begin
+      Result := m_arrNextNodes[i].PlyStatuses;
+      exit;
+    end;
+  end;
+
+  Result := [];
 end;
 
 end.
