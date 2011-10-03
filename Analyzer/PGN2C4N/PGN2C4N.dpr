@@ -9,7 +9,8 @@ program PGN2C4N;
 {$APPTYPE CONSOLE}
 
 uses
-  SysUtils,
+  Windows, SysUtils,
+  //
   PGN2C4NConvertorUnit in 'PGN2C4NConvertorUnit.pas',
   PGNParserUnit in '..\PGNParserUnit.pas',
   PGNWriterUnit in '..\PGNWriterUnit.pas',
@@ -50,6 +51,8 @@ begin
     ShowError;
     Halt(1);    
   end;
+
+  SetThreadLocale(1036); // TODO: set LCID over parameters
 
   InputFile := ParamStr(1);
   OutputFile := ParamStr(2);
