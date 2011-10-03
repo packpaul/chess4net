@@ -9,7 +9,14 @@ program PGN2C4N;
 {$APPTYPE CONSOLE}
 
 uses
-  SysUtils;
+  SysUtils,
+  PGN2C4NConvertorUnit in 'PGN2C4NConvertorUnit.pas',
+  PGNParserUnit in '..\PGNParserUnit.pas',
+  PGNWriterUnit in '..\PGNWriterUnit.pas',
+  ChessRulesEngine in '..\..\ChessRulesEngine.pas',
+  PlysTreeUnit in '..\PlysTreeUnit.pas',
+  PlysProviderIntfUnit in '..\PlysProviderIntfUnit.pas',
+  NonRefInterfacedObjectUnit in '..\..\NonRefInterfacedObjectUnit.pas';
 
 procedure ShowHelp;
 begin
@@ -44,7 +51,8 @@ begin
     Halt(1);    
   end;
 
-  // For switch handling see PosDB.dpr
+  InputFile := ParamStr(1);
+  OutputFile := ParamStr(2);
 
-  // TODO: make conversion
+  TPGN2C4nConvertor.Convert(InputFile, OutputFile);
 end.

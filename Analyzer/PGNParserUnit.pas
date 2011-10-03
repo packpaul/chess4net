@@ -64,6 +64,8 @@ type
   private
     m_DataCursor: IPGNDataCursor;
 
+    m_Tags: TTntStrings;
+
     m_wstrWhite: WideString;
     m_wstrBlack: WideString;
     m_iC4N: integer;
@@ -74,8 +76,14 @@ type
     procedure FSetC4N(const strValue: string);
 
   public
+    constructor Create;
+    destructor Destroy; override;
+
     function Parse(ADataCursor: IPGNDataCursor): boolean;
     class function IsTag(wstr: WideString): boolean;
+    class function IsSameTagLabel(const wstrTag1, wstrTag2: WideString): boolean;
+
+    property Tags: TTntStrings read m_Tags;
 
     property White: WideString read m_wstrWhite;
     property Black: WideString read m_wstrBlack;
@@ -738,10 +746,45 @@ end;
 ////////////////////////////////////////////////////////////////////////////////
 // TPGNTagParser
 
+constructor TPGNTagParser.Create;
+begin
+  inherited Create;
+
+  m_Tags := TTntStringList.Create;
+end;
+
+
+destructor TPGNTagParser.Destroy;
+begin
+  m_Tags.Free;
+
+  inherited;
+end;
+
+
 class function TPGNTagParser.IsTag(wstr: WideString): boolean;
 begin
   wstr := TrimRight(wstr);
   Result := ((wstr <> '') and ((wstr[1] = '[') and (wstr[length(wstr)] = ']')));
+end;
+
+
+class function TPGNTagParser.IsSameTagLabel(const wstrTag1, wstrTag2: WideString): boolean;
+var
+  iPos1, iPos2: integer;
+  wstrTag1Label, wstrTag2Label: WideString;
+begin
+  iPos1 := Pos(' ', wstrTag1);
+  iPos2 := Pos(' ', wstrTag2);
+
+  Result := (iPos1 = iPos2);
+  if (not Result) then
+    exit;
+
+  wstrTag1Label := Copy(wstrTag1, 2, iPos1 - 2);
+  wstrTag2Label := Copy(wstrTag2, 2, iPos2 - 2);
+
+  Result := (wstrTag1Label = wstrTag2Label);
 end;
 
 
@@ -764,6 +807,8 @@ var
 begin
   Result := FALSE;
 
+  m_Tags.Clear;
+
   if (m_DataCursor.IsEndOfData) then
     exit;
 
@@ -776,6 +821,7 @@ begin
     begin
       if (not FProcessLine(wstr)) then
         exit;
+      m_Tags.Append(wstr);
     end;
 
     wstr := m_DataCursor.GetNextLine;

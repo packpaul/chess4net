@@ -94,12 +94,11 @@ OutputDir=..\..\bin
 UnitOutputDir=.\dcu
 PackageDLLOutputDir=
 PackageDCPOutputDir=
-SearchPath=
+SearchPath=..\..\lib\TntUnicodeControls\Source
 Conditionals=
 DebugSourceDirs=
 UsePackages=0
 [Parameters]
-RunParams=
 HostApplication=
 Launcher=
 UseLauncher=0

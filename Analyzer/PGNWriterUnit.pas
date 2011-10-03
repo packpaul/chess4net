@@ -281,7 +281,7 @@ end;
 
 function TPGNWriter.FGetData: TTntStrings;
 begin
-  Result := m_wstrlData as TTntStrings;
+  Result := m_wstrlData;
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
