@@ -64,6 +64,9 @@ type
     function HasData: boolean;
   end;
 
+const
+  BROKEN_DATA_COMMENT = '{BROKEN DATA!}';
+
 ////////////////////////////////////////////////////////////////////////////////
 // TPGN2C4NConvertor
 
@@ -145,7 +148,15 @@ begin
       begin
         PGNWriter.WriteInChess4NetFormat(PGNParser.Tree);
         FWriteToC4NData(wstrlPGNTags, PGNWriter.Data);
+      end
+      else if (wstrlPGNGame.Count > 0) then
+      begin
+        wstrlPGNGame.Clear;
+        wstrlPGNGame.Append('');
+        wstrlPGNGame.Append(BROKEN_DATA_COMMENT);
+        FWriteToC4NData(wstrlPGNTags, wstrlPGNGame);        
       end;
+
     until (not (FParseTags(wstrlPGNTags) and FParseGame(wstrlPGNTags, wstrlPGNGame)));
 
   finally
