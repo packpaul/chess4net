@@ -119,6 +119,7 @@ type
     m_MovePlyStack: TStack;
 
     m_bLastInvalidMove: boolean;
+    m_bDroppedToComments: boolean;
 
     procedure FParse;
     procedure FParseNextToken;
@@ -465,8 +466,7 @@ var
   i: integer;
   n: integer;
   posMove: TPosMove;
-  bTakebackLineFlag: boolean;
-  wstrComment: WideString;
+  wstrOldComment, wstrComment: WideString;
 begin
   wstrToken := FNextToken;
 
@@ -479,7 +479,13 @@ begin
   begin
     if (FParseComment(wstrToken, wstrComment)) then
     begin
+      m_bDroppedToComments := FALSE;
+
+      wstrOldComment := m_Tree.Comments[m_ChessRulesEngine.NPlysDone];
+      if (wstrOldComment <> '') then
+        wstrComment := wstrOldComment + sLineBreak + wstrComment;
       m_Tree.Comments[m_ChessRulesEngine.NPlysDone] := wstrComment;
+
       exit;
     end;
   end;
@@ -492,17 +498,14 @@ begin
 
   if (wstr = ')') then
   begin
-    bTakebackLineFlag := TRUE;
-    wstr := '';
-  end
-  else
+    FTakeBackLine;
+    exit;
+  end;
+
+  while ((wstr <> '') and (wstr[length(wstr)] = ')')) do
   begin
-    bTakebackLineFlag := FALSE;
-    while ((wstr <> '') and (wstr[length(wstr)] = ')')) do
-    begin
-      FAppendDataLeft(') ');
-      wstr := LeftStr(wstr, length(wstr) - 1);
-    end;
+    FAppendDataLeft(') ');
+    wstr := LeftStr(wstr, length(wstr) - 1);
   end;
 
   if (wstr = '...') then
@@ -521,50 +524,69 @@ begin
   if (RightStr(wstr, 2) = '..') then // 21... => 21.
     wstr := LeftStr(wstr, length(wstr) - 2);
 
-  if (wstr <> '') and
-     (not ((wstr[length(wstr)] = '.') and TryStrToInt(LeftStr(wstr, length(wstr) - 1), n) and
-           (n = (m_iPly shr 1) + 1))) and
-     (wstr[1] <> '$') then
+  if (wstr = '') then
+    exit;
+
+  if (wstr[1] = '$') then
+    exit;
+
+  if (wstr[length(wstr)] = '.') then
   begin
-    strOriginalMove := wstr;
+    if (TryStrToInt(LeftStr(wstr, length(wstr) - 1), n) and
+        (m_ChessRulesEngine.GetFENMoveNumber = n)) then
+      exit;
+  end;
 
-    wstr := StringReplace(wstr, 'O-O-O', '0-0-0', []);
-    wstr := StringReplace(wstr, 'O-O', '0-0', []);
-    wstr := StringReplace(wstr, 'x', '', []);
-    wstr := StringReplace(wstr, '=', '', []);
-//      s := StringReplace(s, '+', '', []);
-//      s := StringReplace(s, '#', '', []);
+  strOriginalMove := wstr;
 
-    posMove.pos := m_ChessRulesEngine.Position^;
-    if (m_ChessRulesEngine.DoMove(wstr)) then
-    begin
-      m_Tree.Add(m_ChessRulesEngine.NPlysDone, m_ChessRulesEngine.GetPosition,
-        m_ChessRulesEngine.lastMoveStr);
+  n := length(wstr);
 
-      m_bInC4NFormat := (m_bInC4NFormat and (strOriginalMove = m_ChessRulesEngine.lastMoveStr));
+  while ((n >= 0) and (wstr[n] in [WideChar('!'), WideChar('?')])) do
+    dec(n);
+  if (n < length(wstr)) then
+  begin
+    FAppendDataLeft(WideString('{') + Copy(wstr, n + 1, MaxInt) + '} ');
+    wstr := LeftStr(wstr, n);
+  end;
 
-      m_strBkpMove := wstr;
+  wstr := Tnt_WideStringReplace(wstr, 'O-O-O', '0-0-0', []);
+  wstr := Tnt_WideStringReplace(wstr, 'O-O', '0-0', []);
+  wstr := Tnt_WideStringReplace(wstr, 'x', '', []);
+  wstr := Tnt_WideStringReplace(wstr, '=', '', []);
 
-      inc(m_iPly);
+  posMove.pos := m_ChessRulesEngine.Position^;
+  if (m_ChessRulesEngine.DoMove(wstr)) then
+  begin
+    m_Tree.Add(m_ChessRulesEngine.NPlysDone, m_ChessRulesEngine.GetPosition,
+      m_ChessRulesEngine.lastMoveStr);
 
-      m_bLastInvalidMove := FALSE;
-
-//      writeln(n_ply, 'p. ' + s + #9 + ChessBoard.GetPosition); // DEBUG:
-    end
-    else
-    begin
-//      writeln(s, ' n_pos: ', n_pos); // DEBUG:
-      if (m_bLastInvalidMove) then
-        raise EPGNParser.Create;
-
-      m_bLastInvalidMove := TRUE;
-    end; // if (ChessRulesEngine.DoMove(s))
+    m_bInC4NFormat := (m_bInC4NFormat and (strOriginalMove = m_ChessRulesEngine.lastMoveStr));
 
     m_strBkpMove := wstr;
-  end; { if (s <> '') ...}
 
-  if (bTakebackLineFlag) then
-    FTakeBackLine;
+    inc(m_iPly);
+
+    m_bLastInvalidMove := FALSE;
+
+//      writeln(n_ply, 'p. ' + s + #9 + ChessBoard.GetPosition); // DEBUG:
+  end
+  else
+  begin
+//      writeln(s, ' n_pos: ', n_pos); // DEBUG:
+
+    if (m_bLastInvalidMove) then
+      raise EPGNParser.Create;
+
+    if (m_bDroppedToComments) then
+      m_bLastInvalidMove := TRUE
+    else
+    begin
+      FAppendDataLeft(WideString('{') + wstr + '} ');
+      m_bDroppedToComments := TRUE;
+    end;
+
+  end; // if (ChessRulesEngine.DoMove(s))
+
 end;
 
 

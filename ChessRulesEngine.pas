@@ -543,6 +543,13 @@ var
 begin
   Result := FALSE;
 
+  l := length(move_str);
+  if ((l <= 1)) then // at least two characters
+    exit;
+
+  if ((move_str[l] in ['+', '#'])) then
+    move_str := LeftStr(move_str, l - 1);
+
   // Проверка на рокировку
   if (move_str = '0-0') then
   begin
@@ -559,18 +566,12 @@ begin
       move_str:= 'Ke8c8';
   end;
 
+  l := length(move_str);
+
   i0 := 0;
   j0 := 0;
   i := 0;
   j := 0;
-
-  l := length(move_str);
-
-  if (l <= 1) then
-    exit;
-
-  if (move_str[l] in ['+', '#']) then
-    dec(l);
 
   prom_f := K;
   case move_str[l] of
