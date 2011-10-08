@@ -119,14 +119,14 @@ type
     m_MovePlyStack: TStack;
 
     m_bLastInvalidMove: boolean;
-    m_bDroppedToComments: boolean;
+    m_bDroppedToComments, m_bLastDroppedToComments: boolean;
 
     procedure FParse;
     procedure FParseNextToken;
     function FHasTokens: boolean;
     function FParseComment(const wstrToken: WideString; out wstrComment: WideString): boolean;
 
-    function FStartLine(const strToken: string): boolean;
+    procedure FStartLine;
     procedure FTakeBackLine;
 
     function FNextToken: WideString;
@@ -466,34 +466,47 @@ var
   i: integer;
   n: integer;
   posMove: TPosMove;
-  wstrOldComment, wstrComment: WideString;
+  wstrOldComment, wstrComment, wstrCommentsDelim: WideString;
 begin
   wstrToken := FNextToken;
 
   wstr := TrimRight(wstrToken);
 
-  if ((wstr = '') or (wstr = '*') or (wstr = '1-0') or (wstr = '0-1') or (wstr = '1/2-1/2')) then
+  if (wstr = '') then
+    exit;
+
+  if ((wstr = '*') or (wstr = '1-0') or (wstr = '0-1') or (wstr = '1/2-1/2')) then
     exit;
 
   if (wstr[1] = '{') then
   begin
     if (FParseComment(wstrToken, wstrComment)) then
     begin
-      m_bDroppedToComments := FALSE;
+      m_bLastDroppedToComments := m_bDroppedToComments;
 
       wstrOldComment := m_Tree.Comments[m_ChessRulesEngine.NPlysDone];
       if (wstrOldComment <> '') then
-        wstrComment := wstrOldComment + sLineBreak + wstrComment;
+      begin
+        if (m_bLastDroppedToComments and m_bDroppedToComments) then
+          wstrCommentsDelim := ' '
+        else
+          wstrCommentsDelim := sLineBreak;
+
+        wstrComment := wstrOldComment + wstrCommentsDelim + wstrComment;
+      end;
+
       m_Tree.Comments[m_ChessRulesEngine.NPlysDone] := wstrComment;
+
+      m_bDroppedToComments := FALSE;
 
       exit;
     end;
   end;
 
-  if (wstr[1] = '(') then
+  if (wstr = '(') then
   begin
-    if (FStartLine(wstr)) then
-      exit;
+    FStartLine;
+    exit;
   end;
 
   if (wstr = ')') then
@@ -502,7 +515,13 @@ begin
     exit;
   end;
 
-  while ((wstr <> '') and (wstr[length(wstr)] = ')')) do
+  if (wstr[1] = '(') then
+  begin
+    FAppendDataLeft(WideString('( ') + Copy(wstr, 2, MaxInt) + ' ');
+    exit;
+  end;
+
+  while (wstr[length(wstr)] = ')') do
   begin
     FAppendDataLeft(') ');
     wstr := LeftStr(wstr, length(wstr) - 1);
@@ -515,7 +534,7 @@ begin
   begin
     if (wstr[i] = '.') then
     begin
-      FAppendDataLeft(RightStr(wstr, length(wstr) - i) + ' ');
+      FAppendDataLeft(Copy(wstr, i + 1, MaxInt) + ' ');
       wstr := LeftStr(wstr, i);
       break;
     end;
@@ -546,6 +565,7 @@ begin
   if (n < length(wstr)) then
   begin
     FAppendDataLeft(WideString('{') + Copy(wstr, n + 1, MaxInt) + '} ');
+    m_bDroppedToComments := TRUE;
     wstr := LeftStr(wstr, n);
   end;
 
@@ -637,6 +657,7 @@ var
   iPos: integer;
   bEndOfComment: boolean;
   bNeedTrimFlag: boolean;
+  iLen: integer;
 begin
   wstrComment := '';
   Result := TRUE;
@@ -683,6 +704,14 @@ begin
     until (iPos = 0);
 
     wstr := Tnt_WideStringReplace(wstr, '||', '|', [rfReplaceAll], TRUE);
+
+    if (not m_bInC4NFormat) then
+    begin
+      iLen := length(wstrComment);
+      if ((iLen > 0) and (wstrComment[iLen] <> ' ')) then
+        wstrComment := wstrComment + ' ';
+    end;
+
     wstrComment := wstrComment + wstr;
 
     if (bEndOfComment) then
@@ -695,19 +724,11 @@ begin
 end;
 
 
-function TGameParser.FStartLine(const strToken: string): boolean;
+procedure TGameParser.FStartLine;
 var
   movePly: PMovePly;
 begin
-  Result := TRUE;
-
   movePly := nil; // To supress warning
-
-  if ((length(strToken) > 1) and (strToken[2] = '{')) then
-  begin
-    FAppendDataLeft('( {');
-    exit;
-  end;
 
   movePly := movePly.Create;
 
@@ -726,10 +747,6 @@ begin
 
   m_MovePlyStack.Push(movePly);
 
-  if (RightStr(strToken, length(strToken) - 1) = '') then
-    exit;
-
-  Result := FALSE;
 end;
 
 

@@ -67,11 +67,11 @@ procedure TPGNParserTests.FFillInputData(var wstrlData: TTntStringList);
 begin
   wstrlData.Clear;
 
-  wstrlData.Append('[C4N "1"]');
+  wstrlData.Append('[C4N "2"]');
   wstrlData.Append('');
   wstrlData.Append('{Comment for the initial position}');
   wstrlData.Append('1. e4 {Second comment} 1. ... c5 2. Nf3 d6 3. d4 cd 4. Nd4 Nf6 5. Nc3 g6 6. Be3 Bg7');
-  wstrlData.Append('  (6. ... Ng4 7. Bb5+)');
+  wstrlData.Append('  (6. ... Ng4? +/- {bad idea!} 7. Bb5+)');
   wstrlData.Append('');
   wstrlData.Append('7. f3 0-0 8. Qd2 Nc6 9. Bc4 Nd4 {Last move in the main line comment}');
   wstrlData.Append('  (9. ... a5 10. g4 Ne5 11. Be2 d5 12. g5 {Last move in a subline comment}}})');
@@ -93,6 +93,7 @@ procedure TPGNParserTests.C4NLoadTest;
     strMsg: string;
     i: integer;
     iPly: integer;
+    wstrComment: WideString;
   begin
     // Main line
     CheckEquals(High(MAIN_LINE_MOVES), Tree.Count - 1,
@@ -111,6 +112,13 @@ procedure TPGNParserTests.C4NLoadTest;
 
     CheckEquals(High(FIRST_SUBLINE_MOVES), Tree.Count - 1,
       'Wrong number of moves in the first subline!');
+
+    wstrComment := Tree.Comments[iPly];
+
+    CheckEquals(wstrComment,
+      WideString('? +/-' + sLineBreak + 'bad idea!'),
+      'Wrong comment in the first move of first subline!');
+
 
     for i := Low(FIRST_SUBLINE_MOVES) to High(FIRST_SUBLINE_MOVES) do
     begin

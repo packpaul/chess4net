@@ -181,43 +181,48 @@ const
 
   procedure NWriteSplitted;
 
-    function NFindSplitPosition(const wstr: WideString; iRestLen: integer): integer;
+    function NFindSplitPosition(const wstr: WideString): integer;
     var
       iPos: integer;
+      bFindReserveSplit: boolean;
     begin
       Assert(Length(wstr) > TEXT_WIDTH);
 
       Result := TEXT_WIDTH;
 
       iPos := Result;
-      try
-        if (bLeaveSpacesWhenWrapped) then
-        begin
-          if ((wstr[iPos] = ' ') and (wstr[iPos + 1] <> ' ')) then
-            exit;
-        end;
 
-        while ((iPos > 0) and (wstr[iPos] = ' ')) do
-          dec(iPos);
-
-        if (bLeaveSpacesWhenWrapped) then
-        begin
-          while ((iPos > 0) and (wstr[iPos] <> ' ')) do
-            dec(iPos);
-        end;
-
-      finally
-        if (iPos <= iRestLen) then
-          iPos := TEXT_WIDTH;
-        Result := iPos;
+      if (bLeaveSpacesWhenWrapped) then
+      begin
+        if ((wstr[iPos] = ' ') and (wstr[iPos + 1] <> ' ')) then
+          exit;
       end;
 
+      while ((iPos > iIndent) and (wstr[iPos] = ' ')) do
+        dec(iPos);
+
+      bFindReserveSplit := TRUE;
+
+      if (bLeaveSpacesWhenWrapped) then
+      begin
+        while ((iPos > iIndent) and (wstr[iPos] <> ' ')) do
+        begin
+          if (bFindReserveSplit and (wstr[iPos + 1] <> ' ')) then
+          begin
+            bFindReserveSplit := FALSE;
+            Result := iPos;
+          end;
+          dec(iPos);
+        end;
+      end;
+
+      if (iPos > iIndent) then
+        Result := iPos;
     end;
 
   var
     wstrLine: WideString;
     iPos: integer;
-    iOldLineLen: integer;
   begin // NWriteSplitted
     wstrLine := m_wstrlData[m_wstrlData.Count - 1];
 
@@ -229,22 +234,17 @@ const
         ((iPos + iIndent) <= TEXT_WIDTH)) then
       FWriteLine;
 
-    if (m_wstrlData.Count >= 0) then
-      iOldLineLen := Length(m_wstrlData[m_wstrlData.Count - 1])
-    else
-      iOldLineLen := 0;
     FWriteText(wstr, iIndent);
 
     wstrLine := m_wstrlData[m_wstrlData.Count - 1];
 
     while (Length(wstrLine) > TEXT_WIDTH) do
     begin
-      iPos := NFindSplitPosition(wstrLine, iOldLineLen);
+      iPos := NFindSplitPosition(wstrLine);
 
       m_wstrlData[m_wstrlData.Count - 1] := Copy(wstrLine, 1, iPos);
-      iOldLineLen := Length(m_wstrlData[m_wstrlData.Count - 1]);
-
       wstrLine := TrimLeft(Copy(wstrLine, iPos + 1, MaxInt));
+
       if (wstrLine <> '') then
       begin
         FWriteLine;
