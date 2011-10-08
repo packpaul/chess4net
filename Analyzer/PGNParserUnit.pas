@@ -283,48 +283,6 @@ begin
   m_bInC4NFormat := (iVersion in [1, 2]);
 end;
 
-(*
-procedure TPGNParser.FParseGame;
-var
-  wstr: WideString;
-  wstrlGameData: TTntStringList;
-begin
-  if ((not m_bParseResult) or FIsEndOfData) then
-    exit;
-
-  wstrlGameData := TTntStringList.Create;
-  try
-    wstr := FGetLine;
-    repeat
-      if (TPGNTagParser.IsTag(TrimRight(wstr))) then
-        break;
-
-      if (wstr <> '') then
-        wstrlGameData.Append(wstr);
-
-      wstr := FGetNextLine;
-    until (FIsEndOfData);
-
-    m_bParseResult := (wstrlGameData.Count > 0);
-    if (not m_bParseResult) then
-      exit;
-
-    with TGameParser.Create(self) do
-    try
-      Parse(wstrlGameData);
-
-      self.m_bInC4NFormat := InC4NFormat;
-
-    finally
-      Free;
-    end;
-
-  finally
-    wstrlGameData.Free;
-  end;
-
-end;
-*)
 
 procedure TPGNParser.FParseGame;
 var
@@ -671,7 +629,7 @@ begin
 
   while (FHasTokens) do
   begin
-    if (TrimRight(wstr) = '|') then
+    if ((m_bInC4NFormat) and (TrimRight(wstr) = '|')) then
     begin
       if (bNeedTrimFlag) then
       begin
@@ -703,7 +661,8 @@ begin
       end;
     until (iPos = 0);
 
-    wstr := Tnt_WideStringReplace(wstr, '||', '|', [rfReplaceAll], TRUE);
+    if (m_bInC4NFormat) then
+      wstr := Tnt_WideStringReplace(wstr, '||', '|', [rfReplaceAll], TRUE);
 
     if (not m_bInC4NFormat) then
     begin
