@@ -498,7 +498,10 @@ end;
 
 procedure TPositionEditingForm.MoveNEditChange(Sender: TObject);
 begin
-  if (m_bFENUpdating) then
+  if (not Showing) then
+    exit;
+
+  if (m_bFENUpdating ) then
     exit;
 
   MoveNEdit.Text := IntToStr(MoveNumber);

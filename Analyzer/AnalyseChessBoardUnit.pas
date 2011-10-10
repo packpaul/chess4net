@@ -249,7 +249,7 @@ type
 
     procedure FCreateChessBoard;
     procedure FDestroyChessBoard;
-    procedure FInitPosition;
+    procedure FInitPosition(bRetainPosition: boolean = FALSE);
 
     procedure FCreateChessEngineInfoForm;
     procedure FOnChessEngineInfoFormShow(Sender: TObject);
@@ -343,7 +343,7 @@ type
 
     procedure FSetGameChanged(bValue: boolean);
 
-    function FSetNewStandard: boolean;
+    function FSetNewStandard(bRetainPosition: boolean): boolean;
     procedure FSetGameToGameList(iGameIndex: integer = -1);
 
     function FGetChessBoardFlipped: boolean;
@@ -719,11 +719,13 @@ begin
 end;
 
 
-procedure TAnalyseChessBoard.FInitPosition;
+procedure TAnalyseChessBoard.FInitPosition(bRetainPosition: boolean = FALSE);
 begin
   FStopEditing;
 
-  m_ChessBoard.InitPosition;
+  if (not bRetainPosition) then
+    m_ChessBoard.InitPosition;
+
   ChessBoardFlipped := FALSE;
 
   m_iCurrentPlyIndex := 0;
@@ -1445,7 +1447,7 @@ begin
 end;
 
 
-function TAnalyseChessBoard.FSetNewStandard: boolean;
+function TAnalyseChessBoard.FSetNewStandard(bRetainPosition: boolean): boolean;
 begin
   Result := FAskAndSavePGNData;
   if (not Result) then
@@ -1453,7 +1455,7 @@ begin
 
   AnalysisModeAction.Execute;    
 
-  FInitPosition;
+  FInitPosition(bRetainPosition);
   FRefreshMoveListAndComments;
 
   m_GamesManager.Clear;
@@ -1650,8 +1652,9 @@ begin
 
   m_PositionEditingForm.Show;
   m_PositionEditingForm.FEN := m_ChessBoard.GetPosition;
+  m_PositionEditingForm.MoveNumber := 1;
 
-  FRefreshStatusBar;    
+  FRefreshStatusBar;
 end;
 
 
@@ -1687,7 +1690,7 @@ begin
 
   FRefreshStatusBar;
 
-  FSetGameToGameList;
+  FSetGameToGameList(m_GamesManager.CurrentGameIndex);
 end;
 
 
@@ -1723,13 +1726,13 @@ end;
 
 procedure TAnalyseChessBoard.NewStandardActionExecute(Sender: TObject);
 begin
-  FSetNewStandard;
+  FSetNewStandard(FALSE);
 end;
 
 
 procedure TAnalyseChessBoard.NewCustomActionExecute(Sender: TObject);
 begin
-  if (not FSetNewStandard) then
+  if (not FSetNewStandard(TRUE)) then
     exit;
 
   FStartEditing;
