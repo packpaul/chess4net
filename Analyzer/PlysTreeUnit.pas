@@ -35,7 +35,7 @@ type
     procedure FDeleteNextNodes;
     function FAddLineNode(Node: TPlysTreeNode): boolean;
     function FGetNextNodesCount: integer;
-    procedure FGetNextNodesList(var List: TStrings);
+    procedure FGetNextNodesList(var List: TStrings; bNextPlyOfLineFirstFlag: boolean);
     function FSetNextNodeOfLineToPly(const strPly: string): boolean;
 
     function FEquals(Node: TPlysTreeNode): boolean;
@@ -85,7 +85,8 @@ type
     procedure SetLineToMain;
 
     function GetPlysCountForPlyIndex(iIndex: integer): integer;
-    procedure GetPlysForPlyIndex(iIndex: integer; var List: TStrings);
+    procedure GetPlysForPlyIndex(iIndex: integer; var List: TStrings;
+      bNextPlyOfLineFirstFlag: boolean = TRUE);
     function SetPlyForPlyIndex(iIndex: integer; const strPly: string): boolean;
     function GetPlyStatus(iIndex: integer): TPlyStatuses;
     function GetNextPlyStatus(iIndex: integer; const strNextPly: string): TPlyStatuses;
@@ -276,7 +277,8 @@ begin
 end;
 
 
-procedure TPlysTree.GetPlysForPlyIndex(iIndex: integer; var List: TStrings);
+procedure TPlysTree.GetPlysForPlyIndex(iIndex: integer; var List: TStrings;
+  bNextPlyOfLineFirstFlag: boolean = TRUE);
 var
   Node: TPlysTreeNode;
 begin
@@ -287,7 +289,7 @@ begin
 
   Node := FGetNodeOfDepth(iIndex - 1);
   if (Assigned(Node)) then
-    Node.FGetNextNodesList(List);
+    Node.FGetNextNodesList(List, bNextPlyOfLineFirstFlag);
 end;
 
 
@@ -614,7 +616,8 @@ begin
 end;
 
 
-procedure TPlysTreeNode.FGetNextNodesList(var List: TStrings);
+procedure TPlysTreeNode.FGetNextNodesList(var List: TStrings;
+  bNextPlyOfLineFirstFlag: boolean);
 var
   i: integer;
   Node: TPlysTreeNode;
@@ -627,7 +630,7 @@ begin
     if (not Assigned(Node)) then
       continue;
 
-    if (i = m_iNextNodeOfLineIndex) then
+    if (bNextPlyOfLineFirstFlag and (i = m_iNextNodeOfLineIndex)) then
       List.Insert(0, Node.Ply)
     else
       List.Append(Node.Ply);

@@ -354,7 +354,7 @@ procedure TGameTreeWriter.WriteInC4NFormat;
       begin
         inc(iPly);
 
-        m_Tree.GetPlysForPlyIndex(iPly, TStrings(strlPlys));
+        m_Tree.GetPlysForPlyIndex(iPly, TStrings(strlPlys), FALSE);
         Assert(strlPlys.Count > 0);
 
         for i := 0 to strlPlys.Count - 1 do
