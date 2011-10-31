@@ -50,7 +50,8 @@ uses
   GamesManagerUnit in 'GamesManagerUnit.pas',
   GamesListFormUnit in 'GamesListFormUnit.pas' {GamesListForm},
   IncorrectMoveFormUnit in 'IncorrectMoveFormUnit.pas' {IncorrectMoveForm},
-  MoveHintsChessBoardLayerUnit in 'MoveHintsChessBoardLayerUnit.pas';
+  MoveHintsChessBoardLayerUnit in 'MoveHintsChessBoardLayerUnit.pas',
+  AnalysisModeSelectionFormUnit in 'AnalysisModeSelectionFormUnit.pas'; {AnalysisModeSelectionForm}
 
 {$R ..\Chess4Net.res}
 

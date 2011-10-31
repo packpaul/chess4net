@@ -28,7 +28,7 @@ type
     m_ChessBoard: TAnalyseChessBoard;
     function FGetMode: TMode;
   protected
-    constructor RCreate(AChessBoard: TAnalyseChessBoard); virtual;
+    constructor RCreate(AChessBoard: TAnalyseChessBoard);
     property ChessBoard: TAnalyseChessBoard read m_ChessBoard;
   public
     procedure OnMove(const strMove: string); virtual; abstract;
@@ -368,7 +368,7 @@ uses
   //
   GlobalsLocalUnit, DontShowMessageDlgUnit,
   IniSettingsUnit, PGNWriterUnit, SplashFormUnit, CommentsEditFormUnit,
-  IncorrectMoveFormUnit, MoveHintsChessBoardLayerUnit;
+  IncorrectMoveFormUnit, MoveHintsChessBoardLayerUnit, AnalysisModeSelectionFormUnit;
 
 {$R *.dfm}
 
@@ -392,12 +392,13 @@ type
 
   TModeStrategyAnalysis = class(TModeStrategyBase)
   protected
-    constructor RCreate(AChessBoard: TAnalyseChessBoard); override;
+    constructor RCreate(AChessBoard: TAnalyseChessBoard);
   public
     procedure OnMove(const strMove: string); override;
     procedure OnSetPosition(const strPos: string); override;
   end;
 
+  TReplyMoveSelection = (rmsFirstMoveLine, rmsRandomMoveTreeWeight, rmsRandomMove);
 
   TModeStrategyTraining = class(TModeStrategyBase)
   private
@@ -407,6 +408,7 @@ type
     m_EndPositionOfLineTimer: TTimer;
     m_bDontAskOnEndPositionOfLine: boolean;
     m_MoveHintsChessBoardLayer: TMoveHintsChessBoardLayer;
+    m_ReplyMoveSelection: TReplyMoveSelection;
     procedure FOnReplyDelayedTimer(Sender: TObject);
     procedure FOnEndPositionOfLineTimer(Sender: TObject);
     procedure FResetPlysTree;
@@ -417,14 +419,17 @@ type
     function FIsLastPlyInLine: boolean;
     procedure FCreateTimers;
     procedure FDestroyTimers;
+    procedure FDoReplyMove;
   protected
-    constructor RCreate(AChessBoard: TAnalyseChessBoard); override;
+    constructor RCreate(AChessBoard: TAnalyseChessBoard;
+      AReplyMoveSelection: TReplyMoveSelection);
   public
     destructor Destroy; override;
     procedure OnMove(const strMove: string); override;
     procedure OnSetPosition(const strPos: string); override;
     procedure OnForwardingMove; override;
     procedure OnLoadGameFrom; override;
+    property ReplyMoveSelection: TReplyMoveSelection read m_ReplyMoveSelection;
   end;
 
 const
@@ -1198,14 +1203,20 @@ end;
 
 function TAnalyseChessBoard.FSetPlyForPlyIndex(iPlyIndex: integer; const strPly: string): boolean;
 begin
-  Result := m_PlysTree.SetPlyForPlyIndex(iPlyIndex, strPly);
-  if (Result) then
+  Result := TRUE;
+
+  if (FGetPly(iPlyIndex) <> strPly) then
   begin
-    m_bPlysTreeChanged := TRUE;
-    inc(m_lwPlysListUpdateID);
+    Result := m_PlysTree.SetPlyForPlyIndex(iPlyIndex, strPly);
+    if (Result) then
+    begin
+      m_bPlysTreeChanged := TRUE;
+      inc(m_lwPlysListUpdateID);
+    end;
   end;
 
-  FSetCurrentPlyIndex(iPlyIndex);  
+  if (Result) then
+    FSetCurrentPlyIndex(iPlyIndex);
 end;
 
 
@@ -2062,15 +2073,53 @@ end;
 
 
 procedure TAnalyseChessBoard.TrainingModeActionExecute(Sender: TObject);
+
+  function NConvertRMS(AReplyMoveSelection:
+    TReplyMoveSelection): AnalysisModeSelectionFormUnit.TReplyMoveSelection; overload;
+  const
+    VALUES: array[TReplyMoveSelection] of AnalysisModeSelectionFormUnit.TReplyMoveSelection = (
+      AnalysisModeSelectionFormUnit.rmsFirstMoveLine,
+      AnalysisModeSelectionFormUnit.rmsRandomMoveTreeWeight,
+      AnalysisModeSelectionFormUnit.rmsRandomMove);
+  begin
+    Result := VALUES[AReplyMoveSelection];
+  end;
+
+  function NConvertRMS(AReplyMoveSelection:
+    AnalysisModeSelectionFormUnit.TReplyMoveSelection): TReplyMoveSelection; overload;
+  const
+    VALUES: array[AnalysisModeSelectionFormUnit.TReplyMoveSelection] of TReplyMoveSelection = (
+      rmsFirstMoveLine,
+      rmsRandomMoveTreeWeight,
+      rmsRandomMove);
+  begin
+    Result := VALUES[AReplyMoveSelection];
+  end;
+
 var
   OldModeStrategy: TModeStrategyBase;
+  AReplyMoveSelection: TReplyMoveSelection;
 begin
-  (Sender as TAction).Checked := TRUE;
-  ModeTrainingMenuItem.Checked := TRUE; // Otherwise radio items won't work on Win7
+  if (FGetMode = modTraining) then
+    AReplyMoveSelection := (m_ModeStrategy as TModeStrategyTraining).ReplyMoveSelection
+  else
+    AReplyMoveSelection := rmsFirstMoveLine;
+
+  with TAnalysisModeSelectionForm.Create(NConvertRMS(AReplyMoveSelection)) do
+  try
+    if (ShowModal <> mrOk) then
+      exit;
+    AReplyMoveSelection := NConvertRMS(ReplyMoveSelection);
+  finally
+    Free;
+  end;
 
   OldModeStrategy := m_ModeStrategy;
-  m_ModeStrategy := TModeStrategyTraining.RCreate(self);
+  m_ModeStrategy := TModeStrategyTraining.RCreate(self, AReplyMoveSelection);
   OldModeStrategy.Free;
+
+  (Sender as TAction).Checked := TRUE;
+  ModeTrainingMenuItem.Checked := TRUE; // Otherwise radio items won't work on Win7
 
   FRefreshStatusBar;
 end;
@@ -2175,7 +2224,7 @@ end;
 
 constructor TModeStrategyAnalysis.RCreate(AChessBoard: TAnalyseChessBoard);
 begin
-  inherited;
+  inherited RCreate(AChessBoard);
 
   with ChessBoard do
   begin
@@ -2209,9 +2258,10 @@ end;
 ////////////////////////////////////////////////////////////////////////////////
 // TModeStrategyTraining
 
-constructor TModeStrategyTraining.RCreate(AChessBoard: TAnalyseChessBoard);
+constructor TModeStrategyTraining.RCreate(AChessBoard: TAnalyseChessBoard;
+  AReplyMoveSelection: TReplyMoveSelection);
 begin
-  inherited;
+  inherited RCreate(AChessBoard);
 
   FCreateTimers;
 
@@ -2226,6 +2276,8 @@ begin
 
   m_MoveHintsChessBoardLayer := TMoveHintsChessBoardLayer.Create;
   ChessBoard.m_ChessBoard.AddLayer(m_MoveHintsChessBoardLayer);
+
+  m_ReplyMoveSelection := AReplyMoveSelection; 
 end;
 
 
@@ -2364,7 +2416,58 @@ begin
     exit;
 
   m_ReplyDelayedTimer.Enabled := FALSE;
-  ChessBoard.ForwardMoveAction.Execute;
+
+  FDoReplyMove;
+end;
+
+
+procedure TModeStrategyTraining.FDoReplyMove;
+
+  procedure NDoReplyForFirstMoveLine;
+  begin
+    ChessBoard.FForwardMove;
+  end;
+
+  procedure NDoReplyForRandomMove;
+  var
+    Plys: TStrings;
+    iPlyIndex: integer;
+    iPly: integer;
+    bRes: boolean;
+  begin
+    Plys := TStringList.Create;
+    try
+      iPlyIndex := ChessBoard.FGetCurrentPlyIndex + 1;
+      ChessBoard.FGetPlysForPlyIndex(iPlyIndex, Plys);
+      iPly := Random(Plys.Count);
+      bRes := ChessBoard.FSetPlyForPlyIndex(iPlyIndex, Plys[iPly]);
+      Assert(bRes);
+    finally
+      Plys.Free;
+    end;
+  end;
+
+  procedure NDoReplyForRandomMoveTreeWeight;
+  begin
+    NDoReplyForRandomMove;
+    // TODO:
+  end;
+
+begin // .FDoReplyMove
+  if (ChessBoard.FGetPlysCount <= ChessBoard.FGetCurrentPlyIndex) then
+    exit;
+
+  case m_ReplyMoveSelection of
+    rmsFirstMoveLine:
+      NDoReplyForFirstMoveLine;
+
+    rmsRandomMoveTreeWeight:
+      NDoReplyForRandomMoveTreeWeight;
+
+    rmsRandomMove:
+      NDoReplyForRandomMove;
+  end;
+  
 end;
 
 
@@ -2459,5 +2562,6 @@ initialization
 
 finalization
   FreeAndNil(g_NullGameContextDataInstance);
+  Randomize; // for training mode
 
 end.

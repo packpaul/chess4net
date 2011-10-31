@@ -651,7 +651,7 @@ begin
     if (not Assigned(Node)) then
       continue;
 
-    Result := ((Node.Ply = strPly) and (i <> m_iNextNodeOfLineIndex));
+    Result := (Node.Ply = strPly);
     if (Result) then
     begin
       m_iNextNodeOfLineIndex := i;

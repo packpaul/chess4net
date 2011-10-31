@@ -160,7 +160,7 @@ object AnalyseChessBoard: TAnalyseChessBoard
       end
       object ModeTrainingMenuItem: TTntMenuItem
         Action = TrainingModeAction
-        Caption = '&Training'
+        Caption = '&Training...'
         RadioItem = True
       end
     end
