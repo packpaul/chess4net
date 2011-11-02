@@ -9,7 +9,7 @@ unit PlysTreeUnit;
 interface
 
 uses
-  Classes,
+  Classes, Types,
   //
   PlysProviderIntfUnit;
 
@@ -36,6 +36,9 @@ type
     function FAddLineNode(Node: TPlysTreeNode): boolean;
     function FGetNextNodesCount: integer;
     procedure FGetNextNodesList(var List: TStrings; bNextPlyOfLineFirstFlag: boolean);
+    procedure FGetNextNodesWeights(out PlyWeights: TDoubleDynArray;
+      bNextPlyOfLineFirstFlag: boolean);
+
     function FSetNextNodeOfLineToPly(const strPly: string): boolean;
 
     function FEquals(Node: TPlysTreeNode): boolean;
@@ -62,6 +65,7 @@ type
     m_FirstNode: TPlysTreeNode;
     m_bWhiteStarts: boolean;
     m_iPlysOffset: integer;
+    m_bWeightsRecalculationNotNeeded: boolean;
     function FGetPosition(iIndex: integer): string;
     function FGetPly(iIndex: integer): string;
     function FGetCount: integer;
@@ -70,6 +74,7 @@ type
     procedure FDelete(iIndex: Integer);
     function FGetComments(iIndex: integer): WideString;
     procedure FSetComments(iIndex: integer; const wstrValue: WideString);
+    procedure FRecalculateWeights;
 
   public
     constructor Create;
@@ -87,6 +92,8 @@ type
     function GetPlysCountForPlyIndex(iIndex: integer): integer;
     procedure GetPlysForPlyIndex(iIndex: integer; var List: TStrings;
       bNextPlyOfLineFirstFlag: boolean = TRUE);
+    procedure GetPlyWeightsForPlyIndex(iIndex: integer;
+      out PlyWeights: TDoubleDynArray; bNextPlyOfLineFirstFlag: boolean = TRUE);
     function SetPlyForPlyIndex(iIndex: integer; const strPly: string): boolean;
     function GetPlyStatus(iIndex: integer): TPlyStatuses;
     function GetNextPlyStatus(iIndex: integer; const strNextPly: string): TPlyStatuses;
@@ -290,6 +297,27 @@ begin
   Node := FGetNodeOfDepth(iIndex - 1);
   if (Assigned(Node)) then
     Node.FGetNextNodesList(List, bNextPlyOfLineFirstFlag);
+end;
+
+
+procedure TPlysTree.GetPlyWeightsForPlyIndex(iIndex: integer;
+  out PlyWeights: TDoubleDynArray; bNextPlyOfLineFirstFlag: boolean = TRUE);
+var
+  Node: TPlysTreeNode;
+begin
+  if (m_bWeightsRecalculationNotNeeded) then
+    FRecalculateWeights;
+
+  Node := FGetNodeOfDepth(iIndex - 1);
+  if (Assigned(Node)) then
+    Node.FGetNextNodesWeights(PlyWeights, bNextPlyOfLineFirstFlag);
+end;
+
+
+procedure TPlysTree.FRecalculateWeights;
+begin
+  // TODO:
+  m_bWeightsRecalculationNotNeeded := TRUE;
 end;
 
 
@@ -635,6 +663,29 @@ begin
     else
       List.Append(Node.Ply);
   end;
+end;
+
+
+procedure TPlysTreeNode.FGetNextNodesWeights(out PlyWeights: TDoubleDynArray;
+  bNextPlyOfLineFirstFlag: boolean);
+var
+  i: integer;
+  iCount: integer;
+begin
+  iCount := 0;
+
+  for i := Low(m_arrNextNodes) to High(m_arrNextNodes) do
+  begin
+    if (Assigned(m_arrNextNodes[i])) then
+      inc(iCount);
+  end;
+
+  SetLength(PlyWeights, iCount);
+
+  for i := Low(PlyWeights) to High(PlyWeights) do
+    PlyWeights[i] := 1 / iCount;
+
+  // TODO;
 end;
 
 

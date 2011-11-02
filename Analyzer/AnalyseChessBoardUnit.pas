@@ -10,7 +10,7 @@ interface
 
 uses
   Forms, TntMenus, Menus, Classes, TntClasses, Controls, ExtCtrls, Messages,
-  ComCtrls, Dialogs, ActnList, ImgList, AppEvnts, SysUtils,
+  ComCtrls, Dialogs, ActnList, ImgList, AppEvnts, SysUtils, Types,
   //
   ChessBoardUnit, PosBaseChessBoardLayerUnit, ChessEngineInfoUnit, ChessEngine,
   MoveListFormUnit, PlysTreeUnit, PlysProviderIntfUnit, URLVersionQueryUnit,
@@ -320,6 +320,8 @@ type
     function FSetPosition(const strFEN: string): boolean;
 
     procedure IPositionEditable.StopEditing = FStopEditing;
+
+    procedure FGetPlyWeightsForPlyIndex(iPlyIndex: integer; out PlyWeights: TDoubleDynArray);
 
     procedure FSetToInitialPosition;
     procedure FSetToEndPosition;
@@ -1198,6 +1200,13 @@ end;
 procedure TAnalyseChessBoard.FGetPlysForPlyIndex(iPlyIndex: integer; var List: TStrings);
 begin
   m_PlysTree.GetPlysForPlyIndex(iPlyIndex, List);
+end;
+
+
+procedure TAnalyseChessBoard.FGetPlyWeightsForPlyIndex(iPlyIndex: integer;
+  out PlyWeights: TDoubleDynArray);
+begin
+  m_PlysTree.GetPlyWeightsForPlyIndex(iPlyIndex, PlyWeights);
 end;
 
 
@@ -2428,18 +2437,32 @@ procedure TModeStrategyTraining.FDoReplyMove;
     ChessBoard.FForwardMove;
   end;
 
-  procedure NDoReplyForRandomMove;
+  procedure NDoReplyForRandomMoveTreeWeight;
   var
     Plys: TStrings;
+    PlyWeights: TDoubleDynArray;
+    i: integer;
+    d: Double;
     iPlyIndex: integer;
     iPly: integer;
     bRes: boolean;
   begin
+    iPlyIndex := ChessBoard.FGetCurrentPlyIndex + 1;
+    ChessBoard.FGetPlyWeightsForPlyIndex(iPlyIndex, PlyWeights);
+    d := Random;
+    iPly := 0;
+    for i := Low(PlyWeights) to High(PlyWeights) do
+    begin
+      d := d - PlyWeights[i];
+      if (d < 0.0) then
+        break;
+      inc(iPly);
+    end;
+    if (iPly >= length(PlyWeights)) then
+      iPly := length(PlyWeights) - 1;
     Plys := TStringList.Create;
     try
-      iPlyIndex := ChessBoard.FGetCurrentPlyIndex + 1;
       ChessBoard.FGetPlysForPlyIndex(iPlyIndex, Plys);
-      iPly := Random(Plys.Count);
       bRes := ChessBoard.FSetPlyForPlyIndex(iPlyIndex, Plys[iPly]);
       Assert(bRes);
     finally
@@ -2447,10 +2470,23 @@ procedure TModeStrategyTraining.FDoReplyMove;
     end;
   end;
 
-  procedure NDoReplyForRandomMoveTreeWeight;
+  procedure NDoReplyForRandomMove;
+  var
+    Plys: TStrings;
+    iPlyIndex: integer;
+    iPly: integer;
+    bRes: boolean;
   begin
-    NDoReplyForRandomMove;
-    // TODO:
+    iPlyIndex := ChessBoard.FGetCurrentPlyIndex + 1;
+    Plys := TStringList.Create;
+    try
+      ChessBoard.FGetPlysForPlyIndex(iPlyIndex, Plys);
+      iPly := Random(Plys.Count);
+      bRes := ChessBoard.FSetPlyForPlyIndex(iPlyIndex, Plys[iPly]);
+      Assert(bRes);
+    finally
+      Plys.Free;
+    end;
   end;
 
 begin // .FDoReplyMove
