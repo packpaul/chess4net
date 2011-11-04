@@ -2040,11 +2040,12 @@ begin
   if (iGameIndex < 0) then
     exit;
 
-  if ((m_iCurrentPlyIndex <> 0) or m_bGameChanged or m_bPlysTreeChanged) then
-  begin
-    OldGameItem := m_GamesManager.Games[iGameIndex];
+  OldGameItem := m_GamesManager.Games[iGameIndex];
+  GameContextData := OldGameItem.Data as TGameContextData;  
 
-    GameContextData := OldGameItem.Data as TGameContextData;
+  if (Assigned(GameContextData) or (m_iCurrentPlyIndex <> 0) or
+      m_bGameChanged or m_bPlysTreeChanged) then
+  begin
     if (not Assigned(GameContextData)) then
     begin
       GameContextData := TGameContextData.Create;
