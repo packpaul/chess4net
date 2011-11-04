@@ -26,6 +26,8 @@ type
 
     m_bDisclosed: boolean;
 
+    m_iNodesAmount: integer;
+
     constructor Create(const strPos, strPly: string; APlyStatuses: TPlyStatuses); overload;
     class function Create(const Source: TPlysTreeNode): TPlysTreeNode; overload;
 
@@ -49,6 +51,7 @@ type
     procedure FSetIsDisclosedRecusively(bValue: boolean);
 
     function FGetNextPlyStatuses(const strNextPly: string): TPlyStatuses;
+    procedure FRecalculateNodesAmount;
 
     property Ply: string read m_strPly;
     property Pos: string read m_strPos;
@@ -65,7 +68,7 @@ type
     m_FirstNode: TPlysTreeNode;
     m_bWhiteStarts: boolean;
     m_iPlysOffset: integer;
-    m_bWeightsRecalculationNotNeeded: boolean;
+    m_bNodesAmountRecalculationNotNeeded: boolean;
     function FGetPosition(iIndex: integer): string;
     function FGetPly(iIndex: integer): string;
     function FGetCount: integer;
@@ -74,7 +77,7 @@ type
     procedure FDelete(iIndex: Integer);
     function FGetComments(iIndex: integer): WideString;
     procedure FSetComments(iIndex: integer; const wstrValue: WideString);
-    procedure FRecalculateWeights;
+    procedure FRecalculateNodesAmount;
 
   public
     constructor Create;
@@ -155,6 +158,8 @@ var
 begin
   Assert(iIndex >= 0);
 
+  m_bNodesAmountRecalculationNotNeeded := FALSE;
+
   if (iIndex = 0) then
   begin
     FreeAndNil(m_FirstNode);
@@ -216,6 +221,10 @@ begin
   until ((i >= iPlyIndex) or (not Assigned(NextNode)));
 
   Result := Node.FAddLineNode(TPlysTreeNode.Create(strPos, strMove, APlyStatuses));
+
+  if (Result) then
+    m_bNodesAmountRecalculationNotNeeded := FALSE;
+
 end;
 
 
@@ -305,8 +314,8 @@ procedure TPlysTree.GetPlyWeightsForPlyIndex(iIndex: integer;
 var
   Node: TPlysTreeNode;
 begin
-  if (m_bWeightsRecalculationNotNeeded) then
-    FRecalculateWeights;
+  if (not m_bNodesAmountRecalculationNotNeeded) then
+    FRecalculateNodesAmount;
 
   Node := FGetNodeOfDepth(iIndex - 1);
   if (Assigned(Node)) then
@@ -314,10 +323,12 @@ begin
 end;
 
 
-procedure TPlysTree.FRecalculateWeights;
+procedure TPlysTree.FRecalculateNodesAmount;
 begin
-  // TODO:
-  m_bWeightsRecalculationNotNeeded := TRUE;
+  if (Assigned(m_FirstNode)) then
+    m_FirstNode.FRecalculateNodesAmount;
+
+  m_bNodesAmountRecalculationNotNeeded := TRUE;
 end;
 
 
@@ -668,24 +679,47 @@ end;
 
 procedure TPlysTreeNode.FGetNextNodesWeights(out PlyWeights: TDoubleDynArray;
   bNextPlyOfLineFirstFlag: boolean);
+
+  procedure NInsert(iIndex: integer; dValue: Double);
+  var
+    i: integer;
+  begin
+    Assert((iIndex >= Low(PlyWeights)) and (iIndex <= High(PlyWeights)));
+    for i := High(PlyWeights) downto iIndex + 1 do
+      PlyWeights[i] := PlyWeights[i - 1];
+    PlyWeights[iIndex] := dValue;
+  end;
+
 var
   i: integer;
   iCount: integer;
-begin
-  iCount := 0;
+  iSubNodesAmount: integer;
+  SubNode: TPlysTreeNode;
+  dWeight: Double;
+begin // .FGetNextNodesWeights
+  iSubNodesAmount := m_iNodesAmount - 1;
+  Assert(iSubNodesAmount >= 0);
+
+  SetLength(PlyWeights, length(m_arrNextNodes));
+
+  iCount := Low(PlyWeights);
 
   for i := Low(m_arrNextNodes) to High(m_arrNextNodes) do
   begin
-    if (Assigned(m_arrNextNodes[i])) then
+    SubNode := m_arrNextNodes[i];
+    if (Assigned(SubNode)) then
+    begin
+      dWeight := SubNode.m_iNodesAmount / iSubNodesAmount;
+      if (bNextPlyOfLineFirstFlag and (m_iNextNodeOfLineIndex = i)) then
+        NInsert(Low(PlyWeights), dWeight)
+      else
+        PlyWeights[iCount] := dWeight;
       inc(iCount);
+    end;
   end;
 
   SetLength(PlyWeights, iCount);
 
-  for i := Low(PlyWeights) to High(PlyWeights) do
-    PlyWeights[i] := 1 / iCount;
-
-  // TODO;
 end;
 
 
@@ -800,6 +834,26 @@ begin
   end;
 
   Result := [];
+end;
+
+
+procedure TPlysTreeNode.FRecalculateNodesAmount;
+var
+  i: integer;
+  SubNode: TPlysTreeNode;
+begin
+  m_iNodesAmount := 1; // count self node too
+
+  for i := Low(m_arrNextNodes) to High(m_arrNextNodes) do
+  begin
+    SubNode := m_arrNextNodes[i];
+    if (Assigned(SubNode)) then
+    begin
+      SubNode.FRecalculateNodesAmount;
+      inc(m_iNodesAmount, SubNode.m_iNodesAmount);
+    end;
+  end;
+
 end;
 
 end.
