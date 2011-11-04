@@ -14,7 +14,7 @@ uses
   //
   ChessBoardUnit, PosBaseChessBoardLayerUnit, ChessEngineInfoUnit, ChessEngine,
   MoveListFormUnit, PlysTreeUnit, PlysProviderIntfUnit, URLVersionQueryUnit,
-  SelectLineFormUnit, OpeningsDBManagerFormUnit, OpeningsDBManagerUnit,
+  OpeningsDBManagerFormUnit, OpeningsDBManagerUnit,
   PositionEditingFormUnit, ChessRulesEngine, PGNParserUnit, FloatingFormsUnit,
   CommentsFormUnit, GamesManagerUnit, GamesListFormUnit;
 
@@ -218,7 +218,6 @@ type
     m_OpeningsDBManagerForm: TOpeningsDBManagerForm;
     m_MoveListForm: TMoveListForm;
     m_CommentsForm: TCommentsForm;
-    m_SelectLineForm: TSelectLineForm;
 
     m_PositionEditingForm: TPositionEditingForm;
 
@@ -370,7 +369,8 @@ uses
   //
   GlobalsLocalUnit, DontShowMessageDlgUnit,
   IniSettingsUnit, PGNWriterUnit, SplashFormUnit, CommentsEditFormUnit,
-  IncorrectMoveFormUnit, MoveHintsChessBoardLayerUnit, AnalysisModeSelectionFormUnit;
+  IncorrectMoveFormUnit, MoveHintsChessBoardLayerUnit, AnalysisModeSelectionFormUnit,
+  SelectLineFormUnit;
 
 {$R *.dfm}
 
@@ -1261,13 +1261,13 @@ end;
 
 procedure TAnalyseChessBoard.SelectLineActionExecute(Sender: TObject);
 begin
-  if (not Assigned(m_SelectLineForm)) then
-  begin
-    m_SelectLineForm := TSelectLineForm.Create(self);
-    m_SelectLineForm.PlysProvider := self;
+  with TSelectLineForm.Create(self) do
+  try
+    PlysProvider := self;
+    ShowModal;
+  finally
+    Release;
   end;
-
-  m_SelectLineForm.ShowModal;
 end;
 
 
@@ -2121,7 +2121,7 @@ begin
       exit;
     AReplyMoveSelection := NConvertRMS(ReplyMoveSelection);
   finally
-    Free;
+    Release;
   end;
 
   OldModeStrategy := m_ModeStrategy;
