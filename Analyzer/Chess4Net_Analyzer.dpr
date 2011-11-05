@@ -51,7 +51,7 @@ uses
   GamesListFormUnit in 'GamesListFormUnit.pas' {GamesListForm},
   IncorrectMoveFormUnit in 'IncorrectMoveFormUnit.pas' {IncorrectMoveForm},
   MoveHintsChessBoardLayerUnit in 'MoveHintsChessBoardLayerUnit.pas',
-  AnalysisModeSelectionFormUnit in 'AnalysisModeSelectionFormUnit.pas' {AnalysisModeSelectionForm},
+  TrainingModeSelectionFormUnit in 'TrainingModeSelectionFormUnit.pas' {TrainingModeSelectionForm},
   TipsOfTheDayFormUnit in 'TipsOfTheDayFormUnit.pas' {TipsOfTheDayForm};
 
 {$R ..\Chess4Net.res}

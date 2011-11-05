@@ -374,7 +374,7 @@ uses
   //
   GlobalsLocalUnit, DontShowMessageDlgUnit,
   IniSettingsUnit, PGNWriterUnit, SplashFormUnit, CommentsEditFormUnit,
-  IncorrectMoveFormUnit, MoveHintsChessBoardLayerUnit, AnalysisModeSelectionFormUnit,
+  IncorrectMoveFormUnit, MoveHintsChessBoardLayerUnit, TrainingModeSelectionFormUnit,
   SelectLineFormUnit;
 
 {$R *.dfm}
@@ -2094,20 +2094,20 @@ end;
 procedure TAnalyseChessBoard.TrainingModeActionExecute(Sender: TObject);
 
   function NConvertRMS(AReplyMoveSelection:
-    TReplyMoveSelection): AnalysisModeSelectionFormUnit.TReplyMoveSelection; overload;
+    TReplyMoveSelection): TrainingModeSelectionFormUnit.TReplyMoveSelection; overload;
   const
-    VALUES: array[TReplyMoveSelection] of AnalysisModeSelectionFormUnit.TReplyMoveSelection = (
-      AnalysisModeSelectionFormUnit.rmsFirstMoveLine,
-      AnalysisModeSelectionFormUnit.rmsRandomMoveTreeWeight,
-      AnalysisModeSelectionFormUnit.rmsRandomMove);
+    VALUES: array[TReplyMoveSelection] of TrainingModeSelectionFormUnit.TReplyMoveSelection = (
+      TrainingModeSelectionFormUnit.rmsFirstMoveLine,
+      TrainingModeSelectionFormUnit.rmsRandomMoveTreeWeight,
+      TrainingModeSelectionFormUnit.rmsRandomMove);
   begin
     Result := VALUES[AReplyMoveSelection];
   end;
 
   function NConvertRMS(AReplyMoveSelection:
-    AnalysisModeSelectionFormUnit.TReplyMoveSelection): TReplyMoveSelection; overload;
+    TrainingModeSelectionFormUnit.TReplyMoveSelection): TReplyMoveSelection; overload;
   const
-    VALUES: array[AnalysisModeSelectionFormUnit.TReplyMoveSelection] of TReplyMoveSelection = (
+    VALUES: array[TrainingModeSelectionFormUnit.TReplyMoveSelection] of TReplyMoveSelection = (
       rmsFirstMoveLine,
       rmsRandomMoveTreeWeight,
       rmsRandomMove);
@@ -2124,7 +2124,7 @@ begin
   else
     AReplyMoveSelection := rmsFirstMoveLine;
 
-  with TAnalysisModeSelectionForm.Create(NConvertRMS(AReplyMoveSelection)) do
+  with TTrainingModeSelectionForm.Create(NConvertRMS(AReplyMoveSelection)) do
   try
     if (ShowModal <> mrOk) then
       exit;

@@ -1,8 +1,8 @@
-object AnalysisModeSelectionForm: TAnalysisModeSelectionForm
+object TrainingModeSelectionForm: TTrainingModeSelectionForm
   Left = 579
   Top = 449
   BorderStyle = bsDialog
-  Caption = 'Analysis mode'
+  Caption = 'Training mode'
   ClientHeight = 147
   ClientWidth = 257
   Color = clBtnFace

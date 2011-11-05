@@ -4,7 +4,7 @@
 // Any changes, modifications, borrowing and adaptation are a subject for
 // explicit permition from the owner.
 
-unit AnalysisModeSelectionFormUnit;
+unit TrainingModeSelectionFormUnit;
 
 interface
 
@@ -14,7 +14,7 @@ uses
 type
   TReplyMoveSelection = (rmsFirstMoveLine, rmsRandomMoveTreeWeight, rmsRandomMove);
 
-  TAnalysisModeSelectionForm = class(TForm)
+  TTrainingModeSelectionForm = class(TForm)
     CancelButton: TButton;
     OKButton: TButton;
     ReplyMoveRadioGroup: TRadioGroup;
@@ -33,20 +33,20 @@ implementation
 ////////////////////////////////////////////////////////////////////////////////
 // TAnalysisModeSelectionForm
 
-constructor TAnalysisModeSelectionForm.Create(AReplyMoveSelection: TReplyMoveSelection);
+constructor TTrainingModeSelectionForm.Create(AReplyMoveSelection: TReplyMoveSelection);
 begin
   inherited Create(Application);
   FSetReplyMoveSelection(AReplyMoveSelection);
 end;
 
 
-function TAnalysisModeSelectionForm.FGetReplyMoveSelection: TReplyMoveSelection;
+function TTrainingModeSelectionForm.FGetReplyMoveSelection: TReplyMoveSelection;
 begin
   Result := TReplyMoveSelection(ReplyMoveRadioGroup.ItemIndex);
 end;
 
 
-procedure TAnalysisModeSelectionForm.FSetReplyMoveSelection(Value: TReplyMoveSelection);
+procedure TTrainingModeSelectionForm.FSetReplyMoveSelection(Value: TReplyMoveSelection);
 begin
   ReplyMoveRadioGroup.ItemIndex := Ord(Value);
 end;
