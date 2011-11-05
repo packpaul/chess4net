@@ -1,8 +1,8 @@
 object TipsOfTheDayForm: TTipsOfTheDayForm
   Left = 457
-  Top = 418
+  Top = 338
   Width = 308
-  Height = 160
+  Height = 186
   BorderStyle = bsSizeToolWin
   Caption = 'Tips Of The Day'
   Color = clBtnFace
@@ -13,10 +13,14 @@ object TipsOfTheDayForm: TTipsOfTheDayForm
   Font.Height = -11
   Font.Name = 'MS Sans Serif'
   Font.Style = []
+  FormStyle = fsStayOnTop
   OldCreateOrder = False
+  OnCreate = FormCreate
+  OnDestroy = FormDestroy
+  OnShow = FormShow
   DesignSize = (
     300
-    133)
+    159)
   PixelsPerInch = 96
   TextHeight = 13
   object PrevTipButton: TButton
@@ -26,7 +30,8 @@ object TipsOfTheDayForm: TTipsOfTheDayForm
     Height = 25
     Anchors = [akRight, akBottom]
     Caption = '&Previous Tip'
-    TabOrder = 2
+    TabOrder = 3
+    OnClick = PrevTipButtonClick
   end
   object NextTipButton: TButton
     Left = 142
@@ -36,6 +41,7 @@ object TipsOfTheDayForm: TTipsOfTheDayForm
     Anchors = [akRight, akBottom]
     Caption = '&Next Tip'
     TabOrder = 0
+    OnClick = NextTipButtonClick
   end
   object CloseButton: TButton
     Left = 222
@@ -43,8 +49,9 @@ object TipsOfTheDayForm: TTipsOfTheDayForm
     Width = 75
     Height = 25
     Anchors = [akRight, akBottom]
-    Caption = 'CloseButton'
+    Caption = '&Close'
     TabOrder = 1
+    OnClick = CloseButtonClick
   end
   object TipMemo: TTntMemo
     Left = 0
@@ -62,6 +69,17 @@ object TipsOfTheDayForm: TTipsOfTheDayForm
     Lines.Strings = (
       '<A tip of the day>')
     ParentFont = False
-    TabOrder = 3
+    ReadOnly = True
+    TabOrder = 4
+  end
+  object ShowOnStartupCheckBox: TCheckBox
+    Left = 8
+    Top = 136
+    Width = 289
+    Height = 17
+    Anchors = [akLeft, akBottom]
+    Caption = 'Show on startup'
+    TabOrder = 2
+    OnClick = ShowOnStartupCheckBoxClick
   end
 end

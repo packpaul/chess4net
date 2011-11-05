@@ -40,6 +40,8 @@ COPY build\*.* %PROJ_DIR%\ /Y
 
 COPY ReadMe.txt %PROJ_DIR%\ /Y
 
+COPY TipsOfTheDay.ini %PROJ_DIR%\ /Y
+
 IF '%OPENINGS_DBS_REBUILD%'=='y' (
   PUSHD ..\PosDB 
   

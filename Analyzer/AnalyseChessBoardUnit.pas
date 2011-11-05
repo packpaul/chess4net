@@ -16,7 +16,7 @@ uses
   MoveListFormUnit, PlysTreeUnit, PlysProviderIntfUnit, URLVersionQueryUnit,
   OpeningsDBManagerFormUnit, OpeningsDBManagerUnit,
   PositionEditingFormUnit, ChessRulesEngine, PGNParserUnit, FloatingFormsUnit,
-  CommentsFormUnit, GamesManagerUnit, GamesListFormUnit;
+  CommentsFormUnit, GamesManagerUnit, GamesListFormUnit, TipsOfTheDayFormUnit;
 
 type
   TMode = (modAnalysis, modTraining);
@@ -139,6 +139,8 @@ type
     N11: TTntMenuItem;
     PreviousGame1: TTntMenuItem;
     NextGame1: TTntMenuItem;
+    HelpTipsOfTheDayMenuItem: TTntMenuItem;
+    TipsOfTheDayAction: TAction;
     procedure FileExitMenuItemClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormCanResize(Sender: TObject; var NewWidth,
@@ -204,6 +206,8 @@ type
     procedure NextGameActionExecute(Sender: TObject);
     procedure PreviousGameActionUpdate(Sender: TObject);
     procedure NextGameActionUpdate(Sender: TObject);
+    procedure TipsOfTheDayActionExecute(Sender: TObject);
+    procedure TipsOfTheDayActionUpdate(Sender: TObject);
   private
     m_ChessBoard: TChessBoard;
     m_PosBaseChessBoardLayer: TPosBaseChessBoardLayer;
@@ -218,6 +222,7 @@ type
     m_OpeningsDBManagerForm: TOpeningsDBManagerForm;
     m_MoveListForm: TMoveListForm;
     m_CommentsForm: TCommentsForm;
+    m_TipsOfTheDayForm: TTipsOfTheDayForm;
 
     m_PositionEditingForm: TPositionEditingForm;
 
@@ -1026,6 +1031,8 @@ begin
   MoveListAction.Execute;
   OpeningsDBManagerAction.Execute;
   CommentsAction.Execute;
+  if (TIniSettings.Instance.ShowTipsOfTheDayOnStartup) then
+    TipsOfTheDayAction.Execute;
 
   FSetGameToGameList;
 
@@ -1187,7 +1194,9 @@ begin
   EndPositionAction.Update;
   NextGameAction.Update;
   PreviousGameAction.Update;
-  CommentsAction.Update; // TODO: In XP this line is not needed. What about Vista?
+  // TODO: In XP the following lines are not not needed. What about Vista and Win7?
+  CommentsAction.Update;
+  TipsOfTheDayAction.Update;
 end;
 
 
@@ -2593,6 +2602,25 @@ begin
     NextPlys.Free;
   end;
 
+end;
+
+
+procedure TAnalyseChessBoard.TipsOfTheDayActionExecute(Sender: TObject);
+begin
+  if (not Assigned(m_TipsOfTheDayForm)) then
+    m_TipsOfTheDayForm := TTipsOfTheDayForm.Create(self, self);
+
+  if (m_TipsOfTheDayForm.Showing) then
+    m_TipsOfTheDayForm.Hide
+  else
+    m_TipsOfTheDayForm.Show;
+end;
+
+
+procedure TAnalyseChessBoard.TipsOfTheDayActionUpdate(Sender: TObject);
+begin
+  (Sender as TAction).Checked := (Assigned(m_TipsOfTheDayForm) and
+    m_TipsOfTheDayForm.Showing);
 end;
 
 initialization

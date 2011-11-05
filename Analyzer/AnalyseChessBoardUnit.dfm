@@ -219,11 +219,15 @@ object AnalyseChessBoard: TAnalyseChessBoard
         Enabled = False
         Visible = False
       end
+      object HelpTipsOfTheDayMenuItem: TTntMenuItem
+        Action = TipsOfTheDayAction
+        Caption = '&Tips Of The Day'
+      end
       object N3: TTntMenuItem
         Caption = '-'
       end
       object HelpAboutMenuItem: TTntMenuItem
-        Caption = 'About...'
+        Caption = '&About...'
         OnClick = HelpAboutMenuItemClick
       end
     end
@@ -425,6 +429,11 @@ object AnalyseChessBoard: TAnalyseChessBoard
       ShortCut = 16418
       OnExecute = NextGameActionExecute
       OnUpdate = NextGameActionUpdate
+    end
+    object TipsOfTheDayAction: TAction
+      Category = 'Views'
+      OnExecute = TipsOfTheDayActionExecute
+      OnUpdate = TipsOfTheDayActionUpdate
     end
   end
   object ImageList: TImageList

@@ -13,7 +13,7 @@ uses
 
 type
   TIniSettingsID = (isidDontShowLastVersion, isidDB, isidDBIndex, isidDBEnabled,
-    isidOpeningDBRequestShow);
+    isidOpeningDBRequestShow, isidShowTipsOfTheDayOnStartup, isidTipsOfTheDayIndex);
 
   TIniSettings = class
   private
@@ -47,6 +47,10 @@ type
       read FGetBooleanValue write FSetBooleanValue;
     property OpeningDBRequestShow: boolean index isidOpeningDBRequestShow
       read FGetBooleanValue write FSetBooleanValue;
+    property ShowTipsOfTheDayOnStartup: boolean index isidShowTipsOfTheDayOnStartup
+      read FGetBooleanValue write FSetBooleanValue;
+    property TipsOfTheDayIndex: integer index isidTipsOfTheDayIndex
+      read FGetIntegerValue write FSetIntegerValue;
   end;
 
 implementation
@@ -143,6 +147,10 @@ begin
       Result := 'DBEnabled';
     isidOpeningDBRequestShow:
       Result := 'OpeningDBRequestShow';
+    isidShowTipsOfTheDayOnStartup:
+      Result := 'ShowTipsOfTheDayOnStartup';
+    isidTipsOfTheDayIndex:
+      Result := 'TipsOfTheDayIndex';
   else
     Result := '';
   end;
@@ -158,6 +166,10 @@ begin
       Result := CHESS4NET_VERSION;
     isidDBEnabled, isidOpeningDBRequestShow:
       Result := TRUE;
+    isidShowTipsOfTheDayOnStartup:
+      Result := TRUE;
+    isidTipsOfTheDayIndex:
+      Result := -1;
   else
     Result := Unassigned;
   end;
