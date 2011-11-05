@@ -11,11 +11,16 @@ ICQ:    98750806
 Chess4Net Analyzer is an application for viewing, editing and analysing chess games. It has a
 chess engine which helps you find best continuations, and it can work with attachable
 openings DBs which are useful for mastering new openings and improving existing ones in your
-repertory.
+repertory. It supports a training mode which is useful for thoughtful replay of chess problems,
+studies and grandmaster games.
 
-Please report all bugs, questions and suggestions to packpaul@mail.ru or packpaul1@gmail.ru
+Please send all bugs, questions, requests and suggestions to packpaul@mail.ru or packpaul1@gmail.ru
 
-[Release notes]
+Chess4Net Analyzer 2011.3
+- Training mode support
+- Multiple games viewing support
+- Tips of the day added
+- Training C4N-files go in delivery
 
 Chess4Net Analyzer 2011.2
 - Closing About dialog on any key
