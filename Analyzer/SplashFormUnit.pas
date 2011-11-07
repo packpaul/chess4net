@@ -41,7 +41,7 @@ implementation
 uses
   SysUtils, ShellAPI, Windows,
   //
-  GlobalsLocalUnit;
+  GlobalsUnit;
 
 {$R *.dfm}
 

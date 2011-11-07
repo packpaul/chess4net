@@ -1,3 +1,9 @@
+////////////////////////////////////////////////////////////////////////////////
+// All code below is exclusively owned by author of Chess4Net - Pavel Perminov
+// (packpaul@mail.ru, packpaul1@gmail.com).
+// Any changes, modifications, borrowing and adaptation are a subject for
+// explicit permition from the owner.
+
 unit TipsOfTheDayFormUnit;
 
 interface
@@ -37,7 +43,7 @@ implementation
 uses
   Forms, SysUtils, TntIniFiles, StrUtils,
   //
-  IniSettingsUnit;
+  IniSettingsUnit, GlobalsUnit;
 
 const
   INI_FILE_NAME = 'TipsOfTheDay.ini';
@@ -54,7 +60,7 @@ end;
 
 function TTipsOfTheDayForm.FGetIniFileName: string;
 begin
-  Result := ExtractFilePath(Application.ExeName) + INI_FILE_NAME;
+  Result := Chess4NetPath + INI_FILE_NAME;
 end;
 
 

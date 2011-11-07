@@ -372,7 +372,7 @@ implementation
 uses
   Windows, TntClipbrd, ShellAPI,
   //
-  GlobalsLocalUnit, DontShowMessageDlgUnit,
+  GlobalsUnit, DontShowMessageDlgUnit,
   IniSettingsUnit, PGNWriterUnit, SplashFormUnit, CommentsEditFormUnit,
   IncorrectMoveFormUnit, MoveHintsChessBoardLayerUnit, TrainingModeSelectionFormUnit,
   SelectLineFormUnit;
@@ -486,6 +486,9 @@ begin
   FRefreshStatusBar;
 
   DragAcceptFiles(Handle, TRUE);
+
+  OpenDialog.InitialDir := Chess4NetUserDataPath;
+  SaveDialog.InitialDir := Chess4NetUserDataPath;
 end;
 
 

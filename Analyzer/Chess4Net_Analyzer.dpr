@@ -33,7 +33,7 @@ uses
   PlysTreeUnit in 'PlysTreeUnit.pas',
   PlysProviderIntfUnit in 'PlysProviderIntfUnit.pas',
   URLVersionQueryUnit in '..\URLVersionQueryUnit.pas' {URLVersionQuery: TDataModule},
-  GlobalsLocalUnit in 'GlobalsLocalUnit.pas',
+  GlobalsUnit in 'GlobalsUnit.pas',
   DontShowMessageDlgUnit in 'DontShowMessageDlgUnit.pas',
   IniSettingsUnit in 'IniSettingsUnit.pas',
   SelectLineFormUnit in 'SelectLineFormUnit.pas' {SelectLineForm},
@@ -52,7 +52,8 @@ uses
   IncorrectMoveFormUnit in 'IncorrectMoveFormUnit.pas' {IncorrectMoveForm},
   MoveHintsChessBoardLayerUnit in 'MoveHintsChessBoardLayerUnit.pas',
   TrainingModeSelectionFormUnit in 'TrainingModeSelectionFormUnit.pas' {TrainingModeSelectionForm},
-  TipsOfTheDayFormUnit in 'TipsOfTheDayFormUnit.pas' {TipsOfTheDayForm};
+  TipsOfTheDayFormUnit in 'TipsOfTheDayFormUnit.pas' {TipsOfTheDayForm},
+  EnvironmentSetterUnit in 'EnvironmentSetterUnit.pas';
 
 {$R ..\Chess4Net.res}
 
@@ -62,6 +63,8 @@ var
 begin
   Application.Initialize;
   Application.Title := 'Chess4Net Analyzer';
+
+  TEnvironmentSetter.SetEnvironment;
 
   with TSplashForm.Create(Application) do
   try

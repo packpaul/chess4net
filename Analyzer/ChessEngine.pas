@@ -80,7 +80,9 @@ type
 implementation
 
 uses
-  Forms, SysUtils, StrUtils, Math;
+  Forms, SysUtils, StrUtils, Math,
+  //
+  GlobalsUnit;
 
 const
   ENGINE_FILE = 'RobboLito.exe';
@@ -123,8 +125,7 @@ var
 begin
   if (m_bEngineLoaded) then
     exit;
-  EngineFileName := ExtractFilePath(Application.ExeName) +
-    'Engines' + PathDelim + ENGINE_FILE;
+  EngineFileName := Chess4NetPath + 'Engines' + PathDelim + ENGINE_FILE;
   ChildProc.CreateProcess(EngineFileName);
 
   if (not ChildProc.ProcessCreated) then

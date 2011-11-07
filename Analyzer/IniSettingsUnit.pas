@@ -58,7 +58,7 @@ implementation
 uses
   Forms, SysUtils, Variants,
   //
-  GlobalsLocalUnit;
+  GlobalsUnit;
 
 const
   DEFAULT_SECTION = 'Settings';
@@ -104,7 +104,8 @@ end;
 
 function TIniSettings.FGetIniFileName: string;
 begin
-  Result := ChangeFileExt(Application.ExeName, '.ini');
+  Result := Chess4NetIniFilePath +
+    ChangeFileExt(ExtractFileName(Application.ExeName), '.ini');
 end;
 
 
@@ -185,7 +186,7 @@ begin
 
   if (not m_IniFile.SectionExists(DBS_SECTION)) then
   begin
-    iDBIndex := Data.Add(ExtractFilePath(Application.ExeName) + 'DBs\Sicilian');
+    iDBIndex := Data.Add(Chess4NetPath + 'DBs\Sicilian');
     exit;
   end;
 

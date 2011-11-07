@@ -4,18 +4,26 @@
 // Any changes, modifications, borrowing and adaptation are a subject for
 // explicit permition from the owner.
 
-unit GlobalsLocalUnit;
+unit GlobalsUnit;
 
 interface
 
 const
   CHESS4NET_VERSION = 201103; // 2011.3
-  CHESS4NET_VERSION_TXT = '2011.3 beta';
+  CHESS4NET_VERSION_TXT = '2011.3';
   COPYRIGHT_TXT = #169' 2007-2011 no rights reserved';
 
   CHESS4NET_URL = 'http://chess4net.ru';
   EMAIL_ADRESS = 'packpaul@mail.ru';
 
+var
+  Chess4NetPath: string;
+  Chess4NetIniFilePath: string;
+  Chess4NetUserDataPath: string;
+
 implementation
+
+uses
+  EnvironmentSetterUnit;
 
 end.
