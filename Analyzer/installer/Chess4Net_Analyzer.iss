@@ -1,7 +1,7 @@
 ; Actual for Inno Setup Compiler 5.4.2(u)
 
 #define MyAppName "Chess4Net Analyzer"
-#define MyAppVersion "2011.2"
+#define MyAppVersion "2011.3"
 #define MyAppPublisher "Chess4Net"
 #define MyAppURL "http://chess4net.ru"
 #define MyAppExeName "Chess4Net_Analyzer.exe"
@@ -26,7 +26,7 @@ DisableProgramGroupPage=yes
 SourceDir=..\..\bin\Chess4Net_Analyzer
 ;InfoAfterFile=ReadMe.txt
 OutputDir=..\..\bin
-OutputBaseFilename=Chess4Net_Analyzer_2011.2
+OutputBaseFilename=Chess4Net_Analyzer_{#MyAppVersion}
 Compression=lzma
 SolidCompression=yes
 ChangesAssociations=yes
@@ -43,6 +43,8 @@ Source: "DBs\*"; DestDir: "{app}\DBs"; Flags: ignoreversion recursesubdirs creat
 Source: "Engines\*"; DestDir: "{app}\Engines"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "R.Fischer-B.Larsen (Portoroz Interzonal).c4n"; DestDir: "{app}"; Flags: ignoreversion
 Source: "R.Fischer-B.Larsen (Portoroz Interzonal).pgn"; DestDir: "{app}"; Flags: ignoreversion
+Source: "Training\*"; DestDir: "{app}\Training"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "TipsOfTheDay.ini"; DestDir: "{app}"; Flags: ignoreversion
 Source: "ReadMe.txt"; DestDir: "{app}"; Flags: ignoreversion isreadme
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
@@ -53,6 +55,8 @@ Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Registry]
+Root: HKLM; Subkey: "Software\Chess4Net"; Flags: uninsdeletekeyifempty
+Root: HKLM; Subkey: "Software\Chess4Net\Analyzer"; ValueType: string; ValueName: ""; ValueData: "{app}\{#MyAppExeName}"; Flags: uninsdeletekey
 Root: HKCR; Subkey: ".c4n"; ValueType: string; ValueName: ""; ValueData: "{#MyAppId}"; Flags: uninsdeletevalue
 Root: HKCR; Subkey: ".pgn"; ValueType: string; ValueName: ""; ValueData: "{#MyAppId}"; Flags: uninsdeletevalue
 Root: HKCR; Subkey: "{#MyAppId}"; ValueType: string; ValueName: ""; ValueData: "{#MyAppName}"; Flags: uninsdeletevalue
@@ -62,14 +66,8 @@ Root: HKCR; Subkey: "{#MyAppId}\shell\open\command"; ValueType: string; ValueNam
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, "&", "&&")}}"; Flags: nowait postinstall skipifsilent
 
-[Code]
-
-function InitializeUninstall(): Boolean;
-var
-  IniFileName: string;
-begin
-  IniFileName := ExpandConstant('{app}\{#MyAppIniName}');
-  DeleteFile(IniFileName);
-  Result := TRUE;
-end;
-
+[UninstallDelete]
+Type: filesandordirs; Name: "{userprograms}\Chess4Net\Analyzer"
+Type: dirifempty; Name: "{userprograms}\Chess4Net"
+Type: filesandordirs; Name: "{userappdata}\Chess4Net\Analyzer"
+Type: dirifempty; Name: "{userappdata}\Chess4Net"
