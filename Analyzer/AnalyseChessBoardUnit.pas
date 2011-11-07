@@ -487,8 +487,8 @@ begin
 
   DragAcceptFiles(Handle, TRUE);
 
-  OpenDialog.InitialDir := Chess4NetUserDataPath;
-  SaveDialog.InitialDir := Chess4NetUserDataPath;
+  OpenDialog.InitialDir := ExtractFileDir(Chess4NetUserDataPath);
+  SaveDialog.InitialDir := ExtractFileDir(Chess4NetUserDataPath);
 end;
 
 
@@ -1034,7 +1034,7 @@ begin
   MoveListAction.Execute;
   OpeningsDBManagerAction.Execute;
   CommentsAction.Execute;
-  if (TIniSettings.Instance.ShowTipsOfTheDayOnStartup) then
+  if (TIniSettings.Instance.ShowTipsOfTheDayOnStartup and (ParamCount = 0)) then
     TipsOfTheDayAction.Execute;
 
   FSetGameToGameList;
