@@ -11,16 +11,9 @@ interface
 uses
   SysUtils,
   //
-  ControlUnit, ManagerUnit, ConnectorUnit, ModalForm;
+  ControlUnit, ManagerUnit, ConnectorUnit, ModalForm, NonRefInterfacedObjectUnit;
 
 type
-  TNonRefInterfacedObject = class(TObject, IInterface)
-  protected
-    function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
-    function _AddRef: Integer; stdcall;
-    function _Release: Integer; stdcall;
-  end;
-
   TManagerMIFactory = class(TNonRefInterfacedObject, IMirandaPlugin)
   private
     m_Connector: TConnector;
@@ -649,29 +642,6 @@ begin
         Stop;
     end;
   end; // case
-end;
-
-////////////////////////////////////////////////////////////////////////////////
-// TNonRefInterfacedObject
-
-function TNonRefInterfacedObject.QueryInterface(const IID: TGUID; out Obj): HResult;
-begin
-  if GetInterface(IID, Obj) then
-    Result := 0
-  else
-    Result := E_NOINTERFACE;
-end;
-
-
-function TNonRefInterfacedObject._AddRef: Integer;
-begin
-  Result := -1;
-end;
-
-
-function TNonRefInterfacedObject._Release: Integer;
-begin
-  Result := -1;
 end;
 
 ////////////////////////////////////////////////////////////////////////////////

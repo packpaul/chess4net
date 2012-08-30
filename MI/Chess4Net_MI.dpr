@@ -50,7 +50,8 @@ uses
   ChessClockUnit in '..\ChessClockUnit.pas',
   URLVersionQueryUnit in '..\URLVersionQueryUnit.pas',
   DontShowMessageDlgUnit in '..\DontShowMessageDlgUnit.pas',
-  IniSettingsUnit in '..\IniSettingsUnit.pas';
+  IniSettingsUnit in '..\IniSettingsUnit.pas',
+  NonRefInterfacedObjectUnit in '..\NonRefInterfacedObjectUnit.pas';
 
 {$R ..\Chess4Net.res}
 
