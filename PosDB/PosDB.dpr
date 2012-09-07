@@ -12,7 +12,8 @@ uses
   SysUtils,
   PGNProcessorUnit in 'PGNProcessorUnit.pas',
   PosBaseUnit in '..\PosBaseUnit.pas',
-  ChessRulesEngine in '..\ChessRulesEngine.pas';
+  ChessRulesEngine in '..\ChessRulesEngine.pas',
+  PGNTraverserUnit in '..\PGNTraverserUnit.pas';
 
 procedure Help;
 begin
