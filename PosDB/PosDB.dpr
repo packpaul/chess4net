@@ -13,14 +13,16 @@ uses
   PGNProcessorUnit in 'PGNProcessorUnit.pas',
   PosBaseUnit in '..\PosBaseUnit.pas',
   ChessRulesEngine in '..\ChessRulesEngine.pas',
-  PGNTraverserUnit in '..\PGNTraverserUnit.pas';
+  PGNTraverserUnit in '..\PGNTraverserUnit.pas',
+  PosBaseCollectorUnit in 'PosBaseCollectorUnit.pas';
 
 procedure Help;
 begin
   writeln;
-  writeln('Builds DB for Chess4Net.');
+  writeln('PosDB version 2012.0');
+  writeln('Chess4Net DB builder');
   writeln;
-  writeln('PosDB [-V] [-E -U] [-P <name>] [-W|B] [-C <number of plys>] [-O|-X[+] -S] [-R <referenced base>] <input PGN file> [<base>]');
+  writeln('PosDB [-V] [-E -U] [-P <name>] [-W|B] [-C <number of plys>] [-O|-X[+] -S] [-R <referenced base>] [-T] <input PGN file> [<base>]');
   writeln;
   writeln('-V', #9, 'proceed also variants.');
   writeln('-E', #9, 'change estimation for moves.');
@@ -34,6 +36,7 @@ begin
   writeln('-X+', #9, 'generate extended opening lines with simple positions.');
   writeln('-S', #9, 'use in opening lines statistical estimation for prunning.');
   writeln('-R', #9, 'use <referenced base> as a base for references.');
+  writeln('-T', #9, 'build move tree DB.'); 
 end;
 
 
@@ -55,6 +58,7 @@ var
   statPrunning: boolean = FALSE;
   numPlys: integer = 0;
   refBase: string = '';
+  moveTreeDB: boolean = FALSE;
 
 begin
   if ParamCount = 0 then
@@ -135,6 +139,14 @@ begin
           refBase := ParamStr(i);
         end
     else
+      if UpperCase(ParamStr(i)) = '-T' then
+        begin
+          inc(i);
+          if i > ParamCount then
+            Error;
+          moveTreeDB := TRUE;
+        end
+    else
       break;
     inc(i);
   until i > ParamCount;
@@ -150,9 +162,9 @@ begin
 {$I+}
 
   if i = ParamCount then
-    TPGNProcessor.Proceed(ChangeFileExt(ParamStr(i), ''), variants, chngest, uniquePos, color, numPlys, player_name, opening, statPrunning, refBase)
+    TPGNProcessor.Proceed(ChangeFileExt(ParamStr(i), ''), variants, chngest, uniquePos, color, numPlys, player_name, opening, statPrunning, refBase, moveTreeDB)
   else // i < ParamCount
-    TPGNProcessor.Proceed(ChangeFileExt(ParamStr(i+1), ''), variants, chngest, uniquePos, color, numPlys, player_name, opening, statPrunning, refBase);
+    TPGNProcessor.Proceed(ChangeFileExt(ParamStr(i + 1), ''), variants, chngest, uniquePos, color, numPlys, player_name, opening, statPrunning, refBase, moveTreeDB);
 
   Close(input);
 end.
