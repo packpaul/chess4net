@@ -14,7 +14,8 @@ uses
   PosBaseUnit in '..\PosBaseUnit.pas',
   ChessRulesEngine in '..\ChessRulesEngine.pas',
   PGNTraverserUnit in '..\PGNTraverserUnit.pas',
-  PosBaseCollectorUnit in 'PosBaseCollectorUnit.pas';
+  PosBaseCollectorUnit in 'PosBaseCollectorUnit.pas',
+  NonRefInterfacedObjectUnit in '..\NonRefInterfacedObjectUnit.pas';
 
 procedure Help;
 begin

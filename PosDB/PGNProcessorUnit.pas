@@ -72,6 +72,7 @@ begin
   begin
     PosBaseCollector := TPosBaseCollector.Create(strBasename, strRefBaseName);
     PosBaseCollector.ProceedColors := color;
+    PosBaseCollector.PlayerName := strPlayerName;
     PosBaseCollector.ChangeEstimation := bChngest;
     PosBaseCollector.UseUniquePositions := bUniquePos;
     PosBaseCollector.GeneratedOpening := opening;

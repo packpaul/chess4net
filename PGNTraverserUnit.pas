@@ -3,11 +3,18 @@ unit PGNTraverserUnit;
 interface
 
 uses
-  ChessRulesEngine;
+  NonRefInterfacedObjectUnit, ChessRulesEngine;
 
 type
+  IPGNTraverserVisitor = interface
+    function GetWhite: string;
+    function GetBlack: string;
+    property White: string read GetWhite;
+    property Black: string read GetBlack;
+  end;
+
   IPGNTraverserVisitable = interface
-    procedure Start;
+    procedure Start(const Visitor: IPGNTraverserVisitor);
     procedure DoPosMove(iPlyNumber: integer; const APosMove: TPosMove; const AResultingPos: TChessPosition);
     procedure StartLine(bFromPreviousPos: boolean);
     procedure EndLine;
@@ -15,13 +22,16 @@ type
   end;
 
   TFigureColors = set of TFigureColor;
-  
-  TPGNTraverser = class
+
+  TPGNTraverser = class(TNonRefInterfacedObject, IPGNTraverserVisitor)
   private
     m_pInput: ^Text;
     m_Visitable: IPGNTraverserVisitable;
 
     m_strPlayerName: string;
+    m_strWhitePlayerName: string;
+    m_strBlackPlayerName: string;
+
     m_ProceedColors: TFigureColors;
     n_game: integer;
     n_pos: integer;
@@ -34,6 +44,14 @@ type
     procedure FDoStartLine(bFromPreviousPos: boolean);
     procedure FDoEndLine;
     procedure FDoFinish;
+    function FGetWhite: string;
+    function FGetBlack: string;
+    function IPGNTraverserVisitor.GetWhite = FGetWhite;
+    function IPGNTraverserVisitor.GetBlack = FGetBlack;
+    function FParseTag(const strLine: string;
+      strTagName: string; out strTagValue: string): boolean;
+    function FParseWhiteTag(const strLine: string): boolean;
+    function FParseBlackTag(const strLine: string): boolean;
   public
     constructor Create(const APGNInput: Text; AVisitable: IPGNTraverserVisitable);
     destructor Destroy; override;
@@ -77,13 +95,16 @@ end;
 procedure TPGNTraverser.Traverse;
 var
   strLine, strGame: string;
-  PlayerExists: boolean;
-  ProceedColorsSaved: TFigureColors;
-begin
+  bPlayerExists: boolean;
+  ProceedColors: TFigureColors;
+begin // .Traverse
   strGame := '';
 
-  ProceedColorsSaved := m_ProceedColors;
-  PlayerExists := (m_strPlayerName = '');
+  m_strWhitePlayerName := '';
+  m_strBlackPlayerName := '';
+
+  ProceedColors := m_ProceedColors;
+  bPlayerExists := (m_strPlayerName = '');
   repeat
     ReadLn(m_pInput^, strLine);
 
@@ -96,30 +117,77 @@ begin
 
     if (strGame <> '') then
     begin
-      if ((m_ProceedColors <> []) and PlayerExists) then
+      if (bPlayerExists and (ProceedColors <> [])) then
         FProceedGameStr(strGame);
 
       strGame := '';
-      m_ProceedColors := ProceedColorsSaved;
-      PlayerExists := (m_strPlayerName = '');
+      ProceedColors := m_ProceedColors;
+      bPlayerExists := (m_strPlayerName = '');
+      m_strWhitePlayerName := '';
+      m_strBlackPlayerName := '';
     end;
 
-    if (m_strPlayerName <> '') then
+    if (FParseWhiteTag(strLine) and (m_strWhitePlayerName = m_strPlayerName)) then
     begin
-      if (strLine = ('[White "' + m_strPlayerName + '"]')) then
-      begin
-        m_ProceedColors := ProceedColorsSaved * [fcWhite];
-        PlayerExists := TRUE;
-      end
-      else if (strLine = ('[Black "' + m_strPlayerName + '"]')) then
-      begin
-        m_ProceedColors := ProceedColorsSaved * [fcBlack];
-        PlayerExists := TRUE;
-      end;
+      ProceedColors := m_ProceedColors * [fcWhite];
+      bPlayerExists := TRUE;
+    end
+    else if (FParseBlackTag(strLine) and (m_strBlackPlayerName = m_strPlayerName)) then
+    begin
+      ProceedColors := m_ProceedColors * [fcBlack];
+      bPlayerExists := TRUE;
     end;
 
   until Eof(m_pInput^);
 
+end;
+
+
+function TPGNTraverser.FParseTag(const strLine: string;
+  strTagName: string; out strTagValue: string): boolean;
+const
+  PREFIX_T = '[%s "';
+  POSTFIX = '"]';
+var
+  strPrefix: string;
+begin
+  Result := FALSE;
+
+  strTagName := Trim(strTagName);
+  if (strTagName = '') then
+    exit;
+
+  strPrefix := Format(PREFIX_T, [strTagName]);
+
+  if ((LeftStr(strLine, length(strPrefix)) = strPrefix) and
+    (RightStr(strLine, length(POSTFIX)) = POSTFIX)) then
+  begin
+    strTagValue := Copy(strLine, length(strPrefix) + 1,
+      length(strLine) - length(strPrefix) - length(POSTFIX));
+    Result := TRUE;
+  end
+  else
+    strTagValue := '';
+end;
+
+
+function TPGNTraverser.FParseWhiteTag(const strLine: string): boolean;
+var
+  strTagValue: string;
+begin
+  Result := FParseTag(strLine, 'White', strTagValue);
+  if (Result) then
+    m_strWhitePlayerName := strTagValue;
+end;
+
+
+function TPGNTraverser.FParseBlackTag(const strLine: string): boolean;
+var
+  strTagValue: string;
+begin
+  Result := FParseTag(strLine, 'Black', strTagValue);
+  if (Result) then
+    m_strBlackPlayerName := strTagValue;
 end;
 
 
@@ -372,7 +440,6 @@ var
 
 var
   str: string;
-  i: integer;
 begin // .FProceedGameStr
   inc(n_game);
 
@@ -427,7 +494,7 @@ end;
 procedure TPGNTraverser.FDoStart;
 begin
   if (Assigned(m_Visitable)) then
-    m_Visitable.Start;
+    m_Visitable.Start(self);
 end;
 
 
@@ -435,6 +502,18 @@ procedure TPGNTraverser.FDoFinish;
 begin
   if (Assigned(m_Visitable)) then
     m_Visitable.Finish;
+end;
+
+
+function TPGNTraverser.FGetWhite: string;
+begin
+  Result := m_strWhitePlayerName;
+end;
+
+
+function TPGNTraverser.FGetBlack: string;
+begin
+  Result := m_strBlackPlayerName;
 end;
 
 end.

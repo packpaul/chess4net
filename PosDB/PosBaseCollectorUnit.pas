@@ -21,6 +21,8 @@ type
     m_strPosBaseName: string;
     m_strReferencePosBaseName: string;
     m_ProceedColors: TFigureColors;
+    m_ProceedColorsInner: TFigureColors;
+    m_strPlayerName: string;
     m_bChangeEstimateion: boolean;
     m_bUseUniquePositions: boolean;
     m_bUseStatisticalPrunning: boolean;
@@ -47,7 +49,7 @@ type
   public
     constructor Create(const strPosBaseName: string; const strReferencePosBaseName: string = '');
     destructor Destroy; override;
-    procedure Start;
+    procedure Start(const Visitor: IPGNTraverserVisitor);
     procedure DoPosMove(iPlyNumber: integer; const APosMove: TPosMove; const AResultingPos: TChessPosition);
     procedure StartLine(bFromPreviousPos: boolean);
     procedure EndLine;
@@ -56,6 +58,7 @@ type
     property PosBaseName: string read m_strPosBaseName;
 
     property ProceedColors: TFigureColors read m_ProceedColors write m_ProceedColors;
+    property PlayerName: string read m_strPlayerName write m_strPlayerName;
     property ChangeEstimation: boolean read m_bChangeEstimateion write m_bChangeEstimateion;
     property UseUniquePositions: boolean read m_bUseUniquePositions write m_bUseUniquePositions;
     property GeneratedOpening: TOpening read m_GenOpening write m_GenOpening;
@@ -130,7 +133,7 @@ begin // .DoPosMove
   m_lastPosMove := APosMove;
   m_lastResultingPos := AResultingPos;
 
-  if (not (APosMove.pos.color in m_ProceedColors)) then
+  if (not (APosMove.pos.color in m_ProceedColorsInner)) then
     exit;
 
     if (m_GenOpening <> openNo) then
@@ -253,10 +256,21 @@ begin
 end;
 
 
-procedure TPosBaseCollector.Start;
+procedure TPosBaseCollector.Start(const Visitor: IPGNTraverserVisitor);
 begin
   m_bAddPos := TRUE;
   m_bAddSimplePosMove := FALSE;
+
+
+  if (m_strPlayerName <> '') then
+  begin
+    if (Visitor.White = m_strPlayerName) then
+      m_ProceedColorsInner := m_ProceedColors * [fcWhite]
+    else if (Visitor.Black = m_strPlayerName) then
+      m_ProceedColorsInner := m_ProceedColors * [fcBlack];
+  end
+  else
+    m_ProceedColorsInner := m_ProceedColors;
 
   FClearPosMoves;
   FClearMoveEstimations;

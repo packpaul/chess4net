@@ -9,10 +9,13 @@ Chess4Net DB structure
 -----------------------
 
 <pos-file structure> ::= [<pos-header>]<pos-data> // if no header then version = 0, otherwise version >= 1
-<pos-header> ::= $FF <pos-header data>
-<pos-data> ::= <pos-node 0><pos-node 1>...<pos-node n-1>
+  <pos-header> ::= $FF <pos-header-data>
+    <pos-header-data> ::= <version[word]>
+  <pos-data> ::= (<pos-node>)*
+    <pos-node> ::= <field[byte]><next-node[byte+word]><next-value[byte+word]>
 
-<mov-file structure> ::= <mov-node 0><mov-node 1>...<mov-node m-1>
+<mov-file structure> ::= (<mov-node>)*
+  <mov-node> ::= <move[word]><estimate[dword]><next-value[byte+word]>
 
 
 Switches explanation:
