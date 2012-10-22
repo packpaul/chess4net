@@ -422,6 +422,7 @@ var
   wstrToken, wstr: WideString;
   strOriginalMove: string;
   i: integer;
+  iPos: integer;
   n: integer;
   posMove: TPosMove;
   wstrOldComment, wstrComment, wstrCommentsDelim: WideString;
@@ -479,10 +480,11 @@ begin
     exit;
   end;
 
-  while (wstr[length(wstr)] = ')') do
+  iPos := Pos(')', wstr);
+  if (iPos > 0) then
   begin
-    FAppendDataLeft(') ');
-    wstr := LeftStr(wstr, length(wstr) - 1);
+    FAppendDataLeft(WideString(') ') + Copy(wstr, iPos + 1, MaxInt));
+    wstr := LeftStr(wstr, iPos - 1);
   end;
 
   if (wstr = '...') then

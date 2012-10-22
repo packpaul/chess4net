@@ -346,6 +346,7 @@ var
     s: string;
     i: integer;
     n: integer;
+    iPos: integer;
 //    movePly: PMovePly;
     posMove: TPosMove;
 //    p_posMove: PPosMove;
@@ -375,12 +376,16 @@ var
     else
     begin
       bTakebackLineFlag := FALSE;
-      while ((s <> '') and (s[length(s)] = ')')) do
+      iPos := Pos(')', s);
+      if (iPos > 0) then
       begin
-        str := ') ' + str;
-        s := LeftStr(s, length(s) - 1);
+        str := ') ' + Copy(s, iPos + 1, MaxInt) + ' ' + str;
+        s := LeftStr(s, iPos - 1);
       end;
     end;
+
+    if (s = '...') then
+      exit;
 
     for i := length(s) downto 1 do
     begin
