@@ -71,6 +71,7 @@ type
     procedure FWriteBagToStream(const ABag: TDataBag); overload;
     procedure FWriteBagToStream(lwPosition: LongWord; const ABag: TDataBag); overload;
     procedure FWriteBagToStreamEnd(const ABag: TDataBag);
+    procedure FReopenStream;
 
     procedure FSaveDataToTree; overload;
     procedure FSaveDataToTree(const DataIterator: TDataBagsIterator); overload;
@@ -258,6 +259,13 @@ begin
 end;
 
 
+procedure TMoveTreeCollector.FReopenStream;
+begin
+  m_BaseStream.Seek(0, soBeginning);
+  m_lwBaseStreamLastPosition := 0; 
+end;
+
+
 procedure TMoveTreeCollector.FSaveDataToTree;
 var
   Iterator: TDataBagsIterator;
@@ -300,10 +308,8 @@ function TMoveTreeCollector.FFindDataFromPosition(const DataIterator: TDataBagsI
     DataBag: TDataBag;
     bRead: boolean;
   begin
-    Result := FALSE;
-
-    lwPositionBase := m_lwBaseStreamLastPosition;
-    FReadBagFromStream(LowData);
+    lwPositionBase := lwPosition - SizeOf(TDataBag);
+    FReadBagFromStream(lwPosition, LowData);
     lwPosition := m_BaseStream.Position;
 
     lwJumpPosition := lwPositionBase + _TDataBag.FToFarPointer(HiData, LowData);
@@ -326,7 +332,7 @@ var
   DataBagFromStream: TDataBag;
   bHasDataFlag: boolean;
 begin // .FFindDataFromPosition
-  InsertionPoint.FInit(lwPosition);
+  InsertionPoint.FInit(lwPosition, lwPosition + SizeOf(TDataBag));
 
   if (not DataIterator.HasNext) then
   begin
@@ -338,7 +344,9 @@ begin // .FFindDataFromPosition
 
   DataBag := DataIterator.GetNext;
 
-  if (not FReadBagFromStream(lwPosition, DataBagFromStream)) then
+  FReopenStream;
+  bHasDataFlag := FReadBagFromStream(lwPosition, DataBagFromStream);
+  if (not bHasDataFlag) then
     exit;
 
   lwPosition := m_BaseStream.Position;
@@ -384,7 +392,7 @@ var
   lwAddressOffset: LongWord;
   DataOffsetHi, DataOffsetLow: TDataBag;
 begin
-  lwAddressOffset := m_BaseStream.Size - InsertionPoint.lwAddress1;
+  lwAddressOffset := m_BaseStream.Size - (InsertionPoint.lwAddress2 - SizeOf(TDataBag));
   if (lwAddressOffset > 0) then
   begin
     if (_TDataBag.FConvertFromNearPointer(lwAddressOffset, DataOffsetLow)) then
