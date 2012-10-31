@@ -15,7 +15,8 @@ uses
   ChessRulesEngine in '..\ChessRulesEngine.pas',
   PGNTraverserUnit in '..\PGNTraverserUnit.pas',
   PosBaseCollectorUnit in 'PosBaseCollectorUnit.pas',
-  NonRefInterfacedObjectUnit in '..\NonRefInterfacedObjectUnit.pas';
+  NonRefInterfacedObjectUnit in '..\NonRefInterfacedObjectUnit.pas',
+  MoveTreeCollectorUnit in 'MoveTreeCollectorUnit.pas';
 
 procedure Help;
 begin
@@ -37,7 +38,7 @@ begin
   writeln('-X+', #9, 'generate extended opening lines with simple positions.');
   writeln('-S', #9, 'use in opening lines statistical estimation for prunning.');
   writeln('-R', #9, 'use <referenced base> as a base for references.');
-  writeln('-T', #9, 'build move tree DB.'); 
+  writeln('-T', #9, 'build move tree DB.');
 end;
 
 
@@ -142,7 +143,6 @@ begin
     else
       if UpperCase(ParamStr(i)) = '-T' then
         begin
-          inc(i);
           if i > ParamCount then
             Error;
           moveTreeDB := TRUE;

@@ -30,7 +30,9 @@ type
 implementation
 
 uses
-  SysUtils;
+  SysUtils,
+  //
+  MoveTreeCollectorUnit;
 
 ////////////////////////////////////////////////////////////////////////////////
 // TPGNProcessor
@@ -83,11 +85,10 @@ begin
   end
   else
   begin
-    PGNCollector := nil;
-    // TODO:
+    PGNCollector := TMoveTreeCollector.Create(strBasename);
   end;
 
-  with TPGNTraverser.Create(Input, PosBaseCollector) do
+  with TPGNTraverser.Create(Input, PGNCollector) do
   try
     ProceedColors := color;
     PlayerName := strPlayerName;

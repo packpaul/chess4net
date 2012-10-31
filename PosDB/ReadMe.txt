@@ -1,4 +1,4 @@
-[last updated: 2010-07-29]
+[last updated: 2012-11-01]
 
 Chess4Net DB
 -------------
@@ -70,6 +70,40 @@ Bxe3 15. Nxe3 (15. Nxe7+ $2 Kh8 16. Nxd5 Bf3)
   -X -R -S will produce 1. e4 Nc6 2. Nf3 e5 since e5 has [2] in the reference base Nf3 is added as a linking move too.
   -X+ -R -S will produce 1. e4 Nc6 2. Nf3 e5 3. d4 since d4 will be appended as a simple position.
 
+MoveTree Algorithm
+-------------------
 
+f.e:
 
+I.   1. e4 e5 2. Nf3
+II.  1. e4 d5
+III. 1. e4 e5 2. Bc4
+IV.  1. e4 e6
+V.   1. d4
 
+produces links (far pointed):
+
+I.
+     e2e4    e7e5     g1f3     0   0
+
+II.
+     e2e4    $40  $00 $00  [A] 0   0
+  A:                                   e7e5 g1f3   d7d5    0   0
+
+III.
+     e2e4    $40  $00 $00  [A] $00 [B]
+  A:                                   e7e5 $40 00 d7d5    0   0
+  B:                                                               g1f3 0 0 f1c4 0 0
+
+IV.
+     e2e4    $40  $00 $00  [A] $00 [B]
+  A:                                   e7e5 $40 00 $40 $00 $00 [C]
+  B:                                                               g1f3 0 0 f1c4 0 0
+  C:                                                                                 d7d5 0 0 e7e6 0 0
+
+IV.
+     $40 $00 $00  [D] $00  [A] $00 [B]
+  A:                                   e7e5 $40 00 $40 $00 $00 [C]
+  B:                                                               g1f3 0 0 f1c4 0 0
+  C:                                                                                 d7d5 0 0 e7e6 0 0
+  D:                                                                                                   e2e4 $40 $00 d2d4 0 0
