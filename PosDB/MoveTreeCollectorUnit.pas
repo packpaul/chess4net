@@ -362,7 +362,10 @@ begin // .FFindDataFromPosition
       if (m_lwBaseStreamLastPosition < lwPosition) then
         bHasDataFlag := FReadBagFromStream(DataBagFromStream)
       else
+      begin
         bHasDataFlag := FReadBagFromStream(lwPosition, DataBagFromStream);
+        m_lwBaseStreamLastPosition := lwPosition;
+      end;
       Assert(bHasDataFlag);
       lwPosition := m_BaseStream.Position;
     end
