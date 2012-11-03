@@ -58,7 +58,6 @@ type
   TMoveTreeCollector = class(TInterfacedObject, IPGNTraverserVisitable)
   private
     m_BaseStream: TStream;
-    m_lwBaseStreamLastPosition: LongWord;
     m_DataBags: TObjectList;
 
     m_bCollecting: boolean;
@@ -71,7 +70,6 @@ type
     procedure FWriteBagToStream(const ABag: TDataBag); overload;
     procedure FWriteBagToStream(lwPosition: LongWord; const ABag: TDataBag); overload;
     procedure FWriteBagToStreamEnd(const ABag: TDataBag);
-    procedure FReopenStream;
 
     procedure FSaveDataToTree; overload;
     procedure FSaveDataToTree(const DataIterator: TDataBagsIterator); overload;
@@ -222,7 +220,6 @@ end;
 
 function TMoveTreeCollector.FReadBagFromStream(out ABag: TDataBag): boolean;
 begin
-  m_lwBaseStreamLastPosition := m_BaseStream.Position;
   Result := (m_BaseStream.Read(ABag, SizeOf(ABag)) = SizeOf(ABag));
 end;
 
@@ -230,7 +227,6 @@ end;
 function TMoveTreeCollector.FReadBagFromStream(lwPosition: LongWord;
   out ABag: TDataBag): boolean;
 begin
-  m_lwBaseStreamLastPosition := m_BaseStream.Position;
   m_BaseStream.Position := lwPosition;
   Result := (m_BaseStream.Read(ABag, SizeOf(ABag)) = SizeOf(ABag));
 end;
@@ -238,14 +234,12 @@ end;
 
 procedure TMoveTreeCollector.FWriteBagToStream(const ABag: TDataBag);
 begin
-  m_lwBaseStreamLastPosition := m_BaseStream.Position;
   m_BaseStream.WriteBuffer(ABag, SizeOf(ABag));
 end;
 
 
 procedure TMoveTreeCollector.FWriteBagToStream(lwPosition: LongWord; const ABag: TDataBag);
 begin
-  m_lwBaseStreamLastPosition := m_BaseStream.Position;
   m_BaseStream.Position := lwPosition;
   m_BaseStream.WriteBuffer(ABag, SizeOf(ABag));
 end;
@@ -253,16 +247,8 @@ end;
 
 procedure TMoveTreeCollector.FWriteBagToStreamEnd(const ABag: TDataBag);
 begin
-  m_lwBaseStreamLastPosition := m_BaseStream.Position;
   m_BaseStream.Seek(0, soEnd);
   m_BaseStream.WriteBuffer(ABag, SizeOf(ABag));
-end;
-
-
-procedure TMoveTreeCollector.FReopenStream;
-begin
-  m_BaseStream.Seek(0, soBeginning);
-  m_lwBaseStreamLastPosition := 0; 
 end;
 
 
@@ -301,6 +287,9 @@ end;
 function TMoveTreeCollector.FFindDataFromPosition(const DataIterator: TDataBagsIterator;
   lwPosition: LongWord; out InsertionPoint: TInsertionPoint): boolean;
 
+var
+  lwLastPosition: LongWord;
+
   function NJumpFar(const HiData: TDataBag; out NextDataBag: TDataBag): boolean;
   var
     LowData: TDataBag;
@@ -309,22 +298,27 @@ function TMoveTreeCollector.FFindDataFromPosition(const DataIterator: TDataBagsI
     bRead: boolean;
   begin
     lwPositionBase := lwPosition - SizeOf(TDataBag);
+
     FReadBagFromStream(lwPosition, LowData);
-    lwPosition := m_BaseStream.Position;
+    inc(lwPosition, SizeOf(TDataBag));
 
     lwJumpPosition := lwPositionBase + _TDataBag.FToFarPointer(HiData, LowData);
 
     FReadBagFromStream(lwJumpPosition, DataBag);
     Assert(DataBag.FIsMove);
+
+    lwLastPosition := lwJumpPosition + SizeOf(TDataBag);
     FReadBagFromStream(NextDataBag);
 
     Result := DataBag.FEquals(DataIterator.GetLast);
     if (Result) then
       exit;
 
+    inc(lwLastPosition, SizeOf(TDataBag));
     bRead := FReadBagFromStream(NextDataBag);
     Assert(bRead);
-    lwPosition := m_BaseStream.Position;
+
+    lwPosition := lwLastPosition + SizeOf(TDataBag);
   end;
 
 var
@@ -344,30 +338,28 @@ begin // .FFindDataFromPosition
 
   DataBag := DataIterator.GetNext;
 
-  FReopenStream;
+  lwLastPosition := lwPosition;
   bHasDataFlag := FReadBagFromStream(lwPosition, DataBagFromStream);
   if (not bHasDataFlag) then
     exit;
 
-  lwPosition := m_BaseStream.Position;
+  inc(lwPosition, SizeOf(TDataBag));
 
   repeat
     if (DataBagFromStream.FIsMove) then
     begin
       if (not DataBagFromStream.FEquals(DataBag)) then
       begin
-        InsertionPoint.FInit(m_lwBaseStreamLastPosition, lwPosition);
+        InsertionPoint.FInit(lwLastPosition, lwPosition);
         exit;
       end;
-      if (m_lwBaseStreamLastPosition < lwPosition) then
+      if (lwLastPosition < lwPosition) then
         bHasDataFlag := FReadBagFromStream(DataBagFromStream)
       else
-      begin
         bHasDataFlag := FReadBagFromStream(lwPosition, DataBagFromStream);
-        m_lwBaseStreamLastPosition := lwPosition;
-      end;
       Assert(bHasDataFlag);
-      lwPosition := m_BaseStream.Position;
+      lwLastPosition := lwPosition;
+      inc(lwPosition, SizeOf(TDataBag));
     end
     else if (DataBagFromStream.FIsNearPointer) then
     begin
@@ -382,7 +374,7 @@ begin // .FFindDataFromPosition
     bHasDataFlag := DataIterator.HasNext;
     if (bHasDataFlag) then
       DataBag := DataIterator.GetNext;
-      
+
   until (not bHasDataFlag);
 
   Result := TRUE;
