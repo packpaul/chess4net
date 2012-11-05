@@ -290,6 +290,35 @@ function TMoveTreeCollector.FFindDataFromPosition(const DataIterator: TDataBagsI
 var
   lwLastPosition: LongWord;
 
+  function NJumpNear(const Data: TDataBag; out NextDataBag: TDataBag): boolean;
+  var
+    lwPositionBase, lwJumpPosition: LongWord;
+    DataBag: TDataBag;
+    bRead: boolean;
+  begin
+    lwPositionBase := lwPosition - SizeOf(TDataBag);
+
+    lwJumpPosition := lwPositionBase + Data.FToNearPointer;
+
+    FReadBagFromStream(lwJumpPosition, DataBag);
+    Assert(DataBag.FIsMove);
+
+    Result := DataBag.FEquals(DataIterator.GetLast);
+    if (Result) then
+    begin
+      lwLastPosition := lwPosition;
+      FReadBagFromStream(lwPosition, NextDataBag);
+    end
+    else
+    begin
+      bRead := FReadBagFromStream(NextDataBag);
+      Assert(bRead);
+      lwLastPosition := lwJumpPosition + SizeOf(TDataBag);
+    end;
+
+    lwPosition := lwLastPosition + SizeOf(TDataBag);
+  end;
+
   function NJumpFar(const HiData: TDataBag; out NextDataBag: TDataBag): boolean;
   var
     LowData: TDataBag;
@@ -307,16 +336,16 @@ var
     FReadBagFromStream(lwJumpPosition, DataBag);
     Assert(DataBag.FIsMove);
 
-    lwLastPosition := lwJumpPosition + SizeOf(TDataBag);
     FReadBagFromStream(NextDataBag);
+    lwLastPosition := lwJumpPosition + SizeOf(TDataBag);
 
     Result := DataBag.FEquals(DataIterator.GetLast);
     if (Result) then
       exit;
 
-    inc(lwLastPosition, SizeOf(TDataBag));
     bRead := FReadBagFromStream(NextDataBag);
     Assert(bRead);
+    inc(lwLastPosition, SizeOf(TDataBag));
 
     lwPosition := lwLastPosition + SizeOf(TDataBag);
   end;
@@ -363,7 +392,8 @@ begin // .FFindDataFromPosition
     end
     else if (DataBagFromStream.FIsNearPointer) then
     begin
-      raise EMoveTreeCollector.Create('Implementation pending!');
+      if (not NJumpNear(DataBagFromStream, DataBagFromStream)) then
+        continue;
     end
     else if (DataBagFromStream.FIsFarPointer) then
     begin
@@ -407,8 +437,16 @@ end;
 
 procedure TMoveTreeCollector.FStartNearBranch(const Data: TDataBag;
   const InsertionPoint: TInsertionPoint);
+var
+  SavedData: TDataBag;
+  bRead: boolean;
 begin
-  raise EMoveTreeCollector.Create('Implementation pending!');
+  bRead := FReadBagFromStream(InsertionPoint.lwAddress1, SavedData);
+  Assert(bRead);
+
+  FWriteBagToStreamEnd(SavedData);
+
+  FWriteBagToStream(InsertionPoint.lwAddress1, Data);
 end;
 
 
@@ -494,9 +532,15 @@ end;
 
 
 function TDataBag.FConvertFromNearPointer(lwPointer: LongWord; out Data: TDataBag): boolean;
+const
+  MAX_VALUE = (NEAR_POINTER_DATA_MARKER shl 8) - 1;
 begin
-  Result := FALSE;
-  // TODO:
+  Result := (lwPointer <= MAX_VALUE);
+  if (not Result) then
+    exit;
+
+  Data.btSecond := lwPointer and $FF;
+  Data.btFirst := ((lwPointer shr 8) and NEAR_POINTER_DATA_MASK) or NEAR_POINTER_DATA_MARKER;
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
