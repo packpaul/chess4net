@@ -20,7 +20,6 @@ type
   private
     m_PosMoves: TStack;
     m_Contexts: TStack;
-    m_lstMoveEstimations: TList;
 
     m_PosBase, m_RefPosBase: TPosBase;
 
@@ -46,7 +45,6 @@ type
 
     procedure FClearPosMoves;
     procedure FClearContexts;
-    procedure FClearMoveEstimations;
 
     procedure FProcessExtendedOpeningLine(const posMove: TPosMove);
     procedure FProcessOpeningLine(const posMove: TPosMove);
@@ -106,7 +104,6 @@ begin
   m_GenOpening := openNo;
 
   m_PosMoves := TStack.Create;
-  m_lstMoveEstimations := TList.Create;
   m_Contexts := TStack.Create;
 
   g_PosBaseCollector := self;
@@ -119,9 +116,6 @@ begin
 
   m_PosBase.Free;
   m_RefPosBase.Free;
-
-  FClearMoveEstimations;
-  m_lstMoveEstimations.Free;
 
   FClearPosMoves;
   m_PosMoves.Free;
@@ -184,34 +178,49 @@ end;
 
 
 procedure TPosBaseCollector.FProcessOpeningLine(const posMove: TPosMove);
-var
-  i: integer;
-begin
-  if (Assigned(m_RefPosBase)) then
-    m_bAddPos := m_RefPosBase.Find(posMove.pos, m_lstMoveEstimations)
-  else
-    m_bAddPos := m_PosBase.Find(posMove.pos, m_lstMoveEstimations);
 
-  if (not m_bAddPos) then
-    exit;
+  var
+    MoveEstimations: TMoveEstList;
 
-  i := m_lstMoveEstimations.Count - 1;
-  while (i >= 0) do
+  procedure NProcess(const posMove: TPosMove);
+  var
+    i: integer;
   begin
-    with PMoveEst(m_lstMoveEstimations[i]).move, posMove do
-      m_bAddPos := ((i0 = move.i0) and (j0 = move.j0) and (i = move.i) and
-                    (j = move.j) and (prom_fig = move.prom_fig));
-    if (m_bAddPos) then
+    if (Assigned(m_RefPosBase)) then
+      m_bAddPos := m_RefPosBase.Find(posMove.pos, MoveEstimations)
+    else
+      m_bAddPos := m_PosBase.Find(posMove.pos, MoveEstimations);
+
+    if (not m_bAddPos) then
+      exit;
+
+    i := MoveEstimations.Count - 1;
+    while (i >= 0) do
     begin
-      if (m_bUseUniquePositions) then
-        m_bAddPos := ((PMoveEst(m_lstMoveEstimations[i]).estimate and $FFFF) >= 2);
+      with MoveEstimations[i].Move, posMove do
+        m_bAddPos := ((i0 = move.i0) and (j0 = move.j0) and (i = move.i) and
+                      (j = move.j) and (prom_fig = move.prom_fig));
       if (m_bAddPos) then
-        break;
+      begin
+        if (m_bUseUniquePositions) then
+          m_bAddPos := ((MoveEstimations[i].Estimate and $FFFF) >= 2);
+        if (m_bAddPos) then
+          break;
+      end;
+      dec(i);
     end;
-    dec(i);
+
+    if (i < 0) then
+      m_bAddPos := FALSE;
   end;
-  if (i < 0) then
-    m_bAddPos := FALSE;
+
+begin // .FProcessOpeningLine
+  MoveEstimations := nil;
+  try
+    NProcess(posMove);
+  finally
+    MoveEstimations.Free;
+  end;
 end;
 
 
@@ -279,7 +288,6 @@ begin
     m_ProceedColorsInner := m_ProceedColors;
 
   FClearPosMoves;
-  FClearMoveEstimations;
   FClearContexts;
 
   inc(m_iGameNumber);
@@ -309,16 +317,6 @@ procedure TPosBaseCollector.FClearContexts;
 begin
   while (m_Contexts.Count > 0) do
     Dispose(m_Contexts.Pop);
-end;
-
-
-procedure TPosBaseCollector.FClearMoveEstimations;
-var
-  i: integer;
-begin
-  for i := 0 to m_lstMoveEstimations.Count - 1 do
-    Dispose(m_lstMoveEstimations[i]);
-  m_lstMoveEstimations.Clear;
 end;
 
 

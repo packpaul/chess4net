@@ -20,6 +20,29 @@ type
     estimate: LongWord;
   end;
 
+  TMoveEstItem = class
+  private
+    m_pItem: PMoveEst;
+    constructor FCreate(pItem: PMoveEst);
+    function FGetMove: TMoveAbs;
+    function FGetEstimate: LongWord;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    property Move: TMoveAbs read FGetMove;
+    property Estimate: LongWord read FGetEstimate;
+  end;
+
+  TMoveEstList = class(TList)
+  private
+    function FGetItem(iIndex: integer): TMoveEstItem;
+    procedure FSetItem(iIndex: integer; AItem: TMoveEstItem);
+  public
+    destructor Destroy; override;
+    procedure ClearWithContent;
+    property Items[iIndex: integer]: TMoveEstItem read FGetItem write FSetItem; default;
+  end;
+
   TReestimate = procedure(moveEsts: TList; nRec: integer);
 
   TPosBaseStream = class
@@ -55,7 +78,10 @@ type
   public
     procedure Add(const posMove: TPosMove); // добавление позиции и хода в базу
     function Find(const pos: TChessPosition): boolean; overload;
+    // Deprecated. Planned for removal after 2013.01
     function Find(const pos: TChessPosition; var moveEsts: TList): boolean; overload;
+    // moveEsts - TMoveEstItem collection
+    function Find(const pos: TChessPosition; out moveEsts: TMoveEstList): boolean; overload;
     constructor Create(fileNameNoExt: string; Reestimate: TReestimate = nil);
     destructor Destroy; override;
   end;
@@ -474,6 +500,32 @@ here:
   
 end;
 
+
+function TPosBase.Find(const pos: TChessPosition; out moveEsts: TMoveEstList): boolean;
+var
+  lstMoveEsts: TList;
+  i: integer;
+begin
+  moveEsts := nil;
+
+  lstMoveEsts := TList.Create;
+  try
+    Result := Find(pos, lstMoveEsts);
+    if (not Result) then
+      exit;
+
+    moveEsts := TMoveEstList.Create;
+    for i := 0 to lstMoveEsts.Count - 1 do
+    begin
+      moveEsts.Add(TMoveEstItem.FCreate(PMoveEst(lstMoveEsts[i])));
+    end;
+
+  finally
+    lstMoveEsts.Free;
+  end;
+
+end;
+
 ////////////////////////////////////////////////////////////////////////////////
 // TFieldNode
 
@@ -598,6 +650,71 @@ end;
 procedure TPosBaseStream.Read(var Buffer; Count: integer);
 begin
   m_InnerStream.ReadBuffer(Buffer, Count);
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TMoveEstItem
+
+constructor TMoveEstItem.Create;
+begin
+  raise Exception.Create(ClassName + ' cannot be instantiated directly!');
+end;
+
+
+constructor TMoveEstItem.FCreate(pItem: PMoveEst);
+begin
+  inherited Create;
+  m_pItem := pItem;
+end;
+
+
+destructor TMoveEstItem.Destroy;
+begin
+  Dispose(m_pItem);
+  inherited;
+end;
+
+
+function TMoveEstItem.FGetMove: TMoveAbs;
+begin
+  Result := m_pItem.move;
+end;
+
+
+function TMoveEstItem.FGetEstimate: LongWord;
+begin
+  Result := m_pItem.estimate;
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TMoveEstList
+
+destructor TMoveEstList.Destroy;
+begin
+  ClearWithContent;
+  inherited;
+end;
+
+function TMoveEstList.FGetItem(iIndex: integer): TMoveEstItem;
+begin
+  Result := inherited Items[iIndex];
+end;
+
+
+procedure TMoveEstList.FSetItem(iIndex: integer; AItem: TMoveEstItem);
+begin
+  inherited Items[iIndex] := AItem;
+end;
+
+
+procedure TMoveEstList.ClearWithContent;
+var
+  i: integer;
+begin
+  for i := 0 to Count - 1 do
+    (Items[i] as TMoveEstItem).Free;
+
+  Clear;
 end;
 
 end.
