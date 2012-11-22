@@ -1,5 +1,5 @@
 Chess4Net
-(c) 2007-2011 No rights reserved
+(c) 2007-2012 No rights reserved
 E-Mail: packpaul@mail.ru, packpaul1@gmail.com
 Skype:  packpaul1
 URL:    http://chess4net.ru
@@ -130,6 +130,9 @@ PP
 
 Change log
 -----------
+
+Chess4Net 2012.1 (Skype)
+[2012-11-22] Stopping game with 'Allow takebacks to your partner' disabled; takeback retransmition improved
 
 Chess4Net 2011.1 (Skype)
 [2011-08-06] Localization for German, French, Italian and Estonian
