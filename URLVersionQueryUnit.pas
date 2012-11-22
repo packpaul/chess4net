@@ -170,7 +170,7 @@ begin
 {$IFNDEF TESTING}
   m_strResponse := m_URLVersionQuery.FQuery(m_strURL);
 {$ELSE}
-  m_strResponse := 'Last version=201102;Info=Version 2011.2 is available'#10'TEST> You can download it from http://chess4net.ru <TEST';
+  m_strResponse := 'Last version=201201;Info=Version 2012.1 is available'#10'TEST> You can download it from http://chess4net.ru <TEST';
 {$ENDIF}
   Synchronize(FNotifyOnResponse);
 end;

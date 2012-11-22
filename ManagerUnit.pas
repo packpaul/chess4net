@@ -148,6 +148,9 @@ type
     procedure FAdjournGame;
     procedure FExitGameMode;
 
+    function FGetYouTakebacks: boolean;
+    function FGetOpponentTakebacks: boolean;
+
     procedure FBuildAdjournedStr;
     procedure FStartAdjournedGame;
 
@@ -166,8 +169,13 @@ type
 
     procedure FOnURLQueryReady(Sender: TURLVersionQuery);
 
+    procedure FRetransmitTakeback;
+
     property AdjournedStr: string read FGetAdjournedStr write FSetAdjournedStr;
     property _PlayerColor: TFigureColor read FGetPlayerColor write FSetPlayerColor;
+
+    property YouTakebacks: boolean read FGetYouTakebacks;
+    property OpponentTakebacks: boolean read FGetOpponentTakebacks;
 
   protected
     constructor RCreate;
@@ -424,60 +432,69 @@ begin
       end;
 
     cbeMate:
-      with ChessBoard do
-      begin
-        FExitGameMode;
+    with ChessBoard do
+    begin
 {$IFDEF GAME_LOG}
-        FWriteToGameLog('#');
-        if (PositionColor = fcWhite) then
-          FWriteToGameLog(sLineBreak + '0 - 1')
-        else
-          FWriteToGameLog(sLineBreak + '1 - 0');
-        FlushGameLog;
+      FWriteToGameLog('#');
 {$ENDIF}
-        with TLocalizer.Instance do
+      if ((YouTakebacks and (_PlayerColor <> ChessBoard.PositionColor)) or
+          (OpponentTakebacks and (_PlayerColor = ChessBoard.PositionColor))) then
+        exit;
+      FExitGameMode;
+{$IFDEF GAME_LOG}
+      if (PositionColor = fcWhite) then
+        FWriteToGameLog(sLineBreak + '0 - 1')
+      else
+        FWriteToGameLog(sLineBreak + '1 - 0');
+      FlushGameLog;
+{$ENDIF}
+      with TLocalizer.Instance do
+      begin
+        if (Transmittable) then
         begin
-          if (Transmittable) then
-          begin
-            if (PositionColor = fcWhite) then
-              wstrMsg1 := GetMessage(36) // White is checkmated.
-            else
-              wstrMsg1 := GetMessage(37); // Black is checkmated.
-            wstrMsg2 := wstrMsg1;
-          end
-          else // not Transmittable
-          begin
-            if (PositionColor = fcWhite) then
-            begin
-              wstrMsg1 := GetMessage(0); // White is checkmated. You win.
-              wstrMsg2 := GetMessage(1); // White is checkmated. You loose.
-            end
-            else
-            begin
-              wstrMsg1 := GetMessage(2); // Black is checkmated. You win.
-              wstrMsg2 := GetMessage(3); // Black is checkmated. You loose.
-            end;
-          end;
-        end; // with
-
-        if ((_PlayerColor <> fcWhite) and (PositionColor = fcWhite)) or
-           ((_PlayerColor <> fcBlack) and (PositionColor = fcBlack)) then
-        begin
-          m_Dialogs.MessageDlg(wstrMsg1, mtCustom, [mbOK], mfNone);
-          ChessBoard.WriteGameToBase(grWin);
+          if (PositionColor = fcWhite) then
+            wstrMsg1 := GetMessage(36) // White is checkmated.
+          else
+            wstrMsg1 := GetMessage(37); // Black is checkmated.
+          wstrMsg2 := wstrMsg1;
         end
-        else
+        else // not Transmittable
         begin
-          m_Dialogs.MessageDlg(wstrMsg2, mtCustom, [mbOK], mfNone);
-          ChessBoard.WriteGameToBase(grLost);
+          if (PositionColor = fcWhite) then
+          begin
+            wstrMsg1 := GetMessage(0); // White is checkmated. You win.
+            wstrMsg2 := GetMessage(1); // White is checkmated. You loose.
+          end
+          else
+          begin
+            wstrMsg1 := GetMessage(2); // Black is checkmated. You win.
+            wstrMsg2 := GetMessage(3); // Black is checkmated. You loose.
+          end;
         end;
+      end; // with
+
+      if (_PlayerColor <> PositionColor) then
+      begin
+        m_Dialogs.MessageDlg(wstrMsg1, mtCustom, [mbOK], mfNone);
+        ChessBoard.WriteGameToBase(grWin);
+      end
+      else
+      begin
+        m_Dialogs.MessageDlg(wstrMsg2, mtCustom, [mbOK], mfNone);
+        ChessBoard.WriteGameToBase(grLost);
       end;
+    end;
 
     cbeStaleMate:
     begin
-      FExitGameMode;
 {$IFDEF GAME_LOG}
-      FWriteToGameLog('=' + sLineBreak + '1/2 - 1/2');
+      FWriteToGameLog('=');
+{$ENDIF}
+      if ((YouTakebacks and (_PlayerColor <> ChessBoard.PositionColor)) or
+          (OpponentTakebacks and (_PlayerColor = ChessBoard.PositionColor))) then
+        exit;
+{$IFDEF GAME_LOG}
+      FWriteToGameLog(sLineBreak + '1/2 - 1/2');
       FlushGameLog;
 {$ENDIF}
       if (Transmittable) then
@@ -1122,7 +1139,7 @@ begin
       FWriteToGameLog(' <takeback>');
 {$ENDIF}
       ChessBoard.SwitchClock(ChessBoard.PositionColor);
-      RRetransmit(strSavedCmd);
+      FRetransmitTakeback;
     end
     else if (sl = CMD_TAKEBACK_NO) then
     begin
@@ -1171,6 +1188,13 @@ end;
 
 procedure TManager.RRetransmit(const strCmd: string);
 begin
+end;
+
+
+procedure TManager.FRetransmitTakeback;
+begin
+    RRetransmit(CMD_GAME_CONTEXT + ' ' + RGetGameContextStr);
+    RRetransmit(CMD_CONTINUE_GAME);
 end;
 
 
@@ -1564,10 +1588,11 @@ begin
       begin
         if modRes = mrYes then
         begin
-          RSendData(CMD_TAKEBACK_YES);
-          RRetransmit(CMD_TAKEBACK_YES);
-
           ChessBoard.TakeBack;
+          
+          RSendData(CMD_TAKEBACK_YES);
+          FRetransmitTakeback;
+
           FBuildAdjournedStr;
           TakebackGame.Enabled:= (ChessBoard.NMoveDone > 0);
 {$IFDEF GAME_LOG}
@@ -2048,7 +2073,8 @@ begin
       _PlayerColor := fcWhite;
     end;
     RUpdateChessBoardCaption;
-    SetClock;
+    if (not Transmittable) then
+      SetClock;
   end;
 end;
 
@@ -2349,6 +2375,18 @@ end;
 
 procedure TManager.RBroadcast;
 begin
+end;
+
+
+function TManager.FGetYouTakebacks: boolean;
+begin
+  Result := (you_takebacks or ChessBoard.pTrainingMode);
+end;
+
+
+function TManager.FGetOpponentTakebacks: boolean;
+begin
+  Result := (opponent_takebacks or ChessBoard.pTrainingMode);
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
