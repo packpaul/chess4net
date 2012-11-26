@@ -16,7 +16,8 @@ uses
   PGNTraverserUnit in '..\PGNTraverserUnit.pas',
   PosBaseCollectorUnit in 'PosBaseCollectorUnit.pas',
   NonRefInterfacedObjectUnit in '..\NonRefInterfacedObjectUnit.pas',
-  MoveTreeCollectorUnit in 'MoveTreeCollectorUnit.pas';
+  MoveTreeCollectorUnit in 'MoveTreeCollectorUnit.pas',
+  MoveTreeBaseUnit in '..\MoveTreeBaseUnit.pas';
 
 procedure Help;
 begin

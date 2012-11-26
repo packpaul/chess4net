@@ -19,13 +19,17 @@ type
   TMoveTreeCollector = class(TInterfacedObject, IPGNTraverserVisitable)
   private
     m_DataBase: TMoveTreeBase;
+    m_bOwnsDataBase: boolean;
     m_DataBags: TObjectList;
     m_bCollecting: boolean;
 
     procedure FAddDataToBase;
 
+  protected
+    constructor Create(ADataBase: TMoveTreeBase); overload;
+
   public
-    constructor Create(const strBaseName: string);
+    constructor Create(const strBaseName: string); overload;
     destructor Destroy; override;
 
     procedure Start(const Visitor: IPGNTraverserVisitor);
@@ -50,18 +54,27 @@ type
 ////////////////////////////////////////////////////////////////////////////////
 // TMoveTreeCollector
 
-constructor TMoveTreeCollector.Create(const strBaseName: string);
+constructor TMoveTreeCollector.Create(ADataBase: TMoveTreeBase);
 begin
   inherited Create;
-  m_DataBase := TMoveTreeBase.Create(strBaseName);
+  m_DataBase := ADataBase;
   m_DataBags := TObjectList.Create;
+end;
+
+
+constructor TMoveTreeCollector.Create(const strBaseName: string);
+begin
+  Create(TMoveTreeBase.Create(strBaseName));
+  m_bOwnsDataBase := TRUE;
 end;
 
 
 destructor TMoveTreeCollector.Destroy;
 begin
   m_DataBags.Free;
-  m_DataBase.Free;
+  if (m_bOwnsDataBase) then
+    m_DataBase.Free;
+    
   inherited;
 end;
 

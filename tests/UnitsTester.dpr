@@ -21,7 +21,12 @@ uses
   PosBaseUnit in '..\PosBaseUnit.pas',
   LocalizerUnit in '..\LocalizerUnit.pas',
   GlobalsUnit in '..\GlobalsUnit.pas',
-  ChessClockUnit in '..\ChessClockUnit.pas';
+  ChessClockUnit in '..\ChessClockUnit.pas',
+  MoveTreeBaseUnit in '..\MoveTreeBaseUnit.pas',
+  MoveTreeBaseTestsUnit in '..\MoveTreeBaseTestsUnit.pas',
+  PGNTraverserUnit in '..\PGNTraverserUnit.pas',
+  NonRefInterfacedObjectUnit in '..\NonRefInterfacedObjectUnit.pas',
+  MoveTreeCollectorUnit in '..\PosDB\MoveTreeCollectorUnit.pas';
 
 {$R *.res}
 

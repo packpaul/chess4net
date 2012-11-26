@@ -3,7 +3,7 @@ unit MoveTreeBaseUnit;
 interface
 
 uses
-  Classes, SysUtils,
+  Classes, SysUtils, Contnrs,
   //
   ChessRulesEngine;
 
@@ -48,13 +48,46 @@ type
     procedure FInit(lwAAddress1, lwAAddress2: LongWord); overload;
   end;
 
-  EMoveTreeCollector = class(Exception);
+  TMoveTreeAddress = record
+    lwPosition: LongWord;
+    wOffset: Word;
+  end;
+
+  TMoveTreeBaseCache = class
+  private
+    m_InitialPos: TChessPosition;
+    m_InitialAddress: TMoveTreeAddress;
+    m_PosAddresses: TObjectList;
+    m_iLastItemIndex: integer; // PP: optimization?
+    constructor FCreate(const InitialPos: TChessPosition; const InitialAddress: TMoveTreeAddress);
+    function FGet(const Pos: TChessPosition; out Address: TMoveTreeAddress): boolean;
+    procedure FAdd(const Pos: TChessPosition; const Address: TMoveTreeAddress);
+  public
+    constructor Create;
+    destructor Destroy; override;
+  end;
+
+
+  TMovePosAddress = record
+    move: TMoveAbs;
+    pos: TChessPosition;
+    address: TMoveTreeAddress;
+  end;
+
+  TMovePosAddressArr = array of TMovePosAddress;
+
+  EMoveTreeBase = class(Exception);
 
   TMoveTreeBase = class
   private
     m_BaseStream: TStream;
+    m_ChessRulesEngine: TChessRulesEngine;
+    m_PosCache: TMoveTreeBaseCache;
 
-    procedure FCreateStream(const BaseFileName: TFileName);
+    constructor FCreate;
+
+    procedure FCreateFileStream(const BaseFileName: TFileName);
+    procedure FCreateMemoryStream;
     procedure FDestroyStream;
 
     function FReadBagFromStream(out ABag: TDataBag): boolean; overload;
@@ -73,12 +106,16 @@ type
     procedure FStartNearBranch(const Data: TDataBag; const InsertionPoint: TInsertionPoint);
     procedure FStartFarBranch(const DataHi, DataLow: TDataBag; const InsertionPoint: TInsertionPoint);
 
+    procedure FFind(const Address: TMoveTreeAddress; out Datas: TMovePosAddressArr);
+
+  protected
+    constructor CreateForTest;
 
   public
     constructor Create(const strBaseName: string);
     destructor Destroy; override;
     procedure Add(const Moves: TMoveAbsArr);
-    function Find(const pos: TChessPosition; out Moves: TMoveAbsArr): boolean;
+    function Find(const Pos: TChessPosition; out Moves: TMoveAbsArr): boolean;
   end;
 
 const
@@ -86,8 +123,20 @@ const
 
 implementation
 
+type
+  TPosAddressItem = class
+  private
+    m_Pos: TChessPosition;
+    m_Address: TMoveTreeAddress;
+  public
+    constructor Create(const APos: TChessPosition; const AAddress: TMoveTreeAddress);
+    property Pos: TChessPosition read m_Pos;
+    property Address: TMoveTreeAddress read m_Address;
+  end;
+
 const
   BASE_FILE_EXT = 'mvt';
+  TEST_STREAM_SIZE = 100 * 1024; // 100 Kb
 
   PROM_FIG_MARKER: array[TFigureName] of byte = ($00, $00, $40, $80, $C0, $00); // K, Q, R, B, N, P
 
@@ -101,25 +150,46 @@ const
 
   END_DATA_TAG: TDataBag = (btFirst: 0; btSecond: 0);
 
+  INITIAL_ADDRESS: TMoveTreeAddress = (lwPosition: 0; wOffset: 0);
 
 ////////////////////////////////////////////////////////////////////////////////
 // TMoveTreeBase
 
-constructor TMoveTreeBase.Create(const strBaseName: string);
+constructor TMoveTreeBase.FCreate;
 begin
   inherited Create;
-  FCreateStream(strBaseName + '.' + BASE_FILE_EXT);
+
+  m_ChessRulesEngine := TChessRulesEngine.Create;
+  m_PosCache := TMoveTreeBaseCache.FCreate(m_ChessRulesEngine.Position^, INITIAL_ADDRESS);
+end;
+
+
+constructor TMoveTreeBase.Create(const strBaseName: string);
+begin
+  FCreate;
+  FCreateFileStream(strBaseName + '.' + BASE_FILE_EXT);
+end;
+
+
+constructor TMoveTreeBase.CreateForTest;
+begin
+  FCreate;
+  FCreateMemoryStream;
 end;
 
 
 destructor TMoveTreeBase.Destroy;
 begin
   FDestroyStream;
+  
+  m_PosCache.Free;
+  m_ChessRulesEngine.Free;
+  
   inherited;
 end;
 
 
-procedure TMoveTreeBase.FCreateStream(const BaseFileName: TFileName);
+procedure TMoveTreeBase.FCreateFileStream(const BaseFileName: TFileName);
 var
   FileHandle: THandle;
 begin
@@ -130,6 +200,14 @@ begin
   end;
 
   m_BaseStream := TFileStream.Create(BaseFileName, fmOpenReadWrite, fmShareDenyWrite);
+end;
+
+
+procedure TMoveTreeBase.FCreateMemoryStream;
+begin
+  m_BaseStream := TMemoryStream.Create;
+  m_BaseStream.Size := TEST_STREAM_SIZE;
+  m_BaseStream.Position := 0;
 end;
 
 
@@ -346,7 +424,7 @@ begin
     else if (_TDataBag.FConvertFromFarPointer(lwAddressOffset, DataOffsetHi, DataOffsetLow)) then
       FStartFarBranch(DataOffsetHi, DataOffsetLow, InsertionPoint)
     else
-      raise EMoveTreeCollector.Create('Base file has become too big!');
+      raise EMoveTreeBase.Create('Base file has become too big!');
   end;
 
   FWriteBagToStreamEnd(DataIterator.GetLast);
@@ -391,10 +469,79 @@ begin
 end;
 
 
-function TMoveTreeBase.Find(const pos: TChessPosition; out Moves: TMoveAbsArr): boolean;
+function TMoveTreeBase.Find(const Pos: TChessPosition; out Moves: TMoveAbsArr): boolean;
+var
+  Address: TMoveTreeAddress;
+  Datas: TMovePosAddressArr;
+  i: integer;
 begin
   Result := FALSE;
-  // TODO:
+
+  if (not m_PosCache.FGet(Pos, Address)) then
+    exit;
+
+  FFind(Address, Datas);
+
+  SetLength(Moves, Length(Datas));
+  for i := Low(Datas) to High(Datas) do
+  begin
+    Moves[i] := Datas[i].move;
+    m_PosCache.FAdd(Datas[i].pos, Datas[i].address);
+  end;
+
+  Result := TRUE;
+end;
+
+
+procedure TMoveTreeBase.FFind(const Address: TMoveTreeAddress; out Datas: TMovePosAddressArr);
+var
+  lwLastPosition: LongWord;
+  lwPosition: LongWord;
+  DataBag: TDataBag;
+  bHasDataFlag: boolean;
+begin
+  SetLength(Datas, 0);
+  
+(* // TODO:
+  lwLastPosition := Address.lwPosition;
+  lwPosition := lwLastPosition;
+
+  bHasDataFlag := FReadBagFromStream(lwPosition, DataBag);
+  if (not bHasDataFlag) then
+    exit;
+
+  inc(lwPosition, SizeOf(TDataBag));
+
+  repeat
+    if (DataBag.FIsMove) then
+    begin
+      if (lwLastPosition < lwPosition) then
+        bHasDataFlag := FReadBagFromStream(DataBagFromStream)
+      else
+        bHasDataFlag := FReadBagFromStream(lwPosition, DataBagFromStream);
+      Assert(bHasDataFlag);
+      lwLastPosition := lwPosition;
+      inc(lwPosition, SizeOf(TDataBag));
+    end
+    else if (DataBagFromStream.FIsNearPointer) then
+    begin
+      if (not NJumpNear(DataBagFromStream, DataBagFromStream)) then
+        continue;
+    end
+    else if (DataBagFromStream.FIsFarPointer) then
+    begin
+      if (not NJumpFar(DataBagFromStream, DataBagFromStream)) then
+        continue;
+    end;
+
+    bHasDataFlag := DataIterator.HasNext;
+    if (bHasDataFlag) then
+      DataBag := DataIterator.GetNext;
+
+  until (not bHasDataFlag);
+
+  Result := TRUE;
+*)
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -518,6 +665,93 @@ procedure TInsertionPoint.FInit(lwAAddress1, lwAAddress2: LongWord);
 begin
   lwAddress1 := lwAAddress1;
   lwAddress2 := lwAAddress2;
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TMoveTreeBaseCache
+
+constructor TMoveTreeBaseCache.Create;
+begin
+  raise Exception.Create(ClassName + ' cannot be instaniated directly!');
+end;
+
+
+constructor TMoveTreeBaseCache.FCreate(const InitialPos: TChessPosition;
+  const InitialAddress: TMoveTreeAddress);
+begin
+  inherited Create;
+
+  m_InitialPos := InitialPos;
+  m_InitialAddress := InitialAddress;
+  m_PosAddresses := TObjectList.Create;
+end;
+
+
+destructor TMoveTreeBaseCache.Destroy;
+begin
+  m_PosAddresses.Free;
+  inherited;
+end;
+
+
+function TMoveTreeBaseCache.FGet(const Pos: TChessPosition; out Address: TMoveTreeAddress): boolean;
+var
+  i: integer;
+  Item: TPosAddressItem;
+begin
+  Result := TRUE;
+
+  if (m_InitialPos.Equals(Pos)) then
+  begin
+    Address := m_InitialAddress;
+    exit;
+  end;
+
+  for i := m_iLastItemIndex to m_PosAddresses.Count - 1 do
+  begin
+    Item := TPosAddressItem(m_PosAddresses[i]);
+    if (Pos.Equals(Item.Pos)) then
+    begin
+      Address := Item.Address;
+      m_iLastItemIndex := i;
+    end;
+    exit;
+  end;
+
+  for i := m_iLastItemIndex - 1 downto 0 do
+  begin
+    Item := TPosAddressItem(m_PosAddresses[i]);
+    if (Pos.Equals(Item.Pos)) then
+    begin
+      Address := Item.Address;
+      m_iLastItemIndex := i;
+    end;
+    exit;
+  end;
+
+  Result := FALSE;
+end;
+
+
+procedure TMoveTreeBaseCache.FAdd(const Pos: TChessPosition; const Address: TMoveTreeAddress);
+var
+  DummyAddress: TMoveTreeAddress;
+begin
+  if (FGet(Pos, DummyAddress)) then
+    exit;
+
+  m_PosAddresses.Add(TPosAddressItem.Create(Pos, Address));
+  m_iLastItemIndex := m_PosAddresses.Count - 1;
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TPosAddressItem
+
+constructor TPosAddressItem.Create(const APos: TChessPosition; const AAddress: TMoveTreeAddress);
+begin
+  inherited Create;
+  m_Pos := Pos;
+  m_Address := AAddress;
 end;
 
 end.

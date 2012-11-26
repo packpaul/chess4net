@@ -31,6 +31,7 @@ type
     procedure FUpdateQueenSideCastling(AColor: TFigureColor);
   public
     function SetPiece(i, j: integer; APiece: TFigure): boolean;
+    function Equals(const Other: TChessPosition): boolean;
   end;
 
   PMoveAbs = ^TMoveAbs;
@@ -1468,6 +1469,41 @@ begin
       Exclude(castling, BlackQueenSide);
   end;
 
+end;
+
+
+function TChessPosition.Equals(const Other: TChessPosition): boolean;
+
+  function NIsBoardsEqual: boolean;
+  var
+    i, j: integer;
+  begin
+    Result := FALSE;
+    for i := 1 to 8 do
+    begin
+      for j := 1 to 8 do
+      if (board[i, j] <> Other.board[i, j]) then
+        exit;
+    end;
+    Result := TRUE;
+  end;
+
+begin // .Equals
+  Result := FALSE;
+
+  if (not NIsBoardsEqual) then
+    exit;
+
+  if (color <> other.color) then
+    exit;
+
+  if (castling <> other.castling) then
+    exit;
+
+  if (en_passant <> other.en_passant) then
+    exit;
+
+  Result := TRUE;
 end;
 
 initialization

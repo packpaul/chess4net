@@ -3,6 +3,8 @@ unit PGNTraverserUnit;
 interface
 
 uses
+  Classes,
+  //
   NonRefInterfacedObjectUnit, ChessRulesEngine;
 
 type
@@ -21,11 +23,20 @@ type
     procedure Finish;
   end;
 
+  TPGNTraverserDataIterator = class
+  private
+    function FHasNext: boolean; virtual; abstract;
+    function FGetNext: string; virtual; abstract;
+    constructor FCreate;
+  public
+    constructor Create;
+  end;
+
   TFigureColors = set of TFigureColor;
 
   TPGNTraverser = class(TNonRefInterfacedObject, IPGNTraverserVisitor)
   private
-    m_pInput: ^Text;
+    m_DataIterator: TPGNTraverserDataIterator;
     m_Visitable: IPGNTraverserVisitable;
 
     m_strPlayerName: string;
@@ -37,6 +48,8 @@ type
     n_pos: integer;
     m_ChessRulesEngine: TChessRulesEngine;
     m_bIncludeVariants: boolean;
+
+    constructor FCreate(ADataIterator: TPGNTraverserDataIterator; AVisitable: IPGNTraverserVisitable);
 
     procedure FProceedGameStr(const strGame: string);
     procedure FDoStart;
@@ -53,7 +66,8 @@ type
     function FParseWhiteTag(const strLine: string): boolean;
     function FParseBlackTag(const strLine: string): boolean;
   public
-    constructor Create(const APGNInput: Text; AVisitable: IPGNTraverserVisitable);
+    constructor Create(const APGNInput: Text; AVisitable: IPGNTraverserVisitable); overload;
+    constructor Create(const APGNInput: TStrings; AVisitable: IPGNTraverserVisitable); overload;
     destructor Destroy; override;
     procedure Traverse;
     property PlayerName: string read m_strPlayerName write m_strPlayerName;
@@ -68,13 +82,32 @@ implementation
 uses
   Contnrs, SysUtils, StrUtils;
 
+type
+  TTextDataIterator = class(TPGNTraverserDataIterator)
+  private
+    m_pData: ^Text;
+    constructor FCreate(const Data: Text);
+    function FHasNext: boolean; override;
+    function FGetNext: string; override;
+  end;
+
+  TStringsDataIterator = class(TPGNTraverserDataIterator)
+  private
+    m_Data: TStrings;
+    m_iDataCursor: integer;
+    constructor FCreate(const Data: TStrings);
+    function FHasNext: boolean; override;
+    function FGetNext: string; override;
+  end;
+
 ////////////////////////////////////////////////////////////////////////////////
 // TPGNTraverser
 
-constructor TPGNTraverser.Create(const APGNInput: Text; AVisitable: IPGNTraverserVisitable);
+constructor TPGNTraverser.FCreate(ADataIterator: TPGNTraverserDataIterator; AVisitable: IPGNTraverserVisitable);
 begin
   inherited Create;
-  m_pInput := @APGNInput;
+
+  m_DataIterator := ADataIterator;
   m_Visitable := AVisitable;
 
   m_ProceedColors := [fcWhite, fcBlack];
@@ -83,11 +116,25 @@ begin
 end;
 
 
+constructor TPGNTraverser.Create(const APGNInput: Text; AVisitable: IPGNTraverserVisitable);
+begin
+  FCreate(TTextDataIterator.FCreate(APGNInput), AVisitable);
+end;
+
+
+constructor TPGNTraverser.Create(const APGNInput: TStrings; AVisitable: IPGNTraverserVisitable);
+begin
+  FCreate(TStringsDataIterator.FCreate(APGNInput), AVisitable);
+end;
+
+
 destructor TPGNTraverser.Destroy;
 begin
   m_ChessRulesEngine.Free;
 
+  m_DataIterator.Free;
   m_Visitable := nil;
+
   inherited;
 end;
 
@@ -106,12 +153,12 @@ begin // .Traverse
   ProceedColors := m_ProceedColors;
   bPlayerExists := (m_strPlayerName = '');
   repeat
-    ReadLn(m_pInput^, strLine);
+    strLine := m_DataIterator.FGetNext;
 
     if (strLine <> '') and ((strLine[1] <> '[') or (strLine[length(strLine)] <> ']')) then
     begin
       strGame := strGame + ' ' + strLine;
-      if (not Eof(m_pInput^)) then
+      if (m_DataIterator.FHasNext) then
         continue;
     end;
 
@@ -138,7 +185,7 @@ begin // .Traverse
       bPlayerExists := TRUE;
     end;
 
-  until Eof(m_pInput^);
+  until (not m_DataIterator.FHasNext);
 
 end;
 
@@ -519,6 +566,63 @@ end;
 function TPGNTraverser.FGetBlack: string;
 begin
   Result := m_strBlackPlayerName;
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TPGNTraverserDataIterator
+
+constructor TPGNTraverserDataIterator.Create;
+begin
+  raise Exception.Create(ClassName + ' cannot be instaniated directly!');
+end;
+
+
+constructor TPGNTraverserDataIterator.FCreate;
+begin
+  inherited Create;
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TTextDataIterator
+
+constructor TTextDataIterator.FCreate(const Data: Text);
+begin
+  inherited FCreate;
+  m_pData := @Data;
+end;
+
+
+function TTextDataIterator.FHasNext: boolean;
+begin
+  Result := (not Eof(m_pData^));
+end;
+
+
+function TTextDataIterator.FGetNext: string;
+begin
+  ReadLn(m_pData^, Result);
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TStringsDataIterator
+
+constructor TStringsDataIterator.FCreate(const Data: TStrings);
+begin
+  inherited FCreate;
+  m_Data := Data;
+end;
+
+
+function TStringsDataIterator.FHasNext: boolean;
+begin
+  Result := (m_iDataCursor < m_Data.Count);
+end;
+
+
+function TStringsDataIterator.FGetNext: string;
+begin
+  Result := m_Data[m_iDataCursor];
+  inc(m_iDataCursor);
 end;
 
 end.
