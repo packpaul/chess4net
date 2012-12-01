@@ -5,23 +5,24 @@ interface
 uses
   TestFrameWork,
   //
-  MoveTreeBaseUnit;
+  MoveTreeBaseUnit, ChessRulesEngine;
 
 type
   TMoveTreeBaseTests = class(TTestCase)
   private
+    m_ChessRulesEngine: TChessRulesEngine;
     class function FGetMoveTreeBase: TMoveTreeBase;
     class procedure FFillBaseWithInitialData;
     property MoveTreeBase: TMoveTreeBase read FGetMoveTreeBase;
-  public
-    class function Suite: ITestSuite; override;
-
+  protected
+    class procedure BeforeAllTests;
+    class procedure AfterAllTests;
     procedure SetUp; override;
     procedure TearDown; override;
-
+  public
+    class function Suite: ITestSuite; override;
   published
-    procedure Test1;
-    procedure Test2;
+    procedure TestFindInitialPosition;
   end;
 
 implementation
@@ -65,16 +66,13 @@ end;
 
 procedure TMoveTreeBaseTestSuite.SetUp;
 begin
-  // This method is run before all sub-tests
-  g_MoveTreeBase := TMoveTreeBaseEx.CreateForTest;
-  TMoveTreeBaseTests.FFillBaseWithInitialData;
+  TMoveTreeBaseTests.BeforeAllTests;
 end;
 
 
 procedure TMoveTreeBaseTestSuite.TearDown;
 begin
-  // This method is run after all sub-tests
-  FreeAndNil(g_MoveTreeBase);
+  TMoveTreeBaseTests.AfterAllTests;
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -128,6 +126,9 @@ class procedure TMoveTreeBaseTests.FFillBaseWithInitialData;
     strlData.Append('[C4N "2"]');
     strlData.Append('');
     strlData.Append('1. d4');
+    strlData.Append('[C4N "2"]');
+    strlData.Append('');
+    strlData.Append('1. c4');
   end;
 
 var
@@ -136,7 +137,6 @@ var
   MoveTreeCollector: TMoveTreeCollector;
 begin // .FFillBaseWithInitialData
   strlData := nil;
-  MoveTreeCollector := nil;
   PGNTraverser := nil;
   try
     NCreateInitialData(strlData);
@@ -153,27 +153,37 @@ begin // .FFillBaseWithInitialData
 end;
 
 
+class procedure TMoveTreeBaseTests.BeforeAllTests;
+begin
+  g_MoveTreeBase := TMoveTreeBaseEx.CreateForTest;
+  TMoveTreeBaseTests.FFillBaseWithInitialData;
+end;
+
+
+class procedure TMoveTreeBaseTests.AfterAllTests;
+begin
+  FreeAndNil(g_MoveTreeBase);
+end;
+
+
 procedure TMoveTreeBaseTests.SetUp;
 begin
-  // TODO:
+  m_ChessRulesEngine := TChessRulesEngine.Create;  
 end;
 
 
 procedure TMoveTreeBaseTests.TearDown;
 begin
-  // TODO:
+  FreeAndNil(m_ChessRulesEngine);
 end;
 
 
-procedure TMoveTreeBaseTests.Test1;
+procedure TMoveTreeBaseTests.TestFindInitialPosition;
+var
+  Moves: TMoveAbsArr;
 begin
-  // TODO:
-end;
-
-
-procedure TMoveTreeBaseTests.Test2;
-begin
-  // TODO:
+  MoveTreeBase.Find(m_ChessRulesEngine.Position^, Moves);
+  CheckEquals(3, Length(Moves));
 end;
 
 initialization

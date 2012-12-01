@@ -14,15 +14,17 @@ type
     btFirst: byte;
     btSecond: byte;
   private
-    procedure FInit(const AMove: TMoveAbs);
     function FEquals(const Other: TDataBag): boolean;
+    procedure FConvertFromMove(const AMove: TMoveAbs);
     function FIsMove: boolean;
+    function FToMove: TMoveAbs;
+    function FConvertFromNearPointer(lwPointer: LongWord; out Data: TDataBag): boolean;
     function FIsNearPointer: boolean;
     function FToNearPointer: Word;
+    function FConvertFromFarPointer(lwPointer: LongWord; out HiData, LowData: TDataBag): boolean;
     function FIsFarPointer: boolean;
     function FToFarPointer(const HiData, LowData: TDataBag): LongWord;
-    function FConvertFromNearPointer(lwPointer: LongWord; out Data: TDataBag): boolean;
-    function FConvertFromFarPointer(lwPointer: LongWord; out HiData, LowData: TDataBag): boolean;
+    function FIsEndDataTag: boolean;
   end;
 
   TMoveAbsArr = array of TMoveAbs;
@@ -48,9 +50,13 @@ type
     procedure FInit(lwAAddress1, lwAAddress2: LongWord); overload;
   end;
 
-  TMoveTreeAddress = record
+  TMoveTreeAddress = object
+  public
+    strPos: string;
     lwPosition: LongWord;
     wOffset: Word;
+  private
+    procedure FInit(const strAPos: string; lwAPosition: LongWord; wAOffset: Word);
   end;
 
   TMoveTreeBaseCache = class
@@ -67,11 +73,14 @@ type
     destructor Destroy; override;
   end;
 
-
-  TMovePosAddress = record
+  TMovePosAddress = object
+  public
     move: TMoveAbs;
     pos: TChessPosition;
     address: TMoveTreeAddress;
+  private
+    procedure FInit(const AMove: TMoveAbs; const APos: TChessPosition;
+      const AAddress: TMoveTreeAddress);
   end;
 
   TMovePosAddressArr = array of TMovePosAddress;
@@ -96,17 +105,15 @@ type
     procedure FWriteBagToStream(lwPosition: LongWord; const ABag: TDataBag); overload;
     procedure FWriteBagToStreamEnd(const ABag: TDataBag);
 
-    procedure FSaveDataToTree(const DataIterator: TDataBagsIterator);
-    function FFindDataFromPosition(const DataIterator: TDataBagsIterator;
-      lwPosition: LongWord): boolean; overload;
-    function FFindDataFromPosition(const DataIterator: TDataBagsIterator;
-      lwPosition: LongWord; out InsertionPoint: TInsertionPoint): boolean; overload;
-    procedure FSaveDataFromPosition(const DataIterator: TDataBagsIterator;
-      const InsertionPoint: TInsertionPoint);
-    procedure FStartNearBranch(const Data: TDataBag; const InsertionPoint: TInsertionPoint);
-    procedure FStartFarBranch(const DataHi, DataLow: TDataBag; const InsertionPoint: TInsertionPoint);
+    function FFindData(lwPosition: LongWord; const DataIterator: TDataBagsIterator;
+      out InsertionPoint: TInsertionPoint): boolean; overload;
+    procedure FFindData(const Address: TMoveTreeAddress; out Datas: TMovePosAddressArr); overload;
 
-    procedure FFind(const Address: TMoveTreeAddress; out Datas: TMovePosAddressArr);
+    procedure FSaveData(const InsertionPoint: TInsertionPoint; const DataIterator: TDataBagsIterator);
+    procedure FStartNearBranch(const InsertionPoint: TInsertionPoint; const Data: TDataBag);
+    procedure FStartFarBranch(const InsertionPoint: TInsertionPoint; const DataHi, DataLow: TDataBag);
+
+    property ChessRulesEngine: TChessRulesEngine read m_ChessRulesEngine;
 
   protected
     constructor CreateForTest;
@@ -115,7 +122,7 @@ type
     constructor Create(const strBaseName: string);
     destructor Destroy; override;
     procedure Add(const Moves: TMoveAbsArr);
-    function Find(const Pos: TChessPosition; out Moves: TMoveAbsArr): boolean;
+    procedure Find(const Pos: TChessPosition; out Moves: TMoveAbsArr);
   end;
 
 const
@@ -134,23 +141,78 @@ type
     property Address: TMoveTreeAddress read m_Address;
   end;
 
+  TDataFinder = class
+  private
+    m_Base: TMoveTreeBase;
+    m_lwPosition: LongWord;
+    m_lwLastPosition: LongWord;
+    function FReadBagFromStream(out ABag: TDataBag): boolean; overload;
+    function FReadBagFromStream(lwPosition: LongWord; out ABag: TDataBag): boolean; overload;
+    function FJumpNear(const Data: TDataBag; out NextDataBag: TDataBag): boolean;
+    function FJumpFar(const HiData: TDataBag; out NextDataBag: TDataBag): boolean;
+    property Base: TMoveTreeBase read m_Base;
+  protected
+    function RFind(lwPosition: LongWord): boolean;
+    function RIsDataFromJump: boolean;
+    
+    function RF1(const DataBag: TDataBag): boolean; virtual; abstract;
+    function RF2(const DataBag: TDataBag): boolean; virtual; abstract;
+    function RF3: boolean; virtual; abstract;
+    procedure RP4; virtual;
+
+    property Position: LongWord read m_lwPosition;
+    property LastPosition: LongWord read m_lwLastPosition;
+  public
+    constructor Create(ABase: TMoveTreeBase);
+  end;
+
+  TInsertionPointDataFinder = class(TDataFinder)
+  private
+    m_DataIterator: TDataBagsIterator;
+    m_InsertionPoint: TInsertionPoint;
+  protected
+    function RF1(const DataBag: TDataBag): boolean; override;
+    function RF2(const DataBag: TDataBag): boolean; override;
+    function RF3: boolean; override;
+  public
+    function Find(lwPosition: LongWord; const DataIterator: TDataBagsIterator;
+      out InsertionPoint: TInsertionPoint): boolean;
+  end;
+
+  TNextLinesBuilderDataFinder = class(TDataFinder)
+  private
+    m_Datas: TMovePosAddressArr;
+    m_wMovesCount: Word;
+    m_Address: TMoveTreeAddress;
+    function FGetChessRulesEngine: TChessRulesEngine;
+    procedure FCollectDatas;
+    function FF5(const DataBag: TDataBag; bJump: boolean): boolean;
+    property ChessRulesEngine: TChessRulesEngine read FGetChessRulesEngine;
+  protected
+    function RF1(const DataBag: TDataBag): boolean; override;
+    function RF2(const DataBag: TDataBag): boolean; override;
+    function RF3: boolean; override;
+    procedure RP4; override;
+  public
+    procedure Find(const Address: TMoveTreeAddress; out Datas: TMovePosAddressArr);
+  end;
+
 const
   BASE_FILE_EXT = 'mvt';
-  TEST_STREAM_SIZE = 100 * 1024; // 100 Kb
 
   PROM_FIG_MARKER: array[TFigureName] of byte = ($00, $00, $40, $80, $C0, $00); // K, Q, R, B, N, P
 
+  DATA_KIND_MASK = $C0;
   MOVE_DATA_MARKER = $00;
+  MOVE_DATA_MASK = $FF;
   NEAR_POINTER_DATA_MARKER = $80;
   NEAR_POINTER_DATA_MASK = NEAR_POINTER_DATA_MARKER - 1;
   FAR_POINTER_DATA_MARKER = $40;
   FAR_POINTER_DATA_MASK = FAR_POINTER_DATA_MARKER - 1;
-  DATA_KIND_MASK = $C0;
-  DATA_MASK = $3F;
 
   END_DATA_TAG: TDataBag = (btFirst: 0; btSecond: 0);
 
-  INITIAL_ADDRESS: TMoveTreeAddress = (lwPosition: 0; wOffset: 0);
+  INITIAL_ADDRESS: TMoveTreeAddress = (strPos: INITIAL_CHESS_POSITION; lwPosition: 0; wOffset: 0);
 
 ////////////////////////////////////////////////////////////////////////////////
 // TMoveTreeBase
@@ -206,7 +268,6 @@ end;
 procedure TMoveTreeBase.FCreateMemoryStream;
 begin
   m_BaseStream := TMemoryStream.Create;
-  m_BaseStream.Size := TEST_STREAM_SIZE;
   m_BaseStream.Position := 0;
 end;
 
@@ -254,164 +315,32 @@ end;
 procedure TMoveTreeBase.Add(const Moves: TMoveAbsArr);
 var
   Iterator: TDataBagsIterator;
+  InsertionPoint: TInsertionPoint;
 begin
   Iterator := TDataBagsIterator.FCreate(Moves);
   try
-    FSaveDataToTree(Iterator);
+    if (not FFindData(0, Iterator, InsertionPoint)) then
+      FSaveData(InsertionPoint, Iterator);
   finally
     Iterator.Free;
   end;
 end;
 
 
-procedure TMoveTreeBase.FSaveDataToTree(const DataIterator: TDataBagsIterator);
-var
-  InsertionPoint: TInsertionPoint;
+function TMoveTreeBase.FFindData(lwPosition: LongWord;
+  const DataIterator: TDataBagsIterator; out InsertionPoint: TInsertionPoint): boolean;
 begin
-  if (FFindDataFromPosition(DataIterator, 0, InsertionPoint)) then
-    exit;
-  FSaveDataFromPosition(DataIterator, InsertionPoint);
+  with TInsertionPointDataFinder.Create(self) do
+  try
+    Result := Find(lwPosition, DataIterator, InsertionPoint);
+  finally
+    Free;
+  end;
 end;
 
 
-function TMoveTreeBase.FFindDataFromPosition(const DataIterator: TDataBagsIterator;
-  lwPosition: LongWord): boolean;
-var
-  DummyInsertionPoint: TInsertionPoint;
-begin
-  Result := FFindDataFromPosition(DataIterator, lwPosition, DummyInsertionPoint);
-end;
-
-
-function TMoveTreeBase.FFindDataFromPosition(const DataIterator: TDataBagsIterator;
-  lwPosition: LongWord; out InsertionPoint: TInsertionPoint): boolean;
-
-var
-  lwLastPosition: LongWord;
-
-  function NJumpNear(const Data: TDataBag; out NextDataBag: TDataBag): boolean;
-  var
-    lwPositionBase, lwJumpPosition: LongWord;
-    DataBag: TDataBag;
-    bRead: boolean;
-  begin
-    lwPositionBase := lwPosition - SizeOf(TDataBag);
-
-    lwJumpPosition := lwPositionBase + Data.FToNearPointer;
-
-    FReadBagFromStream(lwJumpPosition, DataBag);
-    Assert(DataBag.FIsMove);
-
-    Result := DataBag.FEquals(DataIterator.GetLast);
-    if (Result) then
-    begin
-      lwLastPosition := lwPosition;
-      FReadBagFromStream(lwPosition, NextDataBag);
-    end
-    else
-    begin
-      bRead := FReadBagFromStream(NextDataBag);
-      Assert(bRead);
-      lwLastPosition := lwJumpPosition + SizeOf(TDataBag);
-    end;
-
-    lwPosition := lwLastPosition + SizeOf(TDataBag);
-  end;
-
-  function NJumpFar(const HiData: TDataBag; out NextDataBag: TDataBag): boolean;
-  var
-    LowData: TDataBag;
-    lwPositionBase, lwJumpPosition: LongWord;
-    DataBag: TDataBag;
-    bRead: boolean;
-  begin
-    lwPositionBase := lwPosition - SizeOf(TDataBag);
-
-    FReadBagFromStream(lwPosition, LowData);
-    inc(lwPosition, SizeOf(TDataBag));
-
-    lwJumpPosition := lwPositionBase + _TDataBag.FToFarPointer(HiData, LowData);
-
-    FReadBagFromStream(lwJumpPosition, DataBag);
-    Assert(DataBag.FIsMove);
-
-    FReadBagFromStream(NextDataBag);
-    lwLastPosition := lwJumpPosition + SizeOf(TDataBag);
-
-    Result := DataBag.FEquals(DataIterator.GetLast);
-    if (Result) then
-      exit;
-
-    bRead := FReadBagFromStream(NextDataBag);
-    Assert(bRead);
-    inc(lwLastPosition, SizeOf(TDataBag));
-
-    lwPosition := lwLastPosition + SizeOf(TDataBag);
-  end;
-
-var
-  DataBag: TDataBag;
-  DataBagFromStream: TDataBag;
-  bHasDataFlag: boolean;
-begin // .FFindDataFromPosition
-  InsertionPoint.FInit(lwPosition, lwPosition + SizeOf(TDataBag));
-
-  if (not DataIterator.HasNext) then
-  begin
-    Result := TRUE;
-    exit;
-  end;
-
-  Result := FALSE;
-
-  DataBag := DataIterator.GetNext;
-
-  lwLastPosition := lwPosition;
-  bHasDataFlag := FReadBagFromStream(lwPosition, DataBagFromStream);
-  if (not bHasDataFlag) then
-    exit;
-
-  inc(lwPosition, SizeOf(TDataBag));
-
-  repeat
-    if (DataBagFromStream.FIsMove) then
-    begin
-      if (not DataBagFromStream.FEquals(DataBag)) then
-      begin
-        InsertionPoint.FInit(lwLastPosition, lwPosition);
-        exit;
-      end;
-      if (lwLastPosition < lwPosition) then
-        bHasDataFlag := FReadBagFromStream(DataBagFromStream)
-      else
-        bHasDataFlag := FReadBagFromStream(lwPosition, DataBagFromStream);
-      Assert(bHasDataFlag);
-      lwLastPosition := lwPosition;
-      inc(lwPosition, SizeOf(TDataBag));
-    end
-    else if (DataBagFromStream.FIsNearPointer) then
-    begin
-      if (not NJumpNear(DataBagFromStream, DataBagFromStream)) then
-        continue;
-    end
-    else if (DataBagFromStream.FIsFarPointer) then
-    begin
-      if (not NJumpFar(DataBagFromStream, DataBagFromStream)) then
-        continue;
-    end;
-
-    bHasDataFlag := DataIterator.HasNext;
-    if (bHasDataFlag) then
-      DataBag := DataIterator.GetNext;
-
-  until (not bHasDataFlag);
-
-  Result := TRUE;
-end;
-
-
-procedure TMoveTreeBase.FSaveDataFromPosition(const DataIterator: TDataBagsIterator;
-  const InsertionPoint: TInsertionPoint);
+procedure TMoveTreeBase.FSaveData(const InsertionPoint: TInsertionPoint;
+  const DataIterator: TDataBagsIterator);
 var
   lwAddressOffset: LongWord;
   DataOffsetHi, DataOffsetLow: TDataBag;
@@ -420,9 +349,9 @@ begin
   if (lwAddressOffset > 0) then
   begin
     if (_TDataBag.FConvertFromNearPointer(lwAddressOffset, DataOffsetLow)) then
-      FStartNearBranch(DataOffsetLow, InsertionPoint)
+      FStartNearBranch(InsertionPoint, DataOffsetLow)
     else if (_TDataBag.FConvertFromFarPointer(lwAddressOffset, DataOffsetHi, DataOffsetLow)) then
-      FStartFarBranch(DataOffsetHi, DataOffsetLow, InsertionPoint)
+      FStartFarBranch(InsertionPoint, DataOffsetHi, DataOffsetLow)
     else
       raise EMoveTreeBase.Create('Base file has become too big!');
   end;
@@ -434,8 +363,8 @@ begin
 end;
 
 
-procedure TMoveTreeBase.FStartNearBranch(const Data: TDataBag;
-  const InsertionPoint: TInsertionPoint);
+procedure TMoveTreeBase.FStartNearBranch(const InsertionPoint: TInsertionPoint;
+  const Data: TDataBag);
 var
   SavedData: TDataBag;
   bRead: boolean;
@@ -449,8 +378,8 @@ begin
 end;
 
 
-procedure TMoveTreeBase.FStartFarBranch(const DataHi, DataLow: TDataBag;
-  const InsertionPoint: TInsertionPoint);
+procedure TMoveTreeBase.FStartFarBranch(const InsertionPoint: TInsertionPoint;
+  const DataHi, DataLow: TDataBag);
 var
   SavedData1, SavedData2: TDataBag;
   bRead: boolean;
@@ -469,18 +398,19 @@ begin
 end;
 
 
-function TMoveTreeBase.Find(const Pos: TChessPosition; out Moves: TMoveAbsArr): boolean;
+procedure TMoveTreeBase.Find(const Pos: TChessPosition; out Moves: TMoveAbsArr);
 var
   Address: TMoveTreeAddress;
   Datas: TMovePosAddressArr;
   i: integer;
 begin
-  Result := FALSE;
-
   if (not m_PosCache.FGet(Pos, Address)) then
+  begin
+    SetLength(Moves, 0);
     exit;
+  end;
 
-  FFind(Address, Datas);
+  FFindData(Address, Datas);
 
   SetLength(Moves, Length(Datas));
   for i := Low(Datas) to High(Datas) do
@@ -488,60 +418,17 @@ begin
     Moves[i] := Datas[i].move;
     m_PosCache.FAdd(Datas[i].pos, Datas[i].address);
   end;
-
-  Result := TRUE;
 end;
 
 
-procedure TMoveTreeBase.FFind(const Address: TMoveTreeAddress; out Datas: TMovePosAddressArr);
-var
-  lwLastPosition: LongWord;
-  lwPosition: LongWord;
-  DataBag: TDataBag;
-  bHasDataFlag: boolean;
+procedure TMoveTreeBase.FFindData(const Address: TMoveTreeAddress; out Datas: TMovePosAddressArr);
 begin
-  SetLength(Datas, 0);
-  
-(* // TODO:
-  lwLastPosition := Address.lwPosition;
-  lwPosition := lwLastPosition;
-
-  bHasDataFlag := FReadBagFromStream(lwPosition, DataBag);
-  if (not bHasDataFlag) then
-    exit;
-
-  inc(lwPosition, SizeOf(TDataBag));
-
-  repeat
-    if (DataBag.FIsMove) then
-    begin
-      if (lwLastPosition < lwPosition) then
-        bHasDataFlag := FReadBagFromStream(DataBagFromStream)
-      else
-        bHasDataFlag := FReadBagFromStream(lwPosition, DataBagFromStream);
-      Assert(bHasDataFlag);
-      lwLastPosition := lwPosition;
-      inc(lwPosition, SizeOf(TDataBag));
-    end
-    else if (DataBagFromStream.FIsNearPointer) then
-    begin
-      if (not NJumpNear(DataBagFromStream, DataBagFromStream)) then
-        continue;
-    end
-    else if (DataBagFromStream.FIsFarPointer) then
-    begin
-      if (not NJumpFar(DataBagFromStream, DataBagFromStream)) then
-        continue;
-    end;
-
-    bHasDataFlag := DataIterator.HasNext;
-    if (bHasDataFlag) then
-      DataBag := DataIterator.GetNext;
-
-  until (not bHasDataFlag);
-
-  Result := TRUE;
-*)
+  with TNextLinesBuilderDataFinder.Create(self) do
+  try
+    Find(Address, Datas);
+  finally
+    Free;
+  end;
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -568,23 +455,46 @@ end;
 
 function TDataBagsIterator.GetNext: TDataBag;
 begin
-  Result.FInit(m_Moves[m_iIndex]);
+  Result.FConvertFromMove(m_Moves[m_iIndex]);
   inc(m_iIndex)
 end;
 
 
 function TDataBagsIterator.GetLast: TDataBag;
 begin
-  Result.FInit(m_Moves[m_iIndex - 1]);
+  Result.FConvertFromMove(m_Moves[m_iIndex - 1]);
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
 // TDataBag
 
-procedure TDataBag.FInit(const AMove: TMoveAbs);
+procedure TDataBag.FConvertFromMove(const AMove: TMoveAbs);
 begin
-  btFirst := 8 * (AMove.j0 - 1) + AMove.i0 - 1;
-  btSecond := (8 * (AMove.j - 1) + AMove.i - 1) or PROM_FIG_MARKER[AMove.prom_fig];
+  btFirst := ((AMove.j0 - 1) shl 3) or (AMove.i0 - 1);
+  btSecond := (((AMove.j - 1) shl 3) or (AMove.i - 1)) or PROM_FIG_MARKER[AMove.prom_fig];
+end;
+
+
+function TDataBag.FToMove: TMoveAbs;
+const
+  COORD_MASK = $07;
+  PROM_FIG_MASK = $C0;
+var
+  f: TFigureName;
+begin
+  Result.i0 := (btFirst and COORD_MASK) + 1;
+  Result.j0 := ((btFirst shr 3) and COORD_MASK) + 1;
+  Result.i := (btSecond and COORD_MASK) + 1;
+  Result.j := ((btSecond shr 3) and COORD_MASK) + 1;
+
+  for f := Q to N do
+  begin
+    if (PROM_FIG_MARKER[f] = (btSecond and PROM_FIG_MASK)) then
+    begin
+      Result.prom_fig := f;
+      break;
+    end;
+  end;
 end;
 
 
@@ -596,7 +506,8 @@ end;
 
 function TDataBag.FIsMove: boolean;
 begin
-  Result := ((btFirst and DATA_KIND_MASK) = MOVE_DATA_MARKER);
+  Result := (((btFirst and DATA_KIND_MASK) = MOVE_DATA_MARKER) and
+             ((btFirst and MOVE_DATA_MASK) <> btSecond));
 end;
 
 
@@ -650,6 +561,12 @@ begin
 
   Data.btSecond := lwPointer and $FF;
   Data.btFirst := ((lwPointer shr 8) and NEAR_POINTER_DATA_MASK) or NEAR_POINTER_DATA_MARKER;
+end;
+
+
+function TDataBag.FIsEndDataTag: boolean;
+begin
+  Result := ((btFirst = END_DATA_TAG.btFirst) and (btSecond = END_DATA_TAG.btSecond));
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -752,6 +669,300 @@ begin
   inherited Create;
   m_Pos := Pos;
   m_Address := AAddress;
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TMoveTreeAddress
+
+procedure TMoveTreeAddress.FInit(const strAPos: string; lwAPosition: LongWord; wAOffset: Word);
+begin
+  self.strPos := strAPos;
+  self.lwPosition := lwAPosition;
+  self.wOffset := wAOffset;
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TMovePosAddress
+
+procedure TMovePosAddress.FInit(const AMove: TMoveAbs; const APos: TChessPosition;
+  const AAddress: TMoveTreeAddress);
+begin
+  self.move := AMove;
+  self.pos := APos;
+  self.address := AAddress;
+end;
+
+
+////////////////////////////////////////////////////////////////////////////////
+// TDataFinder
+
+constructor TDataFinder.Create(ABase: TMoveTreeBase);
+begin
+  inherited Create;
+  m_Base := ABase;
+end;
+
+function TDataFinder.FReadBagFromStream(out ABag: TDataBag): boolean;
+begin
+  Result := m_Base.FReadBagFromStream(ABag);
+end;
+
+
+function TDataFinder.FReadBagFromStream(lwPosition: LongWord; out ABag: TDataBag): boolean;
+begin
+  Result := m_Base.FReadBagFromStream(lwPosition, ABag);
+end;
+
+
+function TDataFinder.FJumpNear(const Data: TDataBag; out NextDataBag: TDataBag): boolean;
+var
+  lwPositionBase, lwJumpPosition: LongWord;
+  DataBag: TDataBag;
+  bRead: boolean;
+begin
+  lwPositionBase := m_lwPosition - SizeOf(TDataBag);
+
+  lwJumpPosition := lwPositionBase + Data.FToNearPointer;
+
+  FReadBagFromStream(lwJumpPosition, DataBag);
+  Assert(DataBag.FIsMove);
+
+  Result := RF1(DataBag);
+  if (Result) then
+  begin
+    m_lwLastPosition := m_lwPosition;
+    FReadBagFromStream(m_lwPosition, NextDataBag);
+  end
+  else
+  begin
+    bRead := FReadBagFromStream(NextDataBag);
+    Assert(bRead);
+    m_lwLastPosition := lwJumpPosition + SizeOf(TDataBag);
+  end;
+
+  m_lwPosition := m_lwLastPosition + SizeOf(TDataBag);
+
+  if (not Result) then
+    RP4;
+end;
+
+
+function TDataFinder.FJumpFar(const HiData: TDataBag; out NextDataBag: TDataBag): boolean;
+var
+  LowData: TDataBag;
+  lwPositionBase, lwJumpPosition: LongWord;
+  DataBag: TDataBag;
+  bRead: boolean;
+begin
+  lwPositionBase := m_lwPosition - SizeOf(TDataBag);
+
+  FReadBagFromStream(m_lwPosition, LowData);
+  inc(m_lwPosition, SizeOf(TDataBag));
+
+  lwJumpPosition := lwPositionBase + _TDataBag.FToFarPointer(HiData, LowData);
+
+  FReadBagFromStream(lwJumpPosition, DataBag);
+  Assert(DataBag.FIsMove);
+
+  FReadBagFromStream(NextDataBag);
+  m_lwLastPosition := lwJumpPosition + SizeOf(TDataBag);
+
+  Result := RF1(DataBag);
+  if (Result) then
+    exit;
+
+  bRead := FReadBagFromStream(NextDataBag);
+  Assert(bRead);
+  inc(m_lwLastPosition, SizeOf(TDataBag));
+
+  m_lwPosition := m_lwLastPosition + SizeOf(TDataBag);
+
+  RP4;
+end;
+
+
+function TDataFinder.RFind(lwPosition: LongWord): boolean;
+var
+  DataBagFromStream: TDataBag;
+  bHasDataFlag: boolean;
+begin
+  Result := FALSE;
+
+  m_lwPosition := lwPosition;
+  m_lwLastPosition := lwPosition;
+
+  if (not RF3) then
+    exit;
+
+  if (not FReadBagFromStream(m_lwPosition, DataBagFromStream)) then
+    exit;
+
+  bHasDataFlag := TRUE;
+  inc(m_lwPosition, SizeOf(TDataBag));
+
+  while (bHasDataFlag) do
+  begin
+    if (DataBagFromStream.FIsMove) then
+    begin
+      if (not RF2(DataBagFromStream)) then
+        exit;
+      if (RIsDataFromJump) then
+        bHasDataFlag := FReadBagFromStream(m_lwPosition, DataBagFromStream)
+      else
+        bHasDataFlag := FReadBagFromStream(DataBagFromStream);
+
+      Assert(bHasDataFlag);
+      m_lwLastPosition := m_lwPosition;
+      inc(m_lwPosition, SizeOf(TDataBag));
+    end
+    else if (DataBagFromStream.FIsNearPointer) then
+    begin
+      if (not FJumpNear(DataBagFromStream, DataBagFromStream)) then
+        continue;
+    end
+    else if (DataBagFromStream.FIsFarPointer) then
+    begin
+      if (not FJumpFar(DataBagFromStream, DataBagFromStream)) then
+        continue;
+    end
+    else if (DataBagFromStream.FIsEndDataTag) then
+      break
+    else
+      Assert(FALSE);
+
+    bHasDataFlag := RF3;
+  end;
+
+  Result := TRUE;
+
+end;
+
+
+function TDataFinder.RIsDataFromJump: boolean;
+begin
+  Result := (m_lwLastPosition > m_lwPosition)
+end;
+
+
+procedure TDataFinder.RP4;
+begin
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TInsertionPointDataFinder
+
+function TInsertionPointDataFinder.Find(lwPosition: LongWord;
+  const DataIterator: TDataBagsIterator; out InsertionPoint: TInsertionPoint): boolean;
+begin
+  m_DataIterator := DataIterator;
+  m_InsertionPoint.FInit(lwPosition, lwPosition + SizeOf(TDataBag));
+
+  Result := RFind(lwPosition);
+
+  InsertionPoint := m_InsertionPoint;
+end;
+
+
+function TInsertionPointDataFinder.RF1(const DataBag: TDataBag): boolean;
+begin
+  Result := DataBag.FEquals(m_DataIterator.GetLast);
+end;
+
+
+function TInsertionPointDataFinder.RF2(const DataBag: TDataBag): boolean;
+begin
+  Result := RF1(DataBag);
+  if (not Result) then
+    m_InsertionPoint.FInit(LastPosition, Position);
+end;
+
+
+function TInsertionPointDataFinder.RF3: boolean;
+begin
+  Result := m_DataIterator.HasNext;
+  if (Result) then
+    m_DataIterator.GetNext;
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TNextLinesBuilderDataFinder
+
+procedure TNextLinesBuilderDataFinder.Find(const Address: TMoveTreeAddress;
+  out Datas: TMovePosAddressArr);
+begin
+  SetLength(m_Datas, 0);
+
+  m_Address := Address;
+  ChessRulesEngine.SetPosition(m_Address.strPos);
+  m_wMovesCount := m_Address.wOffset;
+
+  RFind(Address.lwPosition);
+
+  Datas := m_Datas;
+end;
+
+
+function TNextLinesBuilderDataFinder.FF5(const DataBag: TDataBag; bJump: boolean): boolean;
+var
+  bRes: boolean;
+begin
+  with DataBag.FToMove do
+    bRes := ChessRulesEngine.DoMove(i0, j0, i, j, prom_fig);
+  Assert(bRes);
+
+  if (bJump or RIsDataFromJump) then
+    inc(m_Address.wOffset)
+  else
+    m_Address.FInit(ChessRulesEngine.GetPosition, Position, 0);
+
+  Result := (m_wMovesCount > 0);
+  if (Result)  then
+    dec(m_wMovesCount)
+  else
+  begin
+    FCollectDatas;
+    ChessRulesEngine.TakeBack;
+  end;
+end;
+
+
+function TNextLinesBuilderDataFinder.RF1(const DataBag: TDataBag): boolean;
+begin
+  Result := FF5(DataBag, TRUE);
+end;
+
+
+function TNextLinesBuilderDataFinder.RF2(const DataBag: TDataBag): boolean;
+begin
+  Result := FF5(DataBag, FALSE);
+end;
+
+
+function TNextLinesBuilderDataFinder.RF3: boolean;
+begin
+  Result := TRUE;
+end;
+
+
+procedure TNextLinesBuilderDataFinder.RP4;
+begin
+  m_Address.FInit(ChessRulesEngine.GetPosition, LastPosition, 0);
+end;
+
+
+function TNextLinesBuilderDataFinder.FGetChessRulesEngine: TChessRulesEngine;
+begin
+  Result := Base.ChessRulesEngine;
+end;
+
+
+procedure TNextLinesBuilderDataFinder.FCollectDatas;
+var
+  Data: TMovePosAddress;
+begin
+  Data.FInit(ChessRulesEngine.lastMove^, ChessRulesEngine.Position^ {?}, m_Address);
+  SetLength(m_Datas, Length(m_Datas) + 1);
+  m_Datas[High(m_Datas)] := Data;
 end;
 
 end.

@@ -23,12 +23,14 @@ type
     procedure FChessBoardHandler(e: TGameChessBoardEvent;
       d1: pointer = nil; d2: pointer = nil);
 
-  public
-    class function Suite: ITestSuite; override;
+  protected
     procedure RunTest(testResult: TTestResult); override;
 
     procedure SetUp; override;
+
+  public
     procedure TearDown; override;
+    class function Suite: ITestSuite; override;
 
   published
     procedure TestResizing;

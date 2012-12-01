@@ -19,11 +19,12 @@ type
     m_ChessRulesEngine: TChessRulesEngine;
     procedure FCheckFENMoveNumber(iMoveNumber: integer);
 
-  public
-    class function Suite: ITestSuite; override;
-
+  protected
     procedure SetUp; override;
     procedure TearDown; override;
+
+  public
+    class function Suite: ITestSuite; override;
 
   published
     procedure TestAfterCreationDoMove;
