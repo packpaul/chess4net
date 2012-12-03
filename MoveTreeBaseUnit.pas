@@ -117,6 +117,7 @@ type
 
   protected
     constructor CreateForTest;
+    constructor CreateForTestFarJump;
 
   public
     constructor Create(const strBaseName: string);
@@ -214,6 +215,9 @@ const
 
   INITIAL_ADDRESS: TMoveTreeAddress = (strPos: INITIAL_CHESS_POSITION; lwPosition: 0; wOffset: 0);
 
+var
+  g_bFarPointerTests: boolean = FALSE;
+
 ////////////////////////////////////////////////////////////////////////////////
 // TMoveTreeBase
 
@@ -237,6 +241,13 @@ constructor TMoveTreeBase.CreateForTest;
 begin
   FCreate;
   FCreateMemoryStream;
+end;
+
+
+constructor TMoveTreeBase.CreateForTestFarJump;
+begin
+  CreateForTest;
+  g_bFarPointerTests := TRUE;  
 end;
 
 
@@ -555,7 +566,7 @@ function TDataBag.FConvertFromNearPointer(lwPointer: LongWord; out Data: TDataBa
 const
   MAX_VALUE = (NEAR_POINTER_DATA_MARKER shl 8) - 1;
 begin
-  Result := (lwPointer <= MAX_VALUE);
+  Result := (lwPointer <= MAX_VALUE) and (not g_bFarPointerTests);
   if (not Result) then
     exit;
 
@@ -825,8 +836,6 @@ begin
       if (not FJumpFar(DataBagFromStream, DataBagFromStream)) then
         continue;
     end
-    else if (DataBagFromStream.FIsEndDataTag) then
-      break
     else
       Assert(FALSE);
 
