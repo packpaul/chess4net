@@ -3,97 +3,58 @@ unit MoveTreeBaseTestsUnit;
 interface
 
 uses
-  TestFrameWork,
+  TestFrameworkExUnit,
   //
   MoveTreeBaseUnit, ChessRulesEngine;
 
 type
-  TMoveTreeBaseTests = class(TTestCase)
+  TMoveTreeBaseTests1 = class(TTestCaseEx)
   private
     m_ChessRulesEngine: TChessRulesEngine;
     class function FGetMoveTreeBase: TMoveTreeBase;
-    class procedure FFillBaseWithInitialData;
     property MoveTreeBase: TMoveTreeBase read FGetMoveTreeBase;
   protected
-    class procedure BeforeAllTests;
-    class procedure AfterAllTests;
+    class procedure BeforeAllTests; override;
+    class procedure AfterAllTests; override;
     procedure SetUp; override;
     procedure TearDown; override;
-  public
-    class function Suite: ITestSuite; override;
   published
     procedure TestFindInitialPosition;
+  end;
+
+  TMoveTreeBaseTests2 = class(TTestCaseEx)
+  private
+    m_ChessRulesEngine: TChessRulesEngine;
+    class function FGetMoveTreeBase: TMoveTreeBase;
+    property MoveTreeBase: TMoveTreeBase read FGetMoveTreeBase;
+  protected
+    class procedure BeforeAllTests; override;
+    class procedure AfterAllTests; override;
+    procedure SetUp; override;
+    procedure TearDown; override;
+  published
+    procedure TestFindInitialPositionFar;
   end;
 
 implementation
 
 uses
-  Classes, SysUtils,
+  Classes, SysUtils, TestFramework,
   //
   PGNTraverserUnit, MoveTreeCollectorUnit;
 
 type
-  TMoveTreeBaseTestSuite = class(TTestSuite)
-  protected
-    procedure SetUp; override;
-    procedure TearDown; override;
-  public
-    constructor Create; overload;
-    constructor Create(ATestClass: TTestCaseClass); overload;
-  end;
-
   TMoveTreeBaseEx = class(TMoveTreeBase);
   TMoveTreeCollectorEx = class(TMoveTreeCollector);
 
 var
   g_MoveTreeBase: TMoveTreeBase = nil;
+  g_MoveTreeBaseFar: TMoveTreeBase = nil;
 
 ////////////////////////////////////////////////////////////////////////////////
-// TMoveTreeBaseTestSuite
+// Globals
 
-constructor TMoveTreeBaseTestSuite.Create;
-begin
-  inherited Create('TMoveTreeBase');
-end;
-
-
-constructor TMoveTreeBaseTestSuite.Create(ATestClass: TTestCaseClass);
-begin
-  Create;
-  AddTests(ATestClass);
-end;
-
-
-procedure TMoveTreeBaseTestSuite.SetUp;
-begin
-  TMoveTreeBaseTests.BeforeAllTests;
-end;
-
-
-procedure TMoveTreeBaseTestSuite.TearDown;
-begin
-  TMoveTreeBaseTests.AfterAllTests;
-end;
-
-////////////////////////////////////////////////////////////////////////////////
-// TMoveTreeBaseTests
-
-class function TMoveTreeBaseTests.Suite: ITestSuite;
-begin
-  Result := TMoveTreeBaseTestSuite.Create(self);
-  // or
-  // Result := TMoveTreeBaseTestSuite.Create;
-  // Result.AddTest(TMoveTreeBaseTests.Create(<method name>));
-end;
-
-
-class function TMoveTreeBaseTests.FGetMoveTreeBase: TMoveTreeBase;
-begin
-  Result := g_MoveTreeBase;
-end;
-
-
-class procedure TMoveTreeBaseTests.FFillBaseWithInitialData;
+procedure FillBaseWithInitialData(ABase: TMoveTreeBase);
 
   procedure NCreateInitialData(out strlData: TStringList);
   begin
@@ -140,7 +101,7 @@ begin // .FFillBaseWithInitialData
   PGNTraverser := nil;
   try
     NCreateInitialData(strlData);
-    MoveTreeCollector := TMoveTreeCollectorEx.Create(FGetMoveTreeBase);
+    MoveTreeCollector := TMoveTreeCollectorEx.Create(ABase);
     PGNTraverser := TPGNTraverser.Create(strlData, MoveTreeCollector);
 
     PGNTraverser.Traverse;
@@ -152,33 +113,83 @@ begin // .FFillBaseWithInitialData
   
 end;
 
+////////////////////////////////////////////////////////////////////////////////
+// TMoveTreeBaseTests1
 
-class procedure TMoveTreeBaseTests.BeforeAllTests;
+class function TMoveTreeBaseTests1.FGetMoveTreeBase: TMoveTreeBase;
 begin
-  g_MoveTreeBase := TMoveTreeBaseEx.CreateForTest;
-  TMoveTreeBaseTests.FFillBaseWithInitialData;
+  Result := g_MoveTreeBase;
 end;
 
 
-class procedure TMoveTreeBaseTests.AfterAllTests;
+class procedure TMoveTreeBaseTests1.BeforeAllTests;
+begin
+  g_MoveTreeBase := TMoveTreeBaseEx.CreateForTest;
+  FillBaseWithInitialData(g_MoveTreeBase);
+end;
+
+
+class procedure TMoveTreeBaseTests1.AfterAllTests;
 begin
   FreeAndNil(g_MoveTreeBase);
 end;
 
 
-procedure TMoveTreeBaseTests.SetUp;
+procedure TMoveTreeBaseTests1.SetUp;
 begin
-  m_ChessRulesEngine := TChessRulesEngine.Create;  
+  m_ChessRulesEngine := TChessRulesEngine.Create;
 end;
 
 
-procedure TMoveTreeBaseTests.TearDown;
+procedure TMoveTreeBaseTests1.TearDown;
 begin
   FreeAndNil(m_ChessRulesEngine);
 end;
 
 
-procedure TMoveTreeBaseTests.TestFindInitialPosition;
+procedure TMoveTreeBaseTests1.TestFindInitialPosition;
+var
+  Moves: TMoveAbsArr;
+begin
+  MoveTreeBase.Find(m_ChessRulesEngine.Position^, Moves);
+  CheckEquals(3, Length(Moves));
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TMoveTreeBaseTests2
+
+class function TMoveTreeBaseTests2.FGetMoveTreeBase: TMoveTreeBase;
+begin
+  Result := g_MoveTreeBaseFar;
+end;
+
+
+class procedure TMoveTreeBaseTests2.BeforeAllTests;
+begin
+  g_MoveTreeBaseFar := TMoveTreeBaseEx.CreateForTestFarJump;
+  FillBaseWithInitialData(g_MoveTreeBaseFar);
+end;
+
+
+class procedure TMoveTreeBaseTests2.AfterAllTests;
+begin
+  FreeAndNil(g_MoveTreeBaseFar);
+end;
+
+
+procedure TMoveTreeBaseTests2.SetUp;
+begin
+  m_ChessRulesEngine := TChessRulesEngine.Create;
+end;
+
+
+procedure TMoveTreeBaseTests2.TearDown;
+begin
+  FreeAndNil(m_ChessRulesEngine);
+end;
+
+
+procedure TMoveTreeBaseTests2.TestFindInitialPositionFar;
 var
   Moves: TMoveAbsArr;
 begin
@@ -187,6 +198,7 @@ begin
 end;
 
 initialization
-  TestFramework.RegisterTest(TMoveTreeBaseTests.Suite);
+  TestFramework.RegisterTest(TTestSuiteEx.Create('TMoveTreeBase',
+    [TMoveTreeBaseTests1, TMoveTreeBaseTests2]));
 
 end.

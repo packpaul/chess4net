@@ -23,10 +23,11 @@ uses
   GlobalsUnit in '..\GlobalsUnit.pas',
   ChessClockUnit in '..\ChessClockUnit.pas',
   MoveTreeBaseUnit in '..\MoveTreeBaseUnit.pas',
-  MoveTreeBaseTestsUnit in '..\MoveTreeBaseTestsUnit.pas',
+  MoveTreeBaseTestsUnit in 'MoveTreeBaseTestsUnit.pas',
   PGNTraverserUnit in '..\PGNTraverserUnit.pas',
   NonRefInterfacedObjectUnit in '..\NonRefInterfacedObjectUnit.pas',
-  MoveTreeCollectorUnit in '..\PosDB\MoveTreeCollectorUnit.pas';
+  MoveTreeCollectorUnit in '..\PosDB\MoveTreeCollectorUnit.pas',
+  TestFrameworkExUnit in 'TestFrameworkExUnit.pas';
 
 {$R *.res}
 
