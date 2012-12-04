@@ -203,13 +203,13 @@ const
 
   PROM_FIG_MARKER: array[TFigureName] of byte = ($00, $00, $40, $80, $C0, $00); // K, Q, R, B, N, P
 
-  DATA_KIND_MASK = $C0;
   MOVE_DATA_MARKER = $00;
-  MOVE_DATA_MASK = $FF;
+  MOVE_DATA_MASK = $3F;
   NEAR_POINTER_DATA_MARKER = $80;
   NEAR_POINTER_DATA_MASK = NEAR_POINTER_DATA_MARKER - 1;
   FAR_POINTER_DATA_MARKER = $40;
   FAR_POINTER_DATA_MASK = FAR_POINTER_DATA_MARKER - 1;
+  DATA_KIND_MASK = MOVE_DATA_MARKER or NEAR_POINTER_DATA_MARKER or FAR_POINTER_DATA_MARKER;
 
   END_DATA_TAG: TDataBag = (btFirst: 0; btSecond: 0);
 
@@ -279,7 +279,6 @@ end;
 procedure TMoveTreeBase.FCreateMemoryStream;
 begin
   m_BaseStream := TMemoryStream.Create;
-  m_BaseStream.Position := 0;
 end;
 
 
@@ -328,6 +327,9 @@ var
   Iterator: TDataBagsIterator;
   InsertionPoint: TInsertionPoint;
 begin
+  if (Length(Moves) = 0) then
+    exit;
+
   Iterator := TDataBagsIterator.FCreate(Moves);
   try
     if (not FFindData(0, Iterator, InsertionPoint)) then
@@ -516,21 +518,27 @@ end;
 
 
 function TDataBag.FIsMove: boolean;
+const
+  _DATA_KIND_MASK = (DATA_KIND_MASK xor MOVE_DATA_MASK) and DATA_KIND_MASK;
 begin
-  Result := (((btFirst and DATA_KIND_MASK) = MOVE_DATA_MARKER) and
+  Result := (((btFirst and _DATA_KIND_MASK) = MOVE_DATA_MARKER) and
              ((btFirst and MOVE_DATA_MASK) <> btSecond));
 end;
 
 
 function TDataBag.FIsNearPointer: boolean;
+const
+  _DATA_KIND_MASK = (DATA_KIND_MASK xor NEAR_POINTER_DATA_MASK) and DATA_KIND_MASK;
 begin
-  Result := ((btFirst and DATA_KIND_MASK) = NEAR_POINTER_DATA_MARKER);
+  Result := ((btFirst and _DATA_KIND_MASK) = NEAR_POINTER_DATA_MARKER);
 end;
 
 
 function TDataBag.FIsFarPointer: boolean;
+const
+  _DATA_KIND_MASK = (DATA_KIND_MASK xor FAR_POINTER_DATA_MASK) and DATA_KIND_MASK;
 begin
-  Result := ((btFirst and DATA_KIND_MASK) = FAR_POINTER_DATA_MARKER);
+  Result := ((btFirst and _DATA_KIND_MASK) = FAR_POINTER_DATA_MARKER);
 end;
 
 

@@ -37,7 +37,7 @@ type
   TPGNTraverser = class(TNonRefInterfacedObject, IPGNTraverserVisitor)
   private
     m_DataIterator: TPGNTraverserDataIterator;
-    m_Visitable: IPGNTraverserVisitable;
+    m_arrVisitable: array of IPGNTraverserVisitable;
 
     m_strPlayerName: string;
     m_strWhitePlayerName: string;
@@ -49,7 +49,8 @@ type
     m_ChessRulesEngine: TChessRulesEngine;
     m_bIncludeVariants: boolean;
 
-    constructor FCreate(ADataIterator: TPGNTraverserDataIterator; AVisitable: IPGNTraverserVisitable);
+    constructor FCreate(ADataIterator: TPGNTraverserDataIterator;
+      arrVisitable: array of IPGNTraverserVisitable);
 
     procedure FProceedGameStr(const strGame: string);
     procedure FDoStart;
@@ -66,7 +67,9 @@ type
     function FParseWhiteTag(const strLine: string): boolean;
     function FParseBlackTag(const strLine: string): boolean;
   public
+    constructor Create(const APGNInput: Text; arrVisitable: array of IPGNTraverserVisitable); overload;
     constructor Create(const APGNInput: Text; AVisitable: IPGNTraverserVisitable); overload;
+    constructor Create(const APGNInput: TStrings; arrVisitable: array of IPGNTraverserVisitable); overload;
     constructor Create(const APGNInput: TStrings; AVisitable: IPGNTraverserVisitable); overload;
     destructor Destroy; override;
     procedure Traverse;
@@ -103,12 +106,27 @@ type
 ////////////////////////////////////////////////////////////////////////////////
 // TPGNTraverser
 
-constructor TPGNTraverser.FCreate(ADataIterator: TPGNTraverserDataIterator; AVisitable: IPGNTraverserVisitable);
+constructor TPGNTraverser.FCreate(ADataIterator: TPGNTraverserDataIterator;
+  arrVisitable: array of IPGNTraverserVisitable);
+var
+  i: integer;
+  iCount: integer;
 begin
   inherited Create;
 
   m_DataIterator := ADataIterator;
-  m_Visitable := AVisitable;
+
+  iCount := Low(arrVisitable);
+  SetLength(m_arrVisitable, Length(arrVisitable));
+  for i := Low(arrVisitable) to High(arrVisitable) do
+  begin
+    if (Assigned(arrVisitable[i])) then
+    begin
+      m_arrVisitable[i] := arrVisitable[i];
+      inc(iCount);
+    end;
+  end;
+  SetLength(m_arrVisitable, iCount);
 
   m_ProceedColors := [fcWhite, fcBlack];
 
@@ -118,22 +136,32 @@ end;
 
 constructor TPGNTraverser.Create(const APGNInput: Text; AVisitable: IPGNTraverserVisitable);
 begin
-  FCreate(TTextDataIterator.FCreate(APGNInput), AVisitable);
+  Create(APGNInput, [AVisitable]);
+end;
+
+
+constructor TPGNTraverser.Create(const APGNInput: Text; arrVisitable: array of IPGNTraverserVisitable);
+begin
+  FCreate(TTextDataIterator.FCreate(APGNInput), arrVisitable);
 end;
 
 
 constructor TPGNTraverser.Create(const APGNInput: TStrings; AVisitable: IPGNTraverserVisitable);
 begin
-  FCreate(TStringsDataIterator.FCreate(APGNInput), AVisitable);
+  Create(APGNInput, [AVisitable]);
+end;
+
+
+constructor TPGNTraverser.Create(const APGNInput: TStrings; arrVisitable: array of IPGNTraverserVisitable);
+begin
+  FCreate(TStringsDataIterator.FCreate(APGNInput), arrVisitable);
 end;
 
 
 destructor TPGNTraverser.Destroy;
 begin
   m_ChessRulesEngine.Free;
-
   m_DataIterator.Free;
-  m_Visitable := nil;
 
   inherited;
 end;
@@ -523,37 +551,47 @@ end;
 
 procedure TPGNTraverser.FDoPosMove(iPlyNumber: integer; const APosMove: TPosMove;
   const AResultingPos: TChessPosition);
+var
+  i: integer;
 begin
-  if (Assigned(m_Visitable)) then
-    m_Visitable.DoPosMove(iPlyNumber, APosMove, AResultingPos);
+  for i := Low(m_arrVisitable) to High(m_arrVisitable) do
+    m_arrVisitable[i].DoPosMove(iPlyNumber, APosMove, AResultingPos);
 end;
 
 
 procedure TPGNTraverser.FDoStartLine(bFromPreviousPos: boolean);
+var
+  i: integer;
 begin
-  if (Assigned(m_Visitable)) then
-    m_Visitable.StartLine(bFromPreviousPos);
+  for i := Low(m_arrVisitable) to High(m_arrVisitable) do
+    m_arrVisitable[i].StartLine(bFromPreviousPos);
 end;
 
 
 procedure TPGNTraverser.FDoEndLine;
+var
+  i: integer;
 begin
-  if (Assigned(m_Visitable)) then
-    m_Visitable.EndLine;
+  for i := Low(m_arrVisitable) to High(m_arrVisitable) do
+    m_arrVisitable[i].EndLine;
 end;
 
 
 procedure TPGNTraverser.FDoStart;
+var
+  i: integer;
 begin
-  if (Assigned(m_Visitable)) then
-    m_Visitable.Start(self);
+  for i := Low(m_arrVisitable) to High(m_arrVisitable) do
+    m_arrVisitable[i].Start(self);
 end;
 
 
 procedure TPGNTraverser.FDoFinish;
+var
+  i: integer;
 begin
-  if (Assigned(m_Visitable)) then
-    m_Visitable.Finish;
+  for i := Low(m_arrVisitable) to High(m_arrVisitable) do
+    m_arrVisitable[i].Finish;
 end;
 
 

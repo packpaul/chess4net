@@ -68,27 +68,23 @@ procedure TPGNProcessor.FProceedPGN(const strBasename: string; bVariants, bChnge
       opening: TOpening; bStatPrunning: boolean; strRefBaseName: string; bMoveTreeDB: boolean);
 var
   PosBaseCollector: TPosBaseCollector;
-  PGNCollector: IPGNTraverserVisitable;
+  MoveTreeCollector: TMoveTreeCollector;
 begin
-  if (not bMoveTreeDB) then
-  begin
-    PosBaseCollector := TPosBaseCollector.Create(strBasename, strRefBaseName);
-    PosBaseCollector.ProceedColors := color;
-    PosBaseCollector.PlayerName := strPlayerName;
-    PosBaseCollector.ChangeEstimation := bChngest;
-    PosBaseCollector.UseUniquePositions := bUniquePos;
-    PosBaseCollector.GeneratedOpening := opening;
-    PosBaseCollector.UseStatisticalPrunning := bStatPrunning;
-    PosBaseCollector.UseNumberOfPlys := iNumPlys;
+  PosBaseCollector := TPosBaseCollector.Create(strBasename, strRefBaseName);
+  PosBaseCollector.ProceedColors := color;
+  PosBaseCollector.PlayerName := strPlayerName;
+  PosBaseCollector.ChangeEstimation := bChngest;
+  PosBaseCollector.UseUniquePositions := bUniquePos;
+  PosBaseCollector.GeneratedOpening := opening;
+  PosBaseCollector.UseStatisticalPrunning := bStatPrunning;
+  PosBaseCollector.UseNumberOfPlys := iNumPlys;
 
-    PGNCollector := PosBaseCollector;
-  end
+  if (bMoveTreeDB) then
+    MoveTreeCollector := TMoveTreeCollector.Create(strBasename)
   else
-  begin
-    PGNCollector := TMoveTreeCollector.Create(strBasename);
-  end;
+    MoveTreeCollector := nil;
 
-  with TPGNTraverser.Create(Input, PGNCollector) do
+  with TPGNTraverser.Create(Input, [PosBaseCollector, MoveTreeCollector]) do
   try
     ProceedColors := color;
     PlayerName := strPlayerName;
