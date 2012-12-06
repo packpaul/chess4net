@@ -95,6 +95,8 @@ type
 
     constructor FCreate;
 
+    class function FGetBaseFileName(const strBaseName: string): TFileName;
+
     procedure FCreateFileStream(const BaseFileName: TFileName);
     procedure FCreateMemoryStream;
     procedure FDestroyStream;
@@ -122,6 +124,7 @@ type
   public
     constructor Create(const strBaseName: string);
     destructor Destroy; override;
+    class function Exists(const strBaseName: string): boolean;
     procedure Add(const Moves: TMoveAbsArr);
     procedure Find(const Pos: TChessPosition; out Moves: TMoveAbsArr);
   end;
@@ -233,7 +236,7 @@ end;
 constructor TMoveTreeBase.Create(const strBaseName: string);
 begin
   FCreate;
-  FCreateFileStream(strBaseName + '.' + BASE_FILE_EXT);
+  FCreateFileStream(FGetBaseFileName(strBaseName));
 end;
 
 
@@ -259,6 +262,18 @@ begin
   m_ChessRulesEngine.Free;
   
   inherited;
+end;
+
+
+class function TMoveTreeBase.Exists(const strBaseName: string): boolean;
+begin
+  Result := FileExists(FGetBaseFileName(strBaseName));
+end;
+
+
+class function TMoveTreeBase.FGetBaseFileName(const strBaseName: string): TFileName;
+begin
+  Result := strBaseName + '.' + BASE_FILE_EXT;
 end;
 
 
@@ -650,8 +665,8 @@ begin
     begin
       Address := Item.Address;
       m_iLastItemIndex := i;
+      exit;
     end;
-    exit;
   end;
 
   for i := m_iLastItemIndex - 1 downto 0 do
@@ -661,8 +676,8 @@ begin
     begin
       Address := Item.Address;
       m_iLastItemIndex := i;
+      exit;
     end;
-    exit;
   end;
 
   Result := FALSE;
@@ -686,7 +701,7 @@ end;
 constructor TPosAddressItem.Create(const APos: TChessPosition; const AAddress: TMoveTreeAddress);
 begin
   inherited Create;
-  m_Pos := Pos;
+  m_Pos := APos;
   m_Address := AAddress;
 end;
 
@@ -844,6 +859,8 @@ begin
       if (not FJumpFar(DataBagFromStream, DataBagFromStream)) then
         continue;
     end
+    else if (DataBagFromStream.FIsEndDataTag) then
+      break
     else
       Assert(FALSE);
 
@@ -912,6 +929,7 @@ begin
   m_Address := Address;
   ChessRulesEngine.SetPosition(m_Address.strPos);
   m_wMovesCount := m_Address.wOffset;
+  m_Address.wOffset := 0;
 
   RFind(Address.lwPosition);
 

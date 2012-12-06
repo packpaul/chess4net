@@ -35,9 +35,11 @@ type
   end;
 
   PMoveAbs = ^TMoveAbs;
-  TMoveAbs = record
+  TMoveAbs = object
     i0, j0, i, j: byte;
     prom_fig: TFigureName;
+  public
+    function Equals(const Other: TMoveAbs): boolean;
   end;
 
   IChessRulesEngineable = interface
@@ -1504,6 +1506,16 @@ begin // .Equals
     exit;
 
   Result := TRUE;
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TMoveAbs
+
+function TMoveAbs.Equals(const Other: TMoveAbs): boolean;
+begin
+  Result := (i0 = Other.i0) and (j0 = Other.j0) and (j = Other.j) and (i = Other.i) and
+            ((prom_fig = Other.prom_fig) or
+             ((prom_fig in [K, Q]) and (Other.prom_fig in [K, Q]))); // KLUDGE
 end;
 
 initialization
