@@ -30,6 +30,7 @@ uses
   LookFeelOptionsUnit in '..\LookFeelOptionsUnit.pas' {OptionsForm},
   ConnectorUnit in 'ConnectorUnit.pas' {Connector: TDataModule},
   PosBaseUnit in '..\PosBaseUnit.pas',
+  MoveTreeBaseUnit in '..\MoveTreeBaseUnit.pas',
   ModalForm in '..\ModalForm.pas',
   GlobalsLocalUnit in 'GlobalsLocalUnit.pas',
   GlobalsUnit in '..\GlobalsUnit.pas',

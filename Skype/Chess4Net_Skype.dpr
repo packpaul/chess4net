@@ -39,6 +39,7 @@ uses
   PromotionUnit in '..\PromotionUnit.pas' {PromotionForm},
   LookFeelOptionsUnit in '..\LookFeelOptionsUnit.pas' {OptionsForm},
   PosBaseUnit in '..\PosBaseUnit.pas',
+  MoveTreeBaseUnit in '..\MoveTreeBaseUnit.pas',
   ModalForm in '..\ModalForm.pas',
   GlobalsLocalUnit in 'GlobalsLocalUnit.pas',
   GlobalsUnit in '..\GlobalsUnit.pas',

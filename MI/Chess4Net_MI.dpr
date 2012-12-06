@@ -43,6 +43,7 @@ uses
   ModalForm in '..\ModalForm.pas',
   PluginCommonUnit in 'PluginCommonUnit.pas',
   PosBaseUnit in '..\PosBaseUnit.pas',
+  MoveTreeBaseUnit in '..\MoveTreeBaseUnit.pas',
   PromotionUnit in '..\PromotionUnit.pas' {PromotionForm},
   ChessRulesEngine in '..\ChessRulesEngine.pas',
   ManagerUnit.MI in 'ManagerUnit.MI.pas',

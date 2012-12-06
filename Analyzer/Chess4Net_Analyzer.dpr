@@ -23,6 +23,7 @@ uses
   ChessBoardUnit in '..\ChessBoardUnit.pas' {ChessBoard},
   ChessRulesEngine in '..\ChessRulesEngine.pas',
   PosBaseUnit in '..\PosBaseUnit.pas',
+  MoveTreeBaseUnit in '..\MoveTreeBaseUnit.pas',
   BitmapResUnit in '..\BitmapResUnit.pas',
   PromotionUnit in '..\PromotionUnit.pas' {PromotionForm},
   PGNParserUnit in 'PGNParserUnit.pas',

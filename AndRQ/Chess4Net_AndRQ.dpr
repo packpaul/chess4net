@@ -40,6 +40,7 @@ uses
   MessageDialogUnit in '..\MessageDialogUnit.pas',
   GlobalsUnit in '..\GlobalsUnit.pas',
   PosBaseUnit in '..\PosBaseUnit.pas',
+  MoveTreeBaseUnit in '..\MoveTreeBaseUnit.pas',
   ContinueUnit in '..\ContinueUnit.pas' {ContinueForm},
   BitmapResUnit in '..\BitmapResUnit.pas',
   LocalizerUnit in '..\LocalizerUnit.pas',
