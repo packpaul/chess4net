@@ -340,7 +340,7 @@ var
   lwAddressOffset: LongWord;
   DataOffsetHi, DataOffsetLow: TDataBag;
 begin
-  lwAddressOffset := m_BaseStream.Size - (InsertionPoint.lwAddress2 - SizeOf(TDataBag));
+  lwAddressOffset := m_BaseStream.Size - (InsertionPoint.lwAddress2 - 1);
   if (lwAddressOffset > 0) then
   begin
     if (_TDataBag.FConvertFromNearPointer(lwAddressOffset, DataOffsetLow)) then
@@ -721,7 +721,7 @@ var
   DataBag: TDataBag;
   bRead: boolean;
 begin
-  lwPositionBase := m_lwPosition - SizeOf(TDataBag);
+  lwPositionBase := m_lwPosition - 1;
 
   lwJumpPosition := lwPositionBase + Data.FToNearPointer;
 
@@ -738,10 +738,10 @@ begin
   begin
     bRead := FReadBagFromStream(NextDataBag);
     Assert(bRead);
-    m_lwLastPosition := lwJumpPosition + SizeOf(TDataBag);
+    m_lwLastPosition := lwJumpPosition + 1;
   end;
 
-  m_lwPosition := m_lwLastPosition + SizeOf(TDataBag);
+  m_lwPosition := m_lwLastPosition + 1;
 
   if (not Result) then
     RP4;
@@ -755,10 +755,10 @@ var
   DataBag: TDataBag;
   bRead: boolean;
 begin
-  lwPositionBase := m_lwPosition - SizeOf(TDataBag);
+  lwPositionBase := m_lwPosition - 1;
 
   FReadBagFromStream(m_lwPosition, LowData);
-  inc(m_lwPosition, SizeOf(TDataBag));
+  inc(m_lwPosition);
 
   lwJumpPosition := lwPositionBase + _TDataBag.FToFarPointer(HiData, LowData);
 
@@ -766,7 +766,7 @@ begin
   Assert(DataBag.FIsMove);
 
   FReadBagFromStream(NextDataBag);
-  m_lwLastPosition := lwJumpPosition + SizeOf(TDataBag);
+  m_lwLastPosition := lwJumpPosition + 1;
 
   Result := RF1(DataBag);
   if (Result) then
@@ -774,9 +774,9 @@ begin
 
   bRead := FReadBagFromStream(NextDataBag);
   Assert(bRead);
-  inc(m_lwLastPosition, SizeOf(TDataBag));
+  inc(m_lwLastPosition);
 
-  m_lwPosition := m_lwLastPosition + SizeOf(TDataBag);
+  m_lwPosition := m_lwLastPosition + 1;
 
   RP4;
 end;
@@ -799,7 +799,7 @@ begin
     exit;
 
   bHasDataFlag := TRUE;
-  inc(m_lwPosition, SizeOf(TDataBag));
+  inc(m_lwPosition);
 
   while (bHasDataFlag) do
   begin
@@ -814,7 +814,7 @@ begin
 
       Assert(bHasDataFlag);
       m_lwLastPosition := m_lwPosition;
-      inc(m_lwPosition, SizeOf(TDataBag));
+      inc(m_lwPosition);
     end
     else if (DataBagFromStream.FIsNearPointer) then
     begin
@@ -856,7 +856,7 @@ function TInsertionPointDataFinder.Find(lwPosition: LongWord;
   const DataIterator: TDataBagsIterator; out InsertionPoint: TInsertionPoint): boolean;
 begin
   m_DataIterator := DataIterator;
-  m_InsertionPoint.FInit(lwPosition, lwPosition + SizeOf(TDataBag));
+  m_InsertionPoint.FInit(lwPosition, lwPosition + 1);
 
   Result := RFind(lwPosition);
 
@@ -1016,7 +1016,7 @@ var
 begin
   m_iDBVersion := DB_VERSION; // default version
 
-  if (Size > 0) then
+  if (m_InnerStream.Size > 0) then
   begin
     if (not FReadHeader(wVersion)) then
       raise EMoveTreeBase.Create('Wrong MVT base format!');
@@ -1055,7 +1055,7 @@ end;
 function TMoveTreeStream.ReadBagFromStream(lwPosition: LongWord;
   out ABag: TDataBag): boolean;
 begin
-  m_InnerStream.Position := m_wHeaderSize + lwPosition;
+  m_InnerStream.Position := SizeOf(TDataBag) * lwPosition + m_wHeaderSize;
   Result := (m_InnerStream.Read(ABag, SizeOf(ABag)) = SizeOf(ABag));
 end;
 
@@ -1068,7 +1068,7 @@ end;
 
 procedure TMoveTreeStream.WriteBagToStream(lwPosition: LongWord; const ABag: TDataBag);
 begin
-  m_InnerStream.Position := lwPosition + m_wHeaderSize;
+  m_InnerStream.Position := SizeOf(TDataBag) * lwPosition + m_wHeaderSize;
   m_InnerStream.WriteBuffer(ABag, SizeOf(ABag));
 end;
 
@@ -1082,7 +1082,7 @@ end;
 
 function TMoveTreeStream.FGetSize: Int64;
 begin
-  Result := m_InnerStream.Size - m_wHeaderSize;
+  Result := (m_InnerStream.Size - m_wHeaderSize) div SizeOf(TDataBag);
 end;
 
 end.
