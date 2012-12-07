@@ -1,3 +1,9 @@
+////////////////////////////////////////////////////////////////////////////////
+// All code below is exclusively owned by author of Chess4Net - Pavel Perminov
+// (packpaul@mail.ru, packpaul1@gmail.com).
+// Any changes, modifications, borrowing and adaptation are a subject for
+// explicit permition from the owner.
+
 unit MoveTreeBaseUnit;
 
 interface
@@ -25,6 +31,35 @@ type
     function FIsFarPointer: boolean;
     function FToFarPointer(const HiData, LowData: TDataBag): LongWord;
     function FIsEndDataTag: boolean;
+  end;
+
+  TMoveTreeStream = class
+  private
+    m_InnerStream: TStream;
+    m_wHeaderSize: Word;
+    m_iDBVersion: integer;
+
+    constructor FCreateFileStream(const BaseFileName: TFileName);
+    constructor FCreateMemoryStream;
+
+    function FGetSize: Int64;
+
+    procedure FSetDBVersion;
+
+    function FReadHeader(out wVersion: Word): boolean;
+    procedure FWriteHeader(const wVersion: Word);
+
+  public
+    constructor Create;
+    destructor Destroy; override;
+    
+    function ReadBagFromStream(out ABag: TDataBag): boolean; overload;
+    function ReadBagFromStream(lwPosition: LongWord; out ABag: TDataBag): boolean; overload;
+    procedure WriteBagToStream(const ABag: TDataBag); overload;
+    procedure WriteBagToStream(lwPosition: LongWord; const ABag: TDataBag); overload;
+    procedure WriteBagToStreamEnd(const ABag: TDataBag);
+
+    property Size: Int64 read FGetSize;
   end;
 
   TMoveAbsArr = array of TMoveAbs;
@@ -89,23 +124,12 @@ type
 
   TMoveTreeBase = class
   private
-    m_BaseStream: TStream;
+    m_BaseStream: TMoveTreeStream;
     m_ChessRulesEngine: TChessRulesEngine;
     m_PosCache: TMoveTreeBaseCache;
 
     constructor FCreate;
-
     class function FGetBaseFileName(const strBaseName: string): TFileName;
-
-    procedure FCreateFileStream(const BaseFileName: TFileName);
-    procedure FCreateMemoryStream;
-    procedure FDestroyStream;
-
-    function FReadBagFromStream(out ABag: TDataBag): boolean; overload;
-    function FReadBagFromStream(lwPosition: LongWord; out ABag: TDataBag): boolean; overload;
-    procedure FWriteBagToStream(const ABag: TDataBag); overload;
-    procedure FWriteBagToStream(lwPosition: LongWord; const ABag: TDataBag); overload;
-    procedure FWriteBagToStreamEnd(const ABag: TDataBag);
 
     function FFindData(lwPosition: LongWord; const DataIterator: TDataBagsIterator;
       out InsertionPoint: TInsertionPoint): boolean; overload;
@@ -116,6 +140,7 @@ type
     procedure FStartFarBranch(const InsertionPoint: TInsertionPoint; const DataHi, DataLow: TDataBag);
 
     property ChessRulesEngine: TChessRulesEngine read m_ChessRulesEngine;
+    property BaseStream: TMoveTreeStream read m_BaseStream;
 
   protected
     constructor CreateForTest;
@@ -204,6 +229,8 @@ type
 const
   BASE_FILE_EXT = 'mvt';
 
+  DB_VERSION = 1;
+
   PROM_FIG_MARKER: array[TFigureName] of byte = ($00, $00, $40, $80, $C0, $00); // K, Q, R, B, N, P
 
   MOVE_DATA_MARKER = $00;
@@ -236,14 +263,14 @@ end;
 constructor TMoveTreeBase.Create(const strBaseName: string);
 begin
   FCreate;
-  FCreateFileStream(FGetBaseFileName(strBaseName));
+  m_BaseStream := TMoveTreeStream.FCreateFileStream(FGetBaseFileName(strBaseName));
 end;
 
 
 constructor TMoveTreeBase.CreateForTest;
 begin
   FCreate;
-  FCreateMemoryStream;
+  m_BaseStream := TMoveTreeStream.FCreateMemoryStream;
 end;
 
 
@@ -256,7 +283,7 @@ end;
 
 destructor TMoveTreeBase.Destroy;
 begin
-  FDestroyStream;
+  m_BaseStream.Free;
   
   m_PosCache.Free;
   m_ChessRulesEngine.Free;
@@ -274,66 +301,6 @@ end;
 class function TMoveTreeBase.FGetBaseFileName(const strBaseName: string): TFileName;
 begin
   Result := strBaseName + '.' + BASE_FILE_EXT;
-end;
-
-
-procedure TMoveTreeBase.FCreateFileStream(const BaseFileName: TFileName);
-var
-  FileHandle: THandle;
-begin
-  if (not FileExists(BaseFileName)) then
-  begin
-    FileHandle := FileCreate(BaseFileName);
-    FileClose(FileHandle);
-  end;
-
-  m_BaseStream := TFileStream.Create(BaseFileName, fmOpenReadWrite, fmShareDenyWrite);
-end;
-
-
-procedure TMoveTreeBase.FCreateMemoryStream;
-begin
-  m_BaseStream := TMemoryStream.Create;
-end;
-
-
-procedure TMoveTreeBase.FDestroyStream;
-begin
-  FreeAndNil(m_BaseStream);
-end;
-
-
-function TMoveTreeBase.FReadBagFromStream(out ABag: TDataBag): boolean;
-begin
-  Result := (m_BaseStream.Read(ABag, SizeOf(ABag)) = SizeOf(ABag));
-end;
-
-
-function TMoveTreeBase.FReadBagFromStream(lwPosition: LongWord;
-  out ABag: TDataBag): boolean;
-begin
-  m_BaseStream.Position := lwPosition;
-  Result := (m_BaseStream.Read(ABag, SizeOf(ABag)) = SizeOf(ABag));
-end;
-
-
-procedure TMoveTreeBase.FWriteBagToStream(const ABag: TDataBag);
-begin
-  m_BaseStream.WriteBuffer(ABag, SizeOf(ABag));
-end;
-
-
-procedure TMoveTreeBase.FWriteBagToStream(lwPosition: LongWord; const ABag: TDataBag);
-begin
-  m_BaseStream.Position := lwPosition;
-  m_BaseStream.WriteBuffer(ABag, SizeOf(ABag));
-end;
-
-
-procedure TMoveTreeBase.FWriteBagToStreamEnd(const ABag: TDataBag);
-begin
-  m_BaseStream.Seek(0, soEnd);
-  m_BaseStream.WriteBuffer(ABag, SizeOf(ABag));
 end;
 
 
@@ -384,10 +351,10 @@ begin
       raise EMoveTreeBase.Create('Base file has become too big!');
   end;
 
-  FWriteBagToStreamEnd(DataIterator.GetLast);
+  m_BaseStream.WriteBagToStreamEnd(DataIterator.GetLast);
   while (DataIterator.HasNext) do
-    FWriteBagToStream(DataIterator.GetNext);
-  FWriteBagToStream(END_DATA_TAG);
+    m_BaseStream.WriteBagToStream(DataIterator.GetNext);
+  m_BaseStream.WriteBagToStream(END_DATA_TAG);
 end;
 
 
@@ -397,12 +364,12 @@ var
   SavedData: TDataBag;
   bRead: boolean;
 begin
-  bRead := FReadBagFromStream(InsertionPoint.lwAddress1, SavedData);
+  bRead := m_BaseStream.ReadBagFromStream(InsertionPoint.lwAddress1, SavedData);
   Assert(bRead);
 
-  FWriteBagToStreamEnd(SavedData);
+  m_BaseStream.WriteBagToStreamEnd(SavedData);
 
-  FWriteBagToStream(InsertionPoint.lwAddress1, Data);
+  m_BaseStream.WriteBagToStream(InsertionPoint.lwAddress1, Data);
 end;
 
 
@@ -412,17 +379,17 @@ var
   SavedData1, SavedData2: TDataBag;
   bRead: boolean;
 begin
-  bRead := FReadBagFromStream(InsertionPoint.lwAddress1, SavedData1);
+  bRead := m_BaseStream.ReadBagFromStream(InsertionPoint.lwAddress1, SavedData1);
   Assert(bRead);
 
-  bRead := FReadBagFromStream(InsertionPoint.lwAddress2, SavedData2);
+  bRead := m_BaseStream.ReadBagFromStream(InsertionPoint.lwAddress2, SavedData2);
   Assert(bRead);
 
-  FWriteBagToStreamEnd(SavedData1);
-  FWriteBagToStream(SavedData2);
+  m_BaseStream.WriteBagToStreamEnd(SavedData1);
+  m_BaseStream.WriteBagToStream(SavedData2);
 
-  FWriteBagToStream(InsertionPoint.lwAddress1, DataHi);
-  FWriteBagToStream(InsertionPoint.lwAddress2, DataLow);
+  m_BaseStream.WriteBagToStream(InsertionPoint.lwAddress1, DataHi);
+  m_BaseStream.WriteBagToStream(InsertionPoint.lwAddress2, DataLow);
 end;
 
 
@@ -738,13 +705,13 @@ end;
 
 function TDataFinder.FReadBagFromStream(out ABag: TDataBag): boolean;
 begin
-  Result := m_Base.FReadBagFromStream(ABag);
+  Result := m_Base.BaseStream.ReadBagFromStream(ABag);
 end;
 
 
 function TDataFinder.FReadBagFromStream(lwPosition: LongWord; out ABag: TDataBag): boolean;
 begin
-  Result := m_Base.FReadBagFromStream(lwPosition, ABag);
+  Result := m_Base.BaseStream.ReadBagFromStream(lwPosition, ABag);
 end;
 
 
@@ -995,9 +962,127 @@ procedure TNextLinesBuilderDataFinder.FCollectDatas;
 var
   Data: TMovePosAddress;
 begin
-  Data.FInit(ChessRulesEngine.lastMove^, ChessRulesEngine.Position^ {?}, m_Address);
+  Data.FInit(ChessRulesEngine.lastMove^, ChessRulesEngine.Position^, m_Address);
   SetLength(m_Datas, Length(m_Datas) + 1);
   m_Datas[High(m_Datas)] := Data;
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TMoveTreeStream
+
+constructor TMoveTreeStream.Create;
+begin
+  raise Exception.Create(ClassName + ' cannot be instaniated directly!');
+end;
+
+
+constructor TMoveTreeStream.FCreateFileStream(const BaseFileName: TFileName);
+var
+  FileHandle: THandle;
+begin
+  inherited Create;
+
+  if (not FileExists(BaseFileName)) then
+  begin
+    FileHandle := FileCreate(BaseFileName);
+    FileClose(FileHandle);
+  end;
+
+  m_InnerStream := TFileStream.Create(BaseFileName, fmOpenReadWrite, fmShareDenyWrite);
+
+  FSetDBVersion;
+end;
+
+
+constructor TMoveTreeStream.FCreateMemoryStream;
+begin
+  inherited Create;
+
+  m_InnerStream := TMemoryStream.Create;
+  FSetDBVersion;
+end;
+
+
+destructor TMoveTreeStream.Destroy;
+begin
+  m_InnerStream.Free;
+  inherited;
+end;
+
+
+procedure TMoveTreeStream.FSetDBVersion;
+var
+  wVersion: Word;
+begin
+  m_iDBVersion := DB_VERSION; // default version
+
+  if (Size > 0) then
+  begin
+    if (not FReadHeader(wVersion)) then
+      raise EMoveTreeBase.Create('Wrong MVT base format!');
+    m_iDBVersion := wVersion;
+  end
+  else
+  begin
+    wVersion := m_iDBVersion;
+    FWriteHeader(wVersion);
+  end;
+
+  m_wHeaderSize := SizeOf(wVersion);
+end;
+
+
+function TMoveTreeStream.FReadHeader(out wVersion: Word): boolean;
+begin
+  m_InnerStream.Position := 0;
+  Result := (m_InnerStream.Read(wVersion, SizeOf(wVersion)) = SizeOf(wVersion));
+end;
+
+
+procedure TMoveTreeStream.FWriteHeader(const wVersion: Word);
+begin
+  m_InnerStream.Position := 0;
+  m_InnerStream.Write(wVersion, SizeOf(wVersion));
+end;
+
+
+function TMoveTreeStream.ReadBagFromStream(out ABag: TDataBag): boolean;
+begin
+  Result := (m_InnerStream.Read(ABag, SizeOf(ABag)) = SizeOf(ABag));
+end;
+
+
+function TMoveTreeStream.ReadBagFromStream(lwPosition: LongWord;
+  out ABag: TDataBag): boolean;
+begin
+  m_InnerStream.Position := m_wHeaderSize + lwPosition;
+  Result := (m_InnerStream.Read(ABag, SizeOf(ABag)) = SizeOf(ABag));
+end;
+
+
+procedure TMoveTreeStream.WriteBagToStream(const ABag: TDataBag);
+begin
+  m_InnerStream.WriteBuffer(ABag, SizeOf(ABag));
+end;
+
+
+procedure TMoveTreeStream.WriteBagToStream(lwPosition: LongWord; const ABag: TDataBag);
+begin
+  m_InnerStream.Position := lwPosition + m_wHeaderSize;
+  m_InnerStream.WriteBuffer(ABag, SizeOf(ABag));
+end;
+
+
+procedure TMoveTreeStream.WriteBagToStreamEnd(const ABag: TDataBag);
+begin
+  m_InnerStream.Seek(0, soEnd);
+  m_InnerStream.WriteBuffer(ABag, SizeOf(ABag));
+end;
+
+
+function TMoveTreeStream.FGetSize: Int64;
+begin
+  Result := m_InnerStream.Size - m_wHeaderSize;
 end;
 
 end.
