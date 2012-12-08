@@ -549,7 +549,7 @@ procedure TPosBaseChessBoardLayer.FReadFromBase(out lstMovePrior: TList);
           begin
             PMovePrior(lstMovePrior[j]).prior :=
               PRIOR_CALC[PMovePrior(lstMovePrior[j]).prior,
-                         PMovePrior(lstMove[j]).prior];
+                         PMovePrior(lstMove[i]).prior];
             Dispose(lstMove[i]);
             break;
           end;
