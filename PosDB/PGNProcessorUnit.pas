@@ -80,11 +80,15 @@ begin
   PosBaseCollector.UseNumberOfPlys := iNumPlys;
 
   if (bMoveTreeDB) then
-    MoveTreeCollector := TMoveTreeCollector.Create(strBasename)
+  begin
+    MoveTreeCollector := TMoveTreeCollector.Create(strBasename);
+    Assert(Assigned(MoveTreeCollector.DataBase));
+    PosBaseCollector.MoveTreeBase := MoveTreeCollector.DataBase;
+  end
   else
     MoveTreeCollector := nil;
 
-  with TPGNTraverser.Create(Input, [PosBaseCollector, MoveTreeCollector]) do
+  with TPGNTraverser.Create(Input, [MoveTreeCollector, PosBaseCollector]) do
   try
     ProceedColors := color;
     PlayerName := strPlayerName;

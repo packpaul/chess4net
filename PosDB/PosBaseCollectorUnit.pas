@@ -9,12 +9,14 @@ unit PosBaseCollectorUnit;
 interface
 
 uses
-  Contnrs, Classes,
+  Contnrs, Classes, SysUtils,
   //
-  PGNTraverserUnit, PosBaseUnit, ChessRulesEngine;
+  PGNTraverserUnit, PosBaseUnit, ChessRulesEngine, MoveTreeBaseUnit;
 
 type
   TOpening = (openNo, openNormal, openExtended, openExtendedPlus);
+
+  EPosBaseCollector = class(Exception);
 
   TPosBaseCollector = class(TInterfacedObject, IPGNTraverserVisitable)
   private
@@ -22,6 +24,7 @@ type
     m_Contexts: TStack;
 
     m_PosBase, m_RefPosBase: TPosBase;
+    m_MoveTreeBase: TMoveTreeBase;
 
     m_strPosBaseName: string;
     m_strReferencePosBaseName: string;
@@ -43,6 +46,9 @@ type
     m_lastResultingPos: TChessPosition;
     m_iGameNumber: integer;
 
+    function FGetMoveTreeBase: TMoveTreeBase;
+    procedure FSetMoveTreeBase(ABase: TMoveTreeBase);
+
     procedure FClearPosMoves;
     procedure FClearContexts;
 
@@ -53,6 +59,7 @@ type
   public
     constructor Create(const strPosBaseName: string; const strReferencePosBaseName: string = '');
     destructor Destroy; override;
+
     procedure Start(const Visitor: IPGNTraverserVisitor);
     procedure DoPosMove(iPlyNumber: integer; const APosMove: TPosMove; const AResultingPos: TChessPosition);
     procedure StartLine(bFromPreviousPos: boolean);
@@ -60,6 +67,7 @@ type
     procedure Finish;
 
     property PosBaseName: string read m_strPosBaseName;
+    property MoveTreeBase: TMoveTreeBase read FGetMoveTreeBase write FSetMoveTreeBase;
 
     property ProceedColors: TFigureColors read m_ProceedColors write m_ProceedColors;
     property PlayerName: string read m_strPlayerName write m_strPlayerName;
@@ -124,6 +132,20 @@ begin
   m_Contexts.Free;
 
   inherited;
+end;
+
+
+function TPosBaseCollector.FGetMoveTreeBase: TMoveTreeBase;
+begin
+  Result := m_MoveTreeBase;
+end;
+
+
+procedure TPosBaseCollector.FSetMoveTreeBase(ABase: TMoveTreeBase);
+begin
+  if (Assigned(m_PosBase)) then
+    raise EPosBaseCollector.Create('MoveTreeBase cannot after Start() has been invoked!');
+  m_MoveTreeBase := ABase;
 end;
 
 
@@ -295,7 +317,7 @@ begin
   if (not Assigned(m_PosBase)) then
   begin
     if (m_bChangeEstimateion) then
-      m_PosBase := TPosBase.Create(m_strPosBaseName, Reestimate)
+      m_PosBase := TPosBase.Create(m_strPosBaseName, m_MoveTreeBase, Reestimate)
     else
       m_PosBase := TPosBase.Create(m_strPosBaseName);
 

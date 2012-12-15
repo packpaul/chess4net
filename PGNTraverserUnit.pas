@@ -122,7 +122,7 @@ begin
   begin
     if (Assigned(arrVisitable[i])) then
     begin
-      m_arrVisitable[i] := arrVisitable[i];
+      m_arrVisitable[iCount] := arrVisitable[i];
       inc(iCount);
     end;
   end;

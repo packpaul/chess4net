@@ -9,9 +9,9 @@ unit PosBaseUnit;
 interface
 
 uses
-  Classes,
+  Classes, SysUtils,
   //
-  ChessRulesEngine;
+  ChessRulesEngine, MoveTreeBaseUnit;
 
 type
   PMoveEst = ^TMoveEst;
@@ -65,16 +65,43 @@ type
     property HeaderSize: integer read m_iHeaderSize write m_iHeaderSize;
   end;
 
+  TPosBase = class;
+
+  TPosBaseStrategy = class
+  private
+    m_Base: TPosBase;
+    constructor FCreate(ABase: TPosBase);
+  protected
+    procedure RAdd(const posMove: TPosMove); virtual; abstract;
+    function RFind(const pos: TChessPosition; var moveEsts: TList): boolean; virtual; abstract;
+    class function REncodeMove(const move: TMoveAbs): word;
+    class function RDecodeMove(enc_move: word): TMoveAbs;
+    class function REncodeAddInf(const pos: TChessPosition): byte;
+    property Base: TPosBase read m_Base;
+  public
+    constructor Create;
+  end;
+
+  EPosBaseException = class(Exception);
+
   TPosBase = class
   private
-    m_iDBVersion: Integer;
-    fPos: TPosBaseStream;
-    fMov: TPosBaseStream;
+    m_wDBVersion: Word;
+    m_MoveTreeBase: TMoveTreeBase;
+    m_fPos: TPosBaseStream;
+    m_fMov: TPosBaseStream;
+    m_Strategy: TPosBaseStrategy;
     FReestimate: TReestimate;
     procedure FCreateStreams(const strPosFileName, strMovFileName: string);
     procedure FDestroyStreams;
     procedure FSetDBVersion;
     function FCheckDBVersion: Boolean;
+    procedure FCreateStrategy;
+    procedure FDestroyStrategy;
+
+    property fPos: TPosBaseStream read m_fPos;
+    property fMov: TPosBaseStream read m_fMov;
+    property Reestimate: TReestimate read FReestimate;
   public
     procedure Add(const posMove: TPosMove); // добавление позиции и хода в базу
     function Find(const pos: TChessPosition): boolean; overload;
@@ -82,14 +109,12 @@ type
     function Find(const pos: TChessPosition; var moveEsts: TList): boolean; overload;
     // moveEsts - TMoveEstItem collection
     function Find(const pos: TChessPosition; out moveEsts: TMoveEstList): boolean; overload;
-    constructor Create(fileNameNoExt: string; Reestimate: TReestimate = nil);
+    constructor Create(fileNameNoExt: string; Reestimate: TReestimate = nil); overload;
+    constructor Create(fileNameNoExt: string; AMoveTreeBase: TMoveTreeBase; Reestimate: TReestimate = nil); overload;
     destructor Destroy; override;
   end;
 
 implementation
-
-uses
-  SysUtils;
 
 type
   TFieldNode = packed object
@@ -127,11 +152,28 @@ type
     i, j: integer;
   end;
 
+  TPosBaseStrategy1 = class(TPosBaseStrategy)
+  protected
+    procedure RAdd(const posMove: TPosMove); override;
+    function RFind(const pos: TChessPosition; var moveEsts: TList): boolean; override;
+  end;
+
+  TPosBaseStrategy2 = class(TPosBaseStrategy)
+  private
+    procedure FAddPosNodes(const posMove: TPosMove;
+      k: integer; r: integer = -1);
+    function FGetFieldData(const pos: TChessPosition; iIndex: integer): byte;
+  protected
+    procedure RAdd(const posMove: TPosMove); override;
+    function RFind(const pos: TChessPosition; var moveEsts: TList): boolean; override;
+  end;
+
 const
   POS_FILE_EXT = 'pos';
   MOV_FILE_EXT = 'mov';
 
-  DB_VERSION = 1;
+  DB_VERSION_1 = 1;
+  DB_VERSION_2 = 2;
 
   FIELD_SEQ: array[1..64] of TCoord = // 13617 kb
     ((i: 1; j: 1), (i: 1; j: 2), (i: 1; j: 3), (i: 1; j: 4),
@@ -156,18 +198,29 @@ const
 
 constructor TPosBase.Create(fileNameNoExt: string; Reestimate: TReestimate = nil);
 begin
+  Create(fileNameNoExt, nil, Reestimate);
+end;
+
+
+constructor TPosBase.Create(fileNameNoExt: string; AMoveTreeBase: TMoveTreeBase;
+  Reestimate: TReestimate = nil);
+begin
   inherited Create;
 
+  m_MoveTreeBase := AMoveTreeBase;
   self.FReestimate := Reestimate;
 
   FCreateStreams(fileNameNoExt + '.' + POS_FILE_EXT,
     fileNameNoExt + '.' + MOV_FILE_EXT);
+    
   FSetDBVersion;
+  FCreateStrategy;
 end;
 
 
 destructor TPosBase.Destroy;
 begin
+  FDestroyStrategy;
   FDestroyStreams;
   inherited;
 end;
@@ -178,7 +231,11 @@ var
   btData: byte;
   wVersion: word;
 begin
-  m_iDBVersion := DB_VERSION; // default version
+  // default version
+  if (Assigned(m_MoveTreeBase)) then
+    m_wDBVersion := DB_VERSION_2
+  else
+    m_wDBVersion := DB_VERSION_1;
 
   if (fPos.Size > 0) then
   begin
@@ -186,17 +243,17 @@ begin
     fPos.Read(btData, SizeOf(btData));
     if (btData <> $FF) then
     begin
-      m_iDBVersion := 0;
+      m_wDBVersion := 0;
       fPos.HeaderSize := 0;
       exit;
     end;
     fPos.Read(wVersion, SizeOf(wVersion));
-    m_iDBVersion := wVersion;
+    m_wDBVersion := wVersion;
   end
   else
   begin
     btData := $FF;
-    wVersion := m_iDBVersion;
+    wVersion := m_wDBVersion;
     fPos.Write(btData, SizeOf(btData));
     fPos.Write(wVersion, SizeOf(wVersion));
   end;
@@ -205,209 +262,49 @@ begin
 end;
 
 
+procedure TPosBase.FCreateStrategy;
+begin
+  case m_wDBVersion of
+    DB_VERSION_1:
+      m_Strategy := TPosBaseStrategy1.FCreate(self);
+    DB_VERSION_2:
+      m_Strategy := TPosBaseStrategy2.FCreate(self);
+  else
+    raise EPosBaseException.Create('No suitable strategy found!');
+  end;
+end;
+
+
+procedure TPosBase.FDestroyStrategy;
+begin
+  FreeAndNil(m_Strategy);
+end;
+
+
 function TPosBase.FCheckDBVersion: Boolean;
 begin
-  Result := (m_iDBVersion <= DB_VERSION);
+  Result := (m_wDBVersion <= DB_VERSION_2);
 end;
 
 
 procedure TPosBase.FCreateStreams(const strPosFileName, strMovFileName: string);
 begin
-  fPos := TPosBaseStream.Create(strPosFileName, SizeOf(TFieldNode));
-  fMov := TPosBaseStream.Create(strMovFileName, SizeOf(TMoveNode));
+  m_fPos := TPosBaseStream.Create(strPosFileName, SizeOf(TFieldNode));
+  m_fMov := TPosBaseStream.Create(strMovFileName, SizeOf(TMoveNode));
 end;
 
 
 procedure TPosBase.FDestroyStreams;
 begin
-  fMov.Free;
-  fPos.Free;
-end;
-
-
-function EncodeAddInf(const pos: TChessPosition): byte;
-begin
-  Result := pos.en_passant;
-  if WhiteKingSide in pos.castling then
-    Result := Result or $80;
-  if WhiteQueenSide in pos.castling then
-    Result := Result or $40;
-  if BlackKingSide in pos.castling then
-    Result := Result or $20;
-  if BlackQueenSide in pos.castling then
-    Result := Result or $10;
-end;
-
-
-function EncodeMove(const move: TMoveAbs): word;
-begin
-  with move do
-    Result := ((((((((i0-1) shl 3) or (j0-1)) shl 3) or (i-1)) shl 3) or (j-1)) shl 3) or Ord(prom_fig);
+  FreeAndNil(m_fMov);
+  FreeAndNil(m_fPos);
 end;
 
 
 procedure TPosBase.Add(const posMove: TPosMove);
-var
-  addInf: byte;
-  fn: TFieldNode;
-
-  procedure AddPosNodes(k: integer; r: integer = -1);
-  var
-    l, nr: integer;
-    mn: TMoveNode;
-    estList: TList;
-  begin
-    // Добавление узлов позиции
-    if r >= 0 then
-    begin
-      nr := fPos.Size;
-      fn.NextValue := nr;
-      fPos.SeekRec(r);
-      fPos.Write(fn);
-      fPos.SeekRec(nr);
-    end
-    else
-      nr := 0;
-    for l := k to 66 do // 65 - доп. инф, 66 - цвет.
-    begin
-      if l = 66 then
-      begin
-        fn.btField := ord(posMove.pos.color);
-        nr := fMov.Size;
-      end
-      else
-      begin
-        if l <= 64 then
-          fn.btField := ord(posMove.pos.board[FIELD_SEQ[l].i, FIELD_SEQ[l].j])
-        else // l = 65
-          fn.btField := addInf;
-        inc(nr);
-      end;
-      fn.NextNode := nr;
-      fn.NextValue := 0;
-      fPos.Write(fn);
-    end;
-    // формирование записи хода
-    mn.EmptyNode;
-    mn.wMove := EncodeMove(posMove.move);
-
-    if Assigned(FReestimate) then
-    begin
-      estList := TList.Create;
-      try
-        estList.Add(Pointer(mn.estimate));
-        FReestimate(estList, 0);
-        mn.estimate := LongWord(estList[0]);
-      finally
-        estList.Free;
-      end;
-
-    end;
-    fMov.SeekEnd;
-    fMov.Write(mn);
-  end;
-
-var
-  k, r, pr, rm, moveSet, moveCount: integer;
-  mv: word;
-  mn: TMoveNode;
-  enc_mv: word;
-  estList: TList;
 begin
-  if (not FCheckDBVersion) then
-    exit;
-
-  addInf := EncodeAddInf(posMove.pos);
-  if (fPos.Size = 0) then
-  begin
-    AddPosNodes(1);
-    exit;
-  end;
-  r := 0;
-  for k := 1 to 66 do // 65 - доп. инф, 66 - цвет.
-  begin
-    fPos.SeekRec(r);
-    fPos.Read(fn);
-
-    while ((k <= 64) and (fn.btField <> ord(posMove.pos.board[FIELD_SEQ[k].i, FIELD_SEQ[k].j]))) or
-          ((k = 65) and (fn.btField <> addInf)) or
-          ((k = 66) and (fn.btField <> ord(posMove.pos.color))) do
-    begin
-      pr := r;
-      r := fn.NextValue;
-      if (r = 0) then
-      begin
-        AddPosNodes(k, pr);
-        exit;
-      end;
-      fPos.SeekRec(r);
-      fPos.Read(fn);
-    end; { while }
-    // значение в цепочке найдено
-    r := fn.NextNode;
-  end;
-
-  moveCount := 0;
-  moveSet := -1;
-  estList := TList.Create;
-  try
-    rm := r;
-    enc_mv := EncodeMove(posMove.move);
-    repeat
-      pr := r;
-      fMov.SeekRec(r);
-      fMov.Read(mn);
-
-      mv := mn.wMove;
-      if mv = enc_mv then
-        moveSet := moveCount;
-
-      if Assigned(FReestimate) then
-        estList.Add(Pointer(mn.estimate));
-
-      inc(moveCount);
-      r := mn.NextValue;
-    until r = 0;
-
-    if moveSet < 0 then // хода нет в списке, добавляем
-      begin
-        // связывание нового узла с текущим узлом
-        r := fMov.Size;
-        mn.NextValue := r;
-        fMov.SeekRec(pr);
-        fMov.Write(mn);
-
-        // Добавление нового узла ходов
-        mn.EmptyNode;
-        mn.wMove := enc_mv;
-        fMov.SeekRec(r);
-        fMov.Write(mn);
-
-        if Assigned(FReestimate) then
-          estList.Add(Pointer(mn.estimate));
-        moveSet := moveCount;
-      end;
-
-      if Assigned(FReestimate) then
-      begin
-        FReestimate(estList, moveSet);
-        for k := 0 to estList.Count - 1 do
-        begin
-          fMov.SeekRec(rm);
-          fMov.Read(mn);
-          if (mn.estimate <> LongWord(estList[k])) then
-          begin
-            mn.estimate := LongWord(estList[k]);
-            fMov.SeekRec(rm);
-            fMov.Write(mn);
-          end;
-          rm := mn.NextValue;
-        end;
-      end;
-      
-  finally
-    estList.Free;
-  end;  
+  if (FCheckDBVersion) then
+    m_Strategy.RAdd(posMove);
 end;
 
 
@@ -421,83 +318,11 @@ end;
 
 
 function TPosBase.Find(const pos: TChessPosition; var moveEsts: TList): boolean;
-
-  function DecodeMove(enc_move: word): TMoveAbs;
-  begin
-   with Result do
-     begin
-       prom_fig := TFigureName(enc_move and $07);
-       enc_move := enc_move shr 3;
-       j := (enc_move and $07) + 1;
-       enc_move := enc_move shr 3;
-       i := (enc_move and $07) + 1;
-       enc_move := enc_move shr 3;
-       j0 := (enc_move and $07) + 1;
-       enc_move := enc_move shr 3;
-       i0 := (enc_move and $07) + 1;
-     end;
-  end;
-
-var
-  k, r: integer;
-  fn: TFieldNode;
-  mn: TMoveNode;
-  pme: PMoveEst;
-label
-  here;
-begin // TPosBase.Find
-  Result := FALSE;
-
-  if (not FCheckDBVersion) then
-    exit;
-
-  if (Assigned(moveEsts)) then
-  begin
-    for k := 0 to moveEsts.Count - 1 do
-      Dispose(moveEsts[k]);
-    moveEsts.Clear;
-  end;
-
-  if (fPos.Size = 0) then
-    exit;
-
-  r := 0;
-  for k := 1 to 66 do // 65 - доп. инф, 66 - цвет.
-  begin
-here:
-    fPos.SeekRec(r);
-    fPos.Read(fn);
-
-    r := fn.NextNode;
-    while ((k <= 64) and (fn.btField <> ord(pos.board[FIELD_SEQ[k].i, FIELD_SEQ[k].j]))) or
-          ((k = 65) and (fn.btField <> EncodeAddInf(pos))) or
-          ((k = 66) and (fn.btField <> ord(pos.color))) do
-    begin
-      r := fn.NextValue;
-      if r = 0 then
-        exit
-      else
-        goto here;
-    end; { while }
-  end; { for }
-
-  Result := TRUE;
-  if (not Assigned(moveEsts)) then
-    exit;
-
-  // Filling the moves list
-  repeat
-    fMov.SeekRec(r);
-    fMov.Read(mn);
-
-    new(pme);
-    pme^.move := DecodeMove(mn.wMove);
-    pme^.estimate := mn.estimate;
-    moveEsts.Add(pme);
-
-    r := mn.NextValue;
-  until (r = 0);
-  
+begin
+  if (FCheckDBVersion) then
+    Result := m_Strategy.RFind(pos, moveEsts)
+  else
+    Result := FALSE;
 end;
 
 
@@ -715,6 +540,540 @@ begin
     (Items[i] as TMoveEstItem).Free;
 
   Clear;
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TPosBaseStrategy
+
+constructor TPosBaseStrategy.Create;
+begin
+  raise Exception.Create(ClassName + ' cannot be instaniated directly!');
+end;
+
+
+constructor TPosBaseStrategy.FCreate(ABase: TPosBase);
+begin
+  inherited Create;
+  m_Base := ABase;
+end;
+
+
+class function TPosBaseStrategy.REncodeMove(const move: TMoveAbs): word;
+begin
+  with move do
+    Result := ((((((((i0-1) shl 3) or (j0-1)) shl 3) or (i-1)) shl 3) or (j-1)) shl 3) or Ord(prom_fig);
+end;
+
+
+class function TPosBaseStrategy.RDecodeMove(enc_move: word): TMoveAbs;
+begin
+ with Result do
+ begin
+   prom_fig := TFigureName(enc_move and $07);
+   enc_move := enc_move shr 3;
+   j := (enc_move and $07) + 1;
+   enc_move := enc_move shr 3;
+   i := (enc_move and $07) + 1;
+   enc_move := enc_move shr 3;
+   j0 := (enc_move and $07) + 1;
+   enc_move := enc_move shr 3;
+   i0 := (enc_move and $07) + 1;
+ end;
+
+end;
+
+
+class function TPosBaseStrategy.REncodeAddInf(const pos: TChessPosition): byte;
+begin
+  Result := pos.en_passant;
+  if WhiteKingSide in pos.castling then
+    Result := Result or $80;
+  if WhiteQueenSide in pos.castling then
+    Result := Result or $40;
+  if BlackKingSide in pos.castling then
+    Result := Result or $20;
+  if BlackQueenSide in pos.castling then
+    Result := Result or $10;
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TPosBaseStrategy1
+
+procedure TPosBaseStrategy1.RAdd(const posMove: TPosMove);
+var
+  addInf: byte;
+  fn: TFieldNode;
+
+  procedure NAddPosNodes(k: integer; r: integer = -1);
+  var
+    l, nr: integer;
+    mn: TMoveNode;
+    estList: TList;
+  begin
+    // Adding position nodes
+    if (r >= 0) then
+    begin
+      nr := Base.fPos.Size;
+      fn.NextValue := nr;
+      Base.fPos.SeekRec(r);
+      Base.fPos.Write(fn);
+      Base.fPos.SeekRec(nr);
+    end
+    else
+      nr := 0;
+
+    for l := k to 66 do // 65 - additional info, 66 - color
+    begin
+      if l = 66 then
+      begin
+        fn.btField := ord(posMove.pos.color);
+        nr := Base.fMov.Size;
+      end
+      else
+      begin
+        if (l <= 64) then
+          fn.btField := ord(posMove.pos.board[FIELD_SEQ[l].i, FIELD_SEQ[l].j])
+        else // l = 65
+          fn.btField := addInf;
+        inc(nr);
+      end;
+      fn.NextNode := nr;
+      fn.NextValue := 0;
+      Base.fPos.Write(fn);
+    end;
+
+    // forming a move record
+    mn.EmptyNode;
+    mn.wMove := REncodeMove(posMove.move);
+
+    if Assigned(Base.Reestimate) then
+    begin
+      estList := TList.Create;
+      try
+        estList.Add(Pointer(mn.estimate));
+        Base.Reestimate(estList, 0);
+        mn.estimate := LongWord(estList[0]);
+      finally
+        estList.Free;
+      end;
+
+    end;
+    Base.fMov.SeekEnd;
+    Base.fMov.Write(mn);
+  end;
+
+var
+  k, r, pr, rm, moveSet, moveCount: integer;
+  mv: word;
+  mn: TMoveNode;
+  enc_mv: word;
+  estList: TList;
+begin   // .RAdd
+  addInf := REncodeAddInf(posMove.pos);
+  if (Base.fPos.Size = 0) then
+  begin
+    NAddPosNodes(1);
+    exit;
+  end;
+  
+  r := 0;
+  for k := 1 to 66 do // 65 - additional info, 66 - color
+  begin
+    Base.fPos.SeekRec(r);
+    Base.fPos.Read(fn);
+
+    while ((k <= 64) and (fn.btField <> ord(posMove.pos.board[FIELD_SEQ[k].i, FIELD_SEQ[k].j]))) or
+          ((k = 65) and (fn.btField <> addInf)) or
+          ((k = 66) and (fn.btField <> ord(posMove.pos.color))) do
+    begin
+      pr := r;
+      r := fn.NextValue;
+      if (r = 0) then
+      begin
+        NAddPosNodes(k, pr);
+        exit;
+      end;
+      Base.fPos.SeekRec(r);
+      Base.fPos.Read(fn);
+    end; { while }
+    
+    // the value is found in the chain
+    r := fn.NextNode;
+  end;
+
+  moveCount := 0;
+  moveSet := -1;
+  estList := TList.Create;
+  try
+    rm := r;
+    enc_mv := REncodeMove(posMove.move);
+    repeat
+      pr := r;
+      Base.fMov.SeekRec(r);
+      Base.fMov.Read(mn);
+
+      mv := mn.wMove;
+      if mv = enc_mv then
+        moveSet := moveCount;
+
+      if Assigned(Base.Reestimate) then
+        estList.Add(Pointer(mn.estimate));
+
+      inc(moveCount);
+      r := mn.NextValue;
+    until r = 0;
+
+    if (moveSet < 0) then // there's no move in the list, hence adding it
+    begin
+      // binding a new node with the current one
+      r := Base.fMov.Size;
+      mn.NextValue := r;
+      Base.fMov.SeekRec(pr);
+      Base.fMov.Write(mn);
+
+      // adding new move node
+      mn.EmptyNode;
+      mn.wMove := enc_mv;
+      Base.fMov.SeekRec(r);
+      Base.fMov.Write(mn);
+
+      if Assigned(Base.Reestimate) then
+        estList.Add(Pointer(mn.estimate));
+      moveSet := moveCount;
+    end;
+
+    if Assigned(Base.Reestimate) then
+    begin
+      Base.Reestimate(estList, moveSet);
+      for k := 0 to estList.Count - 1 do
+      begin
+        Base.fMov.SeekRec(rm);
+        Base.fMov.Read(mn);
+        if (mn.estimate <> LongWord(estList[k])) then
+        begin
+          mn.estimate := LongWord(estList[k]);
+          Base.fMov.SeekRec(rm);
+          Base.fMov.Write(mn);
+        end;
+        rm := mn.NextValue;
+      end;
+    end;
+
+  finally
+    estList.Free;
+  end;
+  
+end;
+
+
+function TPosBaseStrategy1.RFind(const pos: TChessPosition; var moveEsts: TList): boolean;
+var
+  k, r: integer;
+  fn: TFieldNode;
+  mn: TMoveNode;
+  pme: PMoveEst;
+label
+  here;
+begin
+  Result := FALSE;
+
+  if (Assigned(moveEsts)) then
+  begin
+    for k := 0 to moveEsts.Count - 1 do
+      Dispose(moveEsts[k]);
+    moveEsts.Clear;
+  end;
+
+  if (Base.fPos.Size = 0) then
+    exit;
+
+  r := 0;
+  for k := 1 to 66 do // 65 - additional info, 66 - color
+  begin
+here:
+    Base.fPos.SeekRec(r);
+    Base.fPos.Read(fn);
+
+    r := fn.NextNode;
+    while ((k <= 64) and (fn.btField <> ord(pos.board[FIELD_SEQ[k].i, FIELD_SEQ[k].j]))) or
+          ((k = 65) and (fn.btField <> REncodeAddInf(pos))) or
+          ((k = 66) and (fn.btField <> ord(pos.color))) do
+    begin
+      r := fn.NextValue;
+      if r = 0 then
+        exit
+      else
+        goto here;
+    end; { while }
+  end; { for }
+
+  Result := TRUE;
+  if (not Assigned(moveEsts)) then
+    exit;
+
+  // Filling the moves list
+  repeat
+    Base.fMov.SeekRec(r);
+    Base.fMov.Read(mn);
+
+    new(pme);
+    pme^.move := RDecodeMove(mn.wMove);
+    pme^.estimate := mn.estimate;
+    moveEsts.Add(pme);
+
+    r := mn.NextValue;
+  until (r = 0);
+  
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TPosBaseStrategy2
+
+procedure TPosBaseStrategy2.RAdd(const posMove: TPosMove);
+var
+  k, r, pr, rm, moveSet, moveCount: integer;
+  fn: TFieldNode;
+  mv: word;
+  mn: TMoveNode;
+  enc_mv: word;
+  estList: TList;
+begin
+  if (Base.fPos.Size = 0) then
+  begin
+    FAddPosNodes(posMove, 1);
+    exit;
+  end;
+
+  r := 0;
+  for k := 1 to 66 do
+  begin
+    Base.fPos.SeekRec(r);
+    Base.fPos.Read(fn);
+
+    while (fn.btField <> FGetFieldData(posMove.pos, k)) do
+    begin
+      pr := r;
+      r := fn.NextValue;
+      if (r = 0) then
+      begin
+        FAddPosNodes(posMove, k, pr);
+        exit;
+      end;
+      Base.fPos.SeekRec(r);
+      Base.fPos.Read(fn);
+    end; { while }
+    
+    // the value is found in the chain
+    r := fn.NextNode;
+  end;
+
+  moveCount := 0;
+  moveSet := -1;
+  estList := TList.Create;
+  try
+    rm := r;
+    enc_mv := REncodeMove(posMove.move);
+    repeat
+      pr := r;
+      Base.fMov.SeekRec(r);
+      Base.fMov.Read(mn);
+
+      mv := mn.wMove;
+      if mv = enc_mv then
+        moveSet := moveCount;
+
+      if Assigned(Base.Reestimate) then
+        estList.Add(Pointer(mn.estimate));
+
+      inc(moveCount);
+      r := mn.NextValue;
+    until r = 0;
+
+    if (moveSet < 0) then // there's no move in the list, hence adding it
+    begin
+      // binding a new node with the current one
+      r := Base.fMov.Size;
+      mn.NextValue := r;
+      Base.fMov.SeekRec(pr);
+      Base.fMov.Write(mn);
+
+      // adding new move node
+      mn.EmptyNode;
+      mn.wMove := enc_mv;
+      Base.fMov.SeekRec(r);
+      Base.fMov.Write(mn);
+
+      if Assigned(Base.Reestimate) then
+        estList.Add(Pointer(mn.estimate));
+      moveSet := moveCount;
+    end;
+
+    if Assigned(Base.Reestimate) then
+    begin
+      Base.Reestimate(estList, moveSet);
+      for k := 0 to estList.Count - 1 do
+      begin
+        Base.fMov.SeekRec(rm);
+        Base.fMov.Read(mn);
+        if (mn.estimate <> LongWord(estList[k])) then
+        begin
+          mn.estimate := LongWord(estList[k]);
+          Base.fMov.SeekRec(rm);
+          Base.fMov.Write(mn);
+        end;
+        rm := mn.NextValue;
+      end;
+    end;
+
+  finally
+    estList.Free;
+  end;
+
+end;
+
+
+function TPosBaseStrategy2.FGetFieldData(const pos: TChessPosition; iIndex: integer): byte;
+const
+  COLOR_BIT: array[TFigureColor] of byte = ($00, $80);
+begin
+  case iIndex of
+    1:
+      Result := REncodeAddInf(pos);
+    2..64:
+      Result := ord(pos.board[FIELD_SEQ[iIndex - 1].i, FIELD_SEQ[iIndex - 1].j]);
+    65:
+      Result := ord(pos.board[FIELD_SEQ[iIndex - 1].i, FIELD_SEQ[iIndex - 1].j]) or
+         COLOR_BIT[pos.color];
+  else
+    Result := $00;
+  end;
+
+end;
+
+
+procedure TPosBaseStrategy2.FAddPosNodes(const posMove: TPosMove;
+  k: integer; r: integer = -1);
+var
+  l, nr: integer;
+  fn: TFieldNode;
+  mn: TMoveNode;
+  estList: TList;
+begin
+  if (r >= 0) then
+  begin
+    Base.fPos.SeekRec(r);
+    Base.fPos.Read(fn);
+    nr := Base.fPos.Size;
+    fn.NextValue := nr;
+    Base.fPos.SeekRec(r);
+    Base.fPos.Write(fn);
+    Base.fPos.SeekRec(nr);
+  end
+  else
+    nr := 0;
+
+  for l := k to 66 do
+  begin
+    fn.btField := FGetFieldData(posMove.pos, l);
+    if l = 66 then
+    begin
+      fn.NextNode := Base.fMov.Size;
+      fn.NextValue := $DEADDE; // TODO:
+    end
+    else
+    begin
+      inc(nr);
+      fn.NextNode := nr;
+      fn.NextValue := 0;
+    end;
+    Base.fPos.Write(fn);
+  end;
+
+  // forming a move record
+  mn.EmptyNode;
+  mn.wMove := REncodeMove(posMove.move);
+
+  if Assigned(Base.Reestimate) then
+  begin
+    estList := TList.Create;
+    try
+      estList.Add(Pointer(mn.estimate));
+      Base.Reestimate(estList, 0);
+      mn.estimate := LongWord(estList[0]);
+    finally
+      estList.Free;
+    end;
+
+  end;
+  Base.fMov.SeekEnd;
+  Base.fMov.Write(mn);
+end;
+
+
+function TPosBaseStrategy2.RFind(const pos: TChessPosition; var moveEsts: TList): boolean;
+var
+  k, r: integer;
+  fn: TFieldNode;
+  lwMoveAddress, lwMoveTreeAddress: LongWord;
+  mn: TMoveNode;
+  pme: PMoveEst;
+label
+  here;
+begin
+  Result := FALSE;
+
+  if (Assigned(moveEsts)) then
+  begin
+    for k := 0 to moveEsts.Count - 1 do
+      Dispose(moveEsts[k]);
+    moveEsts.Clear;
+  end;
+
+  if (Base.fPos.Size = 0) then
+    exit;
+
+  r := 0;
+  for k := 1 to 66 do
+  begin
+here:
+    Base.fPos.SeekRec(r);
+    Base.fPos.Read(fn);
+
+    r := fn.NextNode;
+
+    while (fn.btField <> FGetFieldData(pos, k)) do
+    begin
+      r := fn.NextValue;
+      if (r = 0) then
+        exit
+      else
+        goto here;
+    end; { while }
+  end; { for }
+
+  Result := TRUE;
+  if (not Assigned(moveEsts)) then
+    exit;
+
+  lwMoveAddress := fn.NextNode;
+  lwMoveTreeAddress := fn.NextValue;
+
+  // Filling the moves list
+  r := lwMoveAddress;
+  repeat
+    Base.fMov.SeekRec(r);
+    Base.fMov.Read(mn);
+
+    new(pme);
+    pme^.move := RDecodeMove(mn.wMove);
+    pme^.estimate := mn.estimate;
+    moveEsts.Add(pme);
+
+    r := mn.NextValue;
+  until (r = 0);
+
+  // TODO: Expand moveEsts with data from MoveTreeBase
+  
 end;
 
 end.

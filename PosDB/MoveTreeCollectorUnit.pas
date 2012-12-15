@@ -38,6 +38,8 @@ type
     procedure StartLine(bFromPreviousPos: boolean);
     procedure EndLine;
     procedure Finish;
+
+    property DataBase: TMoveTreeBase read m_DataBase;
   end;
 
 implementation
