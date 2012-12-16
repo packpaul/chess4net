@@ -26,6 +26,7 @@ type
     procedure TearDown; override;
   published
     procedure TestFindInitialPosition;
+    procedure TestFindAChainOfPositions;
   end;
 
   TMoveTreeBaseTests2 = class(TTestCaseEx)
@@ -40,6 +41,7 @@ type
     procedure TearDown; override;
   published
     procedure TestFindInitialPositionFar;
+    procedure TestFindAChainOfPositions;
   end;
 
 implementation
@@ -161,6 +163,23 @@ begin
   CheckEquals(3, Length(Moves));
 end;
 
+
+procedure TMoveTreeBaseTests1.TestFindAChainOfPositions;
+var
+  Moves: TMoveAbsArr;
+begin
+  MoveTreeBase.Find(m_ChessRulesEngine.Position^, Moves);
+  CheckTrue(Length(Moves) > 0);
+
+  m_ChessRulesEngine.DoMove('e4');
+  MoveTreeBase.Find(m_ChessRulesEngine.Position^, Moves);
+  CheckTrue(Length(Moves) > 0);
+
+  m_ChessRulesEngine.DoMove('e5');
+  MoveTreeBase.Find(m_ChessRulesEngine.Position^, Moves);
+  CheckTrue(Length(Moves) > 0);
+end;
+
 ////////////////////////////////////////////////////////////////////////////////
 // TMoveTreeBaseTests2
 
@@ -201,6 +220,23 @@ var
 begin
   MoveTreeBase.Find(m_ChessRulesEngine.Position^, Moves);
   CheckEquals(3, Length(Moves));
+end;
+
+
+procedure TMoveTreeBaseTests2.TestFindAChainOfPositions;
+var
+  Moves: TMoveAbsArr;
+begin
+  MoveTreeBase.Find(m_ChessRulesEngine.Position^, Moves);
+  CheckTrue(Length(Moves) > 0);
+
+  m_ChessRulesEngine.DoMove('e4');
+  MoveTreeBase.Find(m_ChessRulesEngine.Position^, Moves);
+  CheckTrue(Length(Moves) > 0);
+
+  m_ChessRulesEngine.DoMove('e5');
+  MoveTreeBase.Find(m_ChessRulesEngine.Position^, Moves);
+  CheckTrue(Length(Moves) > 0);
 end;
 
 initialization

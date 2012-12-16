@@ -87,11 +87,10 @@ type
 
   TMoveTreeAddress = object
   public
-    strPos: string;
     lwPosition: LongWord;
     wOffset: Word;
   private
-    procedure FInit(const strAPos: string; lwAPosition: LongWord; wAOffset: Word);
+    procedure FInit(lwAPosition: LongWord; wAOffset: Word);
   end;
 
   TMoveTreeBaseCache = class
@@ -133,7 +132,7 @@ type
 
     function FFindData(lwPosition: LongWord; const DataIterator: TDataBagsIterator;
       out InsertionPoint: TInsertionPoint): boolean; overload;
-    procedure FFindData(const Address: TMoveTreeAddress; out Datas: TMovePosAddressArr); overload;
+    procedure FFindData(const APos: TChessPosition; const Address: TMoveTreeAddress; out Datas: TMovePosAddressArr); overload;
 
     procedure FSaveData(const InsertionPoint: TInsertionPoint; const DataIterator: TDataBagsIterator);
     procedure FStartNearBranch(const InsertionPoint: TInsertionPoint; const Data: TDataBag);
@@ -223,7 +222,8 @@ type
     function RF3: boolean; override;
     procedure RP4; override;
   public
-    procedure Find(const Address: TMoveTreeAddress; out Datas: TMovePosAddressArr);
+    procedure Find(const APos: TChessPosition; const Address: TMoveTreeAddress;
+      out Datas: TMovePosAddressArr);
   end;
 
 const
@@ -243,7 +243,7 @@ const
 
   END_DATA_TAG: TDataBag = (btFirst: 0; btSecond: 0);
 
-  INITIAL_ADDRESS: TMoveTreeAddress = (strPos: INITIAL_CHESS_POSITION; lwPosition: 0; wOffset: 0);
+  INITIAL_ADDRESS: TMoveTreeAddress = (lwPosition: 0; wOffset: 0);
 
 var
   g_bFarPointerTests: boolean = FALSE;
@@ -405,7 +405,7 @@ begin
     exit;
   end;
 
-  FFindData(Address, Datas);
+  FFindData(Pos, Address, Datas);
 
   SetLength(Moves, Length(Datas));
   for i := Low(Datas) to High(Datas) do
@@ -416,11 +416,12 @@ begin
 end;
 
 
-procedure TMoveTreeBase.FFindData(const Address: TMoveTreeAddress; out Datas: TMovePosAddressArr);
+procedure TMoveTreeBase.FFindData(const APos: TChessPosition;
+  const Address: TMoveTreeAddress; out Datas: TMovePosAddressArr);
 begin
   with TNextLinesBuilderDataFinder.Create(self) do
   try
-    Find(Address, Datas);
+    Find(APos, Address, Datas);
   finally
     Free;
   end;
@@ -675,9 +676,8 @@ end;
 ////////////////////////////////////////////////////////////////////////////////
 // TMoveTreeAddress
 
-procedure TMoveTreeAddress.FInit(const strAPos: string; lwAPosition: LongWord; wAOffset: Word);
+procedure TMoveTreeAddress.FInit(lwAPosition: LongWord; wAOffset: Word);
 begin
-  self.strPos := strAPos;
   self.lwPosition := lwAPosition;
   self.wOffset := wAOffset;
 end;
@@ -841,7 +841,7 @@ end;
 
 function TDataFinder.RIsDataFromJump: boolean;
 begin
-  Result := (m_lwLastPosition > m_lwPosition)
+  Result := (m_lwLastPosition > m_lwPosition);
 end;
 
 
@@ -888,15 +888,17 @@ end;
 ////////////////////////////////////////////////////////////////////////////////
 // TNextLinesBuilderDataFinder
 
-procedure TNextLinesBuilderDataFinder.Find(const Address: TMoveTreeAddress;
-  out Datas: TMovePosAddressArr);
+procedure TNextLinesBuilderDataFinder.Find(const APos: TChessPosition;
+  const Address: TMoveTreeAddress; out Datas: TMovePosAddressArr);
 begin
   SetLength(m_Datas, 0);
 
+  m_wMovesCount := Address.wOffset;
+
   m_Address := Address;
-  ChessRulesEngine.SetPosition(m_Address.strPos);
-  m_wMovesCount := m_Address.wOffset;
   m_Address.wOffset := 0;
+
+  ChessRulesEngine.SetPosition(APos);
 
   RFind(Address.lwPosition);
 
@@ -908,20 +910,19 @@ function TNextLinesBuilderDataFinder.FF5(const DataBag: TDataBag; bJump: boolean
 var
   bRes: boolean;
 begin
-  with DataBag.FToMove do
-    bRes := ChessRulesEngine.DoMove(i0, j0, i, j, prom_fig);
-  Assert(bRes);
-
   if (bJump or RIsDataFromJump) then
     inc(m_Address.wOffset)
   else
-    m_Address.FInit(ChessRulesEngine.GetPosition, Position, 0);
+    m_Address.FInit(Position, 0);
 
   Result := (m_wMovesCount > 0);
   if (Result)  then
     dec(m_wMovesCount)
   else
   begin
+    with DataBag.FToMove do
+      bRes := ChessRulesEngine.DoMove(i0, j0, i, j, prom_fig);
+    Assert(bRes);
     FCollectDatas;
     ChessRulesEngine.TakeBack;
   end;
@@ -948,7 +949,7 @@ end;
 
 procedure TNextLinesBuilderDataFinder.RP4;
 begin
-  m_Address.FInit(ChessRulesEngine.GetPosition, LastPosition, 0);
+  m_Address.FInit(LastPosition, 0);
 end;
 
 
