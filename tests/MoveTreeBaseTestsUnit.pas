@@ -109,7 +109,7 @@ begin // .FFillBaseWithInitialData
   PGNTraverser := nil;
   try
     NCreateInitialData(strlData);
-    MoveTreeCollector := TMoveTreeCollectorEx.Create(ABase);
+    MoveTreeCollector := TMoveTreeCollectorEx.CreateForTest(ABase);
     PGNTraverser := TPGNTraverser.Create(strlData, MoveTreeCollector);
 
     PGNTraverser.Traverse;

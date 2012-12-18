@@ -25,6 +25,7 @@ type
 
     m_PosBase, m_RefPosBase: TPosBase;
     m_MoveTreeBase: TMoveTreeBase;
+    m_PosBaseForTest: TPosBase;
 
     m_strPosBaseName: string;
     m_strReferencePosBaseName: string;
@@ -46,6 +47,11 @@ type
     m_lastResultingPos: TChessPosition;
     m_iGameNumber: integer;
 
+    constructor FCreate;
+
+    procedure FCreatePosBase;
+    procedure FDestroyPosBase;
+
     function FGetMoveTreeBase: TMoveTreeBase;
     procedure FSetMoveTreeBase(ABase: TMoveTreeBase);
 
@@ -55,6 +61,9 @@ type
     procedure FProcessExtendedOpeningLine(const posMove: TPosMove);
     procedure FProcessOpeningLine(const posMove: TPosMove);
     procedure FReestimate(moveEsts: TList; nRec: integer);
+
+  protected
+    constructor CreateForTest(const ADataBase: TPosBase);
 
   public
     constructor Create(const strPosBaseName: string; const strReferencePosBaseName: string = '');
@@ -100,14 +109,8 @@ end;
 ////////////////////////////////////////////////////////////////////////////////
 // TPosBaseCollector
 
-constructor TPosBaseCollector.Create(const strPosBaseName: string;
-                                     const strReferencePosBaseName: string = '');
+constructor TPosBaseCollector.FCreate;
 begin
-  inherited Create;
-
-  m_strPosBaseName := strPosBaseName;
-  m_strReferencePosBaseName := strReferencePosBaseName;
-
   m_ProceedColors := [fcWhite, fcBlack];
   m_GenOpening := openNo;
 
@@ -118,11 +121,32 @@ begin
 end;
 
 
+constructor TPosBaseCollector.Create(const strPosBaseName: string;
+                                     const strReferencePosBaseName: string = '');
+begin
+  inherited Create;
+
+  m_strPosBaseName := strPosBaseName;
+  m_strReferencePosBaseName := strReferencePosBaseName;
+
+  FCreate;
+end;
+
+
+constructor TPosBaseCollector.CreateForTest(const ADataBase: TPosBase);
+begin
+  inherited Create;
+
+  m_PosBaseForTest := ADataBase;
+  FCreate;
+end;
+
+
 destructor TPosBaseCollector.Destroy;
 begin
   g_PosBaseCollector := nil;
 
-  m_PosBase.Free;
+  FDestroyPosBase;
   m_RefPosBase.Free;
 
   FClearPosMoves;
@@ -316,15 +340,33 @@ begin
 
   if (not Assigned(m_PosBase)) then
   begin
-    if (m_bChangeEstimateion) then
-      m_PosBase := TPosBase.Create(m_strPosBaseName, m_MoveTreeBase, Reestimate)
-    else
-      m_PosBase := TPosBase.Create(m_strPosBaseName);
-
+    FCreatePosBase;
     if (m_strReferencePosBaseName <> '') then
       m_RefPosBase := TPosBase.Create(m_strReferencePosBaseName);
   end;
 
+end;
+
+
+procedure TPosBaseCollector.FCreatePosBase;
+begin
+  if (Assigned(m_PosBaseForTest)) then
+  begin
+    m_PosBase := m_PosBaseForTest;
+    exit;
+  end;
+
+  if (m_bChangeEstimateion) then
+    m_PosBase := TPosBase.Create(m_strPosBaseName, m_MoveTreeBase, Reestimate)
+  else
+    m_PosBase := TPosBase.Create(m_strPosBaseName);
+end;
+
+
+procedure TPosBaseCollector.FDestroyPosBase;
+begin
+  if (m_PosBase <> m_PosBaseForTest) then
+    FreeAndNil(m_PosBase);
 end;
 
 

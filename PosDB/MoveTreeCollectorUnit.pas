@@ -23,13 +23,14 @@ type
     m_DataBags: TObjectList;
     m_bCollecting: boolean;
 
+    constructor FCreate(ADataBase: TMoveTreeBase);
     procedure FAddDataToBase;
 
   protected
-    constructor Create(ADataBase: TMoveTreeBase); overload;
+    constructor CreateForTest(const ADataBase: TMoveTreeBase);
 
   public
-    constructor Create(const strBaseName: string); overload;
+    constructor Create(const strBaseName: string);
     destructor Destroy; override;
 
     procedure Start(const Visitor: IPGNTraverserVisitor);
@@ -56,9 +57,8 @@ type
 ////////////////////////////////////////////////////////////////////////////////
 // TMoveTreeCollector
 
-constructor TMoveTreeCollector.Create(ADataBase: TMoveTreeBase);
+constructor TMoveTreeCollector.FCreate(ADataBase: TMoveTreeBase);
 begin
-  inherited Create;
   m_DataBase := ADataBase;
   m_DataBags := TObjectList.Create;
 end;
@@ -66,8 +66,17 @@ end;
 
 constructor TMoveTreeCollector.Create(const strBaseName: string);
 begin
-  Create(TMoveTreeBase.Create(strBaseName));
+  inherited Create;
+
+  FCreate(TMoveTreeBase.Create(strBaseName));
   m_bOwnsDataBase := TRUE;
+end;
+
+
+constructor TMoveTreeCollector.CreateForTest(const ADataBase: TMoveTreeBase);
+begin
+  inherited Create;
+  FCreate(ADataBase);
 end;
 
 

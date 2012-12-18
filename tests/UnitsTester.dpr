@@ -27,7 +27,9 @@ uses
   PGNTraverserUnit in '..\PGNTraverserUnit.pas',
   NonRefInterfacedObjectUnit in '..\NonRefInterfacedObjectUnit.pas',
   MoveTreeCollectorUnit in '..\PosDB\MoveTreeCollectorUnit.pas',
-  TestFrameworkExUnit in 'TestFrameworkExUnit.pas';
+  TestFrameworkExUnit in 'TestFrameworkExUnit.pas',
+  PosBaseTestsUnit in 'PosBaseTestsUnit.pas',
+  PosBaseCollectorUnit in '..\PosDB\PosBaseCollectorUnit.pas';
 
 {$R *.res}
 

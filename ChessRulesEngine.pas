@@ -94,7 +94,7 @@ type
     function DoMove(i0, j0, i, j: integer; prom_fig: TFigureName = K): boolean; overload;
     function TakeBack: boolean;
     function SetPosition(strValue: string): boolean; overload;
-    function SetPosition(const APosition: TChessPosition): boolean; overload;
+    procedure SetPosition(const APosition: TChessPosition); overload;
     function GetPosition: string;
     function GetColorStarts: TFigureColor;
     procedure InitNewGame;
@@ -971,7 +971,7 @@ begin
 end;
 
 
-function TChessRulesEngine.SetPosition(const APosition: TChessPosition): boolean;
+procedure TChessRulesEngine.SetPosition(const APosition: TChessPosition);
 begin
   ResetMoveList;
   m_iMovesOffset := 0;

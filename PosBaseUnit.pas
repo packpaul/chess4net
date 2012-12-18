@@ -50,7 +50,8 @@ type
     m_iRecordSize: integer;
     m_iHeaderSize: integer;
     m_InnerStream: TStream;
-    constructor Create(const strFileName: string; RecordSize: integer);
+    constructor FCreate(const strFileName: string; iRecordSize: integer); overload;
+    constructor FCreateForTest(iRecordSize: integer);
     function FGetSize: integer;
   public
     destructor Destroy; override;
@@ -92,7 +93,9 @@ type
     m_fMov: TPosBaseStream;
     m_Strategy: TPosBaseStrategy;
     FReestimate: TReestimate;
+    constructor FCreate(const AMoveTreeBase: TMoveTreeBase; AReestimate: TReestimate = nil);
     procedure FCreateStreams(const strPosFileName, strMovFileName: string);
+    procedure FCreateStreamsForTest;
     procedure FDestroyStreams;
     procedure FSetDBVersion;
     function FCheckDBVersion: Boolean;
@@ -102,6 +105,10 @@ type
     property fPos: TPosBaseStream read m_fPos;
     property fMov: TPosBaseStream read m_fMov;
     property Reestimate: TReestimate read FReestimate;
+
+  protected
+    constructor CreateForTest(const AMoveTreeBase: TMoveTreeBase; AReestimate: TReestimate = nil);
+    
   public
     procedure Add(const posMove: TPosMove); // добавление позиции и хода в базу
     function Find(const pos: TChessPosition): boolean; overload;
@@ -109,8 +116,9 @@ type
     function Find(const pos: TChessPosition; var moveEsts: TList): boolean; overload;
     // moveEsts - TMoveEstItem collection
     function Find(const pos: TChessPosition; out moveEsts: TMoveEstList): boolean; overload;
-    constructor Create(fileNameNoExt: string; Reestimate: TReestimate = nil); overload;
-    constructor Create(fileNameNoExt: string; AMoveTreeBase: TMoveTreeBase; Reestimate: TReestimate = nil); overload;
+    constructor Create(fileNameNoExt: string; AReestimate: TReestimate = nil); overload;
+    constructor Create(fileNameNoExt: string; const AMoveTreeBase: TMoveTreeBase;
+      AReestimate: TReestimate = nil); overload;
     destructor Destroy; override;
   end;
 
@@ -196,25 +204,41 @@ const
 ////////////////////////////////////////////////////////////////////////////////
 // TPosBase
 
-constructor TPosBase.Create(fileNameNoExt: string; Reestimate: TReestimate = nil);
+constructor TPosBase.FCreate(const AMoveTreeBase: TMoveTreeBase; AReestimate: TReestimate = nil);
 begin
-  Create(fileNameNoExt, nil, Reestimate);
-end;
-
-
-constructor TPosBase.Create(fileNameNoExt: string; AMoveTreeBase: TMoveTreeBase;
-  Reestimate: TReestimate = nil);
-begin
-  inherited Create;
-
   m_MoveTreeBase := AMoveTreeBase;
-  self.FReestimate := Reestimate;
-
-  FCreateStreams(fileNameNoExt + '.' + POS_FILE_EXT,
-    fileNameNoExt + '.' + MOV_FILE_EXT);
+  FReestimate := AReestimate;
     
   FSetDBVersion;
   FCreateStrategy;
+end;
+
+
+constructor TPosBase.Create(fileNameNoExt: string; AReestimate: TReestimate = nil);
+begin
+  Create(fileNameNoExt, nil, AReestimate);
+end;
+
+
+constructor TPosBase.Create(fileNameNoExt: string; const AMoveTreeBase: TMoveTreeBase;
+  AReestimate: TReestimate = nil);
+begin
+  inherited Create;
+
+  FCreateStreams(fileNameNoExt + '.' + POS_FILE_EXT,
+    fileNameNoExt + '.' + MOV_FILE_EXT);
+
+  FCreate(AMoveTreeBase, AReestimate);
+end;
+
+
+constructor TPosBase.CreateForTest(const AMoveTreeBase: TMoveTreeBase; AReestimate: TReestimate = nil);
+begin
+  inherited Create;
+
+  FCreateStreamsForTest;
+
+  FCreate(AMoveTreeBase, AReestimate);
 end;
 
 
@@ -222,6 +246,7 @@ destructor TPosBase.Destroy;
 begin
   FDestroyStrategy;
   FDestroyStreams;
+  
   inherited;
 end;
 
@@ -289,8 +314,15 @@ end;
 
 procedure TPosBase.FCreateStreams(const strPosFileName, strMovFileName: string);
 begin
-  m_fPos := TPosBaseStream.Create(strPosFileName, SizeOf(TFieldNode));
-  m_fMov := TPosBaseStream.Create(strMovFileName, SizeOf(TMoveNode));
+  m_fPos := TPosBaseStream.FCreate(strPosFileName, SizeOf(TFieldNode));
+  m_fMov := TPosBaseStream.FCreate(strMovFileName, SizeOf(TMoveNode));
+end;
+
+
+procedure TPosBase.FCreateStreamsForTest;
+begin
+  m_fPos := TPosBaseStream.FCreateForTest(SizeOf(TFieldNode));
+  m_fMov := TPosBaseStream.FCreateForTest(SizeOf(TMoveNode));
 end;
 
 
@@ -404,13 +436,13 @@ end;
 ////////////////////////////////////////////////////////////////////////////////
 // TPosBaseStream
 
-constructor TPosBaseStream.Create(const strFileName: string; RecordSize: integer);
+constructor TPosBaseStream.FCreate(const strFileName: string; iRecordSize: integer);
 var
   FileHandle: Integer;
 begin
   inherited Create;
 
-  m_iRecordSize := RecordSize;
+  m_iRecordSize := iRecordSize;
 
   if (not FileExists(strFileName)) then
   begin
@@ -420,6 +452,15 @@ begin
 
   m_InnerStream := TFileStream.Create(strFileName, fmOpenReadWrite,
     fmShareDenyWrite);
+end;
+
+
+constructor TPosBaseStream.FCreateForTest(iRecordSize: integer);
+begin
+  inherited Create;
+
+  m_iRecordSize := iRecordSize;
+  m_InnerStream := TMemoryStream.Create;
 end;
 
 
