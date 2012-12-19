@@ -101,6 +101,7 @@ type
     function FCheckDBVersion: Boolean;
     procedure FCreateStrategy;
     procedure FDestroyStrategy;
+    procedure FOnMoveTreeBaseAdded(Sender: TObject);
 
     property fPos: TPosBaseStream read m_fPos;
     property fMov: TPosBaseStream read m_fMov;
@@ -108,18 +109,18 @@ type
 
   protected
     constructor CreateForTest(const AMoveTreeBase: TMoveTreeBase; AReestimate: TReestimate = nil);
-    
+
   public
+    constructor Create(fileNameNoExt: string; AReestimate: TReestimate = nil); overload;
+    constructor Create(fileNameNoExt: string; const AMoveTreeBase: TMoveTreeBase;
+      AReestimate: TReestimate = nil); overload;
+    destructor Destroy; override;
     procedure Add(const posMove: TPosMove); // добавление позиции и хода в базу
     function Find(const pos: TChessPosition): boolean; overload;
     // Deprecated. Planned for removal after 2013.01
     function Find(const pos: TChessPosition; var moveEsts: TList): boolean; overload;
     // moveEsts - TMoveEstItem collection
     function Find(const pos: TChessPosition; out moveEsts: TMoveEstList): boolean; overload;
-    constructor Create(fileNameNoExt: string; AReestimate: TReestimate = nil); overload;
-    constructor Create(fileNameNoExt: string; const AMoveTreeBase: TMoveTreeBase;
-      AReestimate: TReestimate = nil); overload;
-    destructor Destroy; override;
   end;
 
 implementation
@@ -207,6 +208,8 @@ const
 constructor TPosBase.FCreate(const AMoveTreeBase: TMoveTreeBase; AReestimate: TReestimate = nil);
 begin
   m_MoveTreeBase := AMoveTreeBase;
+  m_MoveTreeBase.OnAdded := FOnMoveTreeBaseAdded;
+
   FReestimate := AReestimate;
     
   FSetDBVersion;
@@ -246,6 +249,8 @@ destructor TPosBase.Destroy;
 begin
   FDestroyStrategy;
   FDestroyStreams;
+
+  m_MoveTreeBase.OnAdded := nil;
   
   inherited;
 end;
@@ -381,6 +386,12 @@ begin
     lstMoveEsts.Free;
   end;
 
+end;
+
+
+procedure TPosBase.FOnMoveTreeBaseAdded(Sender: TObject);
+begin
+  // TODO:
 end;
 
 ////////////////////////////////////////////////////////////////////////////////

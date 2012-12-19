@@ -64,7 +64,7 @@ type
 
   TMoveAbsArr = array of TMoveAbs;
 
-  TDataBagsIterator = class
+  TMovesDataIterator = class
   private
     m_Moves: TMoveAbsArr;
     m_iIndex: integer;
@@ -72,8 +72,10 @@ type
   public
     constructor Create;
     function HasNext: boolean;
-    function GetNext: TDataBag;
-    function GetLast: TDataBag;
+    function GetNextMove: TMoveAbs;
+    function GetLastMove: TMoveAbs;
+    function GetNextDataBag: TDataBag;
+    function GetLastDataBag: TDataBag;
   end;
 
   TInsertionPoint = object
@@ -117,6 +119,7 @@ type
     function FGet(const Pos: TChessPosition; out AItem: TPosAddressItem): boolean; overload;
     function FGet(const Pos: TChessPosition; out Addresses: TMoveTreeAddressArr): boolean; overload;
     procedure FAdd(const Pos: TChessPosition; const Address: TMoveTreeAddress);
+    procedure FClear;
   public
     constructor Create;
     destructor Destroy; override;
@@ -141,17 +144,24 @@ type
     m_BaseStream: TMoveTreeStream;
     m_ChessRulesEngine: TChessRulesEngine;
     m_PosCache: TMoveTreeBaseCache;
+    m_InitialPos: TChessPosition;
+
+    FOnAdded: TNotifyEvent;
 
     constructor FCreate;
     class function FGetBaseFileName(const strBaseName: string): TFileName;
 
-    function FFindData(lwPosition: LongWord; const DataIterator: TDataBagsIterator;
+    procedure FSetOnAdded(OnAddedEvent: TNotifyEvent); // cannot be overriden
+
+    function FFindData(lwPosition: LongWord; const DataIterator: TMovesDataIterator;
       out InsertionPoint: TInsertionPoint): boolean; overload;
     procedure FFindData(const APos: TChessPosition; const Address: TMoveTreeAddress; out Datas: TMovePosAddressArr); overload;
 
-    procedure FSaveData(const InsertionPoint: TInsertionPoint; const DataIterator: TDataBagsIterator);
+    procedure FSaveData(const InsertionPoint: TInsertionPoint; const DataIterator: TMovesDataIterator);
     procedure FStartNearBranch(const InsertionPoint: TInsertionPoint; const Data: TDataBag);
     procedure FStartFarBranch(const InsertionPoint: TInsertionPoint; const DataHi, DataLow: TDataBag);
+
+    procedure FDoAdded;
 
     property ChessRulesEngine: TChessRulesEngine read m_ChessRulesEngine;
     property BaseStream: TMoveTreeStream read m_BaseStream;
@@ -161,14 +171,15 @@ type
     constructor CreateForTestFarJump;
     procedure RFind(const Pos: TChessPosition; const Addresses: TMoveTreeAddressArr; out Moves: TMoveAbsArr);
 
-    property LastAddressAdded: TMoveTreeAddress read m_LastAddressAdded; // TODO:
-
   public
     constructor Create(const strBaseName: string);
     destructor Destroy; override;
     class function Exists(const strBaseName: string): boolean;
     procedure Add(const Moves: TMoveAbsArr);
     procedure Find(const Pos: TChessPosition; out Moves: TMoveAbsArr);
+
+    property OnAdded: TNotifyEvent write FSetOnAdded;
+    property PosCache: TMoveTreeBaseCache read m_PosCache;
   end;
 
 const
@@ -204,14 +215,14 @@ type
 
   TInsertionPointDataFinder = class(TDataFinder)
   private
-    m_DataIterator: TDataBagsIterator;
+    m_DataIterator: TMovesDataIterator;
     m_InsertionPoint: TInsertionPoint;
   protected
     function RF1(const DataBag: TDataBag): boolean; override;
     function RF2(const DataBag: TDataBag): boolean; override;
     function RF3: boolean; override;
   public
-    function Find(lwPosition: LongWord; const DataIterator: TDataBagsIterator;
+    function Find(lwPosition: LongWord; const DataIterator: TMovesDataIterator;
       out InsertionPoint: TInsertionPoint): boolean;
   end;
 
@@ -264,7 +275,8 @@ begin
   inherited Create;
 
   m_ChessRulesEngine := TChessRulesEngine.Create;
-  m_PosCache := TMoveTreeBaseCache.FCreate(m_ChessRulesEngine.Position^, INITIAL_ADDRESS);
+  m_InitialPos := m_ChessRulesEngine.Position^;
+  m_PosCache := TMoveTreeBaseCache.FCreate(m_InitialPos, INITIAL_ADDRESS);
 end;
 
 
@@ -314,25 +326,50 @@ end;
 
 procedure TMoveTreeBase.Add(const Moves: TMoveAbsArr);
 var
-  Iterator: TDataBagsIterator;
+  Iterator: TMovesDataIterator;
   InsertionPoint: TInsertionPoint;
 begin
+  m_PosCache.FClear;
+
   if (Length(Moves) = 0) then
     exit;
 
-  Iterator := TDataBagsIterator.FCreate(Moves);
+  Iterator := TMovesDataIterator.FCreate(Moves);
   try
     if (not FFindData(0, Iterator, InsertionPoint)) then
       FSaveData(InsertionPoint, Iterator);
   finally
     Iterator.Free;
   end;
+
+  FDoAdded;
+end;
+
+
+procedure TMoveTreeBase.FSetOnAdded(OnAddedEvent: TNotifyEvent);
+begin
+  if (not Assigned(self)) then
+    exit;
+
+  if (Assigned(FOnAdded) and Assigned(OnAddedEvent) and (@FOnAdded <> @OnAddedEvent)) then
+    raise EMoveTreeBase.Create('callback OnAdded() is already set')
+  else
+    FOnAdded := OnAddedEvent;
+end;
+
+
+procedure TMoveTreeBase.FDoAdded;
+begin
+  if (Assigned(FOnAdded)) then
+    FOnAdded(self);
 end;
 
 
 function TMoveTreeBase.FFindData(lwPosition: LongWord;
-  const DataIterator: TDataBagsIterator; out InsertionPoint: TInsertionPoint): boolean;
+  const DataIterator: TMovesDataIterator; out InsertionPoint: TInsertionPoint): boolean;
 begin
+  m_ChessRulesEngine.SetPosition(m_InitialPos);
+  
   with TInsertionPointDataFinder.Create(self) do
   try
     Result := Find(lwPosition, DataIterator, InsertionPoint);
@@ -343,10 +380,12 @@ end;
 
 
 procedure TMoveTreeBase.FSaveData(const InsertionPoint: TInsertionPoint;
-  const DataIterator: TDataBagsIterator);
+  const DataIterator: TMovesDataIterator);
 var
   lwAddressOffset: LongWord;
   DataOffsetHi, DataOffsetLow: TDataBag;
+  Address: TMoveTreeAddress;
+  bRes: boolean;
 begin
   lwAddressOffset := m_BaseStream.Size - (InsertionPoint.lwAddress2 - 1);
   if (lwAddressOffset > 0) then
@@ -359,9 +398,17 @@ begin
       raise EMoveTreeBase.Create('Base file has become too big!');
   end;
 
-  m_BaseStream.WriteBagToStreamEnd(DataIterator.GetLast);
+  m_BaseStream.WriteBagToStreamEnd(DataIterator.GetLastDataBag);
+  Address.FInit(m_BaseStream.Size, 0);
   while (DataIterator.HasNext) do
-    m_BaseStream.WriteBagToStream(DataIterator.GetNext);
+  begin
+    with DataIterator.GetLastMove do
+      bRes := m_ChessRulesEngine.DoMove(i0, j0, i, j, prom_fig);
+    Assert(bRes);
+    inc(Address.wOffset);
+    m_PosCache.FAdd(m_ChessRulesEngine.Position^, Address);
+    m_BaseStream.WriteBagToStream(DataIterator.GetNextDataBag);
+  end;
   m_BaseStream.WriteBagToStream(END_DATA_TAG);
 end;
 
@@ -450,37 +497,49 @@ begin
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
-// TDataBagsIterator
+// TMovesDataIterator
 
-constructor TDataBagsIterator.Create;
+constructor TMovesDataIterator.Create;
 begin
   raise Exception.Create(ClassName + ' cannot be instaniated directly!');
 end;
 
 
-constructor TDataBagsIterator.FCreate(const Moves: TMoveAbsArr);
+constructor TMovesDataIterator.FCreate(const Moves: TMoveAbsArr);
 begin
   inherited Create;
   m_Moves := Moves;
 end;
 
 
-function TDataBagsIterator.HasNext: boolean;
+function TMovesDataIterator.HasNext: boolean;
 begin
   Result := (m_iIndex < Length(m_Moves));
 end;
 
 
-function TDataBagsIterator.GetNext: TDataBag;
+function TMovesDataIterator.GetNextMove: TMoveAbs;
 begin
-  Result.FConvertFromMove(m_Moves[m_iIndex]);
-  inc(m_iIndex)
+  Result := m_Moves[m_iIndex];
+  inc(m_iIndex);
 end;
 
 
-function TDataBagsIterator.GetLast: TDataBag;
+function TMovesDataIterator.GetLastMove: TMoveAbs;
 begin
-  Result.FConvertFromMove(m_Moves[m_iIndex - 1]);
+  Result := m_Moves[m_iIndex - 1];
+end;
+
+
+function TMovesDataIterator.GetNextDataBag: TDataBag;
+begin
+  Result.FConvertFromMove(GetNextMove);
+end;
+
+
+function TMovesDataIterator.GetLastDataBag: TDataBag;
+begin
+  Result.FConvertFromMove(GetLastMove);
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -625,6 +684,8 @@ begin
   m_InitialPos := InitialPos;
   m_InitialAddress := InitialAddress;
   m_PosAddresses := TObjectList.Create;
+
+  FClear;
 end;
 
 
@@ -639,15 +700,6 @@ function TMoveTreeBaseCache.FGet(const Pos: TChessPosition; out Addresses: TMove
 var
   Item: TPosAddressItem;
 begin
-  Result := TRUE;
-
-  if (m_InitialPos.Equals(Pos)) then
-  begin
-    SetLength(Addresses, 1);
-    Addresses[Low(Addresses)] := m_InitialAddress;
-    exit;
-  end;
-
   Result := FGet(Pos, Item);
   if (Result) then
     Addresses := Item.Addresses;
@@ -698,6 +750,14 @@ begin
     m_PosAddresses.Add(TPosAddressItem.FCreate(Pos, Address));
     m_iLastItemIndex := m_PosAddresses.Count - 1;
   end;
+end;
+
+
+procedure TMoveTreeBaseCache.FClear;
+begin
+  m_PosAddresses.Clear;
+  m_iLastItemIndex := 0;
+  FAdd(m_InitialPos, m_InitialAddress);
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -904,7 +964,7 @@ end;
 // TInsertionPointDataFinder
 
 function TInsertionPointDataFinder.Find(lwPosition: LongWord;
-  const DataIterator: TDataBagsIterator; out InsertionPoint: TInsertionPoint): boolean;
+  const DataIterator: TMovesDataIterator; out InsertionPoint: TInsertionPoint): boolean;
 begin
   m_DataIterator := DataIterator;
   m_InsertionPoint.FInit(lwPosition, lwPosition + 1);
@@ -916,8 +976,16 @@ end;
 
 
 function TInsertionPointDataFinder.RF1(const DataBag: TDataBag): boolean;
+var
+  bRes: boolean;
 begin
-  Result := DataBag.FEquals(m_DataIterator.GetLast);
+  Result := DataBag.FEquals(m_DataIterator.GetLastDataBag);
+  if (not Result) then
+    exit;
+
+  with m_DataIterator.GetLastMove do
+    bRes := Base.ChessRulesEngine.DoMove(i0, j0, i, j, prom_fig);
+  Assert(bRes);
 end;
 
 
@@ -933,7 +1001,7 @@ function TInsertionPointDataFinder.RF3: boolean;
 begin
   Result := m_DataIterator.HasNext;
   if (Result) then
-    m_DataIterator.GetNext;
+    m_DataIterator.GetNextMove;
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
