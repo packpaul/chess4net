@@ -51,7 +51,7 @@ type
     m_iHeaderSize: integer;
     m_InnerStream: TStream;
     constructor FCreate(const strFileName: string; iRecordSize: integer); overload;
-    constructor FCreateForTest(iRecordSize: integer);
+    constructor FCreate(iRecordSize: integer); overload;
     function FGetSize: integer;
   public
     destructor Destroy; override;
@@ -64,6 +64,16 @@ type
     procedure Read(var Buffer; Count: integer); overload;
     property Size: integer read FGetSize;
     property HeaderSize: integer read m_iHeaderSize write m_iHeaderSize;
+  end;
+
+  TPosBaseStreamsFactory = class
+  protected
+    constructor RCreate;
+  public
+    constructor Create;
+    function CreatePosStream: TPosBaseStream; virtual; abstract;
+    function CreateMovStream: TPosBaseStream; virtual; abstract;
+    function CreateMtiStream: TPosBaseStream; virtual; abstract;
   end;
 
   TPosBase = class;
@@ -89,13 +99,17 @@ type
   private
     m_wDBVersion: Word;
     m_MoveTreeBase: TMoveTreeBase;
+    m_StreamsFactory: TPosBaseStreamsFactory;
     m_fPos: TPosBaseStream;
     m_fMov: TPosBaseStream;
+    m_fMti: TPosBaseStream;
     m_Strategy: TPosBaseStrategy;
     FReestimate: TReestimate;
+
     constructor FCreate(const AMoveTreeBase: TMoveTreeBase; AReestimate: TReestimate = nil);
-    procedure FCreateStreams(const strPosFileName, strMovFileName: string);
-    procedure FCreateStreamsForTest;
+    function FGetFPos: TPosBaseStream;
+    function FGetFMov: TPosBaseStream;
+    function FGetFMti: TPosBaseStream;
     procedure FDestroyStreams;
     procedure FSetDBVersion;
     function FCheckDBVersion: Boolean;
@@ -103,8 +117,9 @@ type
     procedure FDestroyStrategy;
     procedure FOnMoveTreeBaseAdded(Sender: TObject);
 
-    property fPos: TPosBaseStream read m_fPos;
-    property fMov: TPosBaseStream read m_fMov;
+    property fPos: TPosBaseStream read FGetFPos;
+    property fMov: TPosBaseStream read FGetFMov;
+    property fMti: TPosBaseStream read FGetFMti;
     property Reestimate: TReestimate read FReestimate;
 
   protected
@@ -148,7 +163,20 @@ type
     wMove: word;
     estimate: LongWord;
   private
-    m_btNextValue: byte; // сл. значение данных
+    m_btNextValue: byte;
+    m_wNextValue: word;
+    function FGetNextValuePos: LongWord;
+    procedure FSetNextValuePos(lwValue: LongWord);
+  public
+    procedure EmptyNode;
+    property NextValue: LongWord read FGetNextValuePos write FSetNextValuePos;
+  end;
+
+  TMoveTreeIndexNode = packed object
+  public
+    lwIndex: LongWord;
+  private
+    m_btNextValue: byte;
     m_wNextValue: word;
     function FGetNextValuePos: LongWord;
     procedure FSetNextValuePos(lwValue: LongWord);
@@ -177,9 +205,28 @@ type
     function RFind(const pos: TChessPosition; var moveEsts: TList): boolean; override;
   end;
 
+  TPosBaseFileStreamsFactory = class(TPosBaseStreamsFactory)
+  private
+    m_strFileNameNoExt: string;
+  public
+    constructor Create(const strFileNameNoExt: string);
+    function CreatePosStream: TPosBaseStream; override;
+    function CreateMovStream: TPosBaseStream; override;
+    function CreateMtiStream: TPosBaseStream; override;
+  end;
+
+  TPosBaseMemoryStreamsFactory = class(TPosBaseStreamsFactory)
+  public
+    constructor Create;
+    function CreatePosStream: TPosBaseStream; override;
+    function CreateMovStream: TPosBaseStream; override;
+    function CreateMtiStream: TPosBaseStream; override;
+  end;
+
 const
   POS_FILE_EXT = 'pos';
   MOV_FILE_EXT = 'mov';
+  MTI_FILE_EXT = 'mti';
 
   DB_VERSION_1 = 1;
   DB_VERSION_2 = 2;
@@ -228,9 +275,8 @@ constructor TPosBase.Create(fileNameNoExt: string; const AMoveTreeBase: TMoveTre
 begin
   inherited Create;
 
-  FCreateStreams(fileNameNoExt + '.' + POS_FILE_EXT,
-    fileNameNoExt + '.' + MOV_FILE_EXT);
-
+  m_StreamsFactory := TPosBaseFileStreamsFactory.Create(fileNameNoExt);
+  
   FCreate(AMoveTreeBase, AReestimate);
 end;
 
@@ -239,7 +285,7 @@ constructor TPosBase.CreateForTest(const AMoveTreeBase: TMoveTreeBase; AReestima
 begin
   inherited Create;
 
-  FCreateStreamsForTest;
+  m_StreamsFactory := TPosBaseMemoryStreamsFactory.Create;
 
   FCreate(AMoveTreeBase, AReestimate);
 end;
@@ -249,6 +295,8 @@ destructor TPosBase.Destroy;
 begin
   FDestroyStrategy;
   FDestroyStreams;
+
+  m_StreamsFactory.Free;
 
   m_MoveTreeBase.OnAdded := nil;
   
@@ -317,22 +365,33 @@ begin
 end;
 
 
-procedure TPosBase.FCreateStreams(const strPosFileName, strMovFileName: string);
+function TPosBase.FGetFPos: TPosBaseStream;
 begin
-  m_fPos := TPosBaseStream.FCreate(strPosFileName, SizeOf(TFieldNode));
-  m_fMov := TPosBaseStream.FCreate(strMovFileName, SizeOf(TMoveNode));
+  if (not Assigned(m_fPos)) then
+    m_fPos := m_StreamsFactory.CreatePosStream;
+  Result := m_fPos;
 end;
 
 
-procedure TPosBase.FCreateStreamsForTest;
+function TPosBase.FGetFMov: TPosBaseStream;
 begin
-  m_fPos := TPosBaseStream.FCreateForTest(SizeOf(TFieldNode));
-  m_fMov := TPosBaseStream.FCreateForTest(SizeOf(TMoveNode));
+  if (not Assigned(m_fMov)) then
+    m_fMov := m_StreamsFactory.CreateMovStream;
+  Result := m_fMov;
+end;
+
+
+function TPosBase.FGetFMti: TPosBaseStream;
+begin
+  if (not Assigned(m_fMti)) then
+    m_fMti := m_StreamsFactory.CreateMtiStream;
+  Result := m_fMti;
 end;
 
 
 procedure TPosBase.FDestroyStreams;
 begin
+  FreeAndNil(m_fMti);
   FreeAndNil(m_fMov);
   FreeAndNil(m_fPos);
 end;
@@ -425,7 +484,6 @@ end;
 ////////////////////////////////////////////////////////////////////////////////
 // TMoveNode
 
-
 function TMoveNode.FGetNextValuePos: LongWord;
 begin
   Result := (m_wNextValue shl 8) or m_btNextValue;
@@ -440,6 +498,27 @@ end;
 
 
 procedure TMoveNode.EmptyNode;
+begin
+  FillChar(self, SizeOf(self), 0);
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TMoveTreeIndexNode
+
+function TMoveTreeIndexNode.FGetNextValuePos: LongWord;
+begin
+  Result := (m_wNextValue shl 8) or m_btNextValue;
+end;
+
+
+procedure TMoveTreeIndexNode.FSetNextValuePos(lwValue: LongWord);
+begin
+  m_btNextValue := lwValue and $FF;
+  m_wNextValue := lwValue shr 8;
+end;
+
+
+procedure TMoveTreeIndexNode.EmptyNode;
 begin
   FillChar(self, SizeOf(self), 0);
 end;
@@ -466,7 +545,7 @@ begin
 end;
 
 
-constructor TPosBaseStream.FCreateForTest(iRecordSize: integer);
+constructor TPosBaseStream.FCreate(iRecordSize: integer);
 begin
   inherited Create;
 
@@ -1125,7 +1204,77 @@ here:
   until (r = 0);
 
   // TODO: Expand moveEsts with data from MoveTreeBase
-  
+
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TPosBaseStreamsFactory
+
+constructor TPosBaseStreamsFactory.Create;
+begin
+  raise Exception.Create(ClassName + ' cannot be instantiated directly!');
+end;
+
+
+constructor TPosBaseStreamsFactory.RCreate;
+begin
+  inherited Create;
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TPosBaseFileStreamsFactory
+
+constructor TPosBaseFileStreamsFactory.Create(const strFileNameNoExt: string);
+begin
+  inherited RCreate;
+  m_strFileNameNoExt := strFileNameNoExt;
+end;
+
+
+function TPosBaseFileStreamsFactory.CreatePosStream: TPosBaseStream;
+begin
+  Result := TPosBaseStream.FCreate(m_strFileNameNoExt + '.' + POS_FILE_EXT,
+    SizeOf(TFieldNode));
+end;
+
+
+function TPosBaseFileStreamsFactory.CreateMovStream: TPosBaseStream;
+begin
+  Result := TPosBaseStream.FCreate(m_strFileNameNoExt + '.' + MOV_FILE_EXT,
+    SizeOf(TMoveNode));
+end;
+
+
+function TPosBaseFileStreamsFactory.CreateMtiStream: TPosBaseStream;
+begin
+  Result := TPosBaseStream.FCreate(m_strFileNameNoExt + '.' + MTI_FILE_EXT,
+    SizeOf(TMoveTreeIndexNode));
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TPosBaseMemoryStreamsFactory
+
+constructor TPosBaseMemoryStreamsFactory.Create;
+begin
+  inherited RCreate;
+end;
+
+
+function TPosBaseMemoryStreamsFactory.CreatePosStream: TPosBaseStream;
+begin
+  Result := TPosBaseStream.FCreate(SizeOf(TFieldNode));
+end;
+
+
+function TPosBaseMemoryStreamsFactory.CreateMovStream: TPosBaseStream;
+begin
+  Result := TPosBaseStream.FCreate(SizeOf(TMoveNode));
+end;
+
+
+function TPosBaseMemoryStreamsFactory.CreateMtiStream: TPosBaseStream;
+begin
+  Result := TPosBaseStream.FCreate(SizeOf(TMoveTreeIndexNode));
 end;
 
 end.
