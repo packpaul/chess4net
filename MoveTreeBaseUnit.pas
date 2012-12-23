@@ -87,7 +87,7 @@ type
     procedure FInit(lwAAddress1, lwAAddress2: LongWord); overload;
   end;
 
-  TMoveTreeAddress = object
+  TMoveTreeAddress = packed object
   public
     lwPosition: LongWord;
     wOffset: Word;
@@ -116,13 +116,13 @@ type
     m_PosAddresses: TObjectList;
     m_iLastItemIndex: integer; // PP: optimization?
     constructor FCreate(const InitialPos: TChessPosition; const InitialAddress: TMoveTreeAddress);
-    function FGet(const Pos: TChessPosition; out AItem: TPosAddressItem): boolean; overload;
-    function FGet(const Pos: TChessPosition; out Addresses: TMoveTreeAddressArr): boolean; overload;
+    function FGet(const Pos: TChessPosition; out AItem: TPosAddressItem): boolean;
     procedure FAdd(const Pos: TChessPosition; const Address: TMoveTreeAddress);
     procedure FClear;
   public
     constructor Create;
     destructor Destroy; override;
+    function Get(const Pos: TChessPosition; out Addresses: TMoveTreeAddressArr): boolean;
   end;
 
   TMovePosAddress = object
@@ -452,7 +452,7 @@ procedure TMoveTreeBase.Find(const Pos: TChessPosition; out Moves: TMoveAbsArr);
 var
   Addresses: TMoveTreeAddressArr;
 begin
-  if (m_PosCache.FGet(Pos, Addresses)) then
+  if (m_PosCache.Get(Pos, Addresses)) then
     RFind(Pos, Addresses, Moves)
   else
     SetLength(Moves, 0);
@@ -696,7 +696,7 @@ begin
 end;
 
 
-function TMoveTreeBaseCache.FGet(const Pos: TChessPosition; out Addresses: TMoveTreeAddressArr): boolean;
+function TMoveTreeBaseCache.Get(const Pos: TChessPosition; out Addresses: TMoveTreeAddressArr): boolean;
 var
   Item: TPosAddressItem;
 begin

@@ -83,6 +83,7 @@ procedure TPosBaseTests.TestAddAGame;
     strlData.Append('[C4N "2"]');
     strlData.Append('');
     strlData.Append('1. e4 Nf6 2. Nc3 Ng8 3. Nb1 Nc6 4. Nf3 Nb8 5. Ng1 e5');
+    strlData.Append('');
     strlData.Append('[C4N "2"]');
     strlData.Append('');
     strlData.Append('1. e4 e5 2. Nf3 d6 3. d4 Bg4 4. de Bf3 5. Qf3 de 6. Bc4 Nf6');

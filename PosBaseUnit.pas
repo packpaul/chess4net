@@ -115,12 +115,12 @@ type
     function FCheckDBVersion: Boolean;
     procedure FCreateStrategy;
     procedure FDestroyStrategy;
-    procedure FOnMoveTreeBaseAdded(Sender: TObject);
 
     property fPos: TPosBaseStream read FGetFPos;
     property fMov: TPosBaseStream read FGetFMov;
     property fMti: TPosBaseStream read FGetFMti;
     property Reestimate: TReestimate read FReestimate;
+    property MoveTreeBase: TMoveTreeBase read m_MoveTreeBase;
 
   protected
     constructor CreateForTest(const AMoveTreeBase: TMoveTreeBase; AReestimate: TReestimate = nil);
@@ -139,6 +139,9 @@ type
   end;
 
 implementation
+
+uses
+  Contnrs;
 
 type
   TFieldNode = packed object
@@ -174,7 +177,7 @@ type
 
   TMoveTreeIndexNode = packed object
   public
-    lwIndex: LongWord;
+    Address: TMoveTreeAddress;
   private
     m_btNextValue: byte;
     m_wNextValue: word;
@@ -195,14 +198,32 @@ type
     function RFind(const pos: TChessPosition; var moveEsts: TList): boolean; override;
   end;
 
+  TPosMTIItem = class
+  private
+    m_pos: TChessPosition;
+    m_lwMoveTreeIndex: LongWord;
+  public
+    constructor Create(const APos: TChessPosition; lwMoveTreeIndex: LongWord);
+    property pos: TChessPosition read m_pos;
+    property MoveTreeIndex: LongWord read m_lwMoveTreeIndex;
+  end;
+
   TPosBaseStrategy2 = class(TPosBaseStrategy)
   private
+    m_PosMTIs: TObjectList;
+    constructor FCreate(ABase: TPosBase);
     procedure FAddPosNodes(const posMove: TPosMove;
       k: integer; r: integer = -1);
     function FGetFieldData(const pos: TChessPosition; iIndex: integer): byte;
+    function FCreateMtiPlaceHolder: LongWord;
+    procedure FOnMoveTreeBaseAdded(Sender: TObject);
+    procedure FWriteDataToMTI(lwIndex: LongWord; MoveTreeAddresses: TMoveTreeAddressArr);
+
   protected
     procedure RAdd(const posMove: TPosMove); override;
     function RFind(const pos: TChessPosition; var moveEsts: TList): boolean; override;
+  public
+    destructor Destroy; override;
   end;
 
   TPosBaseFileStreamsFactory = class(TPosBaseStreamsFactory)
@@ -255,7 +276,6 @@ const
 constructor TPosBase.FCreate(const AMoveTreeBase: TMoveTreeBase; AReestimate: TReestimate = nil);
 begin
   m_MoveTreeBase := AMoveTreeBase;
-  m_MoveTreeBase.OnAdded := FOnMoveTreeBaseAdded;
 
   FReestimate := AReestimate;
     
@@ -298,8 +318,6 @@ begin
 
   m_StreamsFactory.Free;
 
-  m_MoveTreeBase.OnAdded := nil;
-  
   inherited;
 end;
 
@@ -445,12 +463,6 @@ begin
     lstMoveEsts.Free;
   end;
 
-end;
-
-
-procedure TPosBase.FOnMoveTreeBaseAdded(Sender: TObject);
-begin
-  // TODO:
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -960,6 +972,22 @@ end;
 ////////////////////////////////////////////////////////////////////////////////
 // TPosBaseStrategy2
 
+constructor TPosBaseStrategy2.FCreate(ABase: TPosBase);
+begin
+  inherited FCreate(ABase);
+  m_PosMTIs := TObjectList.Create;
+  Base.MoveTreeBase.OnAdded := FOnMoveTreeBaseAdded;
+end;
+
+
+destructor TPosBaseStrategy2.Destroy;
+begin
+  Base.MoveTreeBase.OnAdded := nil;
+  m_PosMTIs.Free;
+  inherited;
+end;
+
+
 procedure TPosBaseStrategy2.RAdd(const posMove: TPosMove);
 var
   k, r, pr, rm, moveSet, moveCount: integer;
@@ -1087,6 +1115,7 @@ procedure TPosBaseStrategy2.FAddPosNodes(const posMove: TPosMove;
 var
   l, nr: integer;
   fn: TFieldNode;
+  lwMoveTreeIndex: LongWord;
   mn: TMoveNode;
   estList: TList;
 begin
@@ -1108,8 +1137,10 @@ begin
     fn.btField := FGetFieldData(posMove.pos, l);
     if l = 66 then
     begin
+      lwMoveTreeIndex := FCreateMtiPlaceHolder;
+      m_PosMTIs.Add(TPosMTIItem.Create(posMove.pos, lwMoveTreeIndex));
       fn.NextNode := Base.fMov.Size;
-      fn.NextValue := $DEADDE; // TODO:
+      fn.NextValue := lwMoveTreeIndex;
     end
     else
     begin
@@ -1134,10 +1165,21 @@ begin
     finally
       estList.Free;
     end;
-
   end;
+
   Base.fMov.SeekEnd;
   Base.fMov.Write(mn);
+end;
+
+
+function TPosBaseStrategy2.FCreateMtiPlaceHolder: LongWord;
+var
+  placeHolderNode: TMoveTreeIndexNode;
+begin
+  Result := Base.fMti.Size;
+  placeHolderNode.EmptyNode;
+  Base.fMti.SeekEnd;
+  Base.fMti.Write(placeHolderNode);
 end;
 
 
@@ -1145,7 +1187,7 @@ function TPosBaseStrategy2.RFind(const pos: TChessPosition; var moveEsts: TList)
 var
   k, r: integer;
   fn: TFieldNode;
-  lwMoveAddress, lwMoveTreeAddress: LongWord;
+  lwMoveIndex, lwMoveTreeIndex: LongWord;
   mn: TMoveNode;
   pme: PMoveEst;
 label
@@ -1186,11 +1228,11 @@ here:
   if (not Assigned(moveEsts)) then
     exit;
 
-  lwMoveAddress := fn.NextNode;
-  lwMoveTreeAddress := fn.NextValue;
+  lwMoveIndex := fn.NextNode;
+  lwMoveTreeIndex := fn.NextValue;
 
   // Filling the moves list
-  r := lwMoveAddress;
+  r := lwMoveIndex;
   repeat
     Base.fMov.SeekRec(r);
     Base.fMov.Read(mn);
@@ -1205,6 +1247,48 @@ here:
 
   // TODO: Expand moveEsts with data from MoveTreeBase
 
+end;
+
+
+procedure TPosBaseStrategy2.FOnMoveTreeBaseAdded(Sender: TObject);
+var
+  i: integer;
+  Item: TPosMTIItem;
+  MoveTreeAddresses: TMoveTreeAddressArr;
+begin
+  for i := 0 to m_PosMTIs.Count - 1 do
+  begin
+    Item := TPosMTIItem(m_PosMTIs[i]);
+    Base.MoveTreeBase.PosCache.Get(Item.pos, MoveTreeAddresses);
+    Assert(Length(MoveTreeAddresses) > 0);
+    FWriteDataToMTI(Item.MoveTreeIndex, MoveTreeAddresses);
+  end;
+
+  m_PosMTIs.Clear;
+end;
+
+
+procedure TPosBaseStrategy2.FWriteDataToMTI(lwIndex: LongWord;
+  MoveTreeAddresses: TMoveTreeAddressArr);
+var
+  i: integer;
+  MTINode: TMoveTreeIndexNode;
+begin
+  Base.fMti.SeekRec(lwIndex);
+
+  for i := Low(MoveTreeAddresses) to High(MoveTreeAddresses) do
+  begin
+    MTINode.Address := MoveTreeAddresses[i];
+    if (i = High(MoveTreeAddresses)) then
+      MTINode.NextValue := 0
+    else
+      MTINode.NextValue := Base.fMti.Size;
+
+    Base.fMti.Write(MTINode);
+
+    if (i = Low(MoveTreeAddresses)) then
+      Base.fMti.SeekEnd;
+  end;
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1275,6 +1359,17 @@ end;
 function TPosBaseMemoryStreamsFactory.CreateMtiStream: TPosBaseStream;
 begin
   Result := TPosBaseStream.FCreate(SizeOf(TMoveTreeIndexNode));
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TPosMTIItem
+
+constructor TPosMTIItem.Create(const APos: TChessPosition;
+  lwMoveTreeIndex: LongWord);
+begin
+  inherited Create;
+  m_pos := APos;
+  m_lwMoveTreeIndex := lwMoveTreeIndex;
 end;
 
 end.
