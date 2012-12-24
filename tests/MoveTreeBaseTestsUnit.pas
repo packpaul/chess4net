@@ -70,7 +70,19 @@ procedure FillBaseWithInitialData(ABase: TMoveTreeBase);
 
     strlData.Append('[C4N "2"]');
     strlData.Append('');
+    strlData.Append('1. e4 e5');
+    strlData.Append('');
+    strlData.Append('[C4N "2"]');
+    strlData.Append('');
+    strlData.Append('1. e4 e6');
+    strlData.Append('');
+    strlData.Append('[C4N "2"]');
+    strlData.Append('');
     strlData.Append('1. e4 e5 2. Bc4');
+    strlData.Append('');
+    strlData.Append('[C4N "2"]');
+    strlData.Append('');
+    strlData.Append('1. e4 e5 2. Bc4 Bc5');
     strlData.Append('');
     strlData.Append('[C4N "2"]');
     strlData.Append('');
@@ -104,7 +116,7 @@ var
   strlData: TStringList;
   PGNTraverser: TPGNTraverser;
   MoveTreeCollector: TMoveTreeCollector;
-begin // .FFillBaseWithInitialData
+begin // .FillBaseWithInitialData
   strlData := nil;
   PGNTraverser := nil;
   try

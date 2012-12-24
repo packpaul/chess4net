@@ -88,7 +88,7 @@ begin
   else
     MoveTreeCollector := nil;
 
-  with TPGNTraverser.Create(Input, [MoveTreeCollector, PosBaseCollector]) do
+  with TPGNTraverser.Create(Input, [PosBaseCollector, MoveTreeCollector]) do
   try
     ProceedColors := color;
     PlayerName := strPlayerName;

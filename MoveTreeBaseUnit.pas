@@ -206,6 +206,7 @@ type
     function RF2(const DataBag: TDataBag): boolean; virtual; abstract;
     function RF3: boolean; virtual; abstract;
     procedure RP4; virtual;
+    procedure RP5; virtual;
 
     property Position: LongWord read m_lwPosition;
     property LastPosition: LongWord read m_lwLastPosition;
@@ -221,6 +222,7 @@ type
     function RF1(const DataBag: TDataBag): boolean; override;
     function RF2(const DataBag: TDataBag): boolean; override;
     function RF3: boolean; override;
+    procedure RP5; override;
   public
     function Find(lwPosition: LongWord; const DataIterator: TMovesDataIterator;
       out InsertionPoint: TInsertionPoint): boolean;
@@ -410,6 +412,7 @@ begin
     m_BaseStream.WriteBagToStream(DataIterator.GetNextDataBag);
   end;
   m_BaseStream.WriteBagToStream(END_DATA_TAG);
+  m_BaseStream.WriteBagToStream(END_DATA_TAG); // a place holder for far jumps
 end;
 
 
@@ -837,7 +840,7 @@ begin
   lwJumpPosition := lwPositionBase + Data.FToNearPointer;
 
   FReadBagFromStream(lwJumpPosition, DataBag);
-  Assert(DataBag.FIsMove);
+  Assert(DataBag.FIsMove or DataBag.FIsEndDataTag);
 
   Result := RF1(DataBag);
   if (Result) then
@@ -874,7 +877,7 @@ begin
   lwJumpPosition := lwPositionBase + _TDataBag.FToFarPointer(HiData, LowData);
 
   FReadBagFromStream(lwJumpPosition, DataBag);
-  Assert(DataBag.FIsMove);
+  Assert(DataBag.FIsMove or DataBag.FIsEndDataTag);
 
   FReadBagFromStream(NextDataBag);
   m_lwLastPosition := lwJumpPosition + 1;
@@ -938,7 +941,10 @@ begin
         continue;
     end
     else if (DataBagFromStream.FIsEndDataTag) then
-      break
+    begin
+      RP5;
+      exit;
+    end
     else
       Assert(FALSE);
 
@@ -957,6 +963,11 @@ end;
 
 
 procedure TDataFinder.RP4;
+begin
+end;
+
+
+procedure TDataFinder.RP5;
 begin
 end;
 
@@ -979,7 +990,7 @@ function TInsertionPointDataFinder.RF1(const DataBag: TDataBag): boolean;
 var
   bRes: boolean;
 begin
-  Result := DataBag.FEquals(m_DataIterator.GetLastDataBag);
+  Result := (not DataBag.FIsEndDataTag) and DataBag.FEquals(m_DataIterator.GetLastDataBag);
   if (not Result) then
     exit;
 
@@ -993,7 +1004,13 @@ function TInsertionPointDataFinder.RF2(const DataBag: TDataBag): boolean;
 begin
   Result := RF1(DataBag);
   if (not Result) then
-    m_InsertionPoint.FInit(LastPosition, Position);
+    RP5;
+end;
+
+
+procedure TInsertionPointDataFinder.RP5;
+begin
+  m_InsertionPoint.FInit(LastPosition, Position);
 end;
 
 
@@ -1039,12 +1056,16 @@ begin
     dec(m_wMovesCount)
   else
   begin
-    with DataBag.FToMove do
-      bRes := ChessRulesEngine.DoMove(i0, j0, i, j, prom_fig);
-    Assert(bRes);
-    FCollectDatas;
-    ChessRulesEngine.TakeBack;
+    if (DataBag.FIsMove) then
+    begin
+      with DataBag.FToMove do
+        bRes := ChessRulesEngine.DoMove(i0, j0, i, j, prom_fig);
+      Assert(bRes);
+      FCollectDatas;
+      ChessRulesEngine.TakeBack;
+    end;
   end;
+  
 end;
 
 
