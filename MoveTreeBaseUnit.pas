@@ -93,6 +93,8 @@ type
     wOffset: Word;
   private
     procedure FInit(lwAPosition: LongWord; wAOffset: Word);
+  public
+    function Equals(const Other: TMoveTreeAddress): boolean;
   end;
 
   TMoveTreeAddressArr = array of TMoveTreeAddress;
@@ -402,8 +404,8 @@ begin
       raise EMoveTreeBase.Create('Base file has become too big!');
   end;
 
-  m_BaseStream.WriteBagToStreamEnd(DataIterator.GetLastDataBag);
   Address.FInit(m_BaseStream.Size, 0);
+  m_BaseStream.WriteBagToStreamEnd(DataIterator.GetLastDataBag);
   while (DataIterator.HasNext) do
   begin
     with DataIterator.GetLastMove do
@@ -796,6 +798,12 @@ procedure TMoveTreeAddress.FInit(lwAPosition: LongWord; wAOffset: Word);
 begin
   self.lwPosition := lwAPosition;
   self.wOffset := wAOffset;
+end;
+
+
+function TMoveTreeAddress.Equals(const Other: TMoveTreeAddress): boolean;
+begin
+  Result := ((lwPosition = Other.lwPosition) and (wOffset = Other.wOffset));
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
