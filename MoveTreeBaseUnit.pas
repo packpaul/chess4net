@@ -205,7 +205,7 @@ type
     function RF1(const DataBag: TDataBag): boolean; virtual; abstract;
     function RF2(const DataBag: TDataBag): boolean; virtual; abstract;
     function RF3: boolean; virtual; abstract;
-    procedure RP4; virtual;
+    procedure RP4; virtual; abstract;
     procedure RP5; virtual;
 
     property Position: LongWord read m_lwPosition;
@@ -218,10 +218,12 @@ type
   private
     m_DataIterator: TMovesDataIterator;
     m_InsertionPoint: TInsertionPoint;
+    m_Address: TMoveTreeAddress;
   protected
     function RF1(const DataBag: TDataBag): boolean; override;
     function RF2(const DataBag: TDataBag): boolean; override;
     function RF3: boolean; override;
+    procedure RP4; override;
     procedure RP5; override;
   public
     function Find(lwPosition: LongWord; const DataIterator: TMovesDataIterator;
@@ -962,11 +964,6 @@ begin
 end;
 
 
-procedure TDataFinder.RP4;
-begin
-end;
-
-
 procedure TDataFinder.RP5;
 begin
 end;
@@ -979,6 +976,7 @@ function TInsertionPointDataFinder.Find(lwPosition: LongWord;
 begin
   m_DataIterator := DataIterator;
   m_InsertionPoint.FInit(lwPosition, lwPosition + 1);
+  m_Address.FInit(lwPosition, 0);
 
   Result := RFind(lwPosition);
 
@@ -997,6 +995,8 @@ begin
   with m_DataIterator.GetLastMove do
     bRes := Base.ChessRulesEngine.DoMove(i0, j0, i, j, prom_fig);
   Assert(bRes);
+
+  inc(m_Address.wOffset);
 end;
 
 
@@ -1004,13 +1004,20 @@ function TInsertionPointDataFinder.RF2(const DataBag: TDataBag): boolean;
 begin
   Result := RF1(DataBag);
   if (not Result) then
-    RP5;
+    m_InsertionPoint.FInit(LastPosition, Position);
+end;
+
+
+procedure TInsertionPointDataFinder.RP4;
+begin
+  m_Address.FInit(LastPosition, 0);
 end;
 
 
 procedure TInsertionPointDataFinder.RP5;
 begin
   m_InsertionPoint.FInit(LastPosition, Position);
+  Base.PosCache.FAdd(Base.ChessRulesEngine.Position^, m_Address);
 end;
 
 
