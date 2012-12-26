@@ -1002,9 +1002,9 @@ end;
 
 procedure TPosBaseStrategy2.RAdd(const posMove: TPosMove);
 var
-  k, r, pr, rm, moveSet, moveCount: integer;
+  k, r, pr, moveSet, moveCount: integer;
   fn: TFieldNode;
-  lwMoveTreeIndex: LongWord;
+  lwMovesIndex, lwMoveTreeIndex: LongWord;
   mv: word;
   mn: TMoveNode;
   enc_mv: word;
@@ -1039,14 +1039,16 @@ begin
     r := fn.NextNode;
   end;
 
-  lwMoveTreeIndex := fn.NextValue;
+  lwMovesIndex := fn.NextNode - 1;
+  lwMoveTreeIndex := fn.NextValue - 1;
+  
   m_PosMTIs.Add(TPosMTIItem.Create(posMove.pos, lwMoveTreeIndex, FALSE));
 
   moveCount := 0;
   moveSet := -1;
   estList := TList.Create;
   try
-    rm := r;
+    r := lwMovesIndex;
     enc_mv := REncodeMove(posMove.move);
     repeat
       pr := r;
@@ -1062,7 +1064,7 @@ begin
 
       inc(moveCount);
       r := mn.NextValue;
-    until r = 0;
+    until (r = 0);
 
     if (moveSet < 0) then // there's no move in the list, hence adding it
     begin
@@ -1088,15 +1090,15 @@ begin
       Base.Reestimate(estList, moveSet);
       for k := 0 to estList.Count - 1 do
       begin
-        Base.fMov.SeekRec(rm);
+        Base.fMov.SeekRec(lwMovesIndex);
         Base.fMov.Read(mn);
         if (mn.estimate <> LongWord(estList[k])) then
         begin
           mn.estimate := LongWord(estList[k]);
-          Base.fMov.SeekRec(rm);
+          Base.fMov.SeekRec(lwMovesIndex);
           Base.fMov.Write(mn);
         end;
-        rm := mn.NextValue;
+        lwMovesIndex := mn.NextValue;
       end;
     end;
 
@@ -1155,8 +1157,8 @@ begin
     begin
       lwMoveTreeIndex := FCreateMtiPlaceHolder;
       m_PosMTIs.Add(TPosMTIItem.Create(posMove.pos, lwMoveTreeIndex));
-      fn.NextNode := Base.fMov.Size;
-      fn.NextValue := lwMoveTreeIndex;
+      fn.NextNode := Base.fMov.Size + 1;
+      fn.NextValue := lwMoveTreeIndex + 1;
     end
     else
     begin
@@ -1200,15 +1202,82 @@ end;
 
 
 function TPosBaseStrategy2.RFind(const pos: TChessPosition; var moveEsts: TList): boolean;
+
+  procedure NFillMoveListFromMov(lwIndex: LongWord);
+  var
+    r: integer;
+    mn: TMoveNode;
+    pme: PMoveEst;
+  begin
+    r := lwIndex;
+    repeat
+      Base.fMov.SeekRec(r);
+      Base.fMov.Read(mn);
+
+      new(pme);
+      pme^.move := RDecodeMove(mn.wMove);
+      pme^.estimate := mn.estimate;
+      moveEsts.Add(pme);
+
+      r := mn.NextValue;
+    until (r = 0);
+  end;
+
+  procedure NFillMoveListFromMoveTree(lwIndex: LongWord);
+  const
+    DEFAULT_ADDRESSES_SIZE = 5;
+  var
+    Addresses: TMoveTreeAddressArr;
+    i, j: integer;
+    MTINode: TMoveTreeIndexNode;
+    Moves: TMoveAbsArr;
+    bAdd: boolean;
+    pme: PMoveEst;
+  begin
+    SetLength(Addresses, DEFAULT_ADDRESSES_SIZE);
+
+    i := Low(Addresses);
+    repeat
+      Base.fMti.SeekRec(lwIndex);
+      Base.fMti.Read(MTINode);
+      if (i = Length(Addresses)) then
+        SetLength(Addresses, Length(Addresses) + Length(Addresses));
+      Addresses[i] := MTINode.Address;
+      inc(i);
+      lwIndex := MTINode.NextValue;
+    until (lwIndex = 0);
+    SetLength(Addresses, i);
+
+    Base.MoveTreeBase.Find(pos, Addresses, Moves);
+
+    for i := Low(Moves) to High(Moves) do
+    begin
+      bAdd := TRUE;
+      for j := 0 to moveEsts.Count - 1 do
+      begin
+        if (Moves[i].Equals(PMoveEst(moveEsts[j]).move)) then
+        begin
+          bAdd := FALSE;
+          break;
+        end;
+      end;
+      if (bAdd) then
+      begin
+        new(pme);
+        pme^.move := Moves[i];
+        pme^.estimate := 0;
+        moveEsts.Add(pme);
+      end;
+    end;
+
+  end;
+
 var
   k, r: integer;
   fn: TFieldNode;
-  lwMoveIndex, lwMoveTreeIndex: LongWord;
-  mn: TMoveNode;
-  pme: PMoveEst;
 label
   here;
-begin
+begin // .RFind
   Result := FALSE;
 
   if (Assigned(moveEsts)) then
@@ -1244,25 +1313,11 @@ here:
   if (not Assigned(moveEsts)) then
     exit;
 
-  lwMoveIndex := fn.NextNode;
-  lwMoveTreeIndex := fn.NextValue;
+  if (fn.NextNode > 0) then
+    NFillMoveListFromMov(fn.NextNode - 1);
 
-  // Filling the moves list
-  r := lwMoveIndex;
-  repeat
-    Base.fMov.SeekRec(r);
-    Base.fMov.Read(mn);
-
-    new(pme);
-    pme^.move := RDecodeMove(mn.wMove);
-    pme^.estimate := mn.estimate;
-    moveEsts.Add(pme);
-
-    r := mn.NextValue;
-  until (r = 0);
-
-  // TODO: Expand moveEsts with data from MoveTreeBase
-
+  if (fn.NextValue > 0) then
+    NFillMoveListFromMoveTree(fn.NextValue - 1);
 end;
 
 
@@ -1288,18 +1343,20 @@ end;
 
 procedure TPosBaseStrategy2.FWriteDataToMTI(lwIndex: LongWord;
   MoveTreeAddresses: TMoveTreeAddressArr);
+var
+  Addresses: TMoveTreeAddressArr;
 
-  procedure NCheckAndRemoveFromAddresses(const Address: TMoveTreeAddress);
+  procedure NThinOutAddresses(const Address: TMoveTreeAddress);
   var
     i, j: integer;
   begin
-    for i := Low(MoveTreeAddresses) to High(MoveTreeAddresses) do
+    for i := Low(Addresses) to High(Addresses) do
     begin
-      if (MoveTreeAddresses[i].Equals(Address)) then
+      if (Addresses[i].Equals(Address)) then
       begin
-        for j := Succ(i) to High(MoveTreeAddresses) do
-          MoveTreeAddresses[Pred(j)] := MoveTreeAddresses[j];
-        SetLength(MoveTreeAddresses, Length(MoveTreeAddresses) - 1);
+        for j := Succ(i) to High(Addresses) do
+          Addresses[Pred(j)] := Addresses[j];
+        SetLength(Addresses, Length(Addresses) - 1);
         exit;
       end;
     end;
@@ -1312,26 +1369,30 @@ begin // .FWriteDataToMTI
   if (Length(MoveTreeAddresses) = 0) then
     exit;
 
+  SetLength(Addresses, Length(MoveTreeAddresses));
+  for i := Low(Addresses) to High(Addresses) do
+    Addresses[i] := MoveTreeAddresses[i];
+
   repeat
     Base.fMti.SeekRec(lwIndex);
     Base.fMti.Read(MTINode);
-    NCheckAndRemoveFromAddresses(MTINode.Address);
-    if (Length(MoveTreeAddresses) = 0) then
+    NThinOutAddresses(MTINode.Address);
+    if (Length(Addresses) = 0) then
       exit;
     if (MTINode.NextValue = 0) then
       break;
     lwIndex := MTINode.NextValue;
   until FALSE;
 
-  k := Low(MoveTreeAddresses);
-  
+  k := Low(Addresses);
+
   if (MTINode.IsPlaceHolder) then
   begin
-    MTINode.Address := MoveTreeAddresses[k];
+    MTINode.Address := Addresses[k];
     k := Succ(k);
   end;
 
-  if (k <= High(MoveTreeAddresses)) then
+  if (k <= High(Addresses)) then
     MTINode.NextValue := Base.fMti.Size;
 
   Base.fMti.SeekRec(lwIndex);
@@ -1339,10 +1400,10 @@ begin // .FWriteDataToMTI
 
   Base.fMti.SeekEnd;
 
-  for i := k to High(MoveTreeAddresses) do
+  for i := k to High(Addresses) do
   begin
-    MTINode.Address := MoveTreeAddresses[i];
-    if (k < High(MoveTreeAddresses)) then
+    MTINode.Address := Addresses[i];
+    if (k < High(Addresses)) then
       MTINode.NextValue := Base.fMti.Size + 1
     else
       MTINode.NextValue := 0;

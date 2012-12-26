@@ -120,11 +120,11 @@ type
     constructor FCreate(const InitialPos: TChessPosition; const InitialAddress: TMoveTreeAddress);
     function FGet(const Pos: TChessPosition; out AItem: TPosAddressItem): boolean;
     procedure FAdd(const Pos: TChessPosition; const Address: TMoveTreeAddress);
-    procedure FClear;
   public
     constructor Create;
     destructor Destroy; override;
     function Get(const Pos: TChessPosition; out Addresses: TMoveTreeAddressArr): boolean;
+    procedure Clear;
   end;
 
   TMovePosAddress = object
@@ -171,14 +171,15 @@ type
   protected
     constructor CreateForTest;
     constructor CreateForTestFarJump;
-    procedure RFind(const Pos: TChessPosition; const Addresses: TMoveTreeAddressArr; out Moves: TMoveAbsArr);
 
   public
     constructor Create(const strBaseName: string);
     destructor Destroy; override;
     class function Exists(const strBaseName: string): boolean;
     procedure Add(const Moves: TMoveAbsArr);
-    procedure Find(const Pos: TChessPosition; out Moves: TMoveAbsArr);
+    procedure Find(const Pos: TChessPosition; const Addresses: TMoveTreeAddressArr;
+      out Moves: TMoveAbsArr); overload;
+    procedure Find(const Pos: TChessPosition; out Moves: TMoveAbsArr); overload;
 
     property OnAdded: TNotifyEvent write FSetOnAdded;
     property PosCache: TMoveTreeBaseCache read m_PosCache;
@@ -335,7 +336,7 @@ var
   Iterator: TMovesDataIterator;
   InsertionPoint: TInsertionPoint;
 begin
-  m_PosCache.FClear;
+  m_PosCache.Clear;
 
   if (Length(Moves) = 0) then
     exit;
@@ -460,13 +461,13 @@ var
   Addresses: TMoveTreeAddressArr;
 begin
   if (m_PosCache.Get(Pos, Addresses)) then
-    RFind(Pos, Addresses, Moves)
+    Find(Pos, Addresses, Moves)
   else
     SetLength(Moves, 0);
 end;
 
 
-procedure TMoveTreeBase.RFind(const Pos: TChessPosition;
+procedure TMoveTreeBase.Find(const Pos: TChessPosition;
   const Addresses: TMoveTreeAddressArr; out Moves: TMoveAbsArr);
 var
   Datas: TMovePosAddressArr;
@@ -692,7 +693,7 @@ begin
   m_InitialAddress := InitialAddress;
   m_PosAddresses := TObjectList.Create;
 
-  FClear;
+  Clear;
 end;
 
 
@@ -754,13 +755,14 @@ begin
     Item.FAddAddress(Address)
   else
   begin
-    m_PosAddresses.Add(TPosAddressItem.FCreate(Pos, Address));
+    Item := TPosAddressItem.FCreate(Pos, Address);
+    m_PosAddresses.Add(Item);
     m_iLastItemIndex := m_PosAddresses.Count - 1;
   end;
 end;
 
 
-procedure TMoveTreeBaseCache.FClear;
+procedure TMoveTreeBaseCache.Clear;
 begin
   m_PosAddresses.Clear;
   m_iLastItemIndex := 0;
@@ -786,7 +788,14 @@ end;
 
 
 procedure TPosAddressItem.FAddAddress(const AAddress: TMoveTreeAddress);
+var
+  i: integer;
 begin
+  for i := Low(m_Addresses) to High(m_Addresses) do
+  begin
+    if (m_Addresses[i].Equals(AAddress)) then
+      exit;
+  end;
   SetLength(m_Addresses, Length(m_Addresses) + 1);
   m_Addresses[High(m_Addresses)] := AAddress;
 end;
