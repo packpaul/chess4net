@@ -383,6 +383,14 @@ end;
 function TPosBase.FCheckDBVersion: Boolean;
 begin
   Result := (m_wDBVersion <= DB_VERSION_2);
+  if (not Result) then
+    exit;
+
+  if (m_wDBVersion = DB_VERSION_2) then
+  begin
+    if (not Assigned(m_MoveTreeBase)) then
+      raise EPosBaseException.Create('No Move Tree Base is provided!');
+  end;
 end;
 
 

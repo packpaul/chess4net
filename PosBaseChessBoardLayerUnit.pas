@@ -294,16 +294,19 @@ end;
 procedure TPosBaseChessBoardLayer.FRecreateExtBases;
 begin
   FFreeExtBases;
-  m_ExtPosBase := TPosBase.Create(m_strExtPosBaseName);
   if (TMoveTreeBase.Exists(m_strExtPosBaseName)) then
-    m_ExtMoveTreeBase := TMoveTreeBase.Create(m_strExtPosBaseName);
+    m_ExtMoveTreeBase := TMoveTreeBase.Create(m_strExtPosBaseName)
+  else
+    m_ExtMoveTreeBase := nil;
+
+  m_ExtPosBase := TPosBase.Create(m_strExtPosBaseName, m_ExtMoveTreeBase);
 end;
 
 
 procedure TPosBaseChessBoardLayer.FFreeExtBases;
 begin
-  FreeAndNil(m_ExtMoveTreeBase);
   FreeAndNil(m_ExtPosBase);
+  FreeAndNil(m_ExtMoveTreeBase);
 end;
 
 
