@@ -11,12 +11,12 @@ interface
 uses
   SysUtils, Contnrs,
   //
-  PGNTraverserUnit, ChessRulesEngine, MoveTreeBaseUnit;
+  NonRefInterfacedObjectUnit, PGNTraverserUnit, ChessRulesEngine, MoveTreeBaseUnit;
 
 type
   EMoveTreeCollector = class(Exception);
 
-  TMoveTreeCollector = class(TInterfacedObject, IPGNTraverserVisitable)
+  TMoveTreeCollector = class(TNonRefInterfacedObject, IPGNTraverserVisitable)
   private
     m_DataBase: TMoveTreeBase;
     m_bOwnsDataBase: boolean;

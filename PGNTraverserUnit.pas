@@ -76,7 +76,7 @@ type
     property PlayerName: string read m_strPlayerName write m_strPlayerName;
     property ProceedColors: TFigureColors read m_ProceedColors write m_ProceedColors;
     property NumberOfGamesViewed: integer read n_game;
-    property NumberofPositionsViewed: integer read n_pos;
+    property NumberOfPositionsViewed: integer read n_pos;
     property IncludeVariants: boolean read m_bIncludeVariants write m_bIncludeVariants;
   end;
 

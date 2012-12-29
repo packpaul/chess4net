@@ -9,18 +9,43 @@ unit PGNProcessorUnit;
 interface
 
 uses
-  PGNTraverserUnit, PosBaseCollectorUnit;
+  PGNTraverserUnit, PosBaseCollectorUnit, MoveTreeCollectorUnit, PosBaseUnit;
 
 type
   TPGNProcessor = class
   private
-    constructor FCreate;
-    procedure FProceedPGN(const strBasename: string; bVariants, bChngest: boolean; bUniquePos: boolean;
-      const color: TFigureColors; iNumPlys: integer; const strPlayerName: string;
-      opening: TOpening; bStatPrunning: boolean; strRefBaseName: string; bMoveTreeDB: boolean);
+    m_strBasename: string;
+    m_bVariants: boolean;
+    m_bChngest: boolean;
+    m_bUniquePos: boolean;
+    m_Color: TFigureColors;
+    m_iNumPlys: integer;
+    m_strPlayerName: string;
+    m_Opening: TOpening;
+    m_bStatPrunning: boolean;
+    m_strRefBaseName: string;
+    m_bMoveTreeDB: boolean;
+
+    m_PosBaseCollector: TPosBaseCollector;
+    m_MoveTreeCollector: TMoveTreeCollector;
+    m_RefPosBase: TPosBase;
+
+    constructor FCreate(const strBasename: string; bVariants, bChngest: boolean; bUniquePos: boolean;
+      const Color: TFigureColors; iNumPlys: integer; const strPlayerName: string;
+      Opening: TOpening; bStatPrunning: boolean; strRefBaseName: string; bMoveTreeDB: boolean);
+
+    function FGetPosBaseCollector: TPosBaseCollector;
+    function FGetMoveTreeCollector: TMoveTreeCollector;
+
+    procedure FProceedPGN;
+
+    property PosBaseCollector: TPosBaseCollector read FGetPosBaseCollector;
+    property MoveTreeCollector: TMoveTreeCollector read FGetMoveTreeCollector;
 
   public
     constructor Create;
+    destructor Destroy; override;
+
     class procedure Proceed(const basename: string; variants, chngest: boolean; uniquePos: boolean;
                             const color: TFigureColors; numPlys: integer; const player_name: string;
                             opening: TOpening; statPrunning: boolean; refBaseName: string;
@@ -30,9 +55,7 @@ type
 implementation
 
 uses
-  SysUtils,
-  //
-  MoveTreeCollectorUnit;
+  SysUtils;
 
 ////////////////////////////////////////////////////////////////////////////////
 // TPGNProcessor
@@ -43,9 +66,69 @@ begin
 end;
 
 
-constructor TPGNProcessor.FCreate;
+constructor TPGNProcessor.FCreate(const strBasename: string; bVariants, bChngest: boolean; bUniquePos: boolean;
+  const Color: TFigureColors; iNumPlys: integer; const strPlayerName: string;
+  Opening: TOpening; bStatPrunning: boolean; strRefBaseName: string; bMoveTreeDB: boolean);
 begin
   inherited Create;
+
+  m_strBasename := strBasename;
+  m_bVariants := bVariants;
+  m_bChngest := bChngest;
+  m_bUniquePos := bUniquePos;
+  m_Color := color;
+  m_iNumPlys := iNumPlys;
+  m_strPlayerName := strPlayerName;
+  m_Opening := opening;
+  m_bStatPrunning := bStatPrunning;
+  m_strRefBaseName := strRefBaseName;
+  m_bMoveTreeDB := bMoveTreeDB;
+end;
+
+
+destructor TPGNProcessor.Destroy;
+begin
+  m_PosBaseCollector.Free;
+  m_MoveTreeCollector.Free;
+  m_RefPosBase.Free;
+
+  inherited;
+end;
+
+
+function TPGNProcessor.FGetPosBaseCollector: TPosBaseCollector;
+begin
+  if (not Assigned(m_PosBaseCollector)) then
+  begin
+    m_RefPosBase := TPosBase.Create(m_strRefBaseName);
+    m_PosBaseCollector := TPosBaseCollector.Create(m_strBasename, m_RefPosBase);
+    with m_PosBaseCollector do
+    begin
+      ProceedColors := m_Color;
+      PlayerName := m_strPlayerName;
+      ChangeEstimation := m_bChngest;
+      UseUniquePositions := m_bUniquePos;
+      GeneratedOpening := m_Opening;
+      UseStatisticalPrunning := m_bStatPrunning;
+      UseNumberOfPlys := m_iNumPlys;
+      if (m_bMoveTreeDB) then
+        PosBaseCollector.MoveTreeBase := MoveTreeCollector.DataBase;
+    end;
+  end;
+
+  Result := m_PosBaseCollector;
+end;
+
+
+function TPGNProcessor.FGetMoveTreeCollector: TMoveTreeCollector;
+begin
+  if (not Assigned(m_MoveTreeCollector)) then
+  begin
+    if (m_bMoveTreeDB) then
+      m_MoveTreeCollector := TMoveTreeCollector.Create(m_strBasename);
+  end;
+
+  Result := m_MoveTreeCollector;
 end;
 
 
@@ -53,53 +136,32 @@ class procedure TPGNProcessor.Proceed(const basename: string; variants, chngest:
   const color: TFigureColors; numPlys: integer; const player_name: string;
   opening: TOpening; statPrunning: boolean; refBaseName: string; bMoveTreeDB: boolean);
 begin
-  with TPGNProcessor.FCreate do
+  with TPGNProcessor.FCreate(basename, variants, chngest, uniquePos, color,
+    numPlys, player_name, opening, statPrunning, refBaseName, bMoveTreeDB) do
   try
-    FProceedPGN(basename, variants, chngest, uniquePos, color, numPlys, player_name,
-      opening, statPrunning, refBaseName, bMoveTreeDB);
+    FProceedPGN;
   finally
     Free;
   end;
 end;
 
 
-procedure TPGNProcessor.FProceedPGN(const strBasename: string; bVariants, bChngest: boolean; bUniquePos: boolean;
-      const color: TFigureColors; iNumPlys: integer; const strPlayerName: string;
-      opening: TOpening; bStatPrunning: boolean; strRefBaseName: string; bMoveTreeDB: boolean);
-var
-  PosBaseCollector: TPosBaseCollector;
-  MoveTreeCollector: TMoveTreeCollector;
+procedure TPGNProcessor.FProceedPGN;
 begin
-  PosBaseCollector := TPosBaseCollector.Create(strBasename, strRefBaseName);
-  PosBaseCollector.ProceedColors := color;
-  PosBaseCollector.PlayerName := strPlayerName;
-  PosBaseCollector.ChangeEstimation := bChngest;
-  PosBaseCollector.UseUniquePositions := bUniquePos;
-  PosBaseCollector.GeneratedOpening := opening;
-  PosBaseCollector.UseStatisticalPrunning := bStatPrunning;
-  PosBaseCollector.UseNumberOfPlys := iNumPlys;
-
-  if (bMoveTreeDB) then
-  begin
-    MoveTreeCollector := TMoveTreeCollector.Create(strBasename);
-    Assert(Assigned(MoveTreeCollector.DataBase));
-    PosBaseCollector.MoveTreeBase := MoveTreeCollector.DataBase;
-  end
-  else
-    MoveTreeCollector := nil;
-
   with TPGNTraverser.Create(Input, [PosBaseCollector, MoveTreeCollector]) do
   try
-    ProceedColors := color;
-    PlayerName := strPlayerName;
-    IncludeVariants := bVariants;
+    ProceedColors := m_Color;
+    PlayerName := m_strPlayerName;
+    IncludeVariants := m_bVariants;
+
     Traverse;
+
     writeln('Games viewed: ', NumberOfGamesViewed);
-    writeln('Positions viewed: ', NumberofPositionsViewed);
+    writeln('Positions viewed: ', NumberOfPositionsViewed);
   finally
     Free;
   end;
-
+  
 end;
 
 end.

@@ -172,6 +172,8 @@ type
     procedure FSetNextValuePos(lwValue: LongWord);
   public
     procedure EmptyNode;
+    procedure InitEmptyMove;
+    function IsEmptyMove: boolean;
     property NextValue: LongWord read FGetNextValuePos write FSetNextValuePos;
   end;
 
@@ -221,6 +223,7 @@ type
     function FCreateMtiPlaceHolder: LongWord;
     procedure FOnMoveTreeBaseAdded(Sender: TObject);
     procedure FWriteDataToMTI(lwIndex: LongWord; MoveTreeAddresses: TMoveTreeAddressArr);
+    procedure FAddMove(lwMovesIndex: LongWord; const Move: TMoveAbs);
 
   protected
     procedure RAdd(const posMove: TPosMove); override;
@@ -522,7 +525,21 @@ end;
 
 procedure TMoveNode.EmptyNode;
 begin
-  FillChar(self, SizeOf(self), 0);
+  InitEmptyMove;
+  NextValue := 0;
+end;
+
+
+procedure TMoveNode.InitEmptyMove;
+begin
+  wMove := 0;
+  estimate := 0;
+end;
+
+
+function TMoveNode.IsEmptyMove: boolean;
+begin
+  Result := ((wMove = 0) and (estimate = 0));
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -819,8 +836,8 @@ var
       finally
         estList.Free;
       end;
-
     end;
+    
     Base.fMov.SeekEnd;
     Base.fMov.Write(mn);
   end;
@@ -900,12 +917,13 @@ begin   // .RAdd
       Base.fMov.SeekRec(r);
       Base.fMov.Write(mn);
 
-      if Assigned(Base.Reestimate) then
+      if (Assigned(Base.Reestimate)) then
         estList.Add(Pointer(mn.estimate));
+        
       moveSet := moveCount;
     end;
 
-    if Assigned(Base.Reestimate) then
+    if (Assigned(Base.Reestimate)) then
     begin
       Base.Reestimate(estList, moveSet);
       for k := 0 to estList.Count - 1 do
@@ -1008,15 +1026,12 @@ begin
 end;
 
 
+
+
 procedure TPosBaseStrategy2.RAdd(const posMove: TPosMove);
 var
-  k, r, pr, moveSet, moveCount: integer;
+  k, r, pr: integer;
   fn: TFieldNode;
-  lwMovesIndex, lwMoveTreeIndex: LongWord;
-  mv: word;
-  mn: TMoveNode;
-  enc_mv: word;
-  estList: TList;
 begin
   if (Base.fPos.Size = 0) then
   begin
@@ -1047,73 +1062,8 @@ begin
     r := fn.NextNode;
   end;
 
-  lwMovesIndex := fn.NextNode - 1;
-  lwMoveTreeIndex := fn.NextValue - 1;
-  
-  m_PosMTIs.Add(TPosMTIItem.Create(posMove.pos, lwMoveTreeIndex, FALSE));
-
-  moveCount := 0;
-  moveSet := -1;
-  estList := TList.Create;
-  try
-    r := lwMovesIndex;
-    enc_mv := REncodeMove(posMove.move);
-    repeat
-      pr := r;
-      Base.fMov.SeekRec(r);
-      Base.fMov.Read(mn);
-
-      mv := mn.wMove;
-      if mv = enc_mv then
-        moveSet := moveCount;
-
-      if Assigned(Base.Reestimate) then
-        estList.Add(Pointer(mn.estimate));
-
-      inc(moveCount);
-      r := mn.NextValue;
-    until (r = 0);
-
-    if (moveSet < 0) then // there's no move in the list, hence adding it
-    begin
-      // binding a new node with the current one
-      r := Base.fMov.Size;
-      mn.NextValue := r;
-      Base.fMov.SeekRec(pr);
-      Base.fMov.Write(mn);
-
-      // adding new move node
-      mn.EmptyNode;
-      mn.wMove := enc_mv;
-      Base.fMov.SeekRec(r);
-      Base.fMov.Write(mn);
-
-      if Assigned(Base.Reestimate) then
-        estList.Add(Pointer(mn.estimate));
-      moveSet := moveCount;
-    end;
-
-    if Assigned(Base.Reestimate) then
-    begin
-      Base.Reestimate(estList, moveSet);
-      for k := 0 to estList.Count - 1 do
-      begin
-        Base.fMov.SeekRec(lwMovesIndex);
-        Base.fMov.Read(mn);
-        if (mn.estimate <> LongWord(estList[k])) then
-        begin
-          mn.estimate := LongWord(estList[k]);
-          Base.fMov.SeekRec(lwMovesIndex);
-          Base.fMov.Write(mn);
-        end;
-        lwMovesIndex := mn.NextValue;
-      end;
-    end;
-
-  finally
-    estList.Free;
-  end;
-
+  FAddMove(fn.NextNode - 1, posMove.move);
+  m_PosMTIs.Add(TPosMTIItem.Create(posMove.pos, fn.NextValue - 1, FALSE));
 end;
 
 
@@ -1141,7 +1091,7 @@ procedure TPosBaseStrategy2.FAddPosNodes(const posMove: TPosMove;
 var
   l, nr: integer;
   fn: TFieldNode;
-  lwMoveTreeIndex: LongWord;
+  lwMovesIndex, lwMoveTreeIndex: LongWord;
   mn: TMoveNode;
   estList: TList;
 begin
@@ -1163,9 +1113,10 @@ begin
     fn.btField := FGetFieldData(posMove.pos, l);
     if l = 66 then
     begin
+      lwMovesIndex := Base.fMov.Size;
       lwMoveTreeIndex := FCreateMtiPlaceHolder;
       m_PosMTIs.Add(TPosMTIItem.Create(posMove.pos, lwMoveTreeIndex));
-      fn.NextNode := Base.fMov.Size + 1;
+      fn.NextNode := lwMovesIndex + 1;
       fn.NextValue := lwMoveTreeIndex + 1;
     end
     else
@@ -1177,11 +1128,11 @@ begin
     Base.fPos.Write(fn);
   end;
 
-  // forming a move record
+  // forming an empty move record
   mn.EmptyNode;
-  mn.wMove := REncodeMove(posMove.move);
+  mn.InitEmptyMove;
 
-  if Assigned(Base.Reestimate) then
+  if (Assigned(Base.Reestimate)) then
   begin
     estList := TList.Create;
     try
@@ -1195,6 +1146,8 @@ begin
 
   Base.fMov.SeekEnd;
   Base.fMov.Write(mn);
+
+  FAddMove(lwMovesIndex, posMove.move);
 end;
 
 
@@ -1206,6 +1159,80 @@ begin
   placeHolderNode.InitPlaceHolder;
   Base.fMti.SeekEnd;
   Base.fMti.Write(placeHolderNode);
+end;
+
+
+procedure TPosBaseStrategy2.FAddMove(lwMovesIndex: LongWord; const Move: TMoveAbs);
+var
+  iMoveCount, iMoveSet: integer;
+  estList: TList;
+  r, pr: integer;
+  wCurrentMove: word;
+  mn: TMoveNode;
+  k: integer;
+begin
+  iMoveCount := 0;
+  iMoveSet := -1;
+  estList := TList.Create;
+  try
+    wCurrentMove := REncodeMove(Move);
+
+    r := lwMovesIndex;
+    repeat
+      pr := r;
+      Base.fMov.SeekRec(r);
+      Base.fMov.Read(mn);
+
+      if (mn.wMove = wCurrentMove) then
+        iMoveSet := iMoveCount;
+
+      if (Assigned(Base.Reestimate)) then
+        estList.Add(Pointer(mn.estimate));
+
+      inc(iMoveCount);
+      r := mn.NextValue;
+    until (r = 0);
+
+    if (iMoveSet < 0) then // there's no move in the list, hence adding it
+    begin
+      // binding a new node with the current one
+      r := Base.fMov.Size;
+      mn.NextValue := r;
+      Base.fMov.SeekRec(pr);
+      Base.fMov.Write(mn);
+
+      // adding new move node
+      mn.EmptyNode;
+      mn.wMove := wCurrentMove;
+      Base.fMov.SeekRec(r);
+      Base.fMov.Write(mn);
+
+      if (Assigned(Base.Reestimate)) then
+        estList.Add(Pointer(mn.estimate));
+
+      iMoveSet := iMoveCount;
+    end;
+
+    if (not Assigned(Base.Reestimate)) then
+      exit;
+
+    Base.Reestimate(estList, iMoveSet);
+    for k := 0 to estList.Count - 1 do
+    begin
+      Base.fMov.SeekRec(lwMovesIndex);
+      Base.fMov.Read(mn);
+      if (mn.estimate <> LongWord(estList[k])) then
+      begin
+        mn.estimate := LongWord(estList[k]);
+        Base.fMov.SeekRec(lwMovesIndex);
+        Base.fMov.Write(mn);
+      end;
+      lwMovesIndex := mn.NextValue;
+    end;
+
+  finally
+    estList.Free;
+  end;
 end;
 
 
@@ -1222,11 +1249,14 @@ function TPosBaseStrategy2.RFind(const pos: TChessPosition; var moveEsts: TList)
       Base.fMov.SeekRec(r);
       Base.fMov.Read(mn);
 
-      new(pme);
-      pme^.move := RDecodeMove(mn.wMove);
-      pme^.estimate := mn.estimate;
-      moveEsts.Add(pme);
-
+      if (not mn.IsEmptyMove) then
+      begin
+        new(pme);
+        pme^.move := RDecodeMove(mn.wMove);
+        pme^.estimate := mn.estimate;
+        moveEsts.Add(pme);
+      end;
+      
       r := mn.NextValue;
     until (r = 0);
   end;

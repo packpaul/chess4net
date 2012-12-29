@@ -11,14 +11,15 @@ interface
 uses
   Contnrs, Classes, SysUtils,
   //
-  PGNTraverserUnit, PosBaseUnit, ChessRulesEngine, MoveTreeBaseUnit;
+  NonRefInterfacedObjectUnit, PGNTraverserUnit, PosBaseUnit, ChessRulesEngine,
+  MoveTreeBaseUnit;
 
 type
   TOpening = (openNo, openNormal, openExtended, openExtendedPlus);
 
   EPosBaseCollector = class(Exception);
 
-  TPosBaseCollector = class(TInterfacedObject, IPGNTraverserVisitable)
+  TPosBaseCollector = class(TNonRefInterfacedObject, IPGNTraverserVisitable)
   private
     m_PosMoves: TStack;
     m_Contexts: TStack;
@@ -28,11 +29,10 @@ type
     m_PosBaseForTest: TPosBase;
 
     m_strPosBaseName: string;
-    m_strReferencePosBaseName: string;
     m_ProceedColors: TFigureColors;
     m_ProceedColorsInner: TFigureColors;
     m_strPlayerName: string;
-    m_bChangeEstimateion: boolean;
+    m_bChangeEstimation: boolean;
     m_bUseUniquePositions: boolean;
     m_bUseStatisticalPrunning: boolean;
     m_iUseNumberOfPlys: integer;
@@ -66,7 +66,7 @@ type
     constructor CreateForTest(const ADataBase: TPosBase);
 
   public
-    constructor Create(const strPosBaseName: string; const strReferencePosBaseName: string = '');
+    constructor Create(const strPosBaseName: string; const ARefPosBase: TPosBase = nil);
     destructor Destroy; override;
 
     procedure Start(const Visitor: IPGNTraverserVisitor);
@@ -80,7 +80,7 @@ type
 
     property ProceedColors: TFigureColors read m_ProceedColors write m_ProceedColors;
     property PlayerName: string read m_strPlayerName write m_strPlayerName;
-    property ChangeEstimation: boolean read m_bChangeEstimateion write m_bChangeEstimateion;
+    property ChangeEstimation: boolean read m_bChangeEstimation write m_bChangeEstimation;
     property UseUniquePositions: boolean read m_bUseUniquePositions write m_bUseUniquePositions;
     property GeneratedOpening: TOpening read m_GenOpening write m_GenOpening;
     property UseStatisticalPrunning: boolean read m_bUseStatisticalPrunning write m_bUseStatisticalPrunning;
@@ -122,12 +122,12 @@ end;
 
 
 constructor TPosBaseCollector.Create(const strPosBaseName: string;
-                                     const strReferencePosBaseName: string = '');
+  const ARefPosBase: TPosBase = nil);
 begin
   inherited Create;
 
   m_strPosBaseName := strPosBaseName;
-  m_strReferencePosBaseName := strReferencePosBaseName;
+  m_RefPosBase := ARefPosBase;
 
   FCreate;
 end;
@@ -147,7 +147,6 @@ begin
   g_PosBaseCollector := nil;
 
   FDestroyPosBase;
-  m_RefPosBase.Free;
 
   FClearPosMoves;
   m_PosMoves.Free;
@@ -339,11 +338,7 @@ begin
   inc(m_iGameNumber);
 
   if (not Assigned(m_PosBase)) then
-  begin
     FCreatePosBase;
-    if (m_strReferencePosBaseName <> '') then
-      m_RefPosBase := TPosBase.Create(m_strReferencePosBaseName);
-  end;
 
 end;
 
@@ -356,10 +351,10 @@ begin
     exit;
   end;
 
-  if (m_bChangeEstimateion) then
+  if (m_bChangeEstimation) then
     m_PosBase := TPosBase.Create(m_strPosBaseName, m_MoveTreeBase, Reestimate)
   else
-    m_PosBase := TPosBase.Create(m_strPosBaseName);
+    m_PosBase := TPosBase.Create(m_strPosBaseName, m_MoveTreeBase);
 end;
 
 
@@ -393,7 +388,7 @@ begin
   est := LongWord(moveEsts[nRec]);
   if ((est and $FFFF) < $FFFF) then
     est := est + 1;
-  // For statistical estimation: if position in bounds of one game comes more than one time -> don't change estimation
+  // For statistical estimation: if position per one game comes more than one time -> don't change estimation
   if (m_bUseUniquePositions) then
   begin
     if ((est shr 16) >= m_iGameNumber) then // exclude repitition of "position + moves" in one game
