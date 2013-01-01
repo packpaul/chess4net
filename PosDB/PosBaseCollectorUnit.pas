@@ -37,9 +37,12 @@ type
     m_bUseStatisticalPrunning: boolean;
     m_iUseNumberOfPlys: integer;
 
+    m_bAddPosMove: boolean;
     m_bAddPos: boolean;
+
     m_bAddSimplePosMove: boolean;
     m_SimplePosMove: TPosMove;
+
     m_GenOpening: TOpening;
 
     m_bLineStartedFromPreviousPosition: boolean;
@@ -47,7 +50,7 @@ type
     m_lastResultingPos: TChessPosition;
     m_iGameNumber: integer;
 
-    constructor FCreate;
+    constructor FCreate(const ARefPosBase: TPosBase);
 
     procedure FCreatePosBase;
     procedure FDestroyPosBase;
@@ -63,7 +66,7 @@ type
     procedure FReestimate(moveEsts: TList; nRec: integer);
 
   protected
-    constructor CreateForTest(const ADataBase: TPosBase);
+    constructor CreateForTest(const ADataBase: TPosBase; const ARefPosBase: TPosBase = nil);
 
   public
     constructor Create(const strPosBaseName: string; const ARefPosBase: TPosBase = nil);
@@ -95,6 +98,8 @@ type
     ResultingPos: TChessPosition;
   end;
 
+procedure Reestimate(moveEsts: TList; nRec: integer);
+
 implementation
 
 var
@@ -109,10 +114,11 @@ end;
 ////////////////////////////////////////////////////////////////////////////////
 // TPosBaseCollector
 
-constructor TPosBaseCollector.FCreate;
+constructor TPosBaseCollector.FCreate(const ARefPosBase: TPosBase);
 begin
   m_ProceedColors := [fcWhite, fcBlack];
   m_GenOpening := openNo;
+  m_RefPosBase := ARefPosBase;
 
   m_PosMoves := TStack.Create;
   m_Contexts := TStack.Create;
@@ -127,18 +133,19 @@ begin
   inherited Create;
 
   m_strPosBaseName := strPosBaseName;
-  m_RefPosBase := ARefPosBase;
 
-  FCreate;
+  FCreate(ARefPosBase);
 end;
 
 
-constructor TPosBaseCollector.CreateForTest(const ADataBase: TPosBase);
+constructor TPosBaseCollector.CreateForTest(const ADataBase: TPosBase;
+  const ARefPosBase: TPosBase = nil);
 begin
   inherited Create;
 
   m_PosBaseForTest := ADataBase;
-  FCreate;
+  
+  FCreate(ARefPosBase);
 end;
 
 
@@ -174,6 +181,8 @@ end;
 
 procedure TPosBaseCollector.DoPosMove(iPlyNumber: integer; const APosMove: TPosMove;
   const AResultingPos: TChessPosition);
+var
+  bInMovesRange: boolean;
 begin // .DoPosMove
   m_lastPosMove := APosMove;
   m_lastResultingPos := AResultingPos;
@@ -184,10 +193,14 @@ begin // .DoPosMove
     if (m_GenOpening <> openNo) then
       FProcessOpeningLine(APosMove);
 
-    m_bAddPos := (m_bAddPos and ((m_iUseNumberOfPlys = 0) or (iPlyNumber <= m_iUseNumberOfPlys)));
+    bInMovesRange := ((m_iUseNumberOfPlys = 0) or (iPlyNumber <= m_iUseNumberOfPlys));
+    m_bAddPosMove := (m_bAddPosMove and bInMovesRange);
+    m_bAddPos := (m_bAddPos and bInMovesRange);
 
-    if (m_bAddPos) then
-      m_PosBase.Add(APosMove);
+    if (m_bAddPosMove) then
+      m_PosBase.Add(APosMove)
+    else if (m_bAddPos) then
+      m_PosBase.Add(APosMove.pos);
 
     if (m_GenOpening in [openExtended, openExtendedPlus]) then
       FProcessExtendedOpeningLine(APosMove);
@@ -198,7 +211,7 @@ procedure TPosBaseCollector.FProcessExtendedOpeningLine(const posMove: TPosMove)
 var
   p_posMove: PPosMove;
 begin
-  if (m_bAddPos) then
+  if (m_bAddPosMove) then
   begin
     // Adding previous positions, which hadn't been added to DB before
     while (m_PosMoves.Count > 0) do
@@ -223,40 +236,44 @@ end;
 
 
 procedure TPosBaseCollector.FProcessOpeningLine(const posMove: TPosMove);
-
-  var
-    MoveEstimations: TMoveEstList;
+var
+  MoveEstimations: TMoveEstList;
 
   procedure NProcess(const posMove: TPosMove);
   var
     i: integer;
   begin
     if (Assigned(m_RefPosBase)) then
-      m_bAddPos := m_RefPosBase.Find(posMove.pos, MoveEstimations)
+    begin
+      m_bAddPosMove := m_RefPosBase.Find(posMove.pos, MoveEstimations);
+      m_bAddPos := (m_bAddPosMove and (MoveEstimations.Count >= 2));
+    end
     else
-      m_bAddPos := m_PosBase.Find(posMove.pos, MoveEstimations);
+      m_bAddPosMove := m_PosBase.Find(posMove.pos, MoveEstimations);
 
-    if (not m_bAddPos) then
+    if (not m_bAddPosMove) then
       exit;
 
     i := MoveEstimations.Count - 1;
     while (i >= 0) do
     begin
       with MoveEstimations[i].Move, posMove do
-        m_bAddPos := ((i0 = move.i0) and (j0 = move.j0) and (i = move.i) and
+      begin
+        m_bAddPosMove := ((i0 = move.i0) and (j0 = move.j0) and (i = move.i) and
                       (j = move.j) and (prom_fig = move.prom_fig));
-      if (m_bAddPos) then
+      end;
+      if (m_bAddPosMove) then
       begin
         if (m_bUseUniquePositions) then
-          m_bAddPos := ((MoveEstimations[i].Estimate and $FFFF) >= 2);
-        if (m_bAddPos) then
+          m_bAddPosMove := ((MoveEstimations[i].Estimate and $FFFF) >= 2);
+        if (m_bAddPosMove) then
           break;
       end;
       dec(i);
     end;
 
     if (i < 0) then
-      m_bAddPos := FALSE;
+      m_bAddPosMove := FALSE;
   end;
 
 begin // .FProcessOpeningLine
@@ -274,7 +291,7 @@ var
   pContext: PPosBaseCollectorContext;
 begin
   new(pContext);
-  pContext.bAddPos := m_bAddPos;
+  pContext.bAddPos := m_bAddPosMove;
   pContext.iPosMovesCount := m_PosMoves.Count;
   pContext.PosMove := m_lastPosMove;
   pContext.ResultingPos := m_lastResultingPos;
@@ -295,9 +312,9 @@ begin
     m_lastResultingPos := pContext.ResultingPos;
 
     if (m_bLineStartedFromPreviousPosition) then
-      m_bAddPos := ((m_GenOpening = openNo) or m_PosBase.Find(m_lastResultingPos)) // Opening
+      m_bAddPosMove := ((m_GenOpening = openNo) or m_PosBase.Find(m_lastResultingPos)) // Opening
     else
-      m_bAddPos := pContext.bAddPos; // Opening
+      m_bAddPosMove := pContext.bAddPos; // Opening
 
     while (pContext.iPosMovesCount < m_PosMoves.Count) do // Deletion of subline stack
       Dispose(m_PosMoves.Pop);
@@ -318,7 +335,8 @@ end;
 
 procedure TPosBaseCollector.Start(const Visitor: IPGNTraverserVisitor);
 begin
-  m_bAddPos := TRUE;
+  m_bAddPosMove := TRUE;
+  m_bAddPos := FALSE;
   m_bAddSimplePosMove := FALSE;
 
 

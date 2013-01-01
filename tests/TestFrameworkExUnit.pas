@@ -25,7 +25,38 @@ type
     constructor Create(const strName: string; arrTests: array of TTestCaseExClass);
   end;
 
+procedure RegisterTest(SuitePath: string; test: ITest); overload;
+procedure RegisterTest(test: ITest); overload;
+procedure RegisterTests(SuitePath: string; const Tests: array of ITest);  overload;
+procedure RegisterTests(const Tests: array of ITest); overload;
+
 implementation
+
+////////////////////////////////////////////////////////////////////////////////
+// Globals
+
+procedure RegisterTest(SuitePath: string; test: ITest);
+begin
+  TestFramework.RegisterTest(SuitePath, test);
+end;
+
+
+procedure RegisterTest(test: ITest);
+begin
+  TestFramework.RegisterTest(test);
+end;
+
+
+procedure RegisterTests(SuitePath: string; const Tests: array of ITest);
+begin
+  TestFramework.RegisterTests(SuitePath, Tests);
+end;
+
+
+procedure RegisterTests(const Tests: array of ITest);
+begin
+  TestFramework.RegisterTests(Tests);
+end;
 
 ////////////////////////////////////////////////////////////////////////////////
 // TTestSuiteEx

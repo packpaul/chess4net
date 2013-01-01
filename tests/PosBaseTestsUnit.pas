@@ -14,25 +14,40 @@ uses
   PosBaseUnit, MoveTreeBaseUnit;
 
 type
-  TPosBaseTests = class(TTestCaseEx)
+  TTestCaseBase = class(TTestCaseEx)
   private
-    class function FGetPosBase: TPosBase;
-    class function FGetMoveTreeBase: TMoveTreeBase;
-    property PosBase: TPosBase read FGetPosBase;
-    property MoveTreeBase: TMoveTreeBase read FGetMoveTreeBase;
+    m_PosBase: TPosBase;
+    m_MoveTreeBase: TMoveTreeBase;
   protected
-    class procedure BeforeAllTests; override;
-    class procedure AfterAllTests; override;
+    property PosBase: TPosBase read m_PosBase;
+    property MoveTreeBase: TMoveTreeBase read m_MoveTreeBase;
+    procedure SetUp; override;
+    procedure TearDown; override;
+    procedure RCreatePosBase(out APosBase: TPosBase); virtual;
+    procedure RFillBase; virtual; abstract;
+  end;
+
+  TMultipleOutletsTestCase = class(TTestCaseBase)
+  protected
+    procedure RFillBase; override;
   published
-    procedure TestAddAGame;
+    procedure TestFindPositionsWithMultipleOutlets;
+  end;
+
+  TEmptyMovesTestCase = class(TTestCaseBase)
+  protected
+    procedure RCreatePosBase(out APosBase: TPosBase); override;
+    procedure RFillBase; override;
+  published
+    procedure TestFindPositionWithEmptyMoves;
   end;
 
 implementation
 
 uses
-  Classes, SysUtils, TestFramework,
+  Classes, SysUtils,
   //
-  PGNTraverserUnit, MoveTreeCollectorUnit, PosBaseCollectorUnit;
+  PGNTraverserUnit, MoveTreeCollectorUnit, PosBaseCollectorUnit, ChessRulesEngine;
 
 type
   TMoveTreeBaseEx = class(TMoveTreeBase);
@@ -40,67 +55,56 @@ type
   TMoveTreeCollectorEx = class(TMoveTreeCollector);
   TPosBaseCollectorEx = class(TPosBaseCollector);
 
-var
-  g_PosBase: TPosBase = nil;
-  g_MoveTreeBase: TMoveTreeBase = nil;
+////////////////////////////////////////////////////////////////////////////////
+// TTestCaseBase
+
+procedure TTestCaseBase.SetUp;
+begin
+  m_MoveTreeBase := TMoveTreeBaseEx.CreateForTest;
+  RCreatePosBase(m_PosBase);
+
+  RFillBase;
+
+  m_MoveTreeBase.PosCache.Clear;
+end;
+
+
+procedure TTestCaseBase.RCreatePosBase(out APosBase: TPosBase);
+begin
+  APosBase := TPosBaseEx.CreateForTest(m_MoveTreeBase);
+end;
+
+
+procedure TTestCaseBase.TearDown;
+begin
+  FreeAndNil(m_PosBase);
+  FreeAndNil(m_MoveTreeBase);
+end;
 
 ////////////////////////////////////////////////////////////////////////////////
-// TPosBaseTests
+// TMultipleOutletsTestCase
 
-class procedure TPosBaseTests.BeforeAllTests;
-begin
-  g_MoveTreeBase := TMoveTreeBaseEx.CreateForTest;
-  g_PosBase := TPosBaseEx.CreateForTest(g_MoveTreeBase);
-end;
+procedure TMultipleOutletsTestCase.RFillBase;
 
-
-class procedure TPosBaseTests.AfterAllTests;
-begin
-  FreeAndNil(g_PosBase);
-  FreeAndNil(g_MoveTreeBase);
-end;
-
-
-class function TPosBaseTests.FGetPosBase: TPosBase;
-begin
-  Result := g_PosBase;
-end;
-
-
-class function TPosBaseTests.FGetMoveTreeBase: TMoveTreeBase;
-begin
-  Result := g_MoveTreeBase;
-end;
-
-
-procedure TPosBaseTests.TestAddAGame;
-
-  procedure NCreateInitialData(out strlData: TStringList);
+  procedure NCreateData(out strlData: TStringList);
   begin
     strlData := TStringList.Create;
 
+    strlData.Append('[C4N "2"]');
+    strlData.Append('');
+    strlData.Append('1. e4');
     strlData.Append('');
     strlData.Append('[C4N "2"]');
     strlData.Append('');
-    strlData.Append('1. e4 Nf6 2. Nc3 Ng8 3. Nb1 Nc6 4. Nf3 Nb8 5. Ng1 e5');
+    strlData.Append('1. e4 e5');
     strlData.Append('');
     strlData.Append('[C4N "2"]');
     strlData.Append('');
-    strlData.Append('1. e4 e5 2. Nf3 d6 3. d4 Bg4 4. de Bf3 5. Qf3 de 6. Bc4 Nf6');
-    strlData.Append('7. Qb3 Qe7 8. Nc3 c6 9. Bg5 b5 10. Nb5 cb 11. Bb5+ Nbd7');
-    strlData.Append('12. 0-0-0 Rd8 13. Rd7 Rd7 14. Rd1 Qe6 15. Bd7+ Nd7 16. Qb8+ Nb8 17. Rd8#');
+    strlData.Append('1. e4 e5 2. d4');
     strlData.Append('');
     strlData.Append('[C4N "2"]');
     strlData.Append('');
-    strlData.Append('1. e4 e5 2. d4 d6 3. Nf3 Bg4');
-    strlData.Append('');
-    strlData.Append('[C4N "2"]');
-    strlData.Append('');
-    strlData.Append('1. e4 d6 2. d4 e5 3. Nf3 Bg4');
-    strlData.Append('');
-    strlData.Append('[C4N "2"]');
-    strlData.Append('');
-    strlData.Append('1. Nf3 Nf6 2. Ng1 Ng8 3. e4 e5');
+    strlData.Append('1. e4 e5 2. d4 d5');
   end;
 
 var
@@ -108,26 +112,161 @@ var
   PGNTraverser: TPGNTraverser;
   MoveTreeCollector: TMoveTreeCollector;
   PosBaseCollector: TPosBaseCollector;
-begin // .TestAddAGame
+begin
   strlData := nil;
+  MoveTreeCollector := nil;
+  PosBaseCollector := nil;
   PGNTraverser := nil;
   try
-    NCreateInitialData(strlData);
+    NCreateData(strlData);
 
     MoveTreeCollector := TMoveTreeCollectorEx.CreateForTest(MoveTreeBase);
     PosBaseCollector := TPosBaseCollectorEx.CreateForTest(PosBase);
 
-    PGNTraverser := TPGNTraverser.Create(strlData, [MoveTreeCollector, PosBaseCollector]);
+    PGNTraverser := TPGNTraverser.Create(strlData, [PosBaseCollector, MoveTreeCollector]);
 
     PGNTraverser.Traverse;
   finally
     PGNTraverser.Free;
+    PosBaseCollector.Free;
+    MoveTreeCollector.Free;
     strlData.Free;
   end;
+  
+end;
 
+
+procedure TMultipleOutletsTestCase.TestFindPositionsWithMultipleOutlets;
+var
+  pos: TChessPosition;
+  moveEsts: TMoveEstList;
+begin
+  with TChessRulesEngine.Create do
+  try
+    DoMove('e4');
+    DoMove('e5');
+    pos := Position^
+  finally
+    Free;
+  end;
+
+  CheckTrue(PosBase.Find(pos, moveEsts));
+  moveEsts.Free;
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TMultipleOutletsTestCase
+
+procedure TEmptyMovesTestCase.RCreatePosBase(out APosBase: TPosBase);
+begin
+  APosBase := TPosBaseEx.CreateForTest(MoveTreeBase, PosBaseCollectorUnit.Reestimate);
+end;
+
+
+procedure TEmptyMovesTestCase.RFillBase;
+
+  procedure NCreateData(out strlData: TStringList);
+  begin
+    strlData := TStringList.Create;
+
+    strlData.Append('[C4N "2"]');
+    strlData.Append('');
+    strlData.Append('1. e4 e5 2. Nf3 Nc6');
+    strlData.Append('');
+    strlData.Append('[C4N "2"]');
+    strlData.Append('');
+    strlData.Append('1. e4 Nc6 2. Nf3 e5');
+  end;
+
+  procedure NCreateRefBase(out APosBase: TPosBase);
+  var
+    strlData: TStringList;
+    PGNTraverser: TPGNTraverser;
+    PosBaseCollector: TPosBaseCollector;
+  begin
+    APosBase := TPosBaseEx.CreateForTest(nil, PosBaseCollectorUnit.Reestimate);
+
+    strlData := nil;
+    PGNTraverser := nil;
+    PosBaseCollector := nil;
+    try
+      NCreateData(strlData);
+      PosBaseCollector := TPosBaseCollectorEx.CreateForTest(APosBase);
+      PosBaseCollector.UseUniquePositions := TRUE;
+      PGNTraverser := TPGNTraverser.Create(strlData, PosBaseCollector);
+      PGNTraverser.Traverse;
+    finally
+      PosBaseCollector.Free;
+      PGNTraverser.Free;
+      strlData.Free;
+    end;
+  end;
+
+var
+  strlData: TStringList;
+  PGNTraverser: TPGNTraverser;
+  MoveTreeCollector: TMoveTreeCollector;
+  PosBaseCollector: TPosBaseCollector;
+  RefBase: TPosBase;
+begin
+  strlData := nil;
+  MoveTreeCollector := nil;
+  PosBaseCollector := nil;
+  PGNTraverser := nil;
+
+  NCreateRefBase(RefBase);
+  try
+    NCreateData(strlData);
+
+    MoveTreeCollector := TMoveTreeCollectorEx.CreateForTest(MoveTreeBase);
+
+    PosBaseCollector := TPosBaseCollectorEx.CreateForTest(PosBase, RefBase);
+    PosBaseCollector.UseUniquePositions := TRUE;
+    PosBaseCollector.GeneratedOpening := openExtended;
+
+    PGNTraverser := TPGNTraverser.Create(strlData, [PosBaseCollector, MoveTreeCollector]);
+    PGNTraverser.Traverse;
+
+  finally
+    PGNTraverser.Free;
+    PosBaseCollector.Free;
+    MoveTreeCollector.Free;
+    strlData.Free;
+    RefBase.Free;
+  end;
+  
+end;
+
+
+procedure TEmptyMovesTestCase.TestFindPositionWithEmptyMoves;
+var
+  pos0, pos1: TChessPosition;
+  moveEsts: TMoveEstList;
+begin
+  with TChessRulesEngine.Create do
+  try
+    pos0 := Position^;
+    DoMove('e4');
+    pos1 := Position^;
+    DoMove('e5');
+    DoMove('Nf3');
+    DoMove('Nc6');
+  finally
+    Free;
+  end;
+
+  moveEsts := nil;
+  try
+    CheckTrue(PosBase.Find(pos0, moveEsts), 'pos0');
+    CheckTrue(PosBase.Find(pos1, moveEsts), 'pos1');
+  finally
+    moveEsts.Free;
+  end;
 end;
 
 initialization
-  TestFramework.RegisterTest(TTestSuiteEx.Create('TPosBase', [TPosBaseTests]));
+  RegisterTest(TTestSuiteEx.Create('TPosBase',
+    [TMultipleOutletsTestCase,
+     TEmptyMovesTestCase]));
 
 end.

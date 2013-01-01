@@ -118,6 +118,7 @@ var
   MoveTreeCollector: TMoveTreeCollector;
 begin // .FillBaseWithInitialData
   strlData := nil;
+  MoveTreeCollector := nil;
   PGNTraverser := nil;
   try
     NCreateInitialData(strlData);
@@ -128,6 +129,7 @@ begin // .FillBaseWithInitialData
 
   finally
     PGNTraverser.Free;
+    MoveTreeCollector.Free;
     strlData.Free;
   end;
   

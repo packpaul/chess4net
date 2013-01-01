@@ -83,7 +83,8 @@ type
     m_Base: TPosBase;
     constructor FCreate(ABase: TPosBase);
   protected
-    procedure RAdd(const posMove: TPosMove); virtual; abstract;
+    procedure RAdd(const pos: TChessPosition); overload; virtual; abstract;
+    procedure RAdd(const posMove: TPosMove); overload; virtual; abstract;
     function RFind(const pos: TChessPosition; var moveEsts: TList): boolean; virtual; abstract;
     class function REncodeMove(const move: TMoveAbs): word;
     class function RDecodeMove(enc_move: word): TMoveAbs;
@@ -123,14 +124,15 @@ type
     property MoveTreeBase: TMoveTreeBase read m_MoveTreeBase;
 
   protected
-    constructor CreateForTest(const AMoveTreeBase: TMoveTreeBase; AReestimate: TReestimate = nil);
+    constructor CreateForTest(const AMoveTreeBase: TMoveTreeBase = nil; AReestimate: TReestimate = nil);
 
   public
     constructor Create(fileNameNoExt: string; AReestimate: TReestimate = nil); overload;
     constructor Create(fileNameNoExt: string; const AMoveTreeBase: TMoveTreeBase;
       AReestimate: TReestimate = nil); overload;
     destructor Destroy; override;
-    procedure Add(const posMove: TPosMove); // добавление позиции и хода в базу
+    procedure Add(const pos: TChessPosition); overload;
+    procedure Add(const posMove: TPosMove); overload;
     function Find(const pos: TChessPosition): boolean; overload;
     // Deprecated. Planned for removal after 2013.01
     function Find(const pos: TChessPosition; var moveEsts: TList): boolean; overload;
@@ -197,6 +199,7 @@ type
 
   TPosBaseStrategy1 = class(TPosBaseStrategy)
   protected
+    procedure RAdd(const pos: TChessPosition); override;
     procedure RAdd(const posMove: TPosMove); override;
     function RFind(const pos: TChessPosition; var moveEsts: TList): boolean; override;
   end;
@@ -217,15 +220,19 @@ type
   private
     m_PosMTIs: TObjectList;
     constructor FCreate(ABase: TPosBase);
-    procedure FAddPosNodes(const posMove: TPosMove;
-      k: integer; r: integer = -1);
+    procedure FAddPosNodes(const pos: TChessPosition; k: integer; r: integer;
+      out lwMovesIndex: LongWord); overload;
+    procedure FAddPosNodes(const pos: TChessPosition; k: integer;
+      out lwMovesIndex: LongWord); overload;
     function FGetFieldData(const pos: TChessPosition; iIndex: integer): byte;
     function FCreateMtiPlaceHolder: LongWord;
     procedure FOnMoveTreeBaseAdded(Sender: TObject);
     procedure FWriteDataToMTI(lwIndex: LongWord; MoveTreeAddresses: TMoveTreeAddressArr);
     procedure FAddMove(lwMovesIndex: LongWord; const Move: TMoveAbs);
+    procedure FAdd(const pos: TChessPosition; out lwMovesIndex: LongWord);
 
   protected
+    procedure RAdd(const pos: TChessPosition); override;
     procedure RAdd(const posMove: TPosMove); override;
     function RFind(const pos: TChessPosition; var moveEsts: TList): boolean; override;
   public
@@ -307,7 +314,8 @@ begin
 end;
 
 
-constructor TPosBase.CreateForTest(const AMoveTreeBase: TMoveTreeBase; AReestimate: TReestimate = nil);
+constructor TPosBase.CreateForTest(const AMoveTreeBase: TMoveTreeBase = nil;
+  AReestimate: TReestimate = nil);
 begin
   inherited Create;
 
@@ -426,6 +434,13 @@ begin
   FreeAndNil(m_fMti);
   FreeAndNil(m_fMov);
   FreeAndNil(m_fPos);
+end;
+
+
+procedure TPosBase.Add(const pos: TChessPosition);
+begin
+  if (FCheckDBVersion) then
+    m_Strategy.RAdd(pos);
 end;
 
 
@@ -779,6 +794,11 @@ end;
 ////////////////////////////////////////////////////////////////////////////////
 // TPosBaseStrategy1
 
+procedure TPosBaseStrategy1.RAdd(const pos: TChessPosition);
+begin
+end;
+
+
 procedure TPosBaseStrategy1.RAdd(const posMove: TPosMove);
 var
   addInf: byte;
@@ -1026,16 +1046,15 @@ begin
 end;
 
 
-
-
-procedure TPosBaseStrategy2.RAdd(const posMove: TPosMove);
+procedure TPosBaseStrategy2.FAdd(const pos: TChessPosition; out lwMovesIndex: LongWord);
 var
   k, r, pr: integer;
   fn: TFieldNode;
+  lwMoveTreeIndex: LongWord;
 begin
   if (Base.fPos.Size = 0) then
   begin
-    FAddPosNodes(posMove, 1);
+    FAddPosNodes(pos, 1, lwMovesIndex);
     exit;
   end;
 
@@ -1045,25 +1064,44 @@ begin
     Base.fPos.SeekRec(r);
     Base.fPos.Read(fn);
 
-    while (fn.btField <> FGetFieldData(posMove.pos, k)) do
+    while (fn.btField <> FGetFieldData(pos, k)) do
     begin
       pr := r;
       r := fn.NextValue;
       if (r = 0) then
       begin
-        FAddPosNodes(posMove, k, pr);
+        FAddPosNodes(pos, k, pr, lwMovesIndex);
         exit;
       end;
       Base.fPos.SeekRec(r);
       Base.fPos.Read(fn);
-    end; { while }
-    
+    end;
+
     // the value is found in the chain
     r := fn.NextNode;
   end;
 
-  FAddMove(fn.NextNode - 1, posMove.move);
-  m_PosMTIs.Add(TPosMTIItem.Create(posMove.pos, fn.NextValue - 1, FALSE));
+  lwMovesIndex := fn.NextNode;
+  lwMoveTreeIndex := fn.NextValue;
+
+  m_PosMTIs.Add(TPosMTIItem.Create(pos, lwMoveTreeIndex, FALSE));
+end;
+
+
+procedure TPosBaseStrategy2.RAdd(const pos: TChessPosition);
+var
+  lwMovesIndex: LongWord;
+begin
+  FAdd(pos, lwMovesIndex);
+end;
+
+
+procedure TPosBaseStrategy2.RAdd(const posMove: TPosMove);
+var
+  lwMovesIndex: LongWord;
+begin
+  FAdd(posMove.pos, lwMovesIndex);
+  FAddMove(lwMovesIndex, posMove.move);
 end;
 
 
@@ -1086,14 +1124,21 @@ begin
 end;
 
 
-procedure TPosBaseStrategy2.FAddPosNodes(const posMove: TPosMove;
-  k: integer; r: integer = -1);
+procedure TPosBaseStrategy2.FAddPosNodes(const pos: TChessPosition; k: integer;
+  out lwMovesIndex: LongWord);
+begin
+  FAddPosNodes(pos, 1, -1, lwMovesIndex);
+end;
+
+
+procedure TPosBaseStrategy2.FAddPosNodes(const pos: TChessPosition;
+  k: integer; r: integer; out lwMovesIndex: LongWord);
 var
   l, nr: integer;
   fn: TFieldNode;
-  lwMovesIndex, lwMoveTreeIndex: LongWord;
   mn: TMoveNode;
   estList: TList;
+  lwMoveTreeIndex: LongWord;
 begin
   if (r >= 0) then
   begin
@@ -1110,14 +1155,13 @@ begin
 
   for l := k to 66 do
   begin
-    fn.btField := FGetFieldData(posMove.pos, l);
+    fn.btField := FGetFieldData(pos, l);
     if l = 66 then
     begin
       lwMovesIndex := Base.fMov.Size;
       lwMoveTreeIndex := FCreateMtiPlaceHolder;
-      m_PosMTIs.Add(TPosMTIItem.Create(posMove.pos, lwMoveTreeIndex));
-      fn.NextNode := lwMovesIndex + 1;
-      fn.NextValue := lwMoveTreeIndex + 1;
+      fn.NextNode := lwMovesIndex;
+      fn.NextValue := lwMoveTreeIndex;
     end
     else
     begin
@@ -1130,24 +1174,10 @@ begin
 
   // forming an empty move record
   mn.EmptyNode;
-  mn.InitEmptyMove;
-
-  if (Assigned(Base.Reestimate)) then
-  begin
-    estList := TList.Create;
-    try
-      estList.Add(Pointer(mn.estimate));
-      Base.Reestimate(estList, 0);
-      mn.estimate := LongWord(estList[0]);
-    finally
-      estList.Free;
-    end;
-  end;
-
   Base.fMov.SeekEnd;
   Base.fMov.Write(mn);
 
-  FAddMove(lwMovesIndex, posMove.move);
+  m_PosMTIs.Add(TPosMTIItem.Create(pos, lwMoveTreeIndex));
 end;
 
 
@@ -1164,13 +1194,35 @@ end;
 
 procedure TPosBaseStrategy2.FAddMove(lwMovesIndex: LongWord; const Move: TMoveAbs);
 var
+  mn: TMoveNode;
+  wCurrentMove: word;
+
+  procedure NRewriteEmptyMove;
+  var
+    estList: TList;
+  begin
+    mn.wMove := wCurrentMove;
+    if Assigned(Base.Reestimate) then
+    begin
+      estList := TList.Create;
+      try
+        estList.Add(Pointer(mn.estimate));
+        Base.Reestimate(estList, 0);
+        mn.estimate := LongWord(estList[0]);
+      finally
+        estList.Free;
+      end;
+    end;
+    Base.fMov.SeekRec(lwMovesIndex);
+    Base.fMov.Write(mn);
+  end;
+
+var
   iMoveCount, iMoveSet: integer;
   estList: TList;
   r, pr: integer;
-  wCurrentMove: word;
-  mn: TMoveNode;
   k: integer;
-begin
+begin // .FAddMove
   iMoveCount := 0;
   iMoveSet := -1;
   estList := TList.Create;
@@ -1182,6 +1234,13 @@ begin
       pr := r;
       Base.fMov.SeekRec(r);
       Base.fMov.Read(mn);
+
+      if (mn.IsEmptyMove) then
+      begin
+        Assert(iMoveCount = 0);
+        NRewriteEmptyMove;
+        exit;
+      end;
 
       if (mn.wMove = wCurrentMove) then
         iMoveSet := iMoveCount;
@@ -1233,6 +1292,7 @@ begin
   finally
     estList.Free;
   end;
+  
 end;
 
 
@@ -1351,11 +1411,8 @@ here:
   if (not Assigned(moveEsts)) then
     exit;
 
-  if (fn.NextNode > 0) then
-    NFillMoveListFromMov(fn.NextNode - 1);
-
-  if (fn.NextValue > 0) then
-    NFillMoveListFromMoveTree(fn.NextValue - 1);
+  NFillMoveListFromMov(fn.NextNode);
+  NFillMoveListFromMoveTree(fn.NextValue);
 end;
 
 
