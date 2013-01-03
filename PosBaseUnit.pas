@@ -1137,9 +1137,10 @@ var
   l, nr: integer;
   fn: TFieldNode;
   mn: TMoveNode;
-  estList: TList;
   lwMoveTreeIndex: LongWord;
 begin
+  lwMoveTreeIndex := 0;
+
   if (r >= 0) then
   begin
     Base.fPos.SeekRec(r);

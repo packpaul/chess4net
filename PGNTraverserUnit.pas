@@ -83,7 +83,9 @@ type
 implementation
 
 uses
-  Contnrs, SysUtils, StrUtils;
+  Contnrs, SysUtils, StrUtils,
+  //
+  LoggerUnit;
 
 type
   TTextDataIterator = class(TPGNTraverserDataIterator)
@@ -169,11 +171,13 @@ end;
 
 procedure TPGNTraverser.Traverse;
 var
-  strLine, strGame: string;
+  strLine, strGame, strGameName: string;
   bPlayerExists: boolean;
   ProceedColors: TFigureColors;
+  iGamesCount: integer;
 begin // .Traverse
   strGame := '';
+  iGamesCount := 0;
 
   m_strWhitePlayerName := '';
   m_strBlackPlayerName := '';
@@ -192,8 +196,18 @@ begin // .Traverse
 
     if (strGame <> '') then
     begin
+      inc(iGamesCount);
+
+      strGameName := '#' + IntToStr(iGamesCount) + ': ' +
+        m_strWhitePlayerName + ' - ' + m_strBlackPlayerName; 
+
       if (bPlayerExists and (ProceedColors <> [])) then
+      begin
         FProceedGameStr(strGame);
+        TLogger.GetInstance.Info('processed: ' + strGameName);
+      end
+      else
+        TLogger.GetInstance.Info('skipped: ' + strGameName);
 
       strGame := '';
       ProceedColors := m_ProceedColors;

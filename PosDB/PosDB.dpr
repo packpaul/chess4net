@@ -17,7 +17,10 @@ uses
   PosBaseCollectorUnit in 'PosBaseCollectorUnit.pas',
   NonRefInterfacedObjectUnit in '..\NonRefInterfacedObjectUnit.pas',
   MoveTreeCollectorUnit in 'MoveTreeCollectorUnit.pas',
-  MoveTreeBaseUnit in '..\MoveTreeBaseUnit.pas';
+  MoveTreeBaseUnit in '..\MoveTreeBaseUnit.pas',
+  LoggerUnit in '..\LoggerUnit.pas',
+  FileLogAppenderUnit in '..\FileLogAppenderUnit.pas',
+  NullLogAppenderUnit in '..\NullLogAppenderUnit.pas';
 
 procedure Help;
 begin
@@ -25,7 +28,7 @@ begin
   writeln('PosDB version 2012.0');
   writeln('Chess4Net DB builder');
   writeln;
-  writeln('PosDB [-V] [-E -U] [-P <name>] [-W|B] [-C <number of plys>] [-O|-X[+] -S] [-R <referenced base>] [-T] <input PGN file> [<base>]');
+  writeln('PosDB [-V] [-E -U] [-P <name>] [-W|B] [-C <number of plys>] [-O|-X[+]] [-R <referenced base>] [-T] [-L <log file>] <input PGN file> [<base>]');
   writeln;
   writeln('-V', #9, 'proceed also variants.');
   writeln('-E', #9, 'change estimation for moves.');
@@ -37,9 +40,9 @@ begin
   writeln('-O', #9, 'generate only opening lines.');
   writeln('-X', #9, 'generate extended opening lines.');
   writeln('-X+', #9, 'generate extended opening lines with simple positions.');
-  writeln('-S', #9, 'use in opening lines statistical estimation for prunning.');
   writeln('-R', #9, 'use <referenced base> as a base for references.');
   writeln('-T', #9, 'build move tree DB.');
+  writeln('-L', #9, 'log file.');
 end;
 
 
@@ -58,10 +61,10 @@ var
   color: TFigureColors = [fcWhite, fcBlack];
   player_name: string = '';
   opening: TOpening = openNo;
-  statPrunning: boolean = FALSE;
   numPlys: integer = 0;
   refBase: string = '';
   moveTreeDB: boolean = FALSE;
+  logFileName: string = '';
 
 begin
   if ParamCount = 0 then
@@ -129,11 +132,6 @@ begin
             opening := openExtendedPlus;
         end
     else
-      if UpperCase(ParamStr(i)) = '-S' then
-        begin
-          statPrunning := (opening <> openNo);
-        end
-    else
       if UpperCase(ParamStr(i)) = '-R' then
         begin
           inc(i);
@@ -147,6 +145,14 @@ begin
           if i > ParamCount then
             Error;
           moveTreeDB := TRUE;
+        end
+    else
+      if UpperCase(ParamStr(i)) = '-L' then
+        begin
+          inc(i);
+          if i > ParamCount then
+            Error;
+          logFileName := ParamStr(i);
         end
     else
       break;
@@ -163,10 +169,17 @@ begin
     Error;
 {$I+}
 
+  if (logFileName <> '') then
+    TLogger.GetInstance.Appender := TFileLogAppender.Create(logFileName)
+  else
+    TLogger.GetInstance.Appender := TNullLogAppender.Create;
+
+  TLogger.GetInstance.Info('Processing PGN: ' + ParamStr(i));
+
   if i = ParamCount then
-    TPGNProcessor.Proceed(ChangeFileExt(ParamStr(i), ''), variants, chngest, uniquePos, color, numPlys, player_name, opening, statPrunning, refBase, moveTreeDB)
+    TPGNProcessor.Proceed(ChangeFileExt(ParamStr(i), ''), variants, chngest, uniquePos, color, numPlys, player_name, opening, refBase, moveTreeDB)
   else // i < ParamCount
-    TPGNProcessor.Proceed(ChangeFileExt(ParamStr(i + 1), ''), variants, chngest, uniquePos, color, numPlys, player_name, opening, statPrunning, refBase, moveTreeDB);
+    TPGNProcessor.Proceed(ChangeFileExt(ParamStr(i + 1), ''), variants, chngest, uniquePos, color, numPlys, player_name, opening, refBase, moveTreeDB);
 
   Close(input);
 end.

@@ -34,7 +34,6 @@ type
     m_strPlayerName: string;
     m_bChangeEstimation: boolean;
     m_bUseUniquePositions: boolean;
-    m_bUseStatisticalPrunning: boolean;
     m_iUseNumberOfPlys: integer;
 
     m_bAddPosMove: boolean;
@@ -86,7 +85,6 @@ type
     property ChangeEstimation: boolean read m_bChangeEstimation write m_bChangeEstimation;
     property UseUniquePositions: boolean read m_bUseUniquePositions write m_bUseUniquePositions;
     property GeneratedOpening: TOpening read m_GenOpening write m_GenOpening;
-    property UseStatisticalPrunning: boolean read m_bUseStatisticalPrunning write m_bUseStatisticalPrunning;
     property UseNumberOfPlys: integer read m_iUseNumberOfPlys write m_iUseNumberOfPlys;
   end;
 
