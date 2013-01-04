@@ -28,6 +28,9 @@ implementation
 uses
   SysUtils;
 
+const
+  LEVEL_TAGS: array[TLogLevel] of string = ('[ERROR] ', '[WARN] ', '[INFO] ', '[DEBUG] ');
+
 ////////////////////////////////////////////////////////////////////////////////
 // TFileLogAppender
 
@@ -55,10 +58,13 @@ end;
 
 
 procedure TFileLogAppender.DoAppend(const Level: TLogLevel; const strMsg: string);
+var
+  str: string;
 begin
   if (strMsg = '') then
     exit;
-  m_Stream.Write(strMsg[1], Length(strMsg));
+  str := LEVEL_TAGS[Level] + strMsg;
+  m_Stream.Write(str[1], Length(str));
   m_Stream.Write(sLineBreak[1], Length(sLineBreak));
 end;
 

@@ -188,20 +188,20 @@ begin // .DoPosMove
   if (not (APosMove.pos.color in m_ProceedColorsInner)) then
     exit;
 
-    if (m_GenOpening <> openNo) then
-      FProcessOpeningLine(APosMove);
+  if (m_GenOpening <> openNo) then
+    FProcessOpeningLine(APosMove);
 
-    bInMovesRange := ((m_iUseNumberOfPlys = 0) or (iPlyNumber <= m_iUseNumberOfPlys));
-    m_bAddPosMove := (m_bAddPosMove and bInMovesRange);
-    m_bAddPos := (m_bAddPos and bInMovesRange);
+  bInMovesRange := ((m_iUseNumberOfPlys = 0) or (iPlyNumber <= m_iUseNumberOfPlys));
+  m_bAddPosMove := (m_bAddPosMove and bInMovesRange);
+  m_bAddPos := (m_bAddPos and bInMovesRange);
 
-    if (m_bAddPosMove) then
-      m_PosBase.Add(APosMove)
-    else if (m_bAddPos) then
-      m_PosBase.Add(APosMove.pos);
+  if (m_bAddPosMove) then
+    m_PosBase.Add(APosMove)
+  else if (m_bAddPos) then
+    m_PosBase.Add(APosMove.pos);
 
-    if (m_GenOpening in [openExtended, openExtendedPlus]) then
-      FProcessExtendedOpeningLine(APosMove);
+  if (m_GenOpening in [openExtended, openExtendedPlus]) then
+    FProcessExtendedOpeningLine(APosMove);
 end;
 
 

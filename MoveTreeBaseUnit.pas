@@ -115,15 +115,16 @@ type
   private
     m_InitialPos: TChessPosition;
     m_InitialAddress: TMoveTreeAddress;
-    m_PosAddresses: TObjectList;
-    m_iLastItemIndex: integer; // PP: optimization?
+    m_Buckets: array of TObjectList;
     constructor FCreate(const InitialPos: TChessPosition; const InitialAddress: TMoveTreeAddress);
-    function FGet(const Pos: TChessPosition; out AItem: TPosAddressItem): boolean;
-    procedure FAdd(const Pos: TChessPosition; const Address: TMoveTreeAddress);
+    procedure FAdd(const APos: TChessPosition; const AAddress: TMoveTreeAddress);
+    procedure FClearBuckets;
+    function FGetHashCode(const Pos: TChessPosition): integer;
+    function FGetBucketIndex(const Pos: TChessPosition): integer;
   public
     constructor Create;
     destructor Destroy; override;
-    function Get(const Pos: TChessPosition; out Addresses: TMoveTreeAddressArr): boolean;
+    function Get(const APos: TChessPosition; out AAddresses: TMoveTreeAddressArr): boolean;
     procedure Clear;
   end;
 
@@ -252,6 +253,10 @@ type
       out Datas: TMovePosAddressArr);
   end;
 
+  TCoord = record
+    i, j: integer;
+  end;
+
 const
   BASE_FILE_EXT = 'mvt';
 
@@ -270,6 +275,26 @@ const
   END_DATA_TAG: TDataBag = (btFirst: 0; btSecond: 0);
 
   INITIAL_ADDRESS: TMoveTreeAddress = (lwPosition: 0; wOffset: 0);
+
+  CACHE_BUCKETS_SIZE = 119;
+
+  FIELD_SEQ: array[1..64] of TCoord = // 13617 kb
+    ((i: 1; j: 1), (i: 1; j: 2), (i: 1; j: 3), (i: 1; j: 4),
+     (i: 1; j: 5), (i: 1; j: 6), (i: 1; j: 7), (i: 1; j: 8),
+     (i: 8; j: 8), (i: 8; j: 7), (i: 8; j: 6), (i: 8; j: 5),
+     (i: 8; j: 4), (i: 8; j: 3), (i: 8; j: 2), (i: 8; j: 1),
+     (i: 2; j: 1), (i: 2; j: 2), (i: 2; j: 3), (i: 2; j: 4),
+     (i: 2; j: 5), (i: 2; j: 6), (i: 2; j: 7), (i: 2; j: 8),
+     (i: 7; j: 8), (i: 7; j: 7), (i: 7; j: 6), (i: 7; j: 5),
+     (i: 7; j: 4), (i: 7; j: 3), (i: 7; j: 2), (i: 7; j: 1),
+     (i: 3; j: 1), (i: 3; j: 2), (i: 3; j: 3), (i: 3; j: 4),
+     (i: 3; j: 5), (i: 3; j: 6), (i: 3; j: 7), (i: 3; j: 8),
+     (i: 6; j: 8), (i: 6; j: 7), (i: 6; j: 6), (i: 6; j: 5),
+     (i: 6; j: 4), (i: 6; j: 3), (i: 6; j: 2), (i: 6; j: 1),
+     (i: 4; j: 1), (i: 4; j: 2), (i: 4; j: 3), (i: 4; j: 4),
+     (i: 4; j: 5), (i: 4; j: 6), (i: 4; j: 7), (i: 4; j: 8),
+     (i: 5; j: 1), (i: 5; j: 2), (i: 5; j: 3), (i: 5; j: 4),
+     (i: 5; j: 5), (i: 5; j: 6), (i: 5; j: 7), (i: 5; j: 8));
 
 var
   g_bFarPointerTests: boolean = FALSE;
@@ -691,7 +716,8 @@ begin
 
   m_InitialPos := InitialPos;
   m_InitialAddress := InitialAddress;
-  m_PosAddresses := TObjectList.Create;
+
+  SetLength(m_Buckets, CACHE_BUCKETS_SIZE);
 
   Clear;
 end;
@@ -699,74 +725,126 @@ end;
 
 destructor TMoveTreeBaseCache.Destroy;
 begin
-  m_PosAddresses.Free;
+  FClearBuckets;
   inherited;
-end;
-
-
-function TMoveTreeBaseCache.Get(const Pos: TChessPosition; out Addresses: TMoveTreeAddressArr): boolean;
-var
-  Item: TPosAddressItem;
-begin
-  Result := FGet(Pos, Item);
-  if (Result) then
-    Addresses := Item.Addresses;
-end;
-
-
-function TMoveTreeBaseCache.FGet(const Pos: TChessPosition; out AItem: TPosAddressItem): boolean;
-var
-  i: integer;
-  Item: TPosAddressItem;
-begin
-  Result := TRUE;
-
-  for i := m_iLastItemIndex to m_PosAddresses.Count - 1 do
-  begin
-    Item := TPosAddressItem(m_PosAddresses[i]);
-    if (Pos.Equals(Item.Pos)) then
-    begin
-      AItem := Item;
-      m_iLastItemIndex := i;
-      exit;
-    end;
-  end;
-
-  for i := m_iLastItemIndex - 1 downto 0 do
-  begin
-    Item := TPosAddressItem(m_PosAddresses[i]);
-    if (Pos.Equals(Item.Pos)) then
-    begin
-      AItem := Item;
-      m_iLastItemIndex := i;
-      exit;
-    end;
-  end;
-
-  Result := FALSE;
-end;
-
-
-procedure TMoveTreeBaseCache.FAdd(const Pos: TChessPosition; const Address: TMoveTreeAddress);
-var
-  Item: TPosAddressItem;
-begin
-  if (FGet(Pos, Item)) then
-    Item.FAddAddress(Address)
-  else
-  begin
-    Item := TPosAddressItem.FCreate(Pos, Address);
-    m_PosAddresses.Add(Item);
-    m_iLastItemIndex := m_PosAddresses.Count - 1;
-  end;
 end;
 
 
 procedure TMoveTreeBaseCache.Clear;
 begin
-  m_PosAddresses.Clear;
-  m_iLastItemIndex := 0;
+  FClearBuckets;
   FAdd(m_InitialPos, m_InitialAddress);
+end;
+
+
+procedure TMoveTreeBaseCache.FAdd(const APos: TChessPosition; const AAddress: TMoveTreeAddress);
+var
+  iBucket: integer;
+  i: integer;
+  Item: TPosAddressItem;
+begin
+  iBucket := FGetBucketIndex(APos);
+
+  if (not Assigned(m_Buckets[iBucket])) then
+    m_Buckets[iBucket] := TObjectList.Create;
+
+  for i := 0 to m_Buckets[iBucket].Count - 1 do
+  begin
+    Item := TPosAddressItem(m_Buckets[iBucket].Items[i]);
+    if (Item.Pos.Equals(APos)) then
+    begin
+      Item.FAddAddress(AAddress);
+      exit
+    end;
+  end;
+
+  m_Buckets[iBucket].Add(TPosAddressItem.FCreate(APos, AAddress));
+end;
+
+
+function TMoveTreeBaseCache.Get(const APos: TChessPosition; out AAddresses: TMoveTreeAddressArr): boolean;
+var
+  iBucket: integer;
+  i: integer;
+  Item: TPosAddressItem;
+begin
+  Result := FALSE;
+
+  iBucket := FGetBucketIndex(APos);
+
+  if (not Assigned(m_Buckets[iBucket])) then
+    exit;
+
+  for i := 0 to m_Buckets[iBucket].Count - 1 do
+  begin
+    Item := TPosAddressItem(m_Buckets[iBucket].Items[i]);
+    if (Item.Pos.Equals(APos)) then
+    begin
+      AAddresses := Item.Addresses;
+      Result := TRUE;
+      break;
+    end;
+  end;
+
+end;
+
+
+function TMoveTreeBaseCache.FGetBucketIndex(const Pos: TChessPosition): integer;
+begin
+  Result := LongWord(FGetHashCode(Pos)) mod Length(m_Buckets);
+end;
+
+
+function TMoveTreeBaseCache.FGetHashCode(const Pos: TChessPosition): integer;
+var
+  iMask: integer;
+  iHash1, iHash2: integer;
+  k: integer;
+begin
+  if (Pos.color = fcBlack) then
+    iHash1 := 1
+  else
+    iHash1 := 0;
+
+  iMask := 2;
+  k := 1;
+  while ((iMask <> 0) and (k <= High(FIELD_SEQ))) do
+  begin
+    with FIELD_SEQ[k] do
+    begin
+      if (Pos.board[i, j] <> ES) then
+        iHash1 := iHash1 or iMask;
+    end;
+    iMask := iMask shl 1;
+    inc(k);
+  end;
+
+  iHash2 := 0;
+
+  iMask := 1;
+  k := 33;
+  while ((iMask <> 0) and (k <= High(FIELD_SEQ))) do
+  begin
+    with FIELD_SEQ[k] do
+    begin
+      if (Pos.board[i, j] <> ES) then
+        iHash2 := iHash2 or iMask;
+    end;
+    iMask := iMask shl 1;
+    inc(k);
+  end;
+{$Q-}
+  Result := 19 * iHash2;
+  Result := Result + iHash1;
+end;
+
+
+procedure TMoveTreeBaseCache.FClearBuckets;
+var
+  i: integer;
+begin
+  for i := Low(m_Buckets) to High(m_Buckets) do
+    FreeAndNil(m_Buckets[i]);
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1014,6 +1092,8 @@ begin
   Assert(bRes);
 
   inc(m_Address.wOffset);
+
+  Base.PosCache.FAdd(Base.ChessRulesEngine.Position^, m_Address);
 end;
 
 
@@ -1034,7 +1114,6 @@ end;
 procedure TInsertionPointDataFinder.RP5;
 begin
   m_InsertionPoint.FInit(LastPosition, Position);
-  Base.PosCache.FAdd(Base.ChessRulesEngine.Position^, m_Address);
 end;
 
 
