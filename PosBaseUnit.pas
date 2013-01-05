@@ -1499,7 +1499,7 @@ begin // .FWriteDataToMTI
   for i := k to High(Addresses) do
   begin
     MTINode.Address := Addresses[i];
-    if (k < High(Addresses)) then
+    if (i < High(Addresses)) then
       MTINode.NextValue := Base.fMti.Size + 1
     else
       MTINode.NextValue := 0;
