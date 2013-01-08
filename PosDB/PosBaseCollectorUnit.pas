@@ -28,7 +28,6 @@ type
 
     m_PosBase, m_RefPosBase: TPosBase;
     m_MoveTreeBase: TMoveTreeBase;
-    m_PosBaseForTest: TPosBase;
 
     m_strPosBaseName: string;
     m_ProceedColors: TFigureColors;
@@ -54,6 +53,10 @@ type
     m_lastResultingPos: TChessPosition;
     m_iGameNumber: integer;
 
+    // For tests
+    m_PosBaseForTest: TPosBase;
+    m_bSomeGamesSkippedForTest: boolean;
+
     constructor FCreate(const ARefPosBase: TPosBase);
 
     procedure FCreatePosBase;
@@ -78,6 +81,7 @@ type
 
   protected
     constructor CreateForTest(const ADataBase: TPosBase; const ARefPosBase: TPosBase = nil);
+    property SomeGamesSkippedForTest: boolean read m_bSomeGamesSkippedForTest;
 
   public
     constructor Create(const strPosBaseName: string; const ARefPosBase: TPosBase = nil);
@@ -385,10 +389,13 @@ begin
   if (m_bAddSimplePosMove) then
     FCollectPosMove(m_SimplePosMove);
 
-  if ((not m_bUniqueGames) or (m_bUniqueGames and m_bAddedToMoveTreeBase)) then
+  if ((not m_bUniqueGames) or m_bAddedToMoveTreeBase) then
     FAddCollectedPosMovesToBase
   else
+  begin
+    m_bSomeGamesSkippedForTest := TRUE;
     TLogger.GetInstance.Info('  adding to PosBase skipped');
+  end;
 
   m_PosMovesCollected.Clear;
 end;
