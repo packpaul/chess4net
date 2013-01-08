@@ -21,6 +21,8 @@ type
 
   TPosBaseCollector = class(TNonRefInterfacedObject, IPGNTraverserVisitable)
   private
+    m_PosMovesCollected: TObjectList;
+
     m_PosMoves: TStack;
     m_Contexts: TStack;
 
@@ -35,12 +37,15 @@ type
     m_bChangeEstimation: boolean;
     m_bUseUniquePositions: boolean;
     m_iUseNumberOfPlys: integer;
+    m_bUniqueGames: boolean;
 
     m_bAddPosMove: boolean;
     m_bAddPos: boolean;
 
     m_bAddSimplePosMove: boolean;
     m_SimplePosMove: TPosMove;
+
+    m_bAddedToMoveTreeBase: boolean;
 
     m_GenOpening: TOpening;
 
@@ -64,6 +69,13 @@ type
     procedure FProcessOpeningLine(const posMove: TPosMove);
     procedure FReestimate(moveEsts: TList; nRec: integer);
 
+    procedure FCollectPosMove(const APosMove: TPosMove);
+    procedure FCollectPos(const APos: TChessPosition);
+
+    procedure FAddCollectedPosMovesToBase;
+
+    procedure FOnMoveTreeBaseAdded(Sender: TObject);
+
   protected
     constructor CreateForTest(const ADataBase: TPosBase; const ARefPosBase: TPosBase = nil);
 
@@ -86,6 +98,7 @@ type
     property UseUniquePositions: boolean read m_bUseUniquePositions write m_bUseUniquePositions;
     property GeneratedOpening: TOpening read m_GenOpening write m_GenOpening;
     property UseNumberOfPlys: integer read m_iUseNumberOfPlys write m_iUseNumberOfPlys;
+    property UniqueGames: boolean read m_bUniqueGames write m_bUniqueGames;
   end;
 
   PPosBaseCollectorContext = ^TPosBaseCollectorContext;
@@ -99,6 +112,23 @@ type
 procedure Reestimate(moveEsts: TList; nRec: integer);
 
 implementation
+
+uses
+  LoggerUnit;
+
+type
+  TPosMoveItem = class
+  private
+    m_PosMove: TPosMove;
+    m_bPosOnly: boolean;
+    function FGetPos: TChessPosition;
+  public
+    constructor Create(const APosMove: TPosMove); overload;
+    constructor Create(const APos: TChessPosition); overload;
+    property PosMove: TPosMove read m_PosMove;
+    property Pos: TChessPosition read FGetPos;
+    property PosOnly: boolean read m_bPosOnly;
+  end;
 
 var
   g_PosBaseCollector: TPosBaseCollector = nil;
@@ -114,6 +144,8 @@ end;
 
 constructor TPosBaseCollector.FCreate(const ARefPosBase: TPosBase);
 begin
+  m_PosMovesCollected := TObjectList.Create;
+
   m_ProceedColors := [fcWhite, fcBlack];
   m_GenOpening := openNo;
   m_RefPosBase := ARefPosBase;
@@ -159,6 +191,8 @@ begin
   FClearContexts;
   m_Contexts.Free;
 
+  m_PosMovesCollected.Free;
+
   inherited;
 end;
 
@@ -173,7 +207,17 @@ procedure TPosBaseCollector.FSetMoveTreeBase(ABase: TMoveTreeBase);
 begin
   if (Assigned(m_PosBase)) then
     raise EPosBaseCollector.Create('MoveTreeBase cannot after Start() has been invoked!');
+
   m_MoveTreeBase := ABase;
+
+  if (Assigned(m_MoveTreeBase)) then
+    m_MoveTreeBase.OnAdded := FOnMoveTreeBaseAdded;
+end;
+
+
+procedure TPosBaseCollector.FOnMoveTreeBaseAdded(Sender: TObject);
+begin
+  m_bAddedToMoveTreeBase := TRUE;
 end;
 
 
@@ -196,12 +240,24 @@ begin // .DoPosMove
   m_bAddPos := (m_bAddPos and bInMovesRange);
 
   if (m_bAddPosMove) then
-    m_PosBase.Add(APosMove)
+    FCollectPosMove(APosMove)
   else if (m_bAddPos) then
-    m_PosBase.Add(APosMove.pos);
+    FCollectPos(APosMove.pos);
 
   if (m_GenOpening in [openExtended, openExtendedPlus]) then
     FProcessExtendedOpeningLine(APosMove);
+end;
+
+
+procedure TPosBaseCollector.FCollectPosMove(const APosMove: TPosMove);
+begin
+  m_PosMovesCollected.Add(TPosMoveItem.Create(APosMove));
+end;
+
+
+procedure TPosBaseCollector.FCollectPos(const APos: TChessPosition);
+begin
+  m_PosMovesCollected.Add(TPosMoveItem.Create(APos));
 end;
 
 
@@ -214,7 +270,7 @@ begin
     // Adding previous positions, which hadn't been added to DB before
     while (m_PosMoves.Count > 0) do
     begin
-      m_PosBase.Add(PPosMove(m_PosMoves.Peek)^);
+      FCollectPosMove(PPosMove(m_PosMoves.Peek)^);
       Dispose(m_PosMoves.Pop);
     end;
     m_bAddSimplePosMove := FALSE;
@@ -327,7 +383,31 @@ end;
 procedure TPosBaseCollector.Finish;
 begin
   if (m_bAddSimplePosMove) then
-    m_PosBase.Add(m_SimplePosMove);
+    FCollectPosMove(m_SimplePosMove);
+
+  if ((not m_bUniqueGames) or (m_bUniqueGames and m_bAddedToMoveTreeBase)) then
+    FAddCollectedPosMovesToBase
+  else
+    TLogger.GetInstance.Info('  adding to PosBase skipped');
+
+  m_PosMovesCollected.Clear;
+end;
+
+
+procedure TPosBaseCollector.FAddCollectedPosMovesToBase;
+var
+  i: integer;
+begin
+  for i := 0 to m_PosMovesCollected.Count - 1 do
+  begin
+    with TPosMoveItem(m_PosMovesCollected[i]) do
+    begin
+      if (PosOnly) then
+        m_PosBase.Add(Pos)
+      else
+        m_PosBase.Add(PosMove);
+    end;
+  end;
 end;
 
 
@@ -336,7 +416,7 @@ begin
   m_bAddPosMove := TRUE;
   m_bAddPos := FALSE;
   m_bAddSimplePosMove := FALSE;
-
+  m_bAddedToMoveTreeBase := FALSE;
 
   if (m_strPlayerName <> '') then
   begin
@@ -415,6 +495,29 @@ begin
     est := est and $FFFF;
 
   moveEsts[nRec] := Pointer(est);
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TPosMoveItem
+
+constructor TPosMoveItem.Create(const APosMove: TPosMove);
+begin
+  inherited Create;
+  m_PosMove := APosMove;
+end;
+
+
+constructor TPosMoveItem.Create(const APos: TChessPosition);
+begin
+  inherited Create;
+  m_PosMove.pos := APos;
+  m_bPosOnly := TRUE;
+end;
+
+
+function TPosMoveItem.FGetPos: TChessPosition;
+begin
+  Result := m_PosMove.pos;
 end;
 
 end.

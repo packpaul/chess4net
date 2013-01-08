@@ -218,16 +218,14 @@ type
 
   TPosBaseStrategy2 = class(TPosBaseStrategy)
   private
-    m_PosMTIs: TObjectList;
-    constructor FCreate(ABase: TPosBase);
     procedure FAddPosNodes(const pos: TChessPosition; k: integer; r: integer;
       out lwMovesIndex: LongWord); overload;
     procedure FAddPosNodes(const pos: TChessPosition; k: integer;
       out lwMovesIndex: LongWord); overload;
     function FGetFieldData(const pos: TChessPosition; iIndex: integer): byte;
     function FCreateMtiPlaceHolder: LongWord;
-    procedure FOnMoveTreeBaseAdded(Sender: TObject);
-    procedure FWriteDataToMTI(lwIndex: LongWord; MoveTreeAddresses: TMoveTreeAddressArr);
+    procedure FWriteDataToMTI(const pos: TChessPosition; lwMoveTreeIndex: LongWord); overload;
+    procedure FWriteDataToMTI(lwIndex: LongWord; MoveTreeAddresses: TMoveTreeAddressArr); overload;
     procedure FAddMove(lwMovesIndex: LongWord; const Move: TMoveAbs);
     procedure FAdd(const pos: TChessPosition; out lwMovesIndex: LongWord);
 
@@ -1030,18 +1028,9 @@ end;
 ////////////////////////////////////////////////////////////////////////////////
 // TPosBaseStrategy2
 
-constructor TPosBaseStrategy2.FCreate(ABase: TPosBase);
-begin
-  inherited FCreate(ABase);
-  m_PosMTIs := TObjectList.Create;
-  Base.MoveTreeBase.OnAdded := FOnMoveTreeBaseAdded;
-end;
-
-
 destructor TPosBaseStrategy2.Destroy;
 begin
   Base.MoveTreeBase.OnAdded := nil;
-  m_PosMTIs.Free;
   inherited;
 end;
 
@@ -1084,7 +1073,7 @@ begin
   lwMovesIndex := fn.NextNode;
   lwMoveTreeIndex := fn.NextValue;
 
-  m_PosMTIs.Add(TPosMTIItem.Create(pos, lwMoveTreeIndex, FALSE));
+  FWriteDataToMTI(pos, lwMoveTreeIndex);
 end;
 
 
@@ -1178,7 +1167,7 @@ begin
   Base.fMov.SeekEnd;
   Base.fMov.Write(mn);
 
-  m_PosMTIs.Add(TPosMTIItem.Create(pos, lwMoveTreeIndex));
+  FWriteDataToMTI(pos, lwMoveTreeIndex);
 end;
 
 
@@ -1417,23 +1406,15 @@ here:
 end;
 
 
-procedure TPosBaseStrategy2.FOnMoveTreeBaseAdded(Sender: TObject);
+procedure TPosBaseStrategy2.FWriteDataToMTI(const pos: TChessPosition;
+  lwMoveTreeIndex: LongWord);
 var
-  i: integer;
-  Item: TPosMTIItem;
   bRes: boolean;
   MoveTreeAddresses: TMoveTreeAddressArr;
 begin
-  for i := 0 to m_PosMTIs.Count - 1 do
-  begin
-    Item := TPosMTIItem(m_PosMTIs[i]);
-    bRes := Base.MoveTreeBase.PosCache.Get(Item.pos, MoveTreeAddresses);
-    Assert((not Item.m_bNewlyAdded) or bRes);
-    if (bRes) then
-      FWriteDataToMTI(Item.MoveTreeIndex, MoveTreeAddresses);
-  end;
-
-  m_PosMTIs.Clear;
+  bRes := Base.MoveTreeBase.PosCache.Get(pos, MoveTreeAddresses);
+  Assert(bRes);
+  FWriteDataToMTI(lwMoveTreeIndex, MoveTreeAddresses);
 end;
 
 

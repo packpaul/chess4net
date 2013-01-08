@@ -177,7 +177,7 @@ type
     constructor Create(const strBaseName: string);
     destructor Destroy; override;
     class function Exists(const strBaseName: string): boolean;
-    procedure Add(const Moves: TMoveAbsArr);
+    function Add(const Moves: TMoveAbsArr): boolean;
     procedure Find(const Pos: TChessPosition; const Addresses: TMoveTreeAddressArr;
       out Moves: TMoveAbsArr); overload;
     procedure Find(const Pos: TChessPosition; out Moves: TMoveAbsArr); overload;
@@ -356,11 +356,13 @@ begin
 end;
 
 
-procedure TMoveTreeBase.Add(const Moves: TMoveAbsArr);
+function TMoveTreeBase.Add(const Moves: TMoveAbsArr): boolean;
 var
   Iterator: TMovesDataIterator;
   InsertionPoint: TInsertionPoint;
 begin
+  Result := FALSE;
+
   m_PosCache.Clear;
 
   if (Length(Moves) = 0) then
@@ -368,13 +370,16 @@ begin
 
   Iterator := TMovesDataIterator.FCreate(Moves);
   try
-    if (not FFindData(0, Iterator, InsertionPoint)) then
-      FSaveData(InsertionPoint, Iterator);
+    if (FFindData(0, Iterator, InsertionPoint)) then
+      exit;
+    FSaveData(InsertionPoint, Iterator);
   finally
     Iterator.Free;
   end;
 
   FDoAdded;
+
+  Result := TRUE;
 end;
 
 

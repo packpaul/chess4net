@@ -24,6 +24,7 @@ type
     m_Opening: TOpening;
     m_strRefBaseName: string;
     m_bMoveTreeDB: boolean;
+    m_bUniqueGames: boolean;
 
     m_PosBaseCollector: TPosBaseCollector;
     m_MoveTreeCollector: TMoveTreeCollector;
@@ -31,7 +32,7 @@ type
 
     constructor FCreate(const strBasename: string; bVariants, bChngest: boolean; bUniquePos: boolean;
       const Color: TFigureColors; iNumPlys: integer; const strPlayerName: string;
-      Opening: TOpening; strRefBaseName: string; bMoveTreeDB: boolean);
+      Opening: TOpening; strRefBaseName: string; bMoveTreeDB: boolean; bUniqueGames: boolean);
 
     function FGetPosBaseCollector: TPosBaseCollector;
     function FGetMoveTreeCollector: TMoveTreeCollector;
@@ -47,7 +48,8 @@ type
 
     class procedure Proceed(const basename: string; variants, chngest: boolean; uniquePos: boolean;
                             const color: TFigureColors; numPlys: integer; const player_name: string;
-                            opening: TOpening; refBaseName: string; bMoveTreeDB: boolean);
+                            opening: TOpening; refBaseName: string; bMoveTreeDB: boolean;
+                            bUniqueGames: boolean);
   end;
 
 implementation
@@ -68,7 +70,7 @@ end;
 
 constructor TPGNProcessor.FCreate(const strBasename: string; bVariants, bChngest: boolean; bUniquePos: boolean;
   const Color: TFigureColors; iNumPlys: integer; const strPlayerName: string;
-  Opening: TOpening; strRefBaseName: string; bMoveTreeDB: boolean);
+  Opening: TOpening; strRefBaseName: string; bMoveTreeDB: boolean; bUniqueGames: boolean);
 begin
   inherited Create;
 
@@ -82,6 +84,7 @@ begin
   m_Opening := opening;
   m_strRefBaseName := strRefBaseName;
   m_bMoveTreeDB := bMoveTreeDB;
+  m_bUniqueGames := bUniqueGames;
 end;
 
 
@@ -109,8 +112,9 @@ begin
       UseUniquePositions := m_bUniquePos;
       GeneratedOpening := m_Opening;
       UseNumberOfPlys := m_iNumPlys;
+      UniqueGames := m_bUniqueGames;
       if (m_bMoveTreeDB) then
-        PosBaseCollector.MoveTreeBase := MoveTreeCollector.DataBase;
+        MoveTreeBase := MoveTreeCollector.DataBase;
     end;
   end;
 
@@ -132,10 +136,10 @@ end;
 
 class procedure TPGNProcessor.Proceed(const basename: string; variants, chngest: boolean; uniquePos: boolean;
   const color: TFigureColors; numPlys: integer; const player_name: string;
-  opening: TOpening; refBaseName: string; bMoveTreeDB: boolean);
+  opening: TOpening; refBaseName: string; bMoveTreeDB: boolean; bUniqueGames: boolean);
 begin
   with TPGNProcessor.FCreate(basename, variants, chngest, uniquePos, color,
-    numPlys, player_name, opening, refBaseName, bMoveTreeDB) do
+    numPlys, player_name, opening, refBaseName, bMoveTreeDB, bUniqueGames) do
   try
     FProceedPGN;
   finally
@@ -146,7 +150,7 @@ end;
 
 procedure TPGNProcessor.FProceedPGN;
 begin
-  with TPGNTraverser.Create(Input, [PosBaseCollector, MoveTreeCollector]) do
+  with TPGNTraverser.Create(Input, [MoveTreeCollector, PosBaseCollector]) do // PP: Visitable order is important here!
   try
     ProceedColors := m_Color;
     PlayerName := m_strPlayerName;

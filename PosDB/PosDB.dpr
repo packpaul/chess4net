@@ -25,10 +25,10 @@ uses
 procedure Help;
 begin
   writeln;
-  writeln('PosDB version 2012.0');
+  writeln('PosDB version 2013.0');
   writeln('Chess4Net DB builder');
   writeln;
-  writeln('PosDB [-V] [-E -U] [-P <name>] [-W|B] [-C <number of plys>] [-O|-X[+]] [-R <referenced base>] [-T] [-L <log file>] <input PGN file> [<base>]');
+  writeln('PosDB [-V] [-E -U] [-P <name>] [-W|B] [-C <number of plys>] [-O|-X[+]] [-R <referenced base>] [-T [-G]] [-L <log file>] <input PGN file> [<base>]');
   writeln;
   writeln('-V', #9, 'proceed also variants.');
   writeln('-E', #9, 'change estimation for moves.');
@@ -42,6 +42,7 @@ begin
   writeln('-X+', #9, 'generate extended opening lines with simple positions.');
   writeln('-R', #9, 'use <referenced base> as a base for references.');
   writeln('-T', #9, 'build move tree DB.');
+  writeln('-G', #9, 'include only unique games from PGN data.');
   writeln('-L', #9, 'log file.');
 end;
 
@@ -65,6 +66,7 @@ var
   refBase: string = '';
   moveTreeDB: boolean = FALSE;
   logFileName: string = '';
+  uniqueGames: boolean = FALSE;
 
 begin
   if ParamCount = 0 then
@@ -147,6 +149,13 @@ begin
           moveTreeDB := TRUE;
         end
     else
+      if UpperCase(ParamStr(i)) = '-G' then
+        begin
+          if i > ParamCount then
+            Error;
+          uniqueGames := TRUE;
+        end
+    else
       if UpperCase(ParamStr(i)) = '-L' then
         begin
           inc(i);
@@ -177,9 +186,9 @@ begin
   TLogger.GetInstance.Info('Processing PGN: ' + ParamStr(i));
 
   if i = ParamCount then
-    TPGNProcessor.Proceed(ChangeFileExt(ParamStr(i), ''), variants, chngest, uniquePos, color, numPlys, player_name, opening, refBase, moveTreeDB)
+    TPGNProcessor.Proceed(ChangeFileExt(ParamStr(i), ''), variants, chngest, uniquePos, color, numPlys, player_name, opening, refBase, moveTreeDB, uniqueGames)
   else // i < ParamCount
-    TPGNProcessor.Proceed(ChangeFileExt(ParamStr(i + 1), ''), variants, chngest, uniquePos, color, numPlys, player_name, opening, refBase, moveTreeDB);
+    TPGNProcessor.Proceed(ChangeFileExt(ParamStr(i + 1), ''), variants, chngest, uniquePos, color, numPlys, player_name, opening, refBase, moveTreeDB, uniqueGames);
 
   Close(input);
 end.
