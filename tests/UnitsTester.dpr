@@ -29,7 +29,8 @@ uses
   MoveTreeCollectorUnit in '..\PosDB\MoveTreeCollectorUnit.pas',
   TestFrameworkExUnit in 'TestFrameworkExUnit.pas',
   PosBaseTestsUnit in 'PosBaseTestsUnit.pas',
-  PosBaseCollectorUnit in '..\PosDB\PosBaseCollectorUnit.pas';
+  PosBaseCollectorUnit in '..\PosDB\PosBaseCollectorUnit.pas',
+  LoggerUnit in '..\LoggerUnit.pas';
 
 {$R *.res}
 

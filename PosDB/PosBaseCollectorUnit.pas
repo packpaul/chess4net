@@ -248,6 +248,9 @@ begin // .DoPosMove
   else if (m_bAddPos) then
     FCollectPos(APosMove.pos);
 
+  if (not bInMovesRange) then
+    exit;
+
   if (m_GenOpening in [openExtended, openExtendedPlus]) then
     FProcessExtendedOpeningLine(APosMove);
 end;
@@ -394,7 +397,7 @@ begin
   else
   begin
     m_bSomeGamesSkippedForTest := TRUE;
-    TLogger.GetInstance.Info('  adding to PosBase skipped');
+    TLogger.GetInstance.Info('  Adding to PosBase skipped for game #' + IntToStr(m_iGameNumber));
   end;
 
   m_PosMovesCollected.Clear;

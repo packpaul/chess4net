@@ -9,7 +9,8 @@ unit PGNProcessorUnit;
 interface
 
 uses
-  PGNTraverserUnit, PosBaseCollectorUnit, MoveTreeCollectorUnit, PosBaseUnit;
+  PGNTraverserUnit, PosBaseCollectorUnit, MoveTreeCollectorUnit, PosBaseUnit,
+  MoveTreeBaseUnit;
 
 type
   TPGNProcessor = class
@@ -29,6 +30,7 @@ type
     m_PosBaseCollector: TPosBaseCollector;
     m_MoveTreeCollector: TMoveTreeCollector;
     m_RefPosBase: TPosBase;
+    m_RefMoveTreeBase: TMoveTreeBase;
 
     constructor FCreate(const strBasename: string; bVariants, bChngest: boolean; bUniquePos: boolean;
       const Color: TFigureColors; iNumPlys: integer; const strPlayerName: string;
@@ -92,7 +94,9 @@ destructor TPGNProcessor.Destroy;
 begin
   m_PosBaseCollector.Free;
   m_MoveTreeCollector.Free;
+
   m_RefPosBase.Free;
+  m_RefMoveTreeBase.Free;
 
   inherited;
 end;
@@ -102,7 +106,11 @@ function TPGNProcessor.FGetPosBaseCollector: TPosBaseCollector;
 begin
   if (not Assigned(m_PosBaseCollector)) then
   begin
-    m_RefPosBase := TPosBase.Create(m_strRefBaseName);
+    if (TMoveTreeBase.Exists(m_strRefBaseName)) then
+      m_RefMoveTreeBase := TMoveTreeBase.Create(m_strRefBaseName);
+
+    m_RefPosBase := TPosBase.Create(m_strRefBaseName, m_RefMoveTreeBase);
+
     m_PosBaseCollector := TPosBaseCollector.Create(m_strBasename, m_RefPosBase);
     with m_PosBaseCollector do
     begin
