@@ -40,6 +40,7 @@ begin
   writeln('-O', #9, 'generate only opening lines.');
   writeln('-X', #9, 'generate extended opening lines.');
   writeln('-X+', #9, 'generate extended opening lines with simple positions.');
+  writeln('-S', #9, 'use in opening lines statistical estimation for prunning.');
   writeln('-R', #9, 'use <referenced base> as a base for references.');
   writeln('-T', #9, 'build move tree DB.');
   writeln('-G', #9, 'include only unique games from PGN data.');
@@ -62,6 +63,7 @@ var
   color: TFigureColors = [fcWhite, fcBlack];
   player_name: string = '';
   opening: TOpening = openNo;
+  statPrunning: boolean = FALSE;
   numPlys: integer = 0;
   refBase: string = '';
   moveTreeDB: boolean = FALSE;
@@ -134,6 +136,11 @@ begin
             opening := openExtendedPlus;
         end
     else
+      if UpperCase(ParamStr(i)) = '-S' then
+        begin
+          statPrunning := (opening <> openNo);
+        end
+    else
       if UpperCase(ParamStr(i)) = '-R' then
         begin
           inc(i);
@@ -186,9 +193,9 @@ begin
   TLogger.GetInstance.Info('Processing PGN: ' + ParamStr(i));
 
   if i = ParamCount then
-    TPGNProcessor.Proceed(ChangeFileExt(ParamStr(i), ''), variants, chngest, uniquePos, color, numPlys, player_name, opening, refBase, moveTreeDB, uniqueGames)
+    TPGNProcessor.Proceed(ChangeFileExt(ParamStr(i), ''), variants, chngest, uniquePos, color, numPlys, player_name, opening, statPrunning, refBase, moveTreeDB, uniqueGames)
   else // i < ParamCount
-    TPGNProcessor.Proceed(ChangeFileExt(ParamStr(i + 1), ''), variants, chngest, uniquePos, color, numPlys, player_name, opening, refBase, moveTreeDB, uniqueGames);
+    TPGNProcessor.Proceed(ChangeFileExt(ParamStr(i + 1), ''), variants, chngest, uniquePos, color, numPlys, player_name, opening, statPrunning, refBase, moveTreeDB, uniqueGames);
 
   Close(input);
 end.

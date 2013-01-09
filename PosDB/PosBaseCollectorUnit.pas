@@ -35,6 +35,7 @@ type
     m_strPlayerName: string;
     m_bChangeEstimation: boolean;
     m_bUseUniquePositions: boolean;
+    m_bUseStatisticalPrunning: boolean;
     m_iUseNumberOfPlys: integer;
     m_bUniqueGames: boolean;
 
@@ -101,6 +102,7 @@ type
     property ChangeEstimation: boolean read m_bChangeEstimation write m_bChangeEstimation;
     property UseUniquePositions: boolean read m_bUseUniquePositions write m_bUseUniquePositions;
     property GeneratedOpening: TOpening read m_GenOpening write m_GenOpening;
+    property UseStatisticalPrunning: boolean read m_bUseStatisticalPrunning write m_bUseStatisticalPrunning;
     property UseNumberOfPlys: integer read m_iUseNumberOfPlys write m_iUseNumberOfPlys;
     property UniqueGames: boolean read m_bUniqueGames write m_bUniqueGames;
   end;
@@ -325,7 +327,7 @@ var
       end;
       if (m_bAddPosMove) then
       begin
-        if (m_bUseUniquePositions) then
+        if (m_bUseStatisticalPrunning) then
           m_bAddPosMove := ((MoveEstimations[i].Estimate and $FFFF) >= 2);
         if (m_bAddPosMove) then
           break;
@@ -497,7 +499,7 @@ begin
   // For statistical estimation: if position per one game comes more than one time -> don't change estimation
   if (m_bUseUniquePositions) then
   begin
-    if ((est shr 16) >= m_iGameNumber) then // exclude repitition of "position + moves" in one game
+    if ((est shr 16) = m_iGameNumber) then // exclude repitition of "position + moves" in one game
       exit;
     est := (m_iGameNumber shl 16) or (est and $FFFF);
   end
