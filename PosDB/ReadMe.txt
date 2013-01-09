@@ -21,7 +21,7 @@ Chess4Net DB structure
 Switches explanation:
 ----------------------
 
-PosDB [-V] [-E -U] [-P <name>] [-W|B] [-C <number of plys>] [-O|-X] [-R <referenced base>] <input PGN file> [<base>]
+PosDB [-V] [-E -U] [-P <name>] [-W|B] [-C <number of plys>] [-O|-X[+] [-S]] [-R <referenced base>] [-T [-G]] [-L <log file>] <input PGN file> [<base>]
 
 -V	proceed also variants.
 -E	change estimation for moves.
@@ -33,8 +33,11 @@ PosDB [-V] [-E -U] [-P <name>] [-W|B] [-C <number of plys>] [-O|-X] [-R <referen
 -O	generate only opening lines.
 -X	generate extended opening lines.
 -X+ generate extended opening lines with simple positions.
+-S	use in opening lines statistical estimation for prunning.
 -R	use <referenced base> as a base for references.
 -T  build move tree DB.
+-G  include only unique games from PGN data.
+-L  log file.
 
 PGN Example:
 
@@ -59,11 +62,13 @@ Bxe3 15. Nxe3 (15. Nxe7+ $2 Kh8 16. Nxd5 Bf3)
 -C 4 - 1. e4 e5 2. Nf3 Nc6 will be considered only
 
 -R - use a reference base in -O or -X generation mode. If no reference base is given the generated base is used as reference.
-
+-S - use statistical prunning in -O or -X generation mode. If given only positions that come more than two times in the reference base are added.
 -O - use normal opening lines generation.
 -X - use extended opening lines generation.
 -X+ - use extended opening lines generation. Also simple positions are added at the end of lines (works only in main lines).
 -T - also a move tree base will be generated. Data in the generated base is linked with tree nodes in move tree base.
+-G - only games with unique move sequence should be included (algorithm is based over move tree base).
+-L - log conversion to a <log file>.
 
   Consider 1. e4[2] e5[2] 2. Nf3[1] Nc6[2] 3. d4[1] be the reference base (in brackets amount of times the position comes in the base is indicated).
   Let 1. e4 Nc6 2. Nf3 e5 3. d4 be used for base generation.
@@ -83,6 +88,8 @@ IV.  1. e4 e6
 V.   1. d4
 
 produces links (far pointed):
+
+// TODO: extend to 0 0 0 0
 
 I.
      e2e4    e7e5     g1f3     0   0

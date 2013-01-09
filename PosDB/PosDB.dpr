@@ -28,7 +28,7 @@ begin
   writeln('PosDB version 2013.0');
   writeln('Chess4Net DB builder');
   writeln;
-  writeln('PosDB [-V] [-E -U] [-P <name>] [-W|B] [-C <number of plys>] [-O|-X[+]] [-R <referenced base>] [-T [-G]] [-L <log file>] <input PGN file> [<base>]');
+  writeln('PosDB [-V] [-E -U] [-P <name>] [-W|B] [-C <number of plys>] [-O|-X[+] [-S]] [-R <referenced base>] [-T [-G]] [-L <log file>] <input PGN file> [<base>]');
   writeln;
   writeln('-V', #9, 'proceed also variants.');
   writeln('-E', #9, 'change estimation for moves.');
@@ -138,7 +138,9 @@ begin
     else
       if UpperCase(ParamStr(i)) = '-S' then
         begin
-          statPrunning := (opening <> openNo);
+          if (opening = openNo) then
+            Error;
+          statPrunning := TRUE;
         end
     else
       if UpperCase(ParamStr(i)) = '-R' then
@@ -158,7 +160,7 @@ begin
     else
       if UpperCase(ParamStr(i)) = '-G' then
         begin
-          if i > ParamCount then
+          if ((i > ParamCount) or (not moveTreeDB)) then
             Error;
           uniqueGames := TRUE;
         end

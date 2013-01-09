@@ -270,7 +270,6 @@ end;
 procedure TEmptyMovesTestCase.TestFindPositionWithEmptyMoves;
 var
   pos0, pos1: TChessPosition;
-  moveEsts: TMoveEstList;
 begin
   with TChessRulesEngine.Create do
   try
@@ -284,13 +283,8 @@ begin
     Free;
   end;
 
-  moveEsts := nil;
-  try
-    CheckTrue(PosBase.Find(pos0, moveEsts), 'pos0');
-    CheckTrue(PosBase.Find(pos1, moveEsts), 'pos1');
-  finally
-    moveEsts.Free;
-  end;
+  CheckTrue(PosBase.Find(pos0), 'pos0');
+  CheckTrue(PosBase.Find(pos1), 'pos1');
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
