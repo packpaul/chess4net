@@ -1,7 +1,7 @@
 ; Actual for Inno Setup Compiler 5.4.2(u)
 
 #define MyAppName "Chess4Net Analyzer"
-#define MyAppVersion "2011.3"
+#define MyAppVersion "2013.0b"
 #define MyAppPublisher "Chess4Net"
 #define MyAppURL "http://chess4net.ru"
 #define MyAppExeName "Chess4Net_Analyzer.exe"
