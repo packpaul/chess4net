@@ -1,7 +1,7 @@
-[last updated: 2011-11-08]
+[last updated: 2013-01-10]
 
 Chess4Net Analyzer
-(c) 2007-2011 No rights reserved
+(c) 2007-2013 No rights reserved
 URL:    http://chess4net.ru
 E-Mail: packpaul@mail.ru, packpaul1@gmail.ru
 Skype:  packpaul1
@@ -15,6 +15,10 @@ repertory. It supports a training mode which is useful for thoughtful replay of 
 studies and grandmaster games.
 
 Please send all bugs, questions, requests and suggestions to packpaul@mail.ru or packpaul1@gmail.ru
+
+Chess4Net Analyzer 2013.0
+- Support for Moves Tree DB
+- Moves from DB visualisation is improved
 
 Chess4Net Analyzer 2011.3
 - Training mode support

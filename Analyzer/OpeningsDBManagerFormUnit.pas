@@ -68,7 +68,7 @@ uses
 
 const
   MSG_DB_REMOVE = 'Do you really want to remove Opening DB "%s"?';
-  MSG_OPENING_DB_REQUEST = 'Additional openings DBs can be requested over http://chess4net.ru';  
+  MSG_OPENING_DB_REQUEST = 'Additional openings DBs can be downloaded from http://chess4net.ru';  
 
 ////////////////////////////////////////////////////////////////////////////////
 // TOpeningsDBManagerForm
