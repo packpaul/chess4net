@@ -46,6 +46,7 @@ type
     procedure ROnAfterSetPosition; override;
     procedure ROnAfterModeSet(const OldValue, NewValue: TMode); override;
     procedure ROnResetMoveList; override;
+    procedure ROnInitPosition; override;
   public
     constructor Create(const strPosBaseName: string = '');
     destructor Destroy; override;
@@ -409,6 +410,13 @@ procedure TPosBaseChessBoardLayer.ROnResetMoveList;
 begin
   if (ChessBoard.Mode = mEdit) then
     FClearMovePriorList;
+end;
+
+
+procedure TPosBaseChessBoardLayer.ROnInitPosition;
+begin
+  if (Assigned(m_ExtMoveTreeBase)) then
+    m_ExtMoveTreeBase.PosCache.Clear;
 end;
 
 

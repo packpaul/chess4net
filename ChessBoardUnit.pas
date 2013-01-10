@@ -108,6 +108,7 @@ type
     function FDoMove(i, j: integer; prom_fig: TFigureName = K): boolean;
     procedure FOnAfterMoveDone;
     procedure FOnAfterSetPosition;
+    procedure FOnInitPosition;
 
     procedure FAnimate(const i, j: integer); // Animates a disposition of a piece from (i0,j0) to (i,j)
     procedure FDoAnimationStep;
@@ -197,6 +198,7 @@ type
     procedure ROnAfterSetPosition; virtual;
     procedure ROnAfterModeSet(const OldValue, NewValue: TMode); virtual;
     procedure ROnResetMoveList; virtual;
+    procedure ROnInitPosition; virtual;
 
     property ChessBoard: TChessBoard read m_ChessBoard write m_ChessBoard;
     property SquareSize: integer read FGetSquareSize;
@@ -716,6 +718,15 @@ begin
 end;
 
 
+procedure TChessBoard.FOnInitPosition;
+var
+  i: integer;
+begin
+  for i := 0 to m_lstLayers.Count - 1 do
+    TChessBoardLayerBase(m_lstLayers[i]).ROnInitPosition;
+end;
+
+
 procedure TChessBoard.FormCreate(Sender: TObject);
 begin
   // m_iDeltaWidthHeight := Width - Height;
@@ -1081,6 +1092,7 @@ begin
 
   FCancelAnimationDragging;
   FOnAfterSetPosition;
+  FOnInitPosition;
 
   FDrawBoard;
 end;
@@ -1092,6 +1104,7 @@ begin
 
   FCancelAnimationDragging;
   FOnAfterSetPosition;
+  FOnInitPosition;
   
   FDrawBoard;
 end;
@@ -1375,6 +1388,11 @@ end;
 
 
 procedure TChessBoardLayerBase.ROnResetMoveList;
+begin
+end;
+
+
+procedure TChessBoardLayerBase.ROnInitPosition;
 begin
 end;
 
