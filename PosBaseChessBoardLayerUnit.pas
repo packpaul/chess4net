@@ -430,9 +430,15 @@ begin
 end;
 
 
-function EstComape(item1, item2: pointer): integer;
+function EstSignedComape(item1, item2: pointer): integer;
 begin
   Result := SmallInt(PMoveEst(item2).estimate and $FFFF) - SmallInt(PMoveEst(item1).estimate and $FFFF);
+end;
+
+
+function EstUnsignedComape(item1, item2: pointer): integer;
+begin
+  Result := Word(PMoveEst(item2).estimate and $FFFF) - Word(PMoveEst(item1).estimate and $FFFF);
 end;
 
 
@@ -453,7 +459,7 @@ end;
 
 procedure TPosBaseChessBoardLayer.FReadFromBase(out lstMovePrior: TList);
 
-  procedure NClasterMoves(var rlstMove: TList);
+  procedure NClasterUsrMoves(var rlstMove: TList);
   var
     i, j, num_clast, i_min, j_min, curr_assoc: integer;
     modus_min: double;
@@ -467,7 +473,7 @@ procedure TPosBaseChessBoardLayer.FReadFromBase(out lstMovePrior: TList);
     if (rlstMove.Count = 0) then
       exit;
 
-    rlstMove.Sort(EstComape);
+    rlstMove.Sort(EstSignedComape);
     SetLength(clastWeights, rlstMove.Count);
 
     num_clast := rlstMove.Count;
@@ -522,6 +528,102 @@ procedure TPosBaseChessBoardLayer.FReadFromBase(out lstMovePrior: TList);
       Dispose(rlstMove[i]);
       rlstMove[i] := mp;
     end;
+  end;
+
+  procedure NClasterExtMoves(var rlstMove: TList);
+  var
+    i, j, num_clast, i_min, j_min, curr_assoc: integer;
+    iEst: integer;
+    modus_min: double;
+    clastWeights: array of record
+      grav: double;
+      assoc: integer;
+      iIndex: integer;
+    end;
+    mp: PMovePrior;
+    p: TPrior;
+  begin
+    if (rlstMove.Count = 0) then
+      exit;
+
+    rlstMove.Sort(EstUnsignedComape);
+
+    SetLength(clastWeights, rlstMove.Count);
+    num_clast := 0;
+    for i := 0 to rlstMove.Count - 1 do
+    begin
+      iEst := Word(PMoveEst(rlstMove[i]).estimate and $FFFF);
+      if (iEst = 0) then
+      begin
+        new(mp);
+        mp.move := PMoveEst(rlstMove[i]).move;
+        mp.prior := mpNo;
+        Dispose(rlstMove[i]);
+        rlstMove[i] := mp;
+      end
+      else
+      begin
+        clastWeights[i].assoc := i + 1;
+        clastWeights[i].grav := iEst;
+        clastWeights[i].iIndex := i;
+        inc(num_clast);
+      end;
+    end;
+    SetLength(clastWeights, num_clast);
+
+    repeat
+      i_min := 0;
+      j_min := 0;
+      modus_min := $FFFF; // $FFFF - max. value for evaluation
+      curr_assoc := 0; // current cluster being viewed
+
+      for i := Low(clastWeights) to Pred(High(clastWeights)) do
+      begin
+        if (curr_assoc = clastWeights[i].assoc) then
+          continue;
+
+        curr_assoc := clastWeights[i].assoc;
+
+        for j := Succ(i) to High(clastWeights) do
+        begin
+          if ((clastWeights[j].assoc <> clastWeights[Pred(j)].assoc) and
+              (curr_assoc <> clastWeights[j].assoc) and
+              (abs(clastWeights[i].grav - clastWeights[j].grav) <= modus_min)) then
+          begin
+            i_min := i;
+            j_min := j;
+            modus_min := abs(clastWeights[i].grav - clastWeights[j].grav);
+          end;
+        end;
+      end;
+
+      if ((num_clast > Ord(High(TPrior))) or (modus_min = 0.0)) then
+      begin
+        for i := High(clastWeights) downto j_min do
+        begin
+          if clastWeights[i].assoc = clastWeights[j_min].assoc then
+             clastWeights[i].assoc := clastWeights[i_min].assoc;
+        end;
+        clastWeights[i_min].grav := (clastWeights[i_min].grav + clastWeights[j_min].grav) / 2;
+      end;
+
+      dec(num_clast);
+      
+    until (num_clast <= Ord(High(TPrior))) and ((modus_min <> 0.0) or (num_clast < 1));
+
+    p := mpHigh;
+    for i := Low(clastWeights) to High(clastWeights) do
+    begin
+      new(mp);
+      if ((i > Low(clastWeights)) and (clastWeights[i].assoc > clastWeights[Pred(i)].assoc)) then
+        p := Succ(p);
+      j := clastWeights[i].iIndex;
+      mp.move := PMoveEst(rlstMove[j]).move;
+      mp.prior := p;
+      Dispose(rlstMove[j]);
+      rlstMove[j] := mp;
+    end;
+
   end;
 
   procedure NClasterTreeMoves(var rlstMove: TList);
@@ -606,8 +708,8 @@ begin // .FReadFromBase
 
     // TODO: Handle wrong DB
 
-    NClasterMoves(lstUsrMove);
-    NClasterMoves(lstExtMove);
+    NClasterUsrMoves(lstUsrMove);
+    NClasterExtMoves(lstExtMove);
     NClasterTreeMoves(lstExtMove2);
 
     NMergeMoves;
