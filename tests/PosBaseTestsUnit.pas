@@ -68,6 +68,21 @@ type
     procedure TestOpenExtendedPlus;
   end;
 
+  TExcludeLoopsInExtensionsTestCase = class(TTestCaseBase)
+  protected
+    procedure RCreatePosBase(out APosBase: TPosBase); override;
+    procedure RFillBase; override;
+  published
+    procedure TestExcludeLoopsInExtensions;
+  end;
+
+  TBadOrGoodMovesTestCase = class(TTestCaseBase)
+  protected
+    procedure RFillBase; override;
+  published
+    procedure TestBadOrGoodMoves;
+  end;
+
 implementation
 
 uses
@@ -159,7 +174,7 @@ begin
     MoveTreeCollector.Free;
     strlData.Free;
   end;
-  
+
 end;
 
 
@@ -707,6 +722,7 @@ begin
   strlData := nil;
   MoveTreeCollector := nil;
   PosBaseCollector := nil;
+  PGNTraverser := nil;
 
   NCreateRefBase(RefBase);
   try
@@ -877,12 +893,259 @@ begin
   end;
 end;
 
+////////////////////////////////////////////////////////////////////////////////
+// TExcludeLoopsInExtensionsTestCase
+
+procedure TExcludeLoopsInExtensionsTestCase.RCreatePosBase(out APosBase: TPosBase);
+begin
+  APosBase := TPosBaseEx.CreateForTest(MoveTreeBase, PosBaseCollectorUnit.Reestimate);
+end;
+
+
+procedure TExcludeLoopsInExtensionsTestCase.RFillBase;
+
+  procedure NCreateData(out strlData: TStringList);
+  begin
+    strlData := TStringList.Create;
+    strlData.Append('[C4N "2"]');
+    strlData.Append('');
+    strlData.Append('1. Nh3 Na6 2. Na3 Nh6 3. Nf4 Nc5 4. Nc4 Nf5 5. Ne5 Ne4 6. Nd5 Nd4 7. Nf3 Nc6');
+    strlData.Append('8. Nc3 Nf6 9. Ng1 Ng8 10. Nb1 Nb8 11. e4 e5');
+    strlData.Append('');
+    strlData.Append('[C4N "2"]');
+    strlData.Append('');
+    strlData.Append('1. e4 e5');
+    strlData.Append('');
+    strlData.Append('[C4N "2"]');
+    strlData.Append('');
+    strlData.Append('1. Nf3 Nc6 2. Nh4 Na5 3. Nf3 Nc6 4. g4 Nb8 5. Ng1 f5 6. Nc3 Nc6 7. Na4 Na5');
+    strlData.Append('8. Nc3 Nc6 9. Na4 Ne5 10. Nc3 Nc6 11. Nb1 Nb8 12. gf d6');
+    strlData.Append('');
+    strlData.Append('[C4N "2"]');
+    strlData.Append('');
+    strlData.Append('1. g4 f5 2. gf d6');
+  end;
+
+  procedure NCreateRefBase(out APosBase: TPosBase);
+  var
+    strlData: TStringList;
+    PGNTraverser: TPGNTraverser;
+    PosBaseCollector: TPosBaseCollector;
+  begin
+    APosBase := TPosBaseEx.CreateForTest(nil, PosBaseCollectorUnit.Reestimate);
+
+    strlData := nil;
+    PGNTraverser := nil;
+    PosBaseCollector := nil;
+    try
+      NCreateData(strlData);
+      PosBaseCollector := TPosBaseCollectorEx.CreateForTest(APosBase);
+      PosBaseCollector.UseUniquePositions := TRUE;
+      PGNTraverser := TPGNTraverser.Create(strlData, PosBaseCollector);
+      PGNTraverser.Traverse;
+    finally
+      PGNTraverser.Free;
+      PosBaseCollector.Free;
+      strlData.Free;
+    end;
+  end;
+
+var
+  strlData: TStringList;
+  PGNTraverser: TPGNTraverser;
+  MoveTreeCollector: TMoveTreeCollector;
+  PosBaseCollector: TPosBaseCollectorEx;
+  RefBase: TPosBase;
+begin
+  strlData := nil;
+  MoveTreeCollector := nil;
+  PosBaseCollector := nil;
+  PGNTraverser := nil;
+
+  NCreateRefBase(RefBase);
+  try
+    NCreateData(strlData);
+
+    MoveTreeCollector := TMoveTreeCollectorEx.CreateForTest(MoveTreeBase);
+
+    PosBaseCollector := TPosBaseCollectorEx.CreateForTest(PosBase, RefBase);
+    PosBaseCollector.MoveTreeBase := MoveTreeBase;
+    PosBaseCollector.GeneratedOpening := openExtended;
+    PosBaseCollector.ExcludeLoopsInExtensions := TRUE;
+    PosBaseCollector.UseUniquePositions := TRUE;
+    PosBaseCollector.UseStatisticalPrunning := TRUE;
+
+    PGNTraverser := TPGNTraverser.Create(strlData, [MoveTreeCollector, PosBaseCollector]);
+    PGNTraverser.Traverse;
+
+  finally
+    PGNTraverser.Free;
+    PosBaseCollector.Free;
+    MoveTreeCollector.Free;
+    strlData.Free;
+    RefBase.Free;
+  end;
+
+end;
+
+
+procedure TExcludeLoopsInExtensionsTestCase.TestExcludeLoopsInExtensions;
+type
+  TIsType = (iOpening, iExtension, iFromMVT);
+var
+  pos: TChessPosition;
+  move: TMoveAbs;
+
+  procedure NCheckIs(IsType: TIsType; const strErrorMsg: string);
+  var
+    MoveEsts: TMoveEstList;
+    bRes: boolean;
+    i: integer;
+    iEst: integer;
+  begin
+    bRes := PosBase.Find(pos, MoveEsts);
+    try
+      CheckTrue(bRes, strErrorMsg);
+      for i := 0 to MoveEsts.Count - 1 do
+      begin
+        if (not move.Equals(MoveEsts[i].Move)) then
+          continue;
+        iEst := MoveEsts[i].Estimate and $FFFF;
+        case IsType of
+          iOpening:
+            Check(iEst >= 2, strErrorMsg);
+          iExtension:
+            Check(iEst = 1, strErrorMsg);
+          iFromMVT:
+            Check(iEst = 0, strErrorMsg);
+        end;
+        exit;
+      end;
+    finally
+      MoveEsts.Free;
+    end;
+
+    Fail(strErrorMsg);
+  end;
+
+  procedure NCheckIsOpening;
+  begin
+    NCheckIs(iOpening, 'NOT Opening!');
+  end;
+
+  procedure NCheckIsExtension;
+  begin
+    NCheckIs(iExtension, 'NOT Extension!');
+  end;
+
+  procedure NCheckIsFromMVT;
+  begin
+    NCheckIs(iFromMVT, 'NOT From MVT!');
+  end;
+
+  procedure NCheckNoEntry;
+  var
+    bRes: boolean;
+  begin
+    bRes := PosBase.Find(pos);
+    CheckFalse(bRes, 'HAS entry!');
+  end;
+
+var
+  cre: TChessRulesEngine;
+
+  procedure NDoMove(const strMove: string);
+  var
+    bRes: boolean;
+  begin
+    pos := cre.Position^;
+    bRes := cre.DoMove(strMove);
+    CheckTrue(bRes, 'Assertion failed!');
+    move := cre.lastMove^;
+  end;
+
+  procedure NProceed;
+  begin
+    // 1. Nh3
+    NDoMove('Nh3');
+    NCheckIsFromMVT;
+
+    cre.InitNewGame;
+
+    // 1. g4 f5 2. Nc3
+    NDoMove('Nh3');
+    NDoMove('f5');
+    NDoMove('Nc3');
+
+    NCheckNoEntry;
+  end;
+
+begin
+  cre := TChessRulesEngine.Create;
+  try
+    NProceed;
+  finally
+    cre.Free;
+  end;
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// TBadOrGoodMovesTestCase
+
+procedure TBadOrGoodMovesTestCase.RFillBase;
+
+  procedure NCreateData(out strlData: TStringList);
+  begin
+    strlData := TStringList.Create;
+
+    strlData.Append('[C4N "2"]');
+    strlData.Append('');
+    strlData.Append('1. e4! e5? 2. d4!? d5?!');
+  end;
+
+var
+  strlData: TStringList;
+  PGNTraverser: TPGNTraverser;
+  MoveTreeCollector: TMoveTreeCollector;
+  PosBaseCollector: TPosBaseCollector;
+begin
+  strlData := nil;
+  MoveTreeCollector := nil;
+  PosBaseCollector := nil;
+  PGNTraverser := nil;
+  try
+    NCreateData(strlData);
+
+    MoveTreeCollector := TMoveTreeCollectorEx.CreateForTest(MoveTreeBase);
+    PosBaseCollector := TPosBaseCollectorEx.CreateForTest(PosBase);
+    PosBaseCollector.MoveTreeBase := MoveTreeBase;
+
+    PGNTraverser := TPGNTraverser.Create(strlData, [MoveTreeCollector, PosBaseCollector]);
+
+    PGNTraverser.Traverse;
+  finally
+    PGNTraverser.Free;
+    PosBaseCollector.Free;
+    MoveTreeCollector.Free;
+    strlData.Free;
+  end;
+
+end;
+
+
+
+procedure TBadOrGoodMovesTestCase.TestBadOrGoodMoves;
+begin
+end;
+
 initialization
   RegisterTest(TTestSuiteEx.Create('TPosBase',
     [TMultipleOutletsTestCase,
      TEmptyMovesTestCase,
      TUniqueGamesTestCase,
      TOpenExtendedTestCase,
-     TOpenExtendedPlusTestCase]));
+     TOpenExtendedPlusTestCase,
+     TExcludeLoopsInExtensionsTestCase,
+     TBadOrGoodMovesTestCase]));
 
 end.

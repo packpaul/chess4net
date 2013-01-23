@@ -500,6 +500,8 @@ var
       s := StringReplace(s, '+', '', []);
       s := StringReplace(s, '#', '', []);
       s := StringReplace(s, '=', '', []);
+      s := StringReplace(s, '!', '', []); // TODO: drop to comments
+      s := StringReplace(s, '?', '', []); // TODO: drop to comments
 
       posMove.pos := m_ChessRulesEngine.Position^;
       if (m_ChessRulesEngine.DoMove(s)) then
