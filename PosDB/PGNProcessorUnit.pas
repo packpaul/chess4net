@@ -23,6 +23,7 @@ type
     m_iNumPlys: integer;
     m_strPlayerName: string;
     m_Opening: TOpening;
+    m_bExcludeLoopsInExtensions: boolean;
     m_bStatPrunning: boolean;
     m_strRefBaseName: string;
     m_bMoveTreeDB: boolean;
@@ -35,7 +36,8 @@ type
 
     constructor FCreate(const strBasename: string; bVariants, bChngest: boolean; bUniquePos: boolean;
       const Color: TFigureColors; iNumPlys: integer; const strPlayerName: string;
-      Opening: TOpening; bStatPrunning: boolean; strRefBaseName: string; bMoveTreeDB: boolean; bUniqueGames: boolean);
+      Opening: TOpening; bExcludeLoopsInExtensions: boolean; bStatPrunning: boolean;
+      strRefBaseName: string; bMoveTreeDB: boolean; bUniqueGames: boolean);
 
     function FGetPosBaseCollector: TPosBaseCollector;
     function FGetMoveTreeCollector: TMoveTreeCollector;
@@ -51,8 +53,8 @@ type
 
     class procedure Proceed(const basename: string; variants, chngest: boolean; uniquePos: boolean;
                             const color: TFigureColors; numPlys: integer; const player_name: string;
-                            opening: TOpening; bStatPrunning: boolean; refBaseName: string; bMoveTreeDB: boolean;
-                            bUniqueGames: boolean);
+                            opening: TOpening; bExcludeLoopsInExtensions: boolean; bStatPrunning: boolean;
+                            refBaseName: string; bMoveTreeDB: boolean; bUniqueGames: boolean);
   end;
 
 implementation
@@ -71,9 +73,10 @@ begin
 end;
 
 
-constructor TPGNProcessor.FCreate(const strBasename: string; bVariants, bChngest: boolean; bUniquePos: boolean;
-  const Color: TFigureColors; iNumPlys: integer; const strPlayerName: string;
-  Opening: TOpening; bStatPrunning: boolean; strRefBaseName: string; bMoveTreeDB: boolean; bUniqueGames: boolean);
+constructor TPGNProcessor.FCreate(const strBasename: string; bVariants, bChngest: boolean;
+  bUniquePos: boolean; const Color: TFigureColors; iNumPlys: integer; const strPlayerName: string;
+  Opening: TOpening; bExcludeLoopsInExtensions: boolean; bStatPrunning: boolean; strRefBaseName: string;
+  bMoveTreeDB: boolean; bUniqueGames: boolean);
 begin
   inherited Create;
 
@@ -85,6 +88,7 @@ begin
   m_iNumPlys := iNumPlys;
   m_strPlayerName := strPlayerName;
   m_Opening := opening;
+  m_bExcludeLoopsInExtensions := bExcludeLoopsInExtensions; 
   m_bStatPrunning := bStatPrunning;
   m_strRefBaseName := strRefBaseName;
   m_bMoveTreeDB := bMoveTreeDB;
@@ -121,6 +125,7 @@ begin
       ChangeEstimation := m_bChngest;
       UseUniquePositions := m_bUniquePos;
       GeneratedOpening := m_Opening;
+      ExcludeLoopsInExtensions := m_bExcludeLoopsInExtensions;
       UseStatisticalPrunning := m_bStatPrunning;
       UseNumberOfPlys := m_iNumPlys;
       UniqueGames := m_bUniqueGames;
@@ -147,10 +152,11 @@ end;
 
 class procedure TPGNProcessor.Proceed(const basename: string; variants, chngest: boolean; uniquePos: boolean;
   const color: TFigureColors; numPlys: integer; const player_name: string;
-  opening: TOpening; bStatPrunning: boolean; refBaseName: string; bMoveTreeDB: boolean; bUniqueGames: boolean);
+  opening: TOpening; bExcludeLoopsInExtensions: boolean; bStatPrunning: boolean; refBaseName: string;
+  bMoveTreeDB: boolean; bUniqueGames: boolean);
 begin
   with TPGNProcessor.FCreate(basename, variants, chngest, uniquePos, color,
-    numPlys, player_name, opening, bStatPrunning, refBaseName, bMoveTreeDB, bUniqueGames) do
+    numPlys, player_name, opening, bExcludeLoopsInExtensions, bStatPrunning, refBaseName, bMoveTreeDB, bUniqueGames) do
   try
     FProceedPGN;
   finally

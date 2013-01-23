@@ -23,7 +23,7 @@ type
   private
     m_PosMovesCollected: TObjectList;
 
-    m_PosMoves: TStack;
+    m_ExtendablePosMoves: TStack;
     m_Contexts: TStack;
 
     m_PosBase, m_RefPosBase: TPosBase;
@@ -48,6 +48,7 @@ type
     m_bAddedToMoveTreeBase: boolean;
 
     m_GenOpening: TOpening;
+    m_bExcludeLoopsInExtensions: boolean;
 
     m_bLineStartedFromPreviousPosition: boolean;
     m_lastPosMove: TPosMove;
@@ -70,6 +71,7 @@ type
     procedure FClearContexts;
 
     procedure FProcessExtendedOpeningLine(const posMove: TPosMove);
+    procedure FExcludeLoopsInExtensions;
     procedure FProcessOpeningLine(const posMove: TPosMove);
     procedure FReestimate(moveEsts: TList; nRec: integer);
 
@@ -102,6 +104,7 @@ type
     property ChangeEstimation: boolean read m_bChangeEstimation write m_bChangeEstimation;
     property UseUniquePositions: boolean read m_bUseUniquePositions write m_bUseUniquePositions;
     property GeneratedOpening: TOpening read m_GenOpening write m_GenOpening;
+    property ExcludeLoopsInExtensions: boolean read m_bExcludeLoopsInExtensions write m_bExcludeLoopsInExtensions;
     property UseStatisticalPrunning: boolean read m_bUseStatisticalPrunning write m_bUseStatisticalPrunning;
     property UseNumberOfPlys: integer read m_iUseNumberOfPlys write m_iUseNumberOfPlys;
     property UniqueGames: boolean read m_bUniqueGames write m_bUniqueGames;
@@ -136,6 +139,8 @@ type
     property PosOnly: boolean read m_bPosOnly;
   end;
 
+  TStackEx = class(TStack);
+
 var
   g_PosBaseCollector: TPosBaseCollector = nil;
 
@@ -156,7 +161,7 @@ begin
   m_GenOpening := openNo;
   m_RefPosBase := ARefPosBase;
 
-  m_PosMoves := TStack.Create;
+  m_ExtendablePosMoves := TStack.Create;
   m_Contexts := TStack.Create;
 
   g_PosBaseCollector := self;
@@ -192,7 +197,7 @@ begin
   FDestroyPosBase;
 
   FClearPosMoves;
-  m_PosMoves.Free;
+  m_ExtendablePosMoves.Free;
 
   FClearContexts;
   m_Contexts.Free;
@@ -276,25 +281,99 @@ var
 begin
   if (m_bAddPosMove) then
   begin
-    // Adding previous positions, which hadn't been added to DB before
-    while (m_PosMoves.Count > 0) do
-    begin
-      FCollectPosMove(PPosMove(m_PosMoves.Peek)^);
-      Dispose(m_PosMoves.Pop);
-    end;
     m_bAddSimplePosMove := FALSE;
+    if (m_ExtendablePosMoves.Count = 0) then
+      exit;
+    // Adding previous positions, which hadn't been added to DB before
+    TLogger.GetInstance.Info(Format('  Adding %d entires to PosBase in X/X+ mode for game #%d',
+                                    [m_ExtendablePosMoves.Count, m_iGameNumber]));
+    if (m_bExcludeLoopsInExtensions) then
+      FExcludeLoopsInExtensions;
+    while (m_ExtendablePosMoves.Count > 0) do
+    begin
+      p_posMove := m_ExtendablePosMoves.Pop;
+      if (Assigned(p_posMove)) then
+      begin
+        FCollectPosMove(p_posMove^);
+        Dispose(p_posMove);
+      end;
+    end;
   end
   else
   begin
     New(p_posMove);
     p_posMove^ := posMove;
-    m_PosMoves.Push(p_posMove);
+    m_ExtendablePosMoves.Push(p_posMove);
     if ((m_GenOpening = openExtendedPlus) and (not m_bAddSimplePosMove)) then
     begin
       m_bAddSimplePosMove := TRUE;
       m_SimplePosMove := posMove;
     end;
   end;
+end;
+
+
+procedure TPosBaseCollector.FExcludeLoopsInExtensions;
+var
+  ppm: PPosMove;
+
+  function NIsPawnMoveOrCapture: boolean;
+  begin
+    with ppm^ do
+      Result := ((pos.board[move.i, move.j] <> ES) or
+                 (pos.board[move.i0, move.j0] in [WP, BP]));
+  end;
+
+var
+  TopPos: TChessPosition;
+  lstPosMoves: TList;
+
+  procedure NExcludeLoopsInARange(iFrom, iTo: integer);
+  var
+    i, j: integer;
+  begin
+    while (iFrom <= iTo) do
+    begin
+      for i := iFrom to iTo do
+      begin
+        if (not TopPos.Equals(PPosMove(lstPosMoves[i]).pos)) then
+          continue;
+
+        TLogger.GetInstance.Info(Format('  Excluding %d entries in XO mode for game #%d',
+                                        [iTo - i + 1, m_iGameNumber]));
+        for j := i to iTo do
+        begin
+          Dispose(lstPosMoves[j]);
+          lstPosMoves[j] := nil;
+        end;
+        exit;
+      end;
+      TopPos := PPosMove(lstPosMoves[iTo]).pos;
+      dec(iTo);
+    end;
+  end;
+
+var
+  iTopIndex: integer;
+  i: integer;
+begin // .FExcludeLoopsInExtensions
+  lstPosMoves := TStackEx(m_ExtendablePosMoves).List;
+
+  TopPos := m_lastPosMove.pos;
+  iTopIndex := lstPosMoves.Count;
+
+  for i := lstPosMoves.Count - 1 downto 0 do
+  begin
+    ppm := lstPosMoves[i];
+    if (NIsPawnMoveOrCapture) then
+    begin
+      NExcludeLoopsInARange(i + 1, iTopIndex - 1);
+      TopPos := ppm.pos;
+      iTopIndex := i;
+    end;
+  end;
+
+  NExcludeLoopsInARange(0, iTopIndex - 1);
 end;
 
 
@@ -355,7 +434,7 @@ var
 begin
   new(pContext);
   pContext.bAddPos := m_bAddPosMove;
-  pContext.iPosMovesCount := m_PosMoves.Count;
+  pContext.iPosMovesCount := m_ExtendablePosMoves.Count;
   pContext.PosMove := m_lastPosMove;
   pContext.ResultingPos := m_lastResultingPos;
 
@@ -379,8 +458,8 @@ begin
     else
       m_bAddPosMove := pContext.bAddPos; // Opening
 
-    while (pContext.iPosMovesCount < m_PosMoves.Count) do // Deletion of subline stack
-      Dispose(m_PosMoves.Pop);
+    while (pContext.iPosMovesCount < m_ExtendablePosMoves.Count) do // Deletion of subline stack
+      Dispose(m_ExtendablePosMoves.Pop);
 
   finally
     Dispose(pContext);
@@ -475,8 +554,8 @@ end;
 
 procedure TPosBaseCollector.FClearPosMoves;
 begin
-  while (m_PosMoves.Count > 0) do
-    Dispose(m_PosMoves.Pop);
+  while (m_ExtendablePosMoves.Count > 0) do
+    Dispose(m_ExtendablePosMoves.Pop);
 end;
 
 
