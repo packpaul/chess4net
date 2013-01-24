@@ -32,6 +32,7 @@ type
     function FGetIniFileName: string;
     procedure FReadHints;
     procedure FRefresh;
+    procedure FFixControlsPositioning;
   public
     { Public declarations }
   end;
@@ -41,7 +42,7 @@ implementation
 {$R *.dfm}
 
 uses
-  Forms, SysUtils, TntIniFiles, StrUtils,
+  Forms, SysUtils, TntIniFiles, StrUtils, Types,
   //
   IniSettingsUnit, GlobalsUnit;
 
@@ -170,8 +171,63 @@ end;
 
 procedure TTipsOfTheDayForm.FormShow(Sender: TObject);
 begin
+  FFixControlsPositioning;
+
   m_iTipIndex := TIniSettings.Instance.TipsOfTheDayIndex;
   NextTipButton.Click;
+end;
+
+
+procedure TTipsOfTheDayForm.FFixControlsPositioning;
+
+  function NGetAllRect: TRect;
+  var
+    i: integer;
+    TmpRect: TRect;
+  begin
+    Result := Rect(0, 0, 1, 1);
+    for i := 0 to ControlCount - 1 do
+    begin
+      if (Controls[i] is TWinControl) then
+      begin
+        UnionRect(TmpRect, Controls[i].BoundsRect, Result);
+        Result := TmpRect;
+      end;
+    end;
+  end;
+
+  procedure NRebound(iDeltaX, iDeltaY: integer);
+  var
+    i: integer;
+    AControl: TControl;
+  begin
+    for i := 0 to ControlCount - 1 do
+    begin
+      AControl := Controls[i];
+      if (not (AControl is TWinControl)) then
+        continue;
+      if (iDeltaX < 0) then
+      begin
+        if (akLeft in AControl.Anchors) then
+          AControl.Width := AControl.Width + iDeltaX
+        else
+          AControl.Left := AControl.Left + iDeltaX;
+      end;
+      if (iDeltaY < 0) then
+      begin
+        if (akTop in AControl.Anchors) then
+          AControl.Height := AControl.Height + iDeltaY
+        else
+          AControl.Top := AControl.Top + iDeltaY;
+      end;
+    end;
+  end;
+
+var
+  AllRect: TRect;
+begin
+  AllRect := NGetAllRect;
+  NRebound(ClientRect.Right - AllRect.Right, ClientRect.Bottom - AllRect.Bottom);
 end;
 
 end.

@@ -21,7 +21,12 @@ uses
   BitmapResUnit in '..\..\BitmapResUnit.pas',
   ChessBoardHeaderUnit in '..\..\ChessBoardHeaderUnit.pas',
   FloatingFormsUnit in '..\FloatingFormsUnit.pas',
-  WinControlHlpUnit in '..\WinControlHlpUnit.pas';
+  WinControlHlpUnit in '..\WinControlHlpUnit.pas',
+  TipsOfTheDayTestsUnit in 'TipsOfTheDayTestsUnit.pas',
+  TipsOfTheDayFormUnit in '..\TipsOfTheDayFormUnit.pas' {TipsOfTheDayForm},
+  IniSettingsUnit in '..\IniSettingsUnit.pas',
+  GlobalsUnit in '..\GlobalsUnit.pas',
+  EnvironmentSetterUnit in '..\EnvironmentSetterUnit.pas';
 
 {$R *.res}
 

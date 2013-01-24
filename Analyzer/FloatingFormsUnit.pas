@@ -28,7 +28,7 @@ type
     property InitialLeft: integer read m_InitialPos.X;
     property InitialTop: integer read m_InitialPos.Y;
   public
-    constructor Create(AOwner: TComponent); override;
+    constructor CreateNew(AOwner: TComponent; Dummy: Integer = 0); override;
     destructor Destroy; override;
   end;
 
@@ -151,7 +151,7 @@ end;
 ////////////////////////////////////////////////////////////////////////////////
 // TMainFloatingForm
 
-constructor TMainFloatingForm.Create(AOwner: TComponent);
+constructor TMainFloatingForm.CreateNew(AOwner: TComponent; Dummy: Integer = 0);
 begin
   inherited;
   m_lstChilds := TList.Create;
