@@ -29,6 +29,7 @@ type
     property InitialTop: integer read m_InitialPos.Y;
   public
     constructor CreateNew(AOwner: TComponent; Dummy: Integer = 0); override;
+    constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
   end;
 
@@ -155,6 +156,12 @@ constructor TMainFloatingForm.CreateNew(AOwner: TComponent; Dummy: Integer = 0);
 begin
   inherited;
   m_lstChilds := TList.Create;
+end;
+
+
+constructor TMainFloatingForm.Create(AOwner: TComponent);
+begin
+  inherited;
   m_InitialPos := Point(Left, Top);
 end;
 
