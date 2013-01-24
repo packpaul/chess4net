@@ -131,6 +131,7 @@ type
     constructor Create(fileNameNoExt: string; const AMoveTreeBase: TMoveTreeBase;
       AReestimate: TReestimate = nil); overload;
     destructor Destroy; override;
+    class function Exists(const strBaseName: string): boolean;
     procedure Add(const pos: TChessPosition); overload;
     procedure Add(const posMove: TPosMove); overload;
     function Find(const pos: TChessPosition): boolean; overload;
@@ -240,6 +241,9 @@ type
   TPosBaseFileStreamsFactory = class(TPosBaseStreamsFactory)
   private
     m_strFileNameNoExt: string;
+    class function FGetPosFileName(const strFileNameNoExt: string): TFileName;
+    class function FGetMovFileName(const strFileNameNoExt: string): TFileName;
+    class function FGetMtiFileName(const strFileNameNoExt: string): TFileName;
   public
     constructor Create(const strFileNameNoExt: string);
     function CreatePosStream: TPosBaseStream; override;
@@ -331,6 +335,12 @@ begin
   m_StreamsFactory.Free;
 
   inherited;
+end;
+
+
+class function TPosBase.Exists(const strBaseName: string): boolean;
+begin
+  Result := FileExists(TPosBaseFileStreamsFactory.FGetPosFileName(strBaseName));
 end;
 
 
@@ -1515,22 +1525,39 @@ end;
 
 function TPosBaseFileStreamsFactory.CreatePosStream: TPosBaseStream;
 begin
-  Result := TPosBaseStream.FCreate(m_strFileNameNoExt + '.' + POS_FILE_EXT,
-    SizeOf(TFieldNode));
+  Result := TPosBaseStream.FCreate(FGetPosFileName(m_strFileNameNoExt), SizeOf(TFieldNode));
 end;
 
 
 function TPosBaseFileStreamsFactory.CreateMovStream: TPosBaseStream;
 begin
-  Result := TPosBaseStream.FCreate(m_strFileNameNoExt + '.' + MOV_FILE_EXT,
+  Result := TPosBaseStream.FCreate(FGetMovFileName(m_strFileNameNoExt),
     SizeOf(TMoveNode));
 end;
 
 
 function TPosBaseFileStreamsFactory.CreateMtiStream: TPosBaseStream;
 begin
-  Result := TPosBaseStream.FCreate(m_strFileNameNoExt + '.' + MTI_FILE_EXT,
+  Result := TPosBaseStream.FCreate(FGetMtiFileName(m_strFileNameNoExt),
     SizeOf(TMoveTreeIndexNode));
+end;
+
+
+class function TPosBaseFileStreamsFactory.FGetPosFileName(const strFileNameNoExt: string): TFileName;
+begin
+  Result := strFileNameNoExt + '.' + POS_FILE_EXT;
+end;
+
+
+class function TPosBaseFileStreamsFactory.FGetMovFileName(const strFileNameNoExt: string): TFileName;
+begin
+  Result := strFileNameNoExt + '.' + MOV_FILE_EXT;
+end;
+
+
+class function TPosBaseFileStreamsFactory.FGetMtiFileName(const strFileNameNoExt: string): TFileName;
+begin
+  Result := strFileNameNoExt + '.' + MTI_FILE_EXT;
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
