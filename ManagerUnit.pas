@@ -119,6 +119,7 @@ type
     m_bConnectionOccured: boolean;
 
     m_bTransmittable: boolean;
+    m_bTransmittableColorChangedInitially: boolean;
 
     m_iDontShowLastVersion: integer;
     m_iQueriedDontShowLastVersion: integer;
@@ -437,9 +438,12 @@ begin
 {$IFDEF GAME_LOG}
       FWriteToGameLog('#');
 {$ENDIF}
-      if ((YouTakebacks and (_PlayerColor <> ChessBoard.PositionColor)) or
-          (OpponentTakebacks and (_PlayerColor = ChessBoard.PositionColor))) then
-        exit;
+      if (m_lwOpponentClientVersion >= 201201) then
+      begin
+        if ((YouTakebacks and (_PlayerColor <> ChessBoard.PositionColor)) or
+            (OpponentTakebacks and (_PlayerColor = ChessBoard.PositionColor))) then
+          exit;
+      end;
       FExitGameMode;
 {$IFDEF GAME_LOG}
       if (PositionColor = fcWhite) then
@@ -1193,8 +1197,8 @@ end;
 
 procedure TManager.FRetransmitTakeback;
 begin
-    RRetransmit(CMD_GAME_CONTEXT + ' ' + RGetGameContextStr);
-    RRetransmit(CMD_CONTINUE_GAME);
+  RRetransmit(CMD_GAME_CONTEXT + ' ' + RGetGameContextStr);
+  RRetransmit(CMD_CONTINUE_GAME);
 end;
 
 
@@ -2234,9 +2238,15 @@ begin
 
   SetClock(strTimeControl);
 
-  if (((_PlayerColor = fcWhite) and (strPlayerColor <> 'w')) or
-      ((_PlayerColor = fcBlack) and (strPlayerColor <> 'b'))) then
-    ChangeColor;
+  if (not (Transmittable and m_bTransmittableColorChangedInitially)) then
+  begin
+    if (((_PlayerColor = fcWhite) and (strPlayerColor <> 'w')) or
+        ((_PlayerColor = fcBlack) and (strPlayerColor <> 'b'))) then
+    begin
+      ChangeColor;
+    end;
+    m_bTransmittableColorChangedInitially := TRUE;
+  end;
 
   with ChessBoard do
   begin
@@ -2302,12 +2312,11 @@ begin
     StartPPRandomGameConnected.Visible := FALSE;
 //    ChangeColorConnected.Visible := FALSE;
     GameOptionsConnected.Visible := FALSE;
-
 {$IFDEF SKYPE}
     BroadcastAction.Visible := FALSE;
 {$ENDIF}
-
     ChessBoard.ViewGaming := TRUE;
+    m_bTransmittableColorChangedInitially := FALSE;
   end;
 end;
 
