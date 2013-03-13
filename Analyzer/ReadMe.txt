@@ -1,4 +1,4 @@
-[last updated: 2013-01-24]
+[last updated: 2013-01-10]
 
 Chess4Net Analyzer
 (c) 2007-2013 No rights reserved
@@ -15,6 +15,10 @@ repertory. It supports a training mode which is useful for thoughtful replay of 
 studies and grandmaster games.
 
 Please send all bugs, questions, requests and suggestions to packpaul@mail.ru or packpaul1@gmail.ru
+
+Chess4Net Analyzer 2013.1
+- Tips of the day appearance fixed for Vista and above
+- .pos is not created if no base is selected fix
 
 Chess4Net Analyzer 2013.0
 - Support for Moves Tree DB
