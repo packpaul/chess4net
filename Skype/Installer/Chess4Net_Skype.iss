@@ -1,7 +1,7 @@
 ; Actual for Inno Setup Compiler 5.4.2(u)
 
 #define MyAppName "Chess4Net Skype"
-#define MyAppVersion "2011.1"
+#define MyAppVersion "2013.1"
 #define MyAppPublisher "Chess4Net"
 #define MyAppURL "http://chess4net.ru"
 #define MyAppExeName "Chess4Net_Skype.exe"
@@ -26,7 +26,7 @@ DisableProgramGroupPage=yes
 SourceDir=..\..\bin\Chess4Net_Skype
 ;InfoAfterFile=Readme.txt
 OutputDir=..\..\bin
-OutputBaseFilename=Chess4Net_2011.1_Skype
+OutputBaseFilename=Chess4Net_2013.1b_Skype
 Compression=lzma
 SolidCompression=yes
 ChangesAssociations=yes
