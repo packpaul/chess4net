@@ -2,6 +2,7 @@
 
 SET PROJ_DIR=%CD%\..\bin\Chess4Net_Analyzer
 SET OPENINGS_DBS_DIR=%PROJ_DIR%\DBs
+SET TRAINING_DIR=%PROJ_DIR%\Training
 SET ENGINES_DIR=%PROJ_DIR%\Engines
 
 SET ROBBOLITO_ENGINE=Robbolito_009_w32
@@ -26,6 +27,7 @@ rem -= Environment =-
 MD %PROJ_DIR%\
 MD %ENGINES_DIR%\
 MD %OPENINGS_DBS_DIR%\
+MD %TRAINING_DIR%\
 
 rem -= Compilation =-
 
@@ -37,6 +39,7 @@ unzip -o ..\Build\ChessEngines\%ROBBOLITO_ENGINE%.zip -d %ENGINES_DIR%
 REN %ENGINES_DIR%\%ROBBOLITO_ENGINE%.exe Robbolito.exe
 
 COPY build\*.* %PROJ_DIR%\ /Y
+COPY build\Training\*.c4n %TRAINING_DIR%\ /Y
 
 COPY ReadMe.txt %PROJ_DIR%\ /Y
 
